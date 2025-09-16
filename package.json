@@ -6,18 +6,31 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup-data": "node setup-test-data.js",
+    "setup-simple": "node setup-simple-data.js",
+    "setup-manual": "echo '📋 수동 설정 방법:' && echo '1. Supabase 대시보드 → SQL 에디터로 이동' && echo '2. supabase/no-auth-seed.sql 파일 내용을 복사' && echo '3. SQL 에디터에 붙여넣고 실행' && echo '4. npm run dev로 개발 서버 시작'"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
+    "@heroicons/react": "^2.2.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^11.15.0",
+    "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.3"
+    "react-hot-toast": "^2.4.1",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
+    "dotenv": "^17.2.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4"
   }
 }

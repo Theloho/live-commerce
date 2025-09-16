@@ -1,103 +1,186 @@
-import Image from "next/image";
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import Header from './components/layout/Header'
+import LiveBanner from './components/layout/LiveBanner'
+import ProductGrid from './components/product/ProductGrid'
+import MobileNav from './components/layout/MobileNav'
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [liveBroadcast, setLiveBroadcast] = useState(null)
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { isAuthenticated } = useAuth()
+  const router = useRouter()
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // 현재 라이브 중인 방송 확인
+      const { data: broadcasts, error: broadcastError } = await supabase
+        .from('broadcasts')
+        .select('*')
+        .eq('status', 'live')
+        .single()
+
+      if (broadcastError && broadcastError.code !== 'PGRST116') {
+        console.error('방송 조회 오류:', broadcastError)
+      }
+
+      setLiveBroadcast(broadcasts)
+
+      // 상품 데이터 가져오기 (단순 쿼리)
+      let productsQuery = supabase
+        .from('products')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+
+      // 라이브 방송이 있으면 해당 방송의 상품만, 없으면 전체 상품
+      if (broadcasts) {
+        const { data: broadcastProducts } = await supabase
+          .from('broadcast_products')
+          .select('product_id')
+          .eq('broadcast_id', broadcasts.id)
+
+        if (broadcastProducts && broadcastProducts.length > 0) {
+          const productIds = broadcastProducts.map(bp => bp.product_id)
+          productsQuery = productsQuery.in('id', productIds)
+        }
+      }
+
+      const { data: productsData, error: productsError } = await productsQuery.limit(20)
+
+      if (productsError) {
+        throw new Error(`상품 조회 실패: ${productsError.message}`)
+      }
+
+      setProducts(productsData || [])
+    } catch (err) {
+      console.error('데이터 로딩 오류:', err)
+      setError(err.message || '데이터를 불러오는 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">데이터를 불러오는 중...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">오류가 발생했습니다</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-24 max-w-md mx-auto relative">
+      {/* 헤더 */}
+      <Header />
+
+      {/* 메인 콘텐츠 */}
+      <main className="px-4 pt-4">
+        {/* 로그인/회원가입 배너 (비로그인 사용자만) */}
+        {!isAuthenticated && (
+          <div className="bg-gradient-to-r from-red-500 to-pink-500 rounded-lg p-6 mb-6 text-white text-center">
+            <div className="mb-4">
+              <h3 className="text-xl font-bold mb-2">allok에 오신 것을 환영합니다!</h3>
+              <p className="text-red-100">로그인하고 특별한 혜택을 받아보세요</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/login')}
+                className="flex-1 bg-white text-red-500 font-semibold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                로그인
+              </button>
+              <button
+                onClick={() => router.push('/signup')}
+                className="flex-1 bg-red-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-red-700 transition-colors border border-red-400"
+              >
+                회원가입
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 라이브 방송 섹션 */}
+        {liveBroadcast ? (
+          <>
+            <LiveBanner broadcast={liveBroadcast} />
+            <div className="mt-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-3">🔥 라이브 중인 상품</h2>
+              {products.length > 0 ? (
+                <ProductGrid products={products} />
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>현재 방송 중인 상품이 없습니다.</p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="bg-white rounded-lg p-6 mb-6 text-center">
+              <div className="text-gray-400 mb-3">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">현재 진행중인 방송이 없습니다</h3>
+              <p className="text-sm text-gray-600">곧 새로운 라이브 방송이 시작됩니다!</p>
+            </div>
+
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">🛍️ 인기 상품</h2>
+              {products.length > 0 ? (
+                <ProductGrid products={products} />
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>상품이 없습니다.</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+      {/* 하단 네비게이션 */}
+      <MobileNav />
     </div>
-  );
+  )
 }

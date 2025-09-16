@@ -1,0 +1,393 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { motion } from 'framer-motion'
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
+
+export default function SignupPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    password: '',
+    nickname: '',
+    tiktokId: '',
+    youtubeId: '',
+    address: '',
+    detailAddress: ''
+  })
+
+  // 다음 주소 검색 API
+  const handleAddressSearch = () => {
+    if (typeof window !== 'undefined' && window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: function(data) {
+          setFormData(prev => ({
+            ...prev,
+            address: data.address
+          }))
+        }
+      }).open()
+    } else {
+      toast.error('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+    }
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+
+    // 휴대폰 번호 자동 포맷팅
+    if (name === 'phone') {
+      const numbers = value.replace(/[^\d]/g, '')
+      let formatted = numbers
+
+      if (numbers.length >= 3) {
+        formatted = numbers.slice(0, 3) + '-' + numbers.slice(3)
+      }
+      if (numbers.length >= 7) {
+        formatted = numbers.slice(0, 3) + '-' + numbers.slice(3, 7) + '-' + numbers.slice(7, 11)
+      }
+
+      setFormData(prev => ({ ...prev, [name]: formatted }))
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }))
+    }
+  }
+
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      toast.error('이름을 입력해주세요')
+      return false
+    }
+
+    if (!formData.phone || formData.phone.replace(/[^\d]/g, '').length !== 11) {
+      toast.error('올바른 휴대폰 번호를 입력해주세요')
+      return false
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('비밀번호는 6자 이상 입력해주세요')
+      return false
+    }
+
+    if (!formData.address.trim()) {
+      toast.error('주소를 입력해주세요')
+      return false
+    }
+
+    return true
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    console.log('Form submitted!')
+    console.log('Form data:', formData)
+
+    if (!validateForm()) {
+      console.log('Form validation failed')
+      return
+    }
+
+    console.log('Form validation passed')
+    setLoading(true)
+
+    try {
+      // 휴대폰 번호를 이메일 형식으로 변환 (Supabase auth용)
+      const phone = formData.phone.replace(/[^\d]/g, '')
+      const email = `user${phone}@allok.app`
+
+      // Supabase 회원가입
+      console.log('Attempting signup with email:', email)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            phone: formData.phone,
+            nickname: formData.nickname || formData.name,
+            tiktok_id: formData.tiktokId,
+            youtube_id: formData.youtubeId,
+            address: formData.address,
+            detail_address: formData.detailAddress
+          }
+        }
+      })
+      console.log('Signup result:', { authData, authError })
+      console.log('Auth error details:', authError)
+
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          toast.error('이미 가입된 휴대폰 번호입니다')
+          // 2초 후 로그인 페이지로 이동
+          setTimeout(() => {
+            toast.success('로그인 페이지로 이동합니다')
+            router.push('/login')
+          }, 2000)
+        } else {
+          toast.error('회원가입 중 오류가 발생했습니다')
+        }
+        return
+      }
+
+      // 프로필 정보 저장 (upsert 사용)
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authData.user.id,
+            email: email,
+            name: formData.name,
+            phone: formData.phone,
+            nickname: formData.nickname || formData.name,
+            role: 'customer',
+            status: 'active',
+            address: formData.address,
+            detail_address: formData.detailAddress || null,
+            tiktok_id: formData.tiktokId || null,
+            youtube_id: formData.youtubeId || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id'
+          })
+
+        if (profileError) {
+          console.error('프로필 생성 오류:', profileError)
+          toast.error('프로필 생성 중 오류가 발생했습니다')
+          return
+        }
+      }
+
+      toast.success('회원가입이 완료되었습니다!')
+
+      // 메인 페이지로 이동 (Supabase auth가 자동으로 로그인 처리)
+      router.push('/')
+
+    } catch (error) {
+      console.error('회원가입 오류:', error)
+      toast.error('회원가입 중 오류가 발생했습니다')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      {/* 다음 주소 검색 API 스크립트 */}
+      <script
+        src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
+        async
+      />
+
+      <div className="min-h-screen bg-gray-50 py-8 px-4 max-w-md mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-sm p-6"
+        >
+          {/* 헤더 */}
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">회원가입</h1>
+            <p className="text-gray-600">allok에 오신 것을 환영합니다</p>
+          </div>
+
+          {/* 안내 문구 */}
+          <div className="mb-6 p-3 bg-red-50 rounded-lg">
+            <p className="text-red-600 text-sm font-medium text-center">
+              * 입금자명은 닉네임 또는 이름으로 입금해주세요
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 이름 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                이름 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="홍길동"
+                autoComplete="name"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                required
+              />
+            </div>
+
+            {/* 휴대폰번호 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                휴대폰번호 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="010-0000-0000"
+                maxLength={13}
+                autoComplete="tel"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                required
+              />
+            </div>
+
+            {/* 비밀번호 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                비밀번호 <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="6자 이상 입력해주세요"
+                  autoComplete="new-password"
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon className="h-5 w-5" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 주소 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                주소 <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  placeholder="주소 검색을 눌러주세요"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                  readOnly
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={handleAddressSearch}
+                  className="px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors whitespace-nowrap"
+                >
+                  주소검색
+                </button>
+              </div>
+            </div>
+
+            {/* 상세주소 */}
+            {formData.address && (
+              <div>
+                <input
+                  type="text"
+                  name="detailAddress"
+                  value={formData.detailAddress}
+                  onChange={handleInputChange}
+                  placeholder="상세주소 (선택사항)"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                />
+              </div>
+            )}
+
+            {/* 선택 입력 필드들 */}
+            <div className="pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">선택 입력</h3>
+
+              {/* 닉네임 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  닉네임
+                </label>
+                <input
+                  type="text"
+                  name="nickname"
+                  value={formData.nickname}
+                  onChange={handleInputChange}
+                  placeholder="닉네임 (미입력시 이름 사용)"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                />
+              </div>
+
+              {/* 틱톡 아이디 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  틱톡 아이디
+                </label>
+                <input
+                  type="text"
+                  name="tiktokId"
+                  value={formData.tiktokId}
+                  onChange={handleInputChange}
+                  placeholder="@username"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                />
+              </div>
+
+              {/* 유튜브 아이디 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  유튜브 아이디
+                </label>
+                <input
+                  type="text"
+                  name="youtubeId"
+                  value={formData.youtubeId}
+                  onChange={handleInputChange}
+                  placeholder="채널명 또는 @username"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* 가입 버튼 */}
+            <button
+              type="submit"
+              disabled={loading}
+              onClick={(e) => {
+                console.log('Button clicked!')
+                // handleSubmit은 onSubmit에서 자동으로 처리됨
+              }}
+              className="w-full mt-6 bg-red-500 text-white py-4 rounded-lg font-semibold hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? '가입 중...' : '회원가입'}
+            </button>
+          </form>
+
+          {/* 로그인 링크 */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              이미 계정이 있으신가요?{' '}
+              <button
+                onClick={() => router.push('/login')}
+                className="text-red-500 font-medium hover:text-red-600"
+              >
+                로그인
+              </button>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </>
+  )
+}
