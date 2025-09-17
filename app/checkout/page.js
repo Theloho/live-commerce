@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/hooks/useAuth'
 import CardPaymentModal from '@/app/components/common/CardPaymentModal'
-import { createMockOrder } from '@/lib/mockAuth'
+import { createMockOrder, updateOrderStatus, validateInventoryBeforePayment } from '@/lib/mockAuth'
 import toast from 'react-hot-toast'
 
 export default function CheckoutPage() {
@@ -24,6 +24,10 @@ export default function CheckoutPage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [showCardModal, setShowCardModal] = useState(false)
+  const [showDepositModal, setShowDepositModal] = useState(false)
+  const [depositName, setDepositName] = useState('')
+  const [depositOption, setDepositOption] = useState('name')
+  const [customDepositName, setCustomDepositName] = useState('')
 
   useEffect(() => {
     const initCheckout = async () => {
@@ -59,13 +63,15 @@ export default function CheckoutPage() {
       // 사용자 정보 가져오기
       if (user) {
         const profile = {
-          name: user.user_metadata?.name || '',
-          phone: user.user_metadata?.phone || '',
-          address: user.user_metadata?.address || '',
-          detail_address: user.user_metadata?.detail_address || ''
+          name: user.name || user.user_metadata?.name || '',
+          phone: user.phone || user.user_metadata?.phone || '',
+          address: user.address || user.user_metadata?.address || '',
+          detail_address: user.detailAddress || user.user_metadata?.detail_address || ''
         }
         console.log('User profile:', profile)
         setUserProfile(profile)
+        // 기본 입금자명을 사용자 이름으로 설정
+        setDepositName(profile.name)
       }
 
       setPageLoading(false)
@@ -94,9 +100,14 @@ export default function CheckoutPage() {
   const finalTotal = orderItem.totalPrice + shippingFee
 
   const handleBankTransfer = () => {
-    console.log('계좌이체 버튼 클릭됨')
+    setShowDepositModal(true)
+  }
+
+  const confirmBankTransfer = () => {
+    console.log('계좌이체 처리 시작')
     console.log('orderItem:', orderItem)
     console.log('userProfile:', userProfile)
+    console.log('입금자명:', depositName)
 
     if (!orderItem || !userProfile) {
       console.error('주문 정보 또는 사용자 정보가 없습니다')
@@ -104,18 +115,53 @@ export default function CheckoutPage() {
       return
     }
 
+    if (!depositName) {
+      toast.error('입금자명을 선택해주세요')
+      return
+    }
+
+    // 결제 전 재고 검증
+    // 일괄결제(결제대기 주문들)인지 확인
+    const isFromPendingOrder = orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0
+    const validation = validateInventoryBeforePayment(orderItem, isFromPendingOrder)
+    if (!validation.success) {
+      if (validation.insufficientItems) {
+        const itemList = validation.insufficientItems.map(item =>
+          `${item.title} (현재: ${item.current}개, 필요: ${item.required}개)`
+        ).join('\n')
+
+        toast.error(`재고가 부족한 상품이 있습니다:\n${itemList}`, {
+          duration: 5000
+        })
+      } else {
+        toast.error(validation.error || '재고 확인 중 오류가 발생했습니다')
+      }
+      return
+    }
+
     try {
-      const bankInfo = '신한은행 110-000-000000 allok'
+      const bankInfo = '카카오뱅크 79421940478 하상윤'
 
-      // 주문 생성 (결제 확인중 상태로)
-      const order = createMockOrder(orderItem, userProfile, 'bank_transfer')
+      // 주문 생성 (결제 확인중 상태로, 입금자명 포함)
+      // 일괄결제인 경우 재고 차감 건너뛰기 (이미 개별 주문에서 차감됨)
+      const order = createMockOrder(orderItem, userProfile, 'bank_transfer', isFromPendingOrder)
+      order.depositName = depositName
 
-      // 생성된 주문을 결제 확인중 상태로 변경
+      // 생성된 주문을 결제 확인중 상태로 변경 (입금자명 포함)
       if (typeof window !== 'undefined') {
+        // 주문 상태를 verifying으로 변경 (재고 차감 포함)
+        const success = updateOrderStatus(order.id, 'verifying')
+        if (!success) {
+          console.error('주문 상태 업데이트 실패')
+          toast.error('주문 처리 중 오류가 발생했습니다')
+          return
+        }
+
+        // 입금자명 추가 저장
         const existingOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
         const updatedOrders = existingOrders.map(existingOrder =>
           existingOrder.id === order.id
-            ? { ...existingOrder, status: 'verifying', payment: { ...existingOrder.payment, status: 'verifying' } }
+            ? { ...existingOrder, payment: { ...existingOrder.payment, status: 'verifying' }, depositName: depositName }
             : existingOrder
         )
         localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
@@ -135,11 +181,16 @@ export default function CheckoutPage() {
         window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'bulkPayment', orderIds: orderItem.originalOrderIds } }))
       }
 
-      navigator.clipboard.writeText(bankInfo).then(() => {
-        toast.success('계좌정보가 복사되었습니다')
+      navigator.clipboard.writeText('79421940478').then(() => {
+        toast.success('계좌번호가 복사되었습니다')
+        setShowDepositModal(false)
+
+        // 체크아웃 세션 데이터 삭제
+        sessionStorage.removeItem('checkoutItem')
+
         // 주문 완료 페이지로 이동
         setTimeout(() => {
-          router.push(`/orders/${order.id}/complete`)
+          router.replace(`/orders/${order.id}/complete`)
         }, 1500)
       }).catch(() => {
         toast.error('복사에 실패했습니다')
@@ -319,8 +370,8 @@ export default function CheckoutPage() {
                 <InformationCircleIcon className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 space-y-1">
                   <p className="font-semibold text-yellow-800">무통장입금</p>
-                  <p className="text-sm text-yellow-700">신한은행 110-000-000000</p>
-                  <p className="text-sm text-yellow-700">예금주: allok</p>
+                  <p className="text-sm text-yellow-700">카카오뱅크 79421940478</p>
+                  <p className="text-sm text-yellow-700">예금주: 하상윤</p>
                   <p className="text-xs text-yellow-600 mt-2">
                     주문 후 24시간 이내 입금해주세요
                   </p>
@@ -371,7 +422,7 @@ export default function CheckoutPage() {
             {/* 계좌이체 버튼 */}
             <button
               onClick={handleBankTransfer}
-              disabled={!userProfile.address}
+              disabled={!userProfile.name}
               className="w-full bg-blue-500 text-white font-semibold py-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               💳 계좌이체 (₩{finalTotal.toLocaleString()})
@@ -380,7 +431,7 @@ export default function CheckoutPage() {
             {/* 카드결제 버튼 */}
             <button
               onClick={handleCardPayment}
-              disabled={!userProfile.address}
+              disabled={!userProfile.name}
               className="w-full bg-green-500 text-white font-semibold py-4 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               💳 카드결제신청 (₩{(Math.floor(orderItem.totalPrice * 1.1) + shippingFee).toLocaleString()})
@@ -403,6 +454,113 @@ export default function CheckoutPage() {
         orderItem={orderItem}
         userProfile={userProfile}
       />
+
+      {/* 입금자명 선택 모달 */}
+      {showDepositModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-lg max-w-sm w-full mx-4 p-6"
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-4">입금자명을 선택하세요</h3>
+
+            <div className="space-y-3">
+              <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="deposit"
+                  value="name"
+                  checked={depositOption === 'name'}
+                  onChange={(e) => {
+                    setDepositOption(e.target.value)
+                    setDepositName(userProfile.name)
+                  }}
+                  className="mr-3"
+                />
+                <div>
+                  <p className="font-medium text-gray-900">고객 이름</p>
+                  <p className="text-sm text-gray-500">{userProfile.name}</p>
+                </div>
+              </label>
+
+              <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="deposit"
+                  value="nickname"
+                  checked={depositOption === 'nickname'}
+                  onChange={(e) => {
+                    setDepositOption(e.target.value)
+                    setDepositName(user?.nickname || user?.user_metadata?.nickname || userProfile.name)
+                  }}
+                  className="mr-3"
+                />
+                <div>
+                  <p className="font-medium text-gray-900">닉네임</p>
+                  <p className="text-sm text-gray-500">{user?.nickname || user?.user_metadata?.nickname || userProfile.name}</p>
+                </div>
+              </label>
+
+              <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="deposit"
+                  value="custom"
+                  checked={depositOption === 'custom'}
+                  onChange={(e) => {
+                    setDepositOption(e.target.value)
+                    setDepositName(customDepositName)
+                  }}
+                  className="mr-3 mt-1"
+                />
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900 mb-2">다른 이름으로 입금</p>
+                  <input
+                    type="text"
+                    placeholder="입금자명 입력"
+                    value={customDepositName}
+                    onChange={(e) => {
+                      setCustomDepositName(e.target.value)
+                      if (depositOption === 'custom') {
+                        setDepositName(e.target.value)
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </label>
+            </div>
+
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+              <p className="text-sm text-yellow-800 font-medium">
+                💡 입금자명과 금액이 정확해야 입금확인과 배송이 빨라집니다
+              </p>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDepositModal(false)
+                  setDepositOption('name')
+                  setDepositName('')
+                  setCustomDepositName('')
+                }}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmBankTransfer}
+                disabled={!depositName}
+                className="flex-1 px-4 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

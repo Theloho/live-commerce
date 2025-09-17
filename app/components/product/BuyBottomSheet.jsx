@@ -31,10 +31,10 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     price,
     compare_price,
     thumbnail_url,
-    inventory_quantity = 10,
+    inventory_quantity,
     options = [],
     minOrder = 1,
-    maxOrder = 10
+    maxOrder = inventory_quantity || 50
   } = product
 
   const stock = inventory_quantity

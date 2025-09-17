@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, CreditCardIcon } from '@heroicons/react/24/outline'
 import { useAuth } from '@/hooks/useAuth'
-import { createMockOrder } from '@/lib/mockAuth'
+import { createMockOrder, updateOrderStatus, validateInventoryBeforePayment } from '@/lib/mockAuth'
+import InventoryErrorModal from './InventoryErrorModal'
 import toast from 'react-hot-toast'
 
 export default function CardPaymentModal({ isOpen, onClose, totalAmount, productPrice, shippingFee, orderItem, userProfile }) {
   const router = useRouter()
   const { user } = useAuth()
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showInventoryError, setShowInventoryError] = useState(false)
+  const [inventoryErrors, setInventoryErrors] = useState([])
 
   const cardFinalTotal = Math.floor(productPrice * 1.1) + shippingFee
   const taxAmount = Math.floor(productPrice * 0.1)
@@ -30,18 +33,33 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
     try {
       setIsProcessing(true)
 
-      // 주문 생성 (결제 확인중 상태로)
-      const order = createMockOrder(orderItem, userProfile, 'card')
+      // 결제 전 재고 검증
+      // 일괄결제(결제대기 주문들)인지 확인
+      const isFromPendingOrder = orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0
+      const validation = validateInventoryBeforePayment(orderItem, isFromPendingOrder)
+      if (!validation.success) {
+        setIsProcessing(false)
 
-      // 생성된 주문을 결제 확인중 상태로 변경
-      if (typeof window !== 'undefined') {
-        const existingOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-        const updatedOrders = existingOrders.map(existingOrder =>
-          existingOrder.id === order.id
-            ? { ...existingOrder, status: 'verifying', payment: { ...existingOrder.payment, status: 'verifying' } }
-            : existingOrder
-        )
-        localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
+        if (validation.insufficientItems) {
+          setInventoryErrors(validation.insufficientItems)
+          setShowInventoryError(true)
+        } else {
+          toast.error(validation.error || '재고 확인 중 오류가 발생했습니다')
+        }
+        return
+      }
+
+      // 주문 생성 (결제 확인중 상태로)
+      // 일괄결제인 경우 재고 차감 건너뛰기 (이미 개별 주문에서 차감됨)
+      const order = createMockOrder(orderItem, userProfile, 'card', isFromPendingOrder)
+
+      // 주문 상태를 verifying으로 변경 (재고 차감 포함)
+      const success = updateOrderStatus(order.id, 'verifying')
+      if (!success) {
+        console.error('주문 상태 업데이트 실패')
+        toast.error('주문 처리 중 오류가 발생했습니다')
+        setIsProcessing(false)
+        return
       }
       console.log('생성된 주문:', order)
 
@@ -76,7 +94,11 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
           })
           setIsProcessing(false)
           onClose()
-          router.push(`/orders/${order.id}/complete`)
+
+          // 체크아웃 세션 데이터 삭제
+          sessionStorage.removeItem('checkoutItem')
+
+          router.replace(`/orders/${order.id}/complete`)
         }, 1000)
       }, 2500)
     } catch (error) {
@@ -192,6 +214,14 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
           </motion.div>
         </>
       )}
+
+      {/* Inventory Error Modal */}
+      <InventoryErrorModal
+        isOpen={showInventoryError}
+        onClose={() => setShowInventoryError(false)}
+        insufficientItems={inventoryErrors}
+        title="카드결제 불가"
+      />
     </AnimatePresence>
   )
 }

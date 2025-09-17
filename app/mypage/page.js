@@ -47,13 +47,13 @@ export default function MyPage() {
       // Mock 모드에서는 user 객체에서 정보 가져오기
       if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
         const profile = {
-          name: user.user_metadata?.name || '',
-          phone: user.user_metadata?.phone || '',
-          address: user.user_metadata?.address || '',
-          detail_address: user.user_metadata?.detail_address || '',
-          nickname: user.user_metadata?.nickname || user.user_metadata?.name || '',
-          tiktok_id: user.user_metadata?.tiktok_id || '',
-          youtube_id: user.user_metadata?.youtube_id || ''
+          name: user.name || user.user_metadata?.name || '',
+          phone: user.phone || user.user_metadata?.phone || '',
+          address: user.address || user.user_metadata?.address || '',
+          detail_address: user.detail_address || user.user_metadata?.detail_address || '',
+          nickname: user.nickname || user.user_metadata?.nickname || user.user_metadata?.name || '',
+          tiktok_id: user.tiktokId || user.user_metadata?.tiktok_id || '',
+          youtube_id: user.youtubeId || user.user_metadata?.youtube_id || ''
         }
         setUserProfile(profile)
         setEditValues(profile)
@@ -94,17 +94,13 @@ export default function MyPage() {
         if (currentUser) {
           // combined_address 타입인 경우 주소와 상세주소 모두 업데이트
           if (field === 'address') {
-            currentUser.user_metadata = {
-              ...currentUser.user_metadata,
-              [field]: editValues[field],
-              detail_address: editValues.detail_address
-            }
+            currentUser.address = editValues.address
+            currentUser.detail_address = editValues.detail_address
           } else {
-            // user_metadata 업데이트
-            currentUser.user_metadata = {
-              ...currentUser.user_metadata,
-              [field]: editValues[field]
-            }
+            // tiktok_id, youtube_id는 camelCase로 변환
+            const fieldName = field === 'tiktok_id' ? 'tiktokId' :
+                           field === 'youtube_id' ? 'youtubeId' : field
+            currentUser[fieldName] = editValues[field]
           }
 
           // localStorage에 저장
@@ -114,7 +110,7 @@ export default function MyPage() {
           const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
           const userIndex = users.findIndex(u => u.id === currentUser.id)
           if (userIndex !== -1) {
-            users[userIndex] = { ...users[userIndex], ...currentUser }
+            users[userIndex] = currentUser
             localStorage.setItem('mock_users', JSON.stringify(users))
           }
         }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import {
@@ -10,19 +10,30 @@ import {
   CheckCircleIcon,
   TruckIcon,
   HomeIcon,
-  FunnelIcon
+  MinusIcon,
+  PlusIcon
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import toast from 'react-hot-toast'
+import { cancelOrder, updateProductInventory, getCurrentInventory, validateInventoryBeforePayment } from '@/lib/mockAuth'
 
 export default function OrdersPage() {
   const router = useRouter()
-  const { isAuthenticated, loading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('pending')
+
+  // URL 쿼리 파라미터에서 탭 정보 확인
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && ['pending', 'verifying', 'paid', 'delivered'].includes(tab)) {
+      setFilterStatus(tab)
+    }
+  }, [searchParams])
 
   // 테스트용 샘플 데이터 생성 함수
   const createSampleOrders = () => {
@@ -78,21 +89,26 @@ export default function OrdersPage() {
   }
 
   const loadOrders = () => {
-    // Mock 주문 데이터 가져오기
-    const mockOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-    console.log('Loaded orders:', mockOrders) // 디버깅용
-
-    // 취소된 주문들(status가 'cancelled'인 것들) 제거
-    const activeOrders = mockOrders.filter(order => order.status !== 'cancelled')
-
-    // 기존에 취소된 주문이 있었다면 정리
-    if (activeOrders.length !== mockOrders.length) {
-      console.log('기존 취소된 주문들 정리:', mockOrders.length - activeOrders.length, '개')
-      localStorage.setItem('mock_orders', JSON.stringify(activeOrders))
+    // 현재 로그인한 사용자 확인
+    if (!user?.id) {
+      console.log('사용자가 로그인되지 않음')
+      setOrders([])
+      setLoading(false)
+      return
     }
 
-    // 샘플 데이터는 생성하지 않음 (실제 주문만 표시)
-    setOrders(activeOrders)
+    // Mock 주문 데이터 가져오기
+    const mockOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
+    console.log('Loaded all orders:', mockOrders) // 디버깅용
+
+    // 현재 사용자의 주문만 필터링
+    const userOrders = mockOrders.filter(order =>
+      order.userId === user.id && order.status !== 'cancelled'
+    )
+
+    console.log('Filtered user orders:', userOrders) // 디버깅용
+
+    setOrders(userOrders)
     setLoading(false)
   }
 
@@ -110,7 +126,7 @@ export default function OrdersPage() {
     }
 
     initOrders()
-  }, [isAuthenticated, authLoading, router])
+  }, [isAuthenticated, authLoading, router, user])
 
   // 페이지 포커스 시 주문 목록 새로고침
   useEffect(() => {
@@ -169,6 +185,7 @@ export default function OrdersPage() {
     return statusMap[status] || statusMap['pending']
   }
 
+
   const handleOrderClick = (e, orderId) => {
     e.preventDefault()
     e.stopPropagation()
@@ -176,35 +193,6 @@ export default function OrdersPage() {
   }
 
   // 주문 취소 (완전 삭제)
-  const handleCancelOrder = (e, orderId) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    console.log('취소 버튼 클릭됨, orderId:', orderId)
-    console.log('현재 orders:', orders)
-
-    const confirmed = window.confirm('이 주문을 취소하시겠습니까? 주문 목록에서 완전히 삭제됩니다.')
-    if (!confirmed) {
-      console.log('취소 확인 거부됨')
-      return
-    }
-
-    console.log('취소 확인됨, 주문 삭제 진행')
-
-    // 취소된 주문을 완전히 제거
-    const updatedOrders = orders.filter(order => order.id !== orderId)
-    console.log('삭제 후 orders:', updatedOrders)
-
-    setOrders(updatedOrders)
-    localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
-    console.log('localStorage 업데이트 완료')
-
-    toast.success('주문이 취소되어 목록에서 삭제되었습니다')
-
-    // 주문 업데이트 이벤트 발생
-    window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'cancel', orderId } }))
-    console.log('storage 이벤트 발생 완료')
-  }
 
   // 개별 결제 (체크아웃으로 이동)
   const handlePayOrder = (e, order) => {
@@ -221,6 +209,113 @@ export default function OrdersPage() {
   }
 
 
+  // 주문 취소 (재고 복원)
+  const handleCancelOrder = async (orderId) => {
+    const confirmed = window.confirm('주문을 취소하시겠습니까?\n취소하면 재고가 복원됩니다.')
+    if (!confirmed) return
+
+    try {
+      const success = cancelOrder(orderId)
+      if (success) {
+        toast.success('주문이 취소되었습니다')
+        // 주문 목록 새로고침
+        loadOrders()
+      } else {
+        toast.error('주문 취소에 실패했습니다')
+      }
+    } catch (error) {
+      console.error('주문 취소 중 오류:', error)
+      toast.error('주문 취소 중 오류가 발생했습니다')
+    }
+  }
+
+  // 수량 조절 (재고 확인 포함)
+  const handleQuantityChange = async (orderId, itemIndex, change) => {
+    console.log('수량 조절:', { orderId, itemIndex, change })
+
+    const order = orders.find(o => o.id === orderId)
+    if (!order) return
+
+    const item = order.items[itemIndex]
+    if (!item) return
+
+    const newQuantity = (item.quantity || 1) + change
+
+    // 최소 수량 체크
+    if (newQuantity < 1) {
+      toast.error('최소 수량은 1개입니다')
+      return
+    }
+
+    // 재고 확인
+    if (change > 0) {
+      // 수량 증가시 재고 확인
+      const currentInventory = getCurrentInventory(item.id)
+      if (currentInventory < change) {
+        toast.error(`재고가 부족합니다 (남은 재고: ${currentInventory}개)`)
+        return
+      }
+      // 재고 차감
+      const success = updateProductInventory(item.id, -change)
+      if (!success) {
+        toast.error('재고 업데이트 실패')
+        return
+      }
+    } else {
+      // 수량 감소시 재고 복원
+      const success = updateProductInventory(item.id, -change)
+      if (!success) {
+        toast.error('재고 업데이트 실패')
+        return
+      }
+    }
+
+    // 주문 수량 및 가격 업데이트
+    const updatedOrders = orders.map(o => {
+      if (o.id === orderId) {
+        const updatedItems = o.items.map((it, idx) => {
+          if (idx === itemIndex) {
+            const unitPrice = it.price || it.totalPrice / (it.quantity || 1)
+            return {
+              ...it,
+              quantity: newQuantity,
+              totalPrice: unitPrice * newQuantity
+            }
+          }
+          return it
+        })
+
+        // 결제 금액 재계산
+        const totalProductPrice = updatedItems.reduce((sum, it) => sum + it.totalPrice, 0)
+        const shippingFee = 4000
+        const totalAmount = o.payment.method === 'card'
+          ? Math.floor(totalProductPrice * 1.1) + shippingFee
+          : totalProductPrice + shippingFee
+
+        return {
+          ...o,
+          items: updatedItems,
+          payment: {
+            ...o.payment,
+            amount: totalAmount
+          }
+        }
+      }
+      return o
+    })
+
+    // 상태 업데이트 및 저장
+    setOrders(updatedOrders)
+    localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
+
+    toast.success('수량이 변경되었습니다')
+
+    // 주문 업데이트 이벤트 발생
+    window.dispatchEvent(new CustomEvent('orderUpdated', {
+      detail: { action: 'quantity_change', orderId, itemIndex, change }
+    }))
+  }
+
   // 전체 결제 (결제대기 상품들을 모두 합산하여 결제)
   const handlePayAllPending = () => {
     const pendingOrders = orders.filter(order => order.status === 'pending')
@@ -228,6 +323,9 @@ export default function OrdersPage() {
       toast.error('결제대기 중인 주문이 없습니다')
       return
     }
+
+    // 결제대기 주문의 경우 재고가 이미 차감되어 있으므로 검증 건너뛰기
+    console.log('일괄결제: 결제대기 주문들의 재고는 이미 확보되어 있으므로 검증 생략')
 
     // 모든 결제대기 주문들을 하나의 주문으로 합침
     const totalPrice = pendingOrders.reduce((sum, order) => {
@@ -288,7 +386,6 @@ export default function OrdersPage() {
         {/* 필터 */}
         <div className="px-4 py-4 bg-white border-b border-gray-200">
           <div className="flex items-center gap-2 overflow-x-auto">
-            <FunnelIcon className="h-5 w-5 text-gray-600 flex-shrink-0" />
             {[
               { key: 'pending', label: '결제대기' },
               { key: 'verifying', label: '결제 확인중' },
@@ -399,14 +496,16 @@ export default function OrdersPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    onClick={(e) => handleOrderClick(e, order.id)}
-                    className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={order.status !== 'pending' ? (e) => handleOrderClick(e, order.id) : undefined}
+                    className={`bg-white rounded-lg border border-gray-200 p-4 ${
+                      order.status !== 'pending' ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+                    }`}
                   >
                     {/* 주문 헤더 */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900">
-                          주문번호: {order.id.slice(-8)}
+                          주문번호: {order.customerOrderNumber || order.id.slice(-8)}
                         </span>
                       </div>
                       <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
@@ -430,9 +529,38 @@ export default function OrdersPage() {
                         <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm">
                           {orderItem.title}
                         </h3>
-                        <p className="text-xs text-gray-500 mb-1">
-                          수량: {orderItem.quantity}개
-                        </p>
+
+                        {/* 수량 조절 UI - 결제대기 상태에서만 표시 */}
+                        {order.status === 'pending' ? (
+                          <div className="flex items-center gap-2 mb-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleQuantityChange(order.id, 0, -1)
+                              }}
+                              className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                              disabled={orderItem.quantity <= 1}
+                            >
+                              <MinusIcon className="h-3 w-3 text-gray-600" />
+                            </button>
+                            <span className="text-xs text-gray-700 min-w-[40px] text-center">
+                              {orderItem.quantity}개
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleQuantityChange(order.id, 0, 1)
+                              }}
+                              className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                            >
+                              <PlusIcon className="h-3 w-3 text-gray-600" />
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500 mb-1">
+                            수량: {orderItem.quantity}개
+                          </p>
+                        )}
                         {order.items.length > 1 && (
                           <p className="text-xs text-gray-500">
                             외 {order.items.length - 1}개 상품
@@ -460,7 +588,7 @@ export default function OrdersPage() {
                         // 결제대기 상품에는 취소 버튼만 표시
                         <div className="flex justify-end">
                           <button
-                            onClick={(e) => handleCancelOrder(e, order.id)}
+                            onClick={() => handleCancelOrder(order.id)}
                             className="bg-gray-100 text-gray-600 text-xs font-medium py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
                           >
                             취소

@@ -5,9 +5,11 @@ import { HomeIcon, ClipboardDocumentListIcon, UserIcon } from '@heroicons/react/
 import { HomeIcon as HomeIconSolid, ClipboardDocumentListIcon as ClipboardDocumentListIconSolid, UserIcon as UserIconSolid } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function MobileNav() {
   const pathname = usePathname()
+  const { user, isAuthenticated } = useAuth()
   const [orderCounts, setOrderCounts] = useState({
     pending: 0,
     verifying: 0,
@@ -15,18 +17,28 @@ export default function MobileNav() {
     delivered: 0
   })
 
-  // 모든 주문 상태별 수 조회
+  // 현재 사용자의 주문 상태별 수 조회
   useEffect(() => {
     const loadOrderCounts = () => {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && isAuthenticated && user?.id) {
         const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
+        // 현재 사용자의 주문만 필터링
+        const userOrders = orders.filter(order => order.userId === user.id)
         const counts = {
-          pending: orders.filter(order => order.status === 'pending').length,
-          verifying: orders.filter(order => order.status === 'verifying').length,
-          paid: orders.filter(order => order.status === 'paid').length,
-          delivered: orders.filter(order => order.status === 'delivered').length
+          pending: userOrders.filter(order => order.status === 'pending').length,
+          verifying: userOrders.filter(order => order.status === 'verifying').length,
+          paid: userOrders.filter(order => order.status === 'paid').length,
+          delivered: userOrders.filter(order => order.status === 'delivered').length
         }
         setOrderCounts(counts)
+      } else {
+        // 로그아웃 상태면 모든 카운트를 0으로 설정
+        setOrderCounts({
+          pending: 0,
+          verifying: 0,
+          paid: 0,
+          delivered: 0
+        })
       }
     }
 
@@ -39,7 +51,7 @@ export default function MobileNav() {
 
     window.addEventListener('orderUpdated', handleOrderUpdate)
     return () => window.removeEventListener('orderUpdated', handleOrderUpdate)
-  }, [])
+  }, [isAuthenticated, user])
 
   const menuItems = [
     {

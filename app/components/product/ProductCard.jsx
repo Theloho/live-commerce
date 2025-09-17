@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -10,7 +10,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import useCartStore from '@/app/stores/cartStore'
 import { useAuth } from '@/hooks/useAuth'
-import { createMockOrder } from '@/lib/mockAuth'
+import { createMockOrder, getCurrentInventory } from '@/lib/mockAuth'
 import BuyBottomSheet from '@/app/components/product/BuyBottomSheet'
 import PurchaseChoiceModal from '@/app/components/common/PurchaseChoiceModal'
 import toast from 'react-hot-toast'
@@ -19,9 +19,31 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const [imageError, setImageError] = useState(false)
   const [showBuySheet, setShowBuySheet] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
+  const [currentInventory, setCurrentInventory] = useState(product.inventory_quantity || 0)
   const { addItem } = useCartStore()
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
+
+  // 재고 정보 실시간 업데이트
+  useEffect(() => {
+    const updateInventory = () => {
+      const inventory = getCurrentInventory(product.id)
+      setCurrentInventory(inventory)
+    }
+
+    // 초기 재고 설정
+    updateInventory()
+
+    // 재고 업데이트 이벤트 리스너
+    const handleInventoryUpdate = (event) => {
+      if (event.detail.productId === product.id) {
+        setCurrentInventory(event.detail.newQuantity)
+      }
+    }
+
+    window.addEventListener('inventoryUpdated', handleInventoryUpdate)
+    return () => window.removeEventListener('inventoryUpdated', handleInventoryUpdate)
+  }, [product.id])
 
   const {
     id,
@@ -50,6 +72,12 @@ export default function ProductCard({ product, variant = 'default', priority = f
     e.preventDefault()
 
     console.log('장바구니 버튼 클릭됨') // 디버깅
+
+    // 품절 체크
+    if (currentInventory <= 0) {
+      toast.error('죄송합니다. 해당 상품이 품절되었습니다')
+      return
+    }
 
     if (!isAuthenticated) {
       toast.error('로그인이 필요합니다')
@@ -90,7 +118,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
 
       // 선택 모달에서 호출될 때는 토스트 표시 안함
       if (!showChoiceModal) {
-        toast.success('장바구니에 추가되었습니다')
+        toast.success('주문내역에 추가되었습니다')
       }
 
       // 주문 내역 페이지가 열려있다면 새로고침을 위해 커스텀 이벤트 발생
@@ -105,6 +133,12 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const handleDirectPurchase = (e) => {
     e.preventDefault()
     e.stopPropagation()
+
+    // 품절 체크
+    if (currentInventory <= 0) {
+      toast.error('죄송합니다. 해당 상품이 품절되었습니다')
+      return
+    }
 
     if (!isAuthenticated) {
       toast.error('로그인이 필요합니다')
@@ -121,6 +155,12 @@ export default function ProductCard({ product, variant = 'default', priority = f
 
   const handleBuyClick = (e) => {
     e.preventDefault()
+
+    // 품절 체크
+    if (currentInventory <= 0) {
+      toast.error('죄송합니다. 해당 상품이 품절되었습니다')
+      return
+    }
 
     if (!isAuthenticated) {
       toast.error('로그인이 필요합니다')
@@ -152,12 +192,12 @@ export default function ProductCard({ product, variant = 'default', priority = f
   return (
     <>
       <motion.div
-        whileHover={{ y: -4 }}
+        whileHover={currentInventory > 0 ? { y: -4 } : {}}
         transition={{ duration: 0.2 }}
-        onClick={handleBuyClick}
-        className="cursor-pointer"
+        onClick={currentInventory > 0 ? handleBuyClick : undefined}
+        className={currentInventory > 0 ? "cursor-pointer" : "cursor-not-allowed"}
       >
-        <div className={variants[variant]}>
+        <div className={`${variants[variant]} ${currentInventory <= 0 ? 'opacity-60 grayscale' : ''}`}>
           {/* Image Section */}
           <div className={variant === 'horizontal' ? 'w-1/3' : 'relative aspect-[3/4]'}>
             <div className="relative w-full h-full">
@@ -177,8 +217,24 @@ export default function ProductCard({ product, variant = 'default', priority = f
                 </div>
               )}
 
-              {/* Badges */}
+              {/* 좌측 배지 - 재고 관련 */}
               <div className="absolute top-2 left-2 flex flex-col gap-1">
+                {/* 품절 배지 */}
+                {currentInventory <= 0 && (
+                  <span className="inline-flex items-center px-2 py-1 bg-gray-500 text-white text-xs font-bold rounded">
+                    품절
+                  </span>
+                )}
+                {/* 품절임박 배지 */}
+                {currentInventory > 0 && currentInventory <= 5 && (
+                  <span className="inline-flex items-center px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
+                    품절임박
+                  </span>
+                )}
+              </div>
+
+              {/* 우측 배지 - 마케팅/프로모션 관련 */}
+              <div className="absolute top-2 right-2 flex flex-col gap-1">
                 {isLive && (
                   <span className="inline-flex items-center px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
                     LIVE
@@ -187,12 +243,6 @@ export default function ProductCard({ product, variant = 'default', priority = f
                 {badge && (
                   <span className="inline-flex items-center px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded">
                     {badge}
-                  </span>
-                )}
-                {/* 품절임박 배지 - 재고가 5개 이하일 때 */}
-                {product.inventory_quantity && product.inventory_quantity <= 5 && (
-                  <span className="inline-flex items-center px-2 py-1 bg-yellow-500 text-white text-xs font-bold rounded">
-                    품절임박
                   </span>
                 )}
                 {discount > 0 && (
@@ -229,10 +279,15 @@ export default function ProductCard({ product, variant = 'default', priority = f
             {/* Quick Actions - Desktop only */}
             <div className="hidden sm:flex gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
-                onClick={handleDirectPurchase}
-                className="w-full px-3 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors"
+                onClick={currentInventory > 0 ? handleDirectPurchase : undefined}
+                disabled={currentInventory <= 0}
+                className={`w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  currentInventory <= 0
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : 'bg-red-500 text-white hover:bg-red-600'
+                }`}
               >
-                구매하기
+                {currentInventory <= 0 ? '품절' : '구매하기'}
               </button>
             </div>
           </div>

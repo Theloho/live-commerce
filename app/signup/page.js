@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -164,10 +165,13 @@ export default function SignupPage() {
         }
       }
 
+      // mockAuth 시스템에서 이미 사용자 생성 및 세션 설정을 처리함
+      // 중복 생성을 방지하기 위해 수동 생성 코드 제거
+
       toast.success('회원가입이 완료되었습니다!')
 
-      // 메인 페이지로 이동 (Supabase auth가 자동으로 로그인 처리)
-      router.push('/')
+      // window reload를 통해 전체 앱 상태 새로고침
+      window.location.href = '/'
 
     } catch (error) {
       console.error('회원가입 오류:', error)
