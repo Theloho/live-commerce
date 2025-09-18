@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import {
@@ -370,12 +371,12 @@ export default function TestConnectionPage() {
 
         {/* 홈으로 돌아가기 */}
         <div className="mt-8 text-center">
-          <a
+          <Link
             href="/"
             className="inline-flex items-center px-4 py-2 text-red-600 hover:text-red-700 font-medium"
           >
             ← 홈으로 돌아가기
-          </a>
+          </Link>
         </div>
       </motion.div>
     </div>

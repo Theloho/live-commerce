@@ -687,7 +687,7 @@ export default function AdminDepositsPage() {
             {/* Modal Header */}
             <div className="bg-blue-50 px-6 py-4 border-b flex items-center justify-between">
               <h2 className="text-lg font-semibold text-blue-900">
-                🔍 "{quickSearchTerm}" 검색 결과 ({quickSearchResults.length}건)
+                🔍 &quot;{quickSearchTerm}&quot; 검색 결과 ({quickSearchResults.length}건)
               </h2>
               <button
                 onClick={() => {
@@ -800,7 +800,7 @@ export default function AdminDepositsPage() {
                 </div>
               ) : (
                 <div className="p-8 text-center">
-                  <p className="text-gray-500">"{quickSearchTerm}"와 일치하는 거래를 찾을 수 없습니다.</p>
+                  <p className="text-gray-500">&quot;{quickSearchTerm}&quot;와 일치하는 거래를 찾을 수 없습니다.</p>
                   <p className="text-gray-400 text-sm mt-1">업로드된 엑셀 파일에서 입금자명을 검색합니다.</p>
                 </div>
               )}

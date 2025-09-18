@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -19,7 +19,7 @@ import { ko } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { cancelOrder, updateProductInventory, getCurrentInventory, validateInventoryBeforePayment } from '@/lib/mockAuth'
 
-export default function OrdersPage() {
+function OrdersContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
@@ -650,5 +650,15 @@ export default function OrdersPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-12">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+    </div>}>
+      <OrdersContent />
+    </Suspense>
   )
 }
