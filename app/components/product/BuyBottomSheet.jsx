@@ -65,7 +65,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     }))
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isAuthenticated) {
       toast.error('로그인이 필요합니다')
       router.push('/login')
