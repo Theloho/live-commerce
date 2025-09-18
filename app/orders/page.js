@@ -530,6 +530,20 @@ export default function OrdersPage() {
                           {orderItem.title}
                         </h3>
 
+                        {/* 선택된 옵션 표시 */}
+                        {orderItem.selectedOptions && Object.keys(orderItem.selectedOptions).length > 0 && (
+                          <div className="mb-1">
+                            {Object.entries(orderItem.selectedOptions).map(([optionId, value]) => (
+                              <span
+                                key={optionId}
+                                className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1 mb-1"
+                              >
+                                {value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
                         {/* 수량 조절 UI - 결제대기 상태에서만 표시 */}
                         {order.status === 'pending' ? (
                           <div className="flex items-center gap-2 mb-1">

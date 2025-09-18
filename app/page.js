@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 // import { supabase } from '@/lib/supabase'
-import { useAuth, getMockProducts } from '@/hooks/useAuth'
+import { useAuth } from '@/hooks/useAuth'
+import { getProducts } from '@/lib/supabaseApi'
 import Header from './components/layout/Header'
 import LiveBanner from './components/layout/LiveBanner'
 import ProductGrid from './components/product/ProductGrid'
@@ -44,15 +45,47 @@ export default function Home() {
       loadData()
     }
 
+    // 상품 삭제 시 상품 목록 새로고침
+    const handleProductDeleted = () => {
+      console.log('Product deleted, reloading products...')
+      loadData()
+    }
+
+    // 상품 상태 변경 시 상품 목록 새로고침
+    const handleProductStatusChanged = () => {
+      console.log('Product status changed, reloading products...')
+      loadData()
+    }
+
+    // 상품 라이브 상태 변경 시 상품 목록 새로고침
+    const handleProductLiveStatusChanged = () => {
+      console.log('Product live status changed, reloading products...')
+      loadData()
+    }
+
+    // 상품 정보 업데이트 시 상품 목록 새로고침
+    const handleProductUpdated = () => {
+      console.log('Product updated, reloading products...')
+      loadData()
+    }
+
     window.addEventListener('inventoryUpdated', handleInventoryUpdate)
     window.addEventListener('productAdded', handleProductAdded)
     window.addEventListener('productsCleared', handleProductsCleared)
     window.addEventListener('productsReloaded', handleProductsReloaded)
+    window.addEventListener('productDeleted', handleProductDeleted)
+    window.addEventListener('productStatusChanged', handleProductStatusChanged)
+    window.addEventListener('productLiveStatusChanged', handleProductLiveStatusChanged)
+    window.addEventListener('productUpdated', handleProductUpdated)
     return () => {
       window.removeEventListener('inventoryUpdated', handleInventoryUpdate)
       window.removeEventListener('productAdded', handleProductAdded)
       window.removeEventListener('productsCleared', handleProductsCleared)
       window.removeEventListener('productsReloaded', handleProductsReloaded)
+      window.removeEventListener('productDeleted', handleProductDeleted)
+      window.removeEventListener('productStatusChanged', handleProductStatusChanged)
+      window.removeEventListener('productLiveStatusChanged', handleProductLiveStatusChanged)
+      window.removeEventListener('productUpdated', handleProductUpdated)
     }
   }, [])
 
@@ -75,15 +108,11 @@ export default function Home() {
       // 라이브 방송이 있는 것처럼 설정 (원하면 null로 설정 가능)
       setLiveBroadcast(mockBroadcast)
 
-      // Mock 상품 데이터 가져오기
-      const mockProducts = getMockProducts()
-      console.log('홈페이지 - 전체 상품:', mockProducts)
+      // Supabase에서 상품 데이터 가져오기
+      const supabaseProducts = await getProducts()
+      console.log('홈페이지 - Supabase 상품:', supabaseProducts)
 
-      // status가 'active'인 상품만 필터링
-      const activeProducts = mockProducts.filter(product => product.status === 'active')
-      console.log('홈페이지 - active 상품:', activeProducts)
-
-      setProducts(activeProducts)
+      setProducts(supabaseProducts)
     } catch (err) {
       console.error('데이터 로딩 오류:', err)
       setError(err.message || '데이터를 불러오는 중 오류가 발생했습니다.')

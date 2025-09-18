@@ -14,18 +14,21 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { addMockProduct, clearMockProducts, reloadMockProducts, getMockProducts, deleteAllMockProducts } from '@/lib/mockAuth'
+import { addMockProduct, clearMockProducts, reloadMockProducts, getMockProducts, deleteAllMockProducts, deleteMockProduct, updateMockProductStatus, updateMockProductInventory, updateMockProductLiveStatus, updateMockProduct } from '@/lib/mockAuth'
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingProduct, setEditingProduct] = useState(null)
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [currentStep, setCurrentStep] = useState('photo') // 'photo', 'info', 'options'
   const [productData, setProductData] = useState({
     title: '',
+    description: '',
     price: '',
     inventory_quantity: '',
     options: []
@@ -54,28 +57,132 @@ export default function AdminProductsPage() {
   })
 
   const updateProductStatus = (productId, newStatus) => {
-    const updatedProducts = products.map(product =>
-      product.id === productId ? { ...product, status: newStatus } : product
-    )
-    setProducts(updatedProducts)
-    toast.success('상품 상태가 변경되었습니다')
+    // Mock 데이터베이스에 상태 변경 저장
+    const success = updateMockProductStatus(productId, newStatus)
+    if (success) {
+      // 관리자 페이지 상품 목록 새로고침
+      loadProducts()
+      toast.success('상품 상태가 변경되었습니다')
+    } else {
+      toast.error('상품 상태 변경에 실패했습니다')
+    }
   }
 
   const updateInventory = (productId, newQuantity) => {
     if (newQuantity < 0) return
 
-    const updatedProducts = products.map(product =>
-      product.id === productId ? { ...product, inventory_quantity: newQuantity } : product
-    )
-    setProducts(updatedProducts)
-    toast.success('재고가 업데이트되었습니다')
+    // Mock 데이터베이스에 재고 업데이트 저장
+    const success = updateMockProductInventory(productId, newQuantity)
+    if (success) {
+      // 관리자 페이지 상품 목록 새로고침
+      loadProducts()
+      toast.success('재고가 업데이트되었습니다')
+    } else {
+      toast.error('재고 업데이트에 실패했습니다')
+    }
+  }
+
+  const updateLiveStatus = (productId, isLive) => {
+    // Mock 데이터베이스에 라이브 상태 변경 저장
+    const success = updateMockProductLiveStatus(productId, isLive)
+    if (success) {
+      // 관리자 페이지 상품 목록 새로고침
+      loadProducts()
+      toast.success(`라이브 라벨이 ${isLive ? '추가' : '제거'}되었습니다`)
+    } else {
+      toast.error('라이브 상태 변경에 실패했습니다')
+    }
+  }
+
+  const openEditModal = (product) => {
+    setEditingProduct(product)
+    setProductData({
+      title: product.title,
+      description: product.description || '',
+      price: product.price,
+      inventory_quantity: product.inventory_quantity,
+      compare_price: product.compare_price || '',
+      seller: product.seller || '',
+      badge: product.badge || '',
+      freeShipping: product.freeShipping || false,
+      options: []
+    })
+    setImagePreview(product.thumbnail_url || '')
+    setShowEditModal(true)
+    setCurrentStep('info') // 수정할 때는 정보 수정부터 시작
+  }
+
+  const closeEditModal = () => {
+    setShowEditModal(false)
+    setEditingProduct(null)
+    setProductData({
+      title: '',
+      description: '',
+      price: '',
+      inventory_quantity: '',
+      options: []
+    })
+    setImagePreview('')
+    setSelectedImage(null)
+    setCurrentStep('photo')
+  }
+
+  const handleUpdateProduct = () => {
+    if (!editingProduct) return
+
+    // 필수 필드 검증
+    if (!productData.title.trim()) {
+      toast.error('상품명을 입력해주세요')
+      return
+    }
+
+    if (!productData.price || productData.price <= 0) {
+      toast.error('올바른 가격을 입력해주세요')
+      return
+    }
+
+    if (productData.inventory_quantity < 0) {
+      toast.error('재고는 0개 이상이어야 합니다')
+      return
+    }
+
+    // 업데이트할 데이터 준비
+    const updatedData = {
+      title: productData.title.trim(),
+      description: productData.description.trim() || '',
+      price: parseInt(productData.price),
+      inventory_quantity: parseInt(productData.inventory_quantity) || 0,
+      compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
+      seller: productData.seller || editingProduct.seller,
+      badge: productData.badge || null,
+      freeShipping: productData.freeShipping,
+      thumbnail_url: imagePreview || editingProduct.thumbnail_url
+    }
+
+    console.log('상품 업데이트 데이터:', updatedData)
+
+    // Mock 데이터베이스에 상품 업데이트
+    const success = updateMockProduct(editingProduct.id, updatedData)
+    if (success) {
+      loadProducts()
+      toast.success('상품이 수정되었습니다')
+      closeEditModal()
+    } else {
+      toast.error('상품 수정에 실패했습니다')
+    }
   }
 
   const deleteProduct = (productId) => {
     if (window.confirm('이 상품을 삭제하시겠습니까?')) {
-      const updatedProducts = products.filter(product => product.id !== productId)
-      setProducts(updatedProducts)
-      toast.success('상품이 삭제되었습니다')
+      // Mock 데이터베이스에서 삭제
+      const success = deleteMockProduct(productId)
+      if (success) {
+        // 관리자 페이지 상품 목록 새로고침
+        loadProducts()
+        toast.success('상품이 삭제되었습니다')
+      } else {
+        toast.error('상품 삭제에 실패했습니다')
+      }
     }
   }
 
@@ -129,6 +236,7 @@ export default function AdminProductsPage() {
     setCurrentStep('photo')
     setProductData({
       title: '',
+      description: '',
       price: '',
       inventory_quantity: '',
       options: []
@@ -159,6 +267,25 @@ export default function AdminProductsPage() {
   }
 
   const addOption = (type) => {
+    // 이미 해당 타입의 옵션이 있는지 확인 (custom 제외)
+    if (type !== 'custom') {
+      const optionTypeMap = {
+        size: '사이즈',
+        color: '색상',
+        storage: '용량',
+        material: '재질'
+      }
+
+      const existingOption = productData.options.find(option =>
+        option.name === optionTypeMap[type]
+      )
+
+      if (existingOption) {
+        toast.error(`${optionTypeMap[type]} 옵션이 이미 추가되어 있습니다`)
+        return
+      }
+    }
+
     const optionTemplates = {
       size: {
         name: '사이즈',
@@ -177,20 +304,23 @@ export default function AdminProductsPage() {
         values: ['면', '폴리에스터', '나일론', '가죽']
       },
       custom: {
-        name: '',
-        values: ['']
+        name: '옵션명',
+        values: ['옵션1', '옵션2']
       }
     }
 
+    const template = optionTemplates[type]
     const newOption = {
       id: Date.now(),
-      ...optionTemplates[type]
+      ...template
     }
 
     setProductData(prev => ({
       ...prev,
       options: [...prev.options, newOption]
     }))
+
+    toast.success(`${template.name} 옵션이 추가되었습니다`)
   }
 
   const updateOption = (optionId, field, value) => {
@@ -205,10 +335,14 @@ export default function AdminProductsPage() {
   }
 
   const removeOption = (optionId) => {
+    const optionToRemove = productData.options.find(option => option.id === optionId)
+
     setProductData(prev => ({
       ...prev,
       options: prev.options.filter(option => option.id !== optionId)
     }))
+
+    toast.success(`${optionToRemove?.name || '옵션'}이 삭제되었습니다`)
   }
 
   const saveProduct = () => {
@@ -220,6 +354,7 @@ export default function AdminProductsPage() {
     const newProduct = {
       id: Date.now(), // 유니크한 ID 생성
       title: productData.title,
+      description: productData.description || '',
       price: parseInt(productData.price),
       compare_price: null,
       thumbnail_url: imagePreview,
@@ -438,31 +573,52 @@ export default function AdminProductsPage() {
 
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => updateProductStatus(
-                      product.id,
-                      product.status === 'active' ? 'inactive' : 'active'
-                    )}
-                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      product.status === 'active'
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                    }`}
-                  >
-                    {product.status === 'active' ? '판매중지' : '판매시작'}
-                  </button>
+                <div className="space-y-2">
+                  {/* 라이브 라벨 토글 */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateLiveStatus(product.id, !product.isLive)}
+                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                        product.isLive
+                          ? 'bg-red-500 text-white hover:bg-red-600'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div className={`w-2 h-2 rounded-full ${product.isLive ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
+                      {product.isLive ? '🔴 LIVE' : 'LIVE 설정'}
+                    </button>
+                  </div>
 
-                  <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                    <PencilIcon className="w-4 h-4" />
-                  </button>
+                  {/* 판매 상태 토글 */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateProductStatus(
+                        product.id,
+                        product.status === 'active' ? 'inactive' : 'active'
+                      )}
+                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        product.status === 'active'
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                    >
+                      {product.status === 'active' ? '판매중지' : '판매시작'}
+                    </button>
 
-                  <button
-                    onClick={() => deleteProduct(product.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
+                    <button
+                      onClick={() => openEditModal(product)}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => deleteProduct(product.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -602,6 +758,21 @@ export default function AdminProductsPage() {
                       />
                     </div>
 
+                    {/* Product Description */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        상품 설명 (선택사항)
+                      </label>
+                      <textarea
+                        value={productData.description}
+                        onChange={(e) => handleProductDataChange('description', e.target.value)}
+                        placeholder="상품에 대한 간단한 설명을 입력해주세요"
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">상품의 특징이나 주요 기능을 간단히 설명해주세요</p>
+                    </div>
+
                     {/* Price */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -655,43 +826,43 @@ export default function AdminProductsPage() {
                     </p>
 
                     {/* Option Templates */}
-                    {productData.options.length === 0 && (
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-3">기본 옵션 템플릿</p>
-                        <div className="grid grid-cols-2 gap-2 mb-4">
-                          <button
-                            onClick={() => addOption('size')}
-                            className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                          >
-                            👕 사이즈
-                          </button>
-                          <button
-                            onClick={() => addOption('color')}
-                            className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                          >
-                            🎨 색상
-                          </button>
-                          <button
-                            onClick={() => addOption('storage')}
-                            className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                          >
-                            💾 용량
-                          </button>
-                          <button
-                            onClick={() => addOption('material')}
-                            className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                          >
-                            🧵 재질
-                          </button>
-                        </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        옵션 추가 {productData.options.length > 0 && `(${productData.options.length}개 추가됨)`}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
                         <button
-                          onClick={() => addOption('custom')}
-                          className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-600"
+                          onClick={() => addOption('size')}
+                          className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
                         >
-                          + 직접 설정
+                          👕 사이즈
+                        </button>
+                        <button
+                          onClick={() => addOption('color')}
+                          className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                        >
+                          🎨 색상
+                        </button>
+                        <button
+                          onClick={() => addOption('storage')}
+                          className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                        >
+                          💾 용량
+                        </button>
+                        <button
+                          onClick={() => addOption('material')}
+                          className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                        >
+                          🧵 재질
                         </button>
                       </div>
-                    )}
+                      <button
+                        onClick={() => addOption('custom')}
+                        className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-600"
+                      >
+                        + 직접 설정
+                      </button>
+                    </div>
 
                     {/* Added Options */}
                     {productData.options.map((option) => (
@@ -713,18 +884,31 @@ export default function AdminProductsPage() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {option.values.map((value, index) => (
-                            <input
-                              key={index}
-                              type="text"
-                              value={value}
-                              onChange={(e) => {
-                                const newValues = [...option.values]
-                                newValues[index] = e.target.value
-                                updateOption(option.id, 'values', newValues)
-                              }}
-                              className="px-2 py-1 text-sm border border-gray-300 rounded"
-                              placeholder={`옵션 ${index + 1}`}
-                            />
+                            <div key={index} className="flex items-center gap-1 bg-gray-50 rounded border">
+                              <input
+                                type="text"
+                                value={value}
+                                onChange={(e) => {
+                                  const newValues = [...option.values]
+                                  newValues[index] = e.target.value
+                                  updateOption(option.id, 'values', newValues)
+                                }}
+                                className="px-2 py-1 text-sm bg-transparent border-none focus:ring-0 focus:outline-none"
+                                placeholder={`옵션 ${index + 1}`}
+                              />
+                              {option.values.length > 1 && (
+                                <button
+                                  onClick={() => {
+                                    const newValues = option.values.filter((_, i) => i !== index)
+                                    updateOption(option.id, 'values', newValues)
+                                    toast.success('옵션값이 삭제되었습니다')
+                                  }}
+                                  className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                                >
+                                  <XMarkIcon className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
                           ))}
                           <button
                             onClick={() => updateOption(option.id, 'values', [...option.values, ''])}
@@ -753,6 +937,200 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Product Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeEditModal}
+              className="absolute inset-0 bg-black/50"
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-semibold text-gray-900">상품 수정</h2>
+                <button
+                  onClick={closeEditModal}
+                  className="text-red-600 hover:text-red-800 transition-colors"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 max-h-[70vh] overflow-y-auto">
+                <div className="space-y-4">
+                  {/* 썸네일 이미지 */}
+                  {imagePreview && (
+                    <div className="relative">
+                      <div className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden">
+                        <Image
+                          src={imagePreview}
+                          alt="상품 미리보기"
+                          width={400}
+                          height={400}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setImagePreview('')}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 상품명 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      상품명 *
+                    </label>
+                    <input
+                      type="text"
+                      value={productData.title}
+                      onChange={(e) => setProductData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="상품명을 입력해주세요"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+
+                  {/* 상품 설명 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      상품 설명 (선택사항)
+                    </label>
+                    <textarea
+                      value={productData.description}
+                      onChange={(e) => setProductData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="상품에 대한 간단한 설명을 입력해주세요"
+                      rows={3}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">상품의 특징이나 주요 기능을 간단히 설명해주세요</p>
+                  </div>
+
+                  {/* 가격 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      판매가격 *
+                    </label>
+                    <input
+                      type="number"
+                      value={productData.price}
+                      onChange={(e) => setProductData(prev => ({ ...prev, price: e.target.value }))}
+                      placeholder="가격을 입력해주세요"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+
+                  {/* 정가 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      정가 (할인 표시용)
+                    </label>
+                    <input
+                      type="number"
+                      value={productData.compare_price}
+                      onChange={(e) => setProductData(prev => ({ ...prev, compare_price: e.target.value }))}
+                      placeholder="정가를 입력해주세요 (선택사항)"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+
+                  {/* 재고 수량 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      재고 수량
+                    </label>
+                    <input
+                      type="number"
+                      value={productData.inventory_quantity}
+                      onChange={(e) => setProductData(prev => ({ ...prev, inventory_quantity: e.target.value }))}
+                      placeholder="재고 수량"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+
+                  {/* 판매자 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      판매자
+                    </label>
+                    <input
+                      type="text"
+                      value={productData.seller}
+                      onChange={(e) => setProductData(prev => ({ ...prev, seller: e.target.value }))}
+                      placeholder="판매자명"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+
+                  {/* 배지 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      상품 배지
+                    </label>
+                    <select
+                      value={productData.badge}
+                      onChange={(e) => setProductData(prev => ({ ...prev, badge: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    >
+                      <option value="">배지 없음</option>
+                      <option value="BEST">BEST</option>
+                      <option value="NEW">NEW</option>
+                      <option value="HOT">HOT</option>
+                      <option value="SALE">SALE</option>
+                    </select>
+                  </div>
+
+                  {/* 무료배송 */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="freeShipping"
+                      checked={productData.freeShipping}
+                      onChange={(e) => setProductData(prev => ({ ...prev, freeShipping: e.target.checked }))}
+                      className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="freeShipping" className="ml-2 text-sm text-gray-700">
+                      무료배송
+                    </label>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-6">
+                  <button
+                    onClick={closeEditModal}
+                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleUpdateProduct}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    수정 완료
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

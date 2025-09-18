@@ -33,7 +33,7 @@ export default function AdminCustomerDetailPage() {
 
   useEffect(() => {
     loadCustomerDetail()
-  }, [params.customerId])
+  }, [params.id])
 
   const loadCustomerDetail = () => {
     try {
@@ -42,7 +42,7 @@ export default function AdminCustomerDetailPage() {
       const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
 
       // 해당 고객 찾기
-      const user = users.find(u => u.id === params.customerId)
+      const user = users.find(u => u.id === params.id)
       if (!user) {
         console.error('고객을 찾을 수 없습니다')
         setLoading(false)
@@ -86,7 +86,7 @@ export default function AdminCustomerDetailPage() {
   const saveKakaoLink = () => {
     try {
       const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-      const userIndex = users.findIndex(u => u.id === params.customerId)
+      const userIndex = users.findIndex(u => u.id === params.id)
 
       if (userIndex !== -1) {
         users[userIndex].kakaoLink = kakaoLink

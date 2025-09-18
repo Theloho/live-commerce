@@ -76,7 +76,7 @@ export default function BottomSheet({
                   style={{ y }}
                   className={`
                     relative bg-white rounded-t-2xl shadow-xl
-                    max-h-[90vh] overflow-hidden
+                    max-h-[90vh] overflow-hidden flex flex-col
                     ${className}
                   `}
                 >
@@ -101,12 +101,9 @@ export default function BottomSheet({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="overflow-y-auto overscroll-contain"
-                    style={{ maxHeight: 'calc(90vh - 100px)' }}
+                    className="flex-1 overflow-hidden"
                   >
-                    <div className="px-6 py-4">
-                      {children}
-                    </div>
+                    {children}
                   </motion.div>
 
                   {/* Safe area for iOS devices */}

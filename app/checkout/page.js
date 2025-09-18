@@ -251,6 +251,21 @@ export default function CheckoutPage() {
                       <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm">
                         {item.title}
                       </h3>
+
+                      {/* 선택된 옵션 표시 */}
+                      {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                        <div className="mb-1">
+                          {Object.entries(item.selectedOptions).map(([optionId, value]) => (
+                            <span
+                              key={optionId}
+                              className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1 mb-1"
+                            >
+                              {value}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
                       <p className="text-xs text-gray-500 mb-1">
                         수량: {item.quantity}개
                       </p>
@@ -285,6 +300,21 @@ export default function CheckoutPage() {
                   <h3 className="font-medium text-gray-900 mb-1 line-clamp-2">
                     {orderItem.title}
                   </h3>
+
+                  {/* 선택된 옵션 표시 */}
+                  {orderItem.selectedOptions && Object.keys(orderItem.selectedOptions).length > 0 && (
+                    <div className="mb-1">
+                      {Object.entries(orderItem.selectedOptions).map(([optionId, value]) => (
+                        <span
+                          key={optionId}
+                          className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1 mb-1"
+                        >
+                          {value}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <p className="text-sm text-gray-500 mb-1">
                     수량: {orderItem.quantity}개
                   </p>

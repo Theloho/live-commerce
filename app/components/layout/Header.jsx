@@ -4,12 +4,17 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   MagnifyingGlassIcon,
-  BellIcon
+  BellIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
 
 export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
+  const { isAuthenticated, user } = useAuth()
+  const router = useRouter()
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
@@ -30,12 +35,30 @@ export default function Header() {
               <MagnifyingGlassIcon className="h-6 w-6" />
             </button>
 
-            {/* Notification Icon */}
-            <button className="p-2 rounded-md text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors relative">
-              <BellIcon className="h-6 w-6" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-            </button>
+            {/* Notification Icon - 로그인한 경우에만 표시 */}
+            {isAuthenticated && (
+              <button className="p-2 rounded-md text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors relative">
+                <BellIcon className="h-6 w-6" />
+                <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+              </button>
+            )}
 
+            {/* User Icon or Login Button */}
+            {isAuthenticated ? (
+              <button
+                onClick={() => router.push('/mypage')}
+                className="p-2 rounded-md text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+              >
+                <UserCircleIcon className="h-6 w-6" />
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push('/login')}
+                className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              >
+                로그인
+              </button>
+            )}
           </div>
         </div>
 

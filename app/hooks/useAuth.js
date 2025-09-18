@@ -8,6 +8,28 @@ import toast from 'react-hot-toast'
 export default function useAuth() {
   const [loading, setLoading] = useState(true)
   const { user, setUser, setLoading: setAuthLoading, clearUser } = useAuthStore()
+
+  // Mock 모드 체크
+  const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true'
+
+  // Mock 모드일 때는 localStorage에서 직접 사용자 정보 가져오기
+  useEffect(() => {
+    if (useMockAuth && typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('mock_current_user')
+      if (savedUser && savedUser !== 'null') {
+        try {
+          const userData = JSON.parse(savedUser)
+          console.log('useAuth - Mock 모드에서 사용자 복원:', userData)
+          setUser(userData)
+        } catch (error) {
+          console.error('Mock 사용자 정보 파싱 오류:', error)
+        }
+      }
+      setLoading(false)
+      setAuthLoading(false)
+    }
+  }, [useMockAuth, setUser, setAuthLoading])
+
   const supabase = createClient()
 
   // TODO: Add automatic token refresh
@@ -17,46 +39,54 @@ export default function useAuth() {
   // TODO: Add login attempt tracking and throttling
 
   useEffect(() => {
-    // Get initial session
-    const getSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) throw error
+    // Mock 모드가 아닐 때만 Supabase 세션 체크
+    if (!useMockAuth) {
+      // Get initial session
+      const getSession = async () => {
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession()
+          if (error) throw error
 
-        if (session?.user) {
-          setUser(session.user)
-        }
-      } catch (error) {
-        console.error('Error getting session:', error)
-      } finally {
-        setLoading(false)
-        setAuthLoading(false)
-      }
-    }
-
-    getSession()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event)
-
-        if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user)
-          toast.success('로그인되었습니다')
-        } else if (event === 'SIGNED_OUT') {
-          clearUser()
-          toast.success('로그아웃되었습니다')
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          setUser(session.user)
+          if (session?.user) {
+            console.log('useAuth - 세션에서 사용자 복원:', session.user)
+            setUser(session.user)
+          } else {
+            console.log('useAuth - 세션 없음')
+          }
+        } catch (error) {
+          console.error('Error getting session:', error)
+        } finally {
+          setLoading(false)
+          setAuthLoading(false)
         }
       }
-    )
 
-    return () => {
-      subscription.unsubscribe()
+      getSession()
     }
-  }, [supabase.auth, setUser, setAuthLoading, clearUser])
+
+    // Listen for auth changes (Mock 모드가 아닐 때만)
+    if (!useMockAuth) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          console.log('Auth state changed:', event)
+
+          if (event === 'SIGNED_IN' && session?.user) {
+            setUser(session.user)
+            toast.success('로그인되었습니다')
+          } else if (event === 'SIGNED_OUT') {
+            clearUser()
+            toast.success('로그아웃되었습니다')
+          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+            setUser(session.user)
+          }
+        }
+      )
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [supabase.auth, setUser, setAuthLoading, clearUser, useMockAuth])
 
   const signUp = async ({ email, password, name }) => {
     try {

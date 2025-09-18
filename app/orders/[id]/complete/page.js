@@ -41,7 +41,7 @@ export default function OrderCompletePage() {
     const recentOrder = sessionStorage.getItem('recentOrder')
     if (recentOrder) {
       const orderInfo = JSON.parse(recentOrder)
-      if (orderInfo.id === params.orderId) {
+      if (orderInfo.id === params.id) {
         setOrderData(orderInfo)
         setShippingForm({
           name: orderInfo.shipping.name,
@@ -59,7 +59,7 @@ export default function OrderCompletePage() {
     // 세션에 없다면 localStorage에서 주문 찾기
     const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
     // 현재 사용자의 주문만 찾기
-    const order = orders.find(o => o.id === params.orderId && o.userId === user?.id)
+    const order = orders.find(o => o.id === params.id && o.userId === user?.id)
 
     if (order) {
       setOrderData(order)
@@ -76,7 +76,7 @@ export default function OrderCompletePage() {
     }
 
     setLoading(false)
-  }, [isAuthenticated, params.orderId, router, user])
+  }, [isAuthenticated, params.id, router, user])
 
   if (loading) {
     return (
@@ -459,6 +459,21 @@ export default function OrderCompletePage() {
                             <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm">
                               {item.title}
                             </h3>
+
+                            {/* 선택된 옵션 표시 */}
+                            {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                              <div className="mb-1">
+                                {Object.entries(item.selectedOptions).map(([optionId, value]) => (
+                                  <span
+                                    key={optionId}
+                                    className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1 mb-1"
+                                  >
+                                    {value}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
                             <div className="flex items-center justify-between">
                               <p className="text-xs text-gray-500">
                                 수량: {item.quantity}개

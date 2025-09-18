@@ -53,10 +53,11 @@ export default function ProductCard({ product, variant = 'default', priority = f
     thumbnail_url: image,
     review_rating: rating,
     review_count: reviewCount,
-    is_featured: isLive,
+    is_featured,
     badge,
     freeShipping,
-    seller
+    seller,
+    isLive
   } = product
 
   const discount = originalPrice
@@ -236,9 +237,14 @@ export default function ProductCard({ product, variant = 'default', priority = f
               {/* 우측 배지 - 마케팅/프로모션 관련 */}
               <div className="absolute top-2 right-2 flex flex-col gap-1">
                 {isLive && (
-                  <span className="inline-flex items-center px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
-                    LIVE
-                  </span>
+                  <div className="relative">
+                    <span className="inline-flex items-center px-2 py-1 bg-red-500 text-white text-xs font-bold rounded shadow-lg animate-pulse">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full mr-1 animate-ping"></div>
+                      🔴 LIVE
+                    </span>
+                    {/* 라이브 글로우 효과 */}
+                    <div className="absolute inset-0 bg-red-500 rounded blur-sm opacity-30 animate-pulse"></div>
+                  </div>
                 )}
                 {badge && (
                   <span className="inline-flex items-center px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded">
