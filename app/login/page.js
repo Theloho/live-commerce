@@ -66,6 +66,10 @@ export default function LoginPage() {
       })
 
       if (error) {
+        console.log('로그인 에러 상세:', error)
+        console.log('error.message:', error.message)
+        console.log('includes Invalid login credentials:', error.message && error.message.includes('Invalid login credentials'))
+
         if (error.message && error.message.includes('Invalid login credentials')) {
           // 미가입 사용자일 가능성이 높으므로 회원가입 유도 모달 표시
           console.log('로그인 실패 - 회원가입 모달 표시')
