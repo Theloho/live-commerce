@@ -159,7 +159,8 @@ export default function useAuth() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: 'profile_nickname profile_image' // 이메일 제외, 기본 프로필만 요청
         }
       })
 
