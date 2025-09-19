@@ -20,6 +20,7 @@ import toast from 'react-hot-toast'
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading, isAuthenticated } = useAuth()
+  const [hasLocalAdminSession, setHasLocalAdminSession] = useState(false)
   const [stats, setStats] = useState({
     todayOrders: 0,
     todaySales: 0,
@@ -29,18 +30,23 @@ export default function AdminDashboard() {
     totalProducts: 0
   })
 
+  // localStorage 세션 체크 (한 번만)
   useEffect(() => {
-    // localStorage 세션 체크 먼저
     if (typeof window !== 'undefined') {
       const adminSession = localStorage.getItem('admin_session')
-      if (adminSession === 'master_admin') {
-        console.log('Loading stats for localStorage admin session')
-        loadStats()
-        return
-      }
+      setHasLocalAdminSession(adminSession === 'master_admin')
+    }
+  }, [])
+
+  useEffect(() => {
+    // localStorage 세션이 있으면 통계만 로드
+    if (hasLocalAdminSession) {
+      console.log('Loading stats for localStorage admin session')
+      loadStats()
+      return
     }
 
-    // Supabase 인증 체크
+    // localStorage 세션이 없는 경우만 Supabase 인증 체크
     if (!authLoading && !isAuthenticated) {
       console.log('No auth, redirecting to login')
       toast.error('관리자 로그인이 필요합니다')
@@ -60,7 +66,7 @@ export default function AdminDashboard() {
       console.log('Loading stats for Supabase admin user')
       loadStats()
     }
-  }, [user, authLoading, isAuthenticated])
+  }, [hasLocalAdminSession, user, authLoading, isAuthenticated, loadStats])
 
   const loadStats = useCallback(() => {
     try {
@@ -162,9 +168,6 @@ export default function AdminDashboard() {
       textColor: 'text-red-600'
     }
   ]
-
-  // localStorage 세션이 있으면 로딩/인증 체크 건너뛰기
-  const hasLocalAdminSession = typeof window !== 'undefined' && localStorage.getItem('admin_session') === 'master_admin'
 
   if (!hasLocalAdminSession && authLoading) {
     return (
