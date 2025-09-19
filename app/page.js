@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 // import { supabase } from '@/lib/supabase'
 import useAuth from '@/hooks/useAuth'
-import { getProducts } from '@/lib/supabaseApi'
+import useRealtimeProducts from '@/hooks/useRealtimeProducts'
 import Header from './components/layout/Header'
 import LiveBanner from './components/layout/LiveBanner'
 import ProductGrid from './components/product/ProductGrid'
@@ -12,88 +12,16 @@ import MobileNav from './components/layout/MobileNav'
 
 export default function Home() {
   const [liveBroadcast, setLiveBroadcast] = useState(null)
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const { isAuthenticated } = useAuth()
+  const { products, loading, error, refreshProducts } = useRealtimeProducts()
   const router = useRouter()
 
   useEffect(() => {
-    loadData()
-
-    // 재고 업데이트 시 상품 목록 새로고침
-    const handleInventoryUpdate = () => {
-      console.log('Inventory updated, reloading products...')
-      loadData()
-    }
-
-    // 새 상품 추가 시 상품 목록 새로고침
-    const handleProductAdded = () => {
-      console.log('Product added, reloading products...')
-      loadData()
-    }
-
-    // 상품 초기화 시 상품 목록 새로고침
-    const handleProductsCleared = () => {
-      console.log('Products cleared, reloading products...')
-      loadData()
-    }
-
-    // 상품 리로드 시 상품 목록 새로고침
-    const handleProductsReloaded = () => {
-      console.log('Products reload requested, reloading products...')
-      loadData()
-    }
-
-    // 상품 삭제 시 상품 목록 새로고침
-    const handleProductDeleted = () => {
-      console.log('Product deleted, reloading products...')
-      loadData()
-    }
-
-    // 상품 상태 변경 시 상품 목록 새로고침
-    const handleProductStatusChanged = () => {
-      console.log('Product status changed, reloading products...')
-      loadData()
-    }
-
-    // 상품 라이브 상태 변경 시 상품 목록 새로고침
-    const handleProductLiveStatusChanged = () => {
-      console.log('Product live status changed, reloading products...')
-      loadData()
-    }
-
-    // 상품 정보 업데이트 시 상품 목록 새로고침
-    const handleProductUpdated = () => {
-      console.log('Product updated, reloading products...')
-      loadData()
-    }
-
-    window.addEventListener('inventoryUpdated', handleInventoryUpdate)
-    window.addEventListener('productAdded', handleProductAdded)
-    window.addEventListener('productsCleared', handleProductsCleared)
-    window.addEventListener('productsReloaded', handleProductsReloaded)
-    window.addEventListener('productDeleted', handleProductDeleted)
-    window.addEventListener('productStatusChanged', handleProductStatusChanged)
-    window.addEventListener('productLiveStatusChanged', handleProductLiveStatusChanged)
-    window.addEventListener('productUpdated', handleProductUpdated)
-    return () => {
-      window.removeEventListener('inventoryUpdated', handleInventoryUpdate)
-      window.removeEventListener('productAdded', handleProductAdded)
-      window.removeEventListener('productsCleared', handleProductsCleared)
-      window.removeEventListener('productsReloaded', handleProductsReloaded)
-      window.removeEventListener('productDeleted', handleProductDeleted)
-      window.removeEventListener('productStatusChanged', handleProductStatusChanged)
-      window.removeEventListener('productLiveStatusChanged', handleProductLiveStatusChanged)
-      window.removeEventListener('productUpdated', handleProductUpdated)
-    }
+    loadLiveBroadcastData()
   }, [])
 
-  async function loadData() {
+  async function loadLiveBroadcastData() {
     try {
-      setLoading(true)
-      setError(null)
-
       // Mock 라이브 방송 데이터 (테스트용)
       const mockBroadcast = {
         id: 'live-broadcast-1',
@@ -107,17 +35,8 @@ export default function Home() {
 
       // 라이브 방송이 있는 것처럼 설정 (원하면 null로 설정 가능)
       setLiveBroadcast(mockBroadcast)
-
-      // Supabase에서 상품 데이터 가져오기
-      const supabaseProducts = await getProducts()
-      console.log('홈페이지 - Supabase 상품:', supabaseProducts)
-
-      setProducts(supabaseProducts)
     } catch (err) {
-      console.error('데이터 로딩 오류:', err)
-      setError(err.message || '데이터를 불러오는 중 오류가 발생했습니다.')
-    } finally {
-      setLoading(false)
+      console.error('라이브 방송 데이터 로딩 오류:', err)
     }
   }
 
@@ -144,7 +63,7 @@ export default function Home() {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">오류가 발생했습니다</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={loadData}
+            onClick={refreshProducts}
             className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
           >
             다시 시도

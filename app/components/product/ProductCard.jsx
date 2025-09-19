@@ -224,8 +224,8 @@ export default function ProductCard({ product, variant = 'default', priority = f
             </div>
 
 
-            {/* Quick Actions - Desktop only */}
-            <div className="hidden sm:flex gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Quick Actions */}
+            <div className="flex gap-2 mt-3">
               <button
                 onClick={currentInventory > 0 ? handleDirectPurchase : undefined}
                 disabled={currentInventory <= 0}
