@@ -29,12 +29,12 @@ export default function SimpleAdminTest() {
         <p className="text-lg mb-4">{sessionCheck}</p>
 
         <div className="space-y-2 text-sm">
-          <p><strong>localStorage.getItem('admin_session'):</strong></p>
+          <p><strong>localStorage.getItem(&apos;admin_session&apos;):</strong></p>
           <p className="bg-gray-100 p-2 rounded">
             {typeof window !== 'undefined' ? localStorage.getItem('admin_session') || 'null' : 'window 없음'}
           </p>
 
-          <p><strong>localStorage.getItem('admin_email'):</strong></p>
+          <p><strong>localStorage.getItem(&apos;admin_email&apos;):</strong></p>
           <p className="bg-gray-100 p-2 rounded">
             {typeof window !== 'undefined' ? localStorage.getItem('admin_email') || 'null' : 'window 없음'}
           </p>
