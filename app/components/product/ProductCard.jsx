@@ -8,9 +8,8 @@ import { ShoppingBagIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import useCartStore from '@/app/stores/cartStore'
 import useAuth from '@/hooks/useAuth'
-// Mock functions removed - will implement real Supabase functions
+import { createOrder } from '@/lib/supabaseApi'
 import BuyBottomSheet from '@/app/components/product/BuyBottomSheet'
 import PurchaseChoiceModal from '@/app/components/common/PurchaseChoiceModal'
 import toast from 'react-hot-toast'
@@ -20,7 +19,6 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const [showBuySheet, setShowBuySheet] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
   const [currentInventory, setCurrentInventory] = useState(product.inventory_quantity || 0)
-  const { addItem } = useCartStore()
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
@@ -53,7 +51,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
   // TODO: Implement quick view modal
   // TODO: Add swipe gestures for mobile image gallery
 
-  const handleAddToCart = (e) => {
+  const handleAddToCart = async (e) => {
     e.preventDefault()
 
     // 품절 체크
@@ -68,12 +66,40 @@ export default function ProductCard({ product, variant = 'default', priority = f
       return
     }
 
-    // 장바구니에 추가
-    addItem(product)
-    toast.success('장바구니에 추가되었습니다')
+    // 사용자 정보 확인 - 기본값으로 처리
+    const userProfile = {
+      name: '사용자',
+      phone: '010-0000-0000',
+      address: '기본주소',
+      detail_address: ''
+    }
+
+    const cartItem = {
+      ...product,
+      quantity: 1,
+      selectedOptions: {},
+      totalPrice: product.price
+    }
+
+    try {
+      // Supabase로 주문 생성
+      const orderData = {
+        ...cartItem,
+        orderType: 'cart'
+      }
+      const newOrder = await createOrder(orderData, userProfile)
+
+      // 주문 업데이트 이벤트 발생
+      window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'add', order: newOrder } }))
+
+      toast.success('장바구니에 추가되었습니다')
+    } catch (error) {
+      console.error('주문 생성 실패:', error)
+      toast.error('장바구니 추가에 실패했습니다')
+    }
   }
 
-  const handleDirectPurchase = (e) => {
+  const handleDirectPurchase = async (e) => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -90,7 +116,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
     }
 
     // 먼저 장바구니에 추가
-    handleAddToCart(e)
+    await handleAddToCart(e)
 
     // 그 다음 선택 모달 표시
     setShowChoiceModal(true)

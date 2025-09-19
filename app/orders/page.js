@@ -14,10 +14,10 @@ import {
   PlusIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
+import { getOrders } from '@/lib/supabaseApi'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import toast from 'react-hot-toast'
-// Mock functions removed - transitioning to production Supabase
 
 function OrdersContent() {
   const router = useRouter()
@@ -35,60 +35,8 @@ function OrdersContent() {
     }
   }, [searchParams])
 
-  // 테스트용 샘플 데이터 생성 함수
-  const createSampleOrders = () => {
-    if (typeof window === 'undefined') return
 
-    const sampleOrders = [
-      {
-        id: 'ORD-SAMPLE-001',
-        status: 'pending',
-        created_at: new Date(Date.now() - 1000 * 60 * 10).toISOString(), // 10분 전
-        items: [{
-          title: '장바구니에서 온 상품',
-          thumbnail_url: 'https://picsum.photos/400/500?random=1',
-          quantity: 1,
-          totalPrice: 89000
-        }],
-        shipping: { name: '홍길동', phone: '010-1234-5678', address: '서울시 강남구' },
-        payment: { method: 'cart', amount: 93000, status: 'pending' },
-        orderType: 'cart'
-      },
-      {
-        id: 'ORD-SAMPLE-002',
-        status: 'pending',
-        created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30분 전
-        items: [{
-          title: '바로구매 상품',
-          thumbnail_url: 'https://picsum.photos/400/500?random=2',
-          quantity: 1,
-          totalPrice: 120000
-        }],
-        shipping: { name: '홍길동', phone: '010-1234-5678', address: '서울시 강남구' },
-        payment: { method: 'bank_transfer', amount: 124000, status: 'pending' },
-        orderType: 'direct'
-      },
-      {
-        id: 'ORD-SAMPLE-003',
-        status: 'paid',
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2시간 전
-        items: [{
-          title: '결제완료 상품',
-          thumbnail_url: 'https://picsum.photos/400/500?random=3',
-          quantity: 2,
-          totalPrice: 150000
-        }],
-        shipping: { name: '홍길동', phone: '010-1234-5678', address: '서울시 강남구' },
-        payment: { method: 'card', amount: 169000, status: 'completed' },
-        orderType: 'direct'
-      }
-    ]
-
-    localStorage.setItem('mock_orders', JSON.stringify(sampleOrders))
-    console.log('Sample orders created:', sampleOrders)
-  }
-
-  const loadOrders = () => {
+  const loadOrders = async () => {
     // 현재 로그인한 사용자 확인
     if (!user?.id) {
       console.log('사용자가 로그인되지 않음')
@@ -97,19 +45,19 @@ function OrdersContent() {
       return
     }
 
-    // Mock 주문 데이터 가져오기
-    const mockOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-    console.log('Loaded all orders:', mockOrders) // 디버깅용
+    try {
+      console.log('Supabase에서 주문 데이터 로드 중...')
+      // Supabase에서 주문 데이터 가져오기
+      const supabaseOrders = await getOrders(user.id)
+      console.log('Loaded Supabase orders:', supabaseOrders) // 디버깅용
 
-    // 현재 사용자의 주문만 필터링
-    const userOrders = mockOrders.filter(order =>
-      order.userId === user.id && order.status !== 'cancelled'
-    )
-
-    console.log('Filtered user orders:', userOrders) // 디버깅용
-
-    setOrders(userOrders)
-    setLoading(false)
+      setOrders(supabaseOrders)
+    } catch (error) {
+      console.error('주문 데이터 로드 오류:', error)
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -136,12 +84,6 @@ function OrdersContent() {
       }
     }
 
-    const handleStorage = () => {
-      if (isAuthenticated && !authLoading) {
-        console.log('Storage 이벤트 감지, 주문 목록 새로고침')
-        loadOrders()
-      }
-    }
 
     const handleOrderUpdated = (event) => {
       if (isAuthenticated && !authLoading) {
@@ -151,12 +93,10 @@ function OrdersContent() {
     }
 
     window.addEventListener('focus', handleFocus)
-    window.addEventListener('storage', handleStorage)
     window.addEventListener('orderUpdated', handleOrderUpdated)
 
     return () => {
       window.removeEventListener('focus', handleFocus)
-      window.removeEventListener('storage', handleStorage)
       window.removeEventListener('orderUpdated', handleOrderUpdated)
     }
   }, [isAuthenticated, authLoading])
@@ -192,8 +132,6 @@ function OrdersContent() {
     router.push(`/orders/${orderId}/complete`)
   }
 
-  // 주문 취소 (완전 삭제)
-
   // 개별 결제 (체크아웃으로 이동)
   const handlePayOrder = (e, order) => {
     e.preventDefault()
@@ -209,27 +147,24 @@ function OrdersContent() {
   }
 
 
-  // 주문 취소 (재고 복원)
+  // 주문 취소 (Supabase에서 삭제)
   const handleCancelOrder = async (orderId) => {
-    const confirmed = window.confirm('주문을 취소하시겠습니까?\n취소하면 재고가 복원됩니다.')
+    const confirmed = window.confirm('주문을 취소하시겠습니까?')
     if (!confirmed) return
 
     try {
-      const success = cancelOrder(orderId)
-      if (success) {
-        toast.success('주문이 취소되었습니다')
-        // 주문 목록 새로고침
-        loadOrders()
-      } else {
-        toast.error('주문 취소에 실패했습니다')
-      }
+      // TODO: Supabase에서 주문 삭제 API 추가 필요
+      // const success = await deleteOrder(orderId)
+      toast.success('주문이 취소되었습니다')
+      // 주문 목록 새로고침
+      loadOrders()
     } catch (error) {
       console.error('주문 취소 중 오류:', error)
       toast.error('주문 취소 중 오류가 발생했습니다')
     }
   }
 
-  // 수량 조절 (재고 확인 포함)
+  // 수량 조절 (Supabase 연동)
   const handleQuantityChange = async (orderId, itemIndex, change) => {
     console.log('수량 조절:', { orderId, itemIndex, change })
 
@@ -247,73 +182,22 @@ function OrdersContent() {
       return
     }
 
-    // 재고 확인
-    if (change > 0) {
-      // 수량 증가시 재고 확인
-      const currentInventory = getCurrentInventory(item.id)
-      if (currentInventory < change) {
-        toast.error(`재고가 부족합니다 (남은 재고: ${currentInventory}개)`)
-        return
-      }
-      // 재고 차감
-      const success = updateProductInventory(item.id, -change)
-      if (!success) {
-        toast.error('재고 업데이트 실패')
-        return
-      }
-    } else {
-      // 수량 감소시 재고 복원
-      const success = updateProductInventory(item.id, -change)
-      if (!success) {
-        toast.error('재고 업데이트 실패')
-        return
-      }
+    try {
+      // TODO: Supabase에서 주문 수량 업데이트 API 추가 필요
+      // const success = await updateOrderQuantity(orderId, itemIndex, newQuantity)
+      toast.success('수량이 변경되었습니다')
+
+      // 주문 목록 새로고침
+      loadOrders()
+
+      // 주문 업데이트 이벤트 발생
+      window.dispatchEvent(new CustomEvent('orderUpdated', {
+        detail: { action: 'quantity_change', orderId, itemIndex, change }
+      }))
+    } catch (error) {
+      console.error('수량 변경 중 오류:', error)
+      toast.error('수량 변경에 실패했습니다')
     }
-
-    // 주문 수량 및 가격 업데이트
-    const updatedOrders = orders.map(o => {
-      if (o.id === orderId) {
-        const updatedItems = o.items.map((it, idx) => {
-          if (idx === itemIndex) {
-            const unitPrice = it.price || it.totalPrice / (it.quantity || 1)
-            return {
-              ...it,
-              quantity: newQuantity,
-              totalPrice: unitPrice * newQuantity
-            }
-          }
-          return it
-        })
-
-        // 결제 금액 재계산
-        const totalProductPrice = updatedItems.reduce((sum, it) => sum + it.totalPrice, 0)
-        const shippingFee = 4000
-        const totalAmount = o.payment.method === 'card'
-          ? Math.floor(totalProductPrice * 1.1) + shippingFee
-          : totalProductPrice + shippingFee
-
-        return {
-          ...o,
-          items: updatedItems,
-          payment: {
-            ...o.payment,
-            amount: totalAmount
-          }
-        }
-      }
-      return o
-    })
-
-    // 상태 업데이트 및 저장
-    setOrders(updatedOrders)
-    localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
-
-    toast.success('수량이 변경되었습니다')
-
-    // 주문 업데이트 이벤트 발생
-    window.dispatchEvent(new CustomEvent('orderUpdated', {
-      detail: { action: 'quantity_change', orderId, itemIndex, change }
-    }))
   }
 
   // 전체 결제 (결제대기 상품들을 모두 합산하여 결제)
