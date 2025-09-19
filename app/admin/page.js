@@ -29,6 +29,13 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const adminSession = localStorage.getItem('admin_session')
+      if (adminSession !== 'master_admin') {
+        window.location.replace('/admin/login')
+        return
+      }
+    }
     loadStats()
   }, [])
 
