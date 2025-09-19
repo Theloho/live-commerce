@@ -13,16 +13,16 @@ export default function useRealtimeProducts() {
     // 초기 데이터 로드
     loadProducts()
 
-    // 폴링 방식으로 주기적 업데이트 (10초마다)
-    const pollingInterval = setInterval(() => {
-      console.log('🔄 폴링으로 상품 데이터 업데이트 체크')
-      loadProducts()
-    }, 10000) // 10초마다 체크
+    // 폴링 일시 중단 - 사용자 구매 과정 방해 방지
+    // const pollingInterval = setInterval(() => {
+    //   console.log('🔄 폴링으로 상품 데이터 업데이트 체크')
+    //   loadProducts()
+    // }, 10000) // 10초마다 체크
 
     // 정리 함수
     return () => {
       console.log('🧹 폴링 인터벌 해제')
-      clearInterval(pollingInterval)
+      // clearInterval(pollingInterval)
     }
   }, [])
 
