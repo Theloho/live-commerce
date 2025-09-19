@@ -68,7 +68,7 @@ export default function AdminProductsPage() {
       setProducts(productsWithOptions)
     } catch (error) {
       console.error('상품 로딩 오류:', error)
-      setError('상품을 불러오는데 실패했습니다.')
+      toast.error('상품을 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
     }
@@ -78,40 +78,55 @@ export default function AdminProductsPage() {
     return product && product.title && product.title.toLowerCase().includes(searchTerm.toLowerCase())
   })
 
-  const updateProductStatus = (productId, newStatus) => {
-    // Mock 데이터베이스에 상태 변경 저장
-    const success = updateMockProductStatus(productId, newStatus)
-    if (success) {
-      // 관리자 페이지 상품 목록 새로고침
+  const updateProductStatus = async (productId, newStatus) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ status: newStatus })
+        .eq('id', productId)
+
+      if (error) throw error
+
       loadProducts()
       toast.success('상품 상태가 변경되었습니다')
-    } else {
+    } catch (error) {
+      console.error('상품 상태 변경 오류:', error)
       toast.error('상품 상태 변경에 실패했습니다')
     }
   }
 
-  const updateInventory = (productId, newQuantity) => {
+  const updateInventory = async (productId, newQuantity) => {
     if (newQuantity < 0) return
 
-    // Mock 데이터베이스에 재고 업데이트 저장
-    const success = updateMockProductInventory(productId, newQuantity)
-    if (success) {
-      // 관리자 페이지 상품 목록 새로고침
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ inventory_quantity: newQuantity })
+        .eq('id', productId)
+
+      if (error) throw error
+
       loadProducts()
       toast.success('재고가 업데이트되었습니다')
-    } else {
+    } catch (error) {
+      console.error('재고 업데이트 오류:', error)
       toast.error('재고 업데이트에 실패했습니다')
     }
   }
 
-  const updateLiveStatus = (productId, isLive) => {
-    // Mock 데이터베이스에 라이브 상태 변경 저장
-    const success = updateMockProductLiveStatus(productId, isLive)
-    if (success) {
-      // 관리자 페이지 상품 목록 새로고침
+  const updateLiveStatus = async (productId, isLive) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_live: isLive })
+        .eq('id', productId)
+
+      if (error) throw error
+
       loadProducts()
       toast.success(`라이브 라벨이 ${isLive ? '추가' : '제거'}되었습니다`)
-    } else {
+    } catch (error) {
+      console.error('라이브 상태 변경 오류:', error)
       toast.error('라이브 상태 변경에 실패했습니다')
     }
   }
@@ -149,7 +164,7 @@ export default function AdminProductsPage() {
     setCurrentStep('photo')
   }
 
-  const handleUpdateProduct = () => {
+  const handleUpdateProduct = async () => {
     if (!editingProduct) return
 
     // 필수 필드 검증
@@ -168,41 +183,50 @@ export default function AdminProductsPage() {
       return
     }
 
-    // 업데이트할 데이터 준비
-    const updatedData = {
-      title: productData.title.trim(),
-      description: productData.description.trim() || '',
-      price: parseInt(productData.price),
-      inventory_quantity: parseInt(productData.inventory_quantity) || 0,
-      compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
-      seller: productData.seller || editingProduct.seller,
-      badge: productData.badge || null,
-      freeShipping: productData.freeShipping,
-      thumbnail_url: imagePreview || editingProduct.thumbnail_url
-    }
+    try {
+      // 업데이트할 데이터 준비
+      const updatedData = {
+        title: productData.title.trim(),
+        description: productData.description.trim() || '',
+        price: parseInt(productData.price),
+        inventory_quantity: parseInt(productData.inventory_quantity) || 0,
+        compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
+        seller: productData.seller || editingProduct.seller,
+        badge: productData.badge || null,
+        free_shipping: productData.freeShipping,
+        thumbnail_url: imagePreview || editingProduct.thumbnail_url
+      }
 
-    console.log('상품 업데이트 데이터:', updatedData)
+      const { error } = await supabase
+        .from('products')
+        .update(updatedData)
+        .eq('id', editingProduct.id)
 
-    // Mock 데이터베이스에 상품 업데이트
-    const success = updateMockProduct(editingProduct.id, updatedData)
-    if (success) {
+      if (error) throw error
+
       loadProducts()
       toast.success('상품이 수정되었습니다')
       closeEditModal()
-    } else {
+    } catch (error) {
+      console.error('상품 수정 오류:', error)
       toast.error('상품 수정에 실패했습니다')
     }
   }
 
-  const deleteProduct = (productId) => {
+  const deleteProduct = async (productId) => {
     if (window.confirm('이 상품을 삭제하시겠습니까?')) {
-      // Mock 데이터베이스에서 삭제
-      const success = deleteMockProduct(productId)
-      if (success) {
-        // 관리자 페이지 상품 목록 새로고침
+      try {
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', productId)
+
+        if (error) throw error
+
         loadProducts()
         toast.success('상품이 삭제되었습니다')
-      } else {
+      } catch (error) {
+        console.error('상품 삭제 오류:', error)
         toast.error('상품 삭제에 실패했습니다')
       }
     }
@@ -367,39 +391,59 @@ export default function AdminProductsPage() {
     toast.success(`${optionToRemove?.name || '옵션'}이 삭제되었습니다`)
   }
 
-  const saveProduct = () => {
+  const saveProduct = async () => {
     if (!productData.title || !productData.price) {
       toast.error('제품명과 가격은 필수입니다')
       return
     }
 
-    const newProduct = {
-      id: Date.now(), // 유니크한 ID 생성
-      title: productData.title,
-      description: productData.description || '',
-      price: parseInt(productData.price),
-      compare_price: null,
-      thumbnail_url: imagePreview,
-      inventory_quantity: parseInt(productData.inventory_quantity) || 50,
-      status: 'active',
-      review_rating: 0,
-      review_count: 0,
-      is_featured: false,
-      created_at: new Date().toISOString(),
-      options: productData.options
-    }
+    try {
+      const newProduct = {
+        title: productData.title,
+        description: productData.description || '',
+        price: parseInt(productData.price),
+        compare_price: null,
+        thumbnail_url: imagePreview,
+        inventory_quantity: parseInt(productData.inventory_quantity) || 50,
+        status: 'active',
+        review_rating: 0,
+        review_count: 0,
+        is_featured: false,
+        is_live: false
+      }
 
-    // Mock 데이터베이스에 추가
-    const success = addMockProduct(newProduct)
-    if (success) {
-      // 관리자 페이지 상품 목록 새로고침
+      const { data, error } = await supabase
+        .from('products')
+        .insert(newProduct)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // 옵션이 있다면 추가
+      if (productData.options.length > 0) {
+        const optionsToInsert = productData.options.map(option => ({
+          product_id: data.id,
+          name: option.name,
+          values: option.values
+        }))
+
+        const { error: optionsError } = await supabase
+          .from('product_options')
+          .insert(optionsToInsert)
+
+        if (optionsError) {
+          console.error('옵션 추가 오류:', optionsError)
+        }
+      }
+
       loadProducts()
-    } else {
-      console.error('상품 추가 실패')
+      toast.success('상품이 추가되었습니다 (홈화면에서도 확인 가능)')
+      closeAddModal()
+    } catch (error) {
+      console.error('상품 추가 오류:', error)
+      toast.error('상품 추가에 실패했습니다')
     }
-
-    toast.success('상품이 추가되었습니다 (홈화면에서도 확인 가능)')
-    closeAddModal()
   }
 
   const getStatusBadge = (status) => {
@@ -444,12 +488,23 @@ export default function AdminProductsPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => {
+            onClick={async () => {
               // 재고 초기화
-              if (window.confirm('모든 상품의 재고를 초기 상태로 복원하시겠습니까?')) {
-                localStorage.removeItem('mock_products')
-                toast.success('재고가 초기화되었습니다')
-                loadProducts()
+              if (window.confirm('모든 상품의 재고를 50개로 초기화하시겠습니까?')) {
+                try {
+                  const { error } = await supabase
+                    .from('products')
+                    .update({ inventory_quantity: 50 })
+                    .neq('id', '00000000-0000-0000-0000-000000000000')
+
+                  if (error) throw error
+
+                  toast.success('재고가 초기화되었습니다')
+                  loadProducts()
+                } catch (error) {
+                  console.error('재고 초기화 오류:', error)
+                  toast.error('재고 초기화에 실패했습니다')
+                }
               }
             }}
             className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
@@ -457,14 +512,28 @@ export default function AdminProductsPage() {
             재고 초기화
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               // 전체 상품 데이터 완전 삭제
               if (window.confirm('모든 상품을 완전히 삭제하시겠습니까? (홈화면에서도 사라집니다)')) {
-                const success = deleteAllMockProducts()
-                if (success) {
-                  loadProducts() // 상품 목록 새로고침
+                try {
+                  // 먼저 옵션 삭제
+                  await supabase
+                    .from('product_options')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000')
+
+                  // 상품 삭제
+                  const { error } = await supabase
+                    .from('products')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000')
+
+                  if (error) throw error
+
+                  loadProducts()
                   toast.success('모든 상품이 완전히 삭제되었습니다')
-                } else {
+                } catch (error) {
+                  console.error('상품 삭제 오류:', error)
                   toast.error('상품 삭제에 실패했습니다')
                 }
               }
@@ -475,14 +544,12 @@ export default function AdminProductsPage() {
           </button>
           <button
             onClick={() => {
-              const success = reloadMockProducts()
-              if (success) {
-                console.log('홈화면 상품 데이터 확인 완료 - 콘솔에서 Mock 상품 목록을 확인하세요')
-              }
+              loadProducts()
+              toast.success('상품 목록을 새로고침했습니다')
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            홈화면 확인
+새로고침
           </button>
           <button
             onClick={handleAddProduct}
@@ -599,15 +666,15 @@ export default function AdminProductsPage() {
                   {/* 라이브 라벨 토글 */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateLiveStatus(product.id, !product.isLive)}
+                      onClick={() => updateLiveStatus(product.id, !product.is_live)}
                       className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                        product.isLive
+                        product.is_live
                           ? 'bg-red-500 text-white hover:bg-red-600'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      <div className={`w-2 h-2 rounded-full ${product.isLive ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
-                      {product.isLive ? '🔴 LIVE' : 'LIVE 설정'}
+                      <div className={`w-2 h-2 rounded-full ${product.is_live ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
+                      {product.is_live ? '🔴 LIVE' : 'LIVE 설정'}
                     </button>
                   </div>
 
