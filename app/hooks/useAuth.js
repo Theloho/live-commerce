@@ -62,7 +62,7 @@ export default function useAuth() {
 
       console.log('Supabase signUp 요청:', { email, password: '***', name, phone, nickname })
 
-      // 이메일 기반 회원가입 (휴대폰 → 이메일 변환)
+      // 이메일 기반 회원가입 (이메일 확인 비활성화됨)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -85,13 +85,10 @@ export default function useAuth() {
 
       if (data.user) {
         console.log('회원가입 성공 - 사용자 생성됨:', data.user.id)
-        console.log('사용자 이메일 확인 상태:', data.user.email_confirmed_at)
-        console.log('사용자 상태:', data.user)
-      } else {
-        console.warn('회원가입 응답에 사용자 정보가 없음')
+        console.log('사용자 세션 상태:', data.session ? '로그인됨' : '로그인 안됨')
       }
 
-      return { success: true, user: data.user }
+      return { success: true, user: data.user, session: data.session }
     } catch (error) {
       console.error('회원가입 오류:', error)
       toast.error(error.message || '회원가입에 실패했습니다')

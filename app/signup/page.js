@@ -148,15 +148,18 @@ export default function SignupPage() {
         }
       }
 
-      toast.success('회원가입이 완료되었습니다!')
-
-      // 회원가입 완료 후 로그인 페이지로 안내
-      setTimeout(() => {
-        toast.success('회원가입 완료! 로그인해주세요.')
+      // 이메일 확인이 비활성화되어 회원가입 즉시 로그인됨
+      if (result.session) {
+        toast.success('회원가입이 완료되었습니다!')
+        setTimeout(() => {
+          router.push('/')
+        }, 1000)
+      } else {
+        toast.success('회원가입이 완료되었습니다!')
         setTimeout(() => {
           router.push('/login')
         }, 1000)
-      }, 1000)
+      }
 
     } catch (error) {
       console.error('회원가입 오류:', error)
