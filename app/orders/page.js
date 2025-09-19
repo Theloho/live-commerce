@@ -137,11 +137,27 @@ function OrdersContent() {
     e.preventDefault()
     e.stopPropagation()
 
-    // 세션에 주문 정보 저장하고 체크아웃으로 이동
-    const orderItem = {
-      ...order.items[0],
-      totalPrice: order.items[0].totalPrice
+    console.log('개별 결제 - 주문 데이터:', order)
+    console.log('주문 아이템들:', order.items)
+
+    if (!order.items || order.items.length === 0) {
+      toast.error('주문 정보를 찾을 수 없습니다')
+      return
     }
+
+    // 세션에 주문 정보 저장하고 체크아웃으로 이동
+    const firstItem = order.items[0]
+    const orderItem = {
+      id: firstItem.id || order.id,
+      title: firstItem.title,
+      price: firstItem.price || firstItem.totalPrice / (firstItem.quantity || 1),
+      thumbnail_url: firstItem.thumbnail_url,
+      quantity: firstItem.quantity || 1,
+      totalPrice: firstItem.totalPrice,
+      selectedOptions: firstItem.selectedOptions || {}
+    }
+
+    console.log('체크아웃용 주문 아이템:', orderItem)
     sessionStorage.setItem('checkoutItem', JSON.stringify(orderItem))
     router.push('/checkout')
   }

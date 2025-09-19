@@ -58,7 +58,26 @@ export default function CheckoutPage() {
       }
 
       console.log('Checkout data found:', checkoutData)
-      setOrderItem(JSON.parse(checkoutData))
+
+      try {
+        const parsedOrderItem = JSON.parse(checkoutData)
+        console.log('파싱된 주문 아이템:', parsedOrderItem)
+
+        // 필수 필드 검증
+        if (!parsedOrderItem.title || !parsedOrderItem.price) {
+          console.error('주문 아이템에 필수 필드가 없습니다:', parsedOrderItem)
+          toast.error('주문 정보가 올바르지 않습니다')
+          router.push('/')
+          return
+        }
+
+        setOrderItem(parsedOrderItem)
+      } catch (error) {
+        console.error('주문 데이터 파싱 오류:', error)
+        toast.error('주문 정보를 읽을 수 없습니다')
+        router.push('/')
+        return
+      }
 
       // 사용자 정보 가져오기
       if (user) {
