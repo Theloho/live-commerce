@@ -5,7 +5,7 @@ import { HomeIcon, ClipboardDocumentListIcon, UserIcon } from '@heroicons/react/
 import { HomeIcon as HomeIconSolid, ClipboardDocumentListIcon as ClipboardDocumentListIconSolid, UserIcon as UserIconSolid } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 
 export default function MobileNav() {
   const pathname = usePathname()

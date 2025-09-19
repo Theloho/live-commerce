@@ -13,11 +13,11 @@ import {
   MinusIcon,
   PlusIcon
 } from '@heroicons/react/24/outline'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import toast from 'react-hot-toast'
-import { cancelOrder, updateProductInventory, getCurrentInventory, validateInventoryBeforePayment } from '@/lib/mockAuth'
+// Mock functions removed - transitioning to production Supabase
 
 function OrdersContent() {
   const router = useRouter()

@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, CreditCardIcon } from '@heroicons/react/24/outline'
-import { useAuth } from '@/hooks/useAuth'
-import { createMockOrder, updateOrderStatus, validateInventoryBeforePayment } from '@/lib/mockAuth'
+import useAuth from '@/hooks/useAuth'
+// Mock functions removed - will implement real Supabase functions
 import InventoryErrorModal from './InventoryErrorModal'
 import toast from 'react-hot-toast'
 
@@ -20,12 +20,7 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
   const taxAmount = Math.floor(productPrice * 0.1)
 
   const handleCardPaymentRequest = async () => {
-    console.log('카드결제신청 버튼 클릭됨')
-    console.log('orderItem:', orderItem)
-    console.log('userProfile:', userProfile)
-
     if (!orderItem || !userProfile) {
-      console.error('주문 정보 또는 사용자 정보가 없습니다')
       toast.error('주문 정보가 없습니다')
       return
     }
@@ -33,50 +28,7 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
     try {
       setIsProcessing(true)
 
-      // 결제 전 재고 검증
-      // 일괄결제(결제대기 주문들)인지 확인
-      const isFromPendingOrder = orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0
-      const validation = validateInventoryBeforePayment(orderItem, isFromPendingOrder)
-      if (!validation.success) {
-        setIsProcessing(false)
-
-        if (validation.insufficientItems) {
-          setInventoryErrors(validation.insufficientItems)
-          setShowInventoryError(true)
-        } else {
-          toast.error(validation.error || '재고 확인 중 오류가 발생했습니다')
-        }
-        return
-      }
-
-      // 주문 생성 (결제 확인중 상태로)
-      // 일괄결제인 경우 재고 차감 건너뛰기 (이미 개별 주문에서 차감됨)
-      const order = createMockOrder(orderItem, userProfile, 'card', isFromPendingOrder)
-
-      // 주문 상태를 verifying으로 변경 (재고 차감 포함)
-      const success = updateOrderStatus(order.id, 'verifying')
-      if (!success) {
-        console.error('주문 상태 업데이트 실패')
-        toast.error('주문 처리 중 오류가 발생했습니다')
-        setIsProcessing(false)
-        return
-      }
-      console.log('생성된 주문:', order)
-
-      // 일괄결제인 경우 원본 주문들 삭제
-      if (orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
-        const existingOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-        const updatedOrders = existingOrders.filter(existingOrder =>
-          !orderItem.originalOrderIds.includes(existingOrder.id)
-        )
-        localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
-        console.log('카드결제 일괄결제 완료, 원본 주문들 삭제됨:', orderItem.originalOrderIds)
-
-        // 주문 업데이트 이벤트 발생시켜 주문내역 페이지에 알림
-        window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'bulkPayment', orderIds: orderItem.originalOrderIds } }))
-      }
-
-      // 첫 번째 안내 메시지
+      // 부가세 안내
       toast.success('부가세 10%가 적용됩니다', {
         duration: 2000
       })

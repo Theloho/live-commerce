@@ -9,8 +9,8 @@ import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import useCartStore from '@/app/stores/cartStore'
-import { useAuth } from '@/hooks/useAuth'
-import { createMockOrder, getCurrentInventory } from '@/lib/mockAuth'
+import useAuth from '@/hooks/useAuth'
+// Mock functions removed - will implement real Supabase functions
 import BuyBottomSheet from '@/app/components/product/BuyBottomSheet'
 import PurchaseChoiceModal from '@/app/components/common/PurchaseChoiceModal'
 import toast from 'react-hot-toast'
@@ -24,26 +24,10 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
-  // 재고 정보 실시간 업데이트
+  // 재고 정보 - 상품 데이터에서 직접 사용
   useEffect(() => {
-    const updateInventory = () => {
-      const inventory = getCurrentInventory(product.id)
-      setCurrentInventory(inventory)
-    }
-
-    // 초기 재고 설정
-    updateInventory()
-
-    // 재고 업데이트 이벤트 리스너
-    const handleInventoryUpdate = (event) => {
-      if (event.detail.productId === product.id) {
-        setCurrentInventory(event.detail.newQuantity)
-      }
-    }
-
-    window.addEventListener('inventoryUpdated', handleInventoryUpdate)
-    return () => window.removeEventListener('inventoryUpdated', handleInventoryUpdate)
-  }, [product.id])
+    setCurrentInventory(product.inventory_quantity || 0)
+  }, [product.inventory_quantity])
 
   const {
     id,
@@ -72,8 +56,6 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const handleAddToCart = (e) => {
     e.preventDefault()
 
-    console.log('장바구니 버튼 클릭됨') // 디버깅
-
     // 품절 체크
     if (currentInventory <= 0) {
       toast.error('죄송합니다. 해당 상품이 품절되었습니다')
@@ -86,49 +68,9 @@ export default function ProductCard({ product, variant = 'default', priority = f
       return
     }
 
-    console.log('사용자 인증됨, user:', user) // 디버깅
-
-    // 사용자 정보 확인 - 기본값으로 처리
-    const userProfile = {
-      name: user?.user_metadata?.name || '사용자',
-      phone: user?.user_metadata?.phone || '010-0000-0000',
-      address: user?.user_metadata?.address || '기본주소',
-      detail_address: user?.user_metadata?.detail_address || ''
-    }
-
-    console.log('사용자 프로필:', userProfile) // 디버깅
-
-    // 기본 수량 1개로 주문 항목 생성
-    const orderItem = {
-      ...product,
-      quantity: 1,
-      selectedOptions: {},
-      totalPrice: product.price
-    }
-
-    console.log('주문 항목:', orderItem) // 디버깅
-
-    try {
-      // pending 상태로 주문 생성 (장바구니 역할)
-      const newOrder = createMockOrder(orderItem, userProfile, 'cart')
-      console.log('생성된 주문:', newOrder) // 디버깅
-
-      // localStorage 확인
-      const savedOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      console.log('localStorage에 저장된 주문들:', savedOrders)
-
-      // 선택 모달에서 호출될 때는 토스트 표시 안함
-      if (!showChoiceModal) {
-        toast.success('주문내역에 추가되었습니다')
-      }
-
-      // 주문 내역 페이지가 열려있다면 새로고침을 위해 커스텀 이벤트 발생
-      console.log('주문 목록 업데이트 이벤트 발생')
-      window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'add', order: newOrder } }))
-    } catch (error) {
-      console.error('주문 생성 실패:', error)
-      toast.error('주문 생성에 실패했습니다')
-    }
+    // 장바구니에 추가
+    addItem(product)
+    toast.success('장바구니에 추가되었습니다')
   }
 
   const handleDirectPurchase = (e) => {

@@ -8,7 +8,7 @@ import {
   UserCircleIcon
 } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 
 export default function Header() {

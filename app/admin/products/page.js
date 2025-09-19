@@ -14,7 +14,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { addMockProduct, clearMockProducts, reloadMockProducts, getMockProducts, deleteAllMockProducts, deleteMockProduct, updateMockProductStatus, updateMockProductInventory, updateMockProductLiveStatus, updateMockProduct } from '@/lib/mockAuth'
+// Mock functions removed - transitioning to production Supabase
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([])

@@ -10,7 +10,7 @@ import Button from '@/app/components/common/Button'
 import PurchaseChoiceModal from '@/app/components/common/PurchaseChoiceModal'
 import { motion } from 'framer-motion'
 import useCartStore from '@/app/stores/cartStore'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 import { createOrder } from '@/lib/supabaseApi'
 import toast from 'react-hot-toast'
 

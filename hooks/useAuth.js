@@ -1,190 +1,144 @@
-import { useState, useEffect } from 'react'
-import { createMockSupabaseClient, getMockProducts as getMockProductsFromLib } from '@/lib/mockAuth'
+'use client'
 
-// 전역에서 supabase 클라이언트 한 번만 생성
-const supabase = createMockSupabaseClient()
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import toast from 'react-hot-toast'
 
-// 전역 상태 관리 (useAuth 훅들 간에 공유)
-let globalAuthState = {
-  user: null,
-  loading: true,
-  initialized: false
-}
-
-// 브라우저에서 즉시 localStorage 확인하여 초기화
-if (typeof window !== 'undefined') {
-  const savedUser = localStorage.getItem('mock_current_user')
-  console.log('전역 상태 초기화 - localStorage 확인:', savedUser)
-
-  if (savedUser && savedUser !== 'null') {
-    try {
-      const user = JSON.parse(savedUser)
-      globalAuthState.user = user
-      globalAuthState.loading = false
-      globalAuthState.initialized = true
-      console.log('전역 상태 초기화 - 사용자 복원 성공:', user)
-    } catch (error) {
-      console.error('전역 상태 초기화 - 파싱 오류:', error)
-      localStorage.removeItem('mock_current_user')
-    }
-  }
-}
-
-let globalSetters = new Set()
-
-export function useAuth() {
-  const [user, setUser] = useState(globalAuthState.user)
-  const [loading, setLoading] = useState(globalAuthState.loading)
+export default function useAuth() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 이 useAuth 인스턴스의 setter를 전역 set에 추가
-    const updateState = (newUser, newLoading) => {
-      setUser(newUser)
-      setLoading(newLoading)
-    }
-    globalSetters.add(updateState)
-
-    // 이미 초기화되었어도 리스너는 등록해야 함
-    if (globalAuthState.initialized) {
-      console.log('useAuth - 이미 초기화됨, 현재 상태 사용:', globalAuthState.user)
-      setUser(globalAuthState.user)
-      setLoading(globalAuthState.loading)
-      // 리스너 등록은 계속 진행
-    }
-
-    console.log('useAuth 초기화됨')
-
-    // 초기 세션 확인 (이미 초기화된 경우 스킵)
+    // 초기 세션 확인
     const getSession = async () => {
-      if (globalAuthState.initialized) {
-        console.log('getSession 스킵 - 이미 초기화됨')
-        return
-      }
       try {
-        console.log('=== useAuth getSession 시작 ===')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
 
-        // localStorage 상태 확인
-        const savedUser = localStorage.getItem('mock_current_user')
-        console.log('localStorage mock_current_user:', savedUser)
-
-        let currentUser = null
-
-        if (savedUser && savedUser !== 'null') {
-          try {
-            currentUser = JSON.parse(savedUser)
-            console.log('localStorage에서 사용자 복원 성공:', currentUser)
-          } catch (parseError) {
-            console.error('사용자 정보 파싱 오류:', parseError)
-            localStorage.removeItem('mock_current_user')
-          }
+        if (session?.user) {
+          console.log('기존 세션 복원:', session.user)
+          setUser(session.user)
         } else {
-          console.log('localStorage에 저장된 사용자 없음')
+          console.log('세션 없음')
+          setUser(null)
         }
-
-        // MockAuth의 getSession도 호출해서 동기화
-        const { data: { session } } = await supabase.auth.getSession()
-        console.log('MockAuth 세션 확인:', session)
-
-        // localStorage 값이 있으면 우선 사용
-        if (!currentUser && session?.user) {
-          currentUser = session.user
-          console.log('MockAuth에서 사용자 가져옴:', currentUser)
-        }
-
-        console.log('최종 currentUser:', currentUser)
-
-        // 전역 상태 업데이트
-        globalAuthState.user = currentUser
-        globalAuthState.loading = false
-        globalAuthState.initialized = true
-
-        console.log('전역 상태 업데이트 완료, globalAuthState:', globalAuthState)
-
-        // 모든 useAuth 인스턴스에 상태 전파
-        globalSetters.forEach(setter => setter(currentUser, false))
-        console.log('모든 useAuth 인스턴스에 상태 전파 완료')
-        console.log('=== useAuth getSession 완료 ===')
       } catch (error) {
-        console.error('Session check error:', error)
-        globalAuthState.loading = false
-        globalAuthState.initialized = true
-        globalSetters.forEach(setter => setter(null, false))
+        console.error('세션 확인 오류:', error)
+        setUser(null)
+      } finally {
+        setLoading(false)
       }
     }
 
     getSession()
 
-    // 인증 상태 변경 감지
+    // 인증 상태 변화 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session)
-        const currentUser = session?.user ?? null
+        console.log('Auth state changed:', event)
 
-        // 전역 상태 업데이트
-        globalAuthState.user = currentUser
-        globalAuthState.loading = false
-
-        console.log('Auth state change - 상태 전파 시작, currentUser:', currentUser)
-        console.log('Auth state change - globalSetters 개수:', globalSetters.size)
-
-        // 모든 useAuth 인스턴스에 상태 전파
-        globalSetters.forEach((setter, index) => {
-          console.log(`Auth state change - setter ${index} 호출`)
-          setter(currentUser, false)
-        })
-
-        console.log('Auth state change - 상태 전파 완료')
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user)
+          toast.success('로그인되었습니다')
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+          toast.success('로그아웃되었습니다')
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          setUser(session.user)
+        }
       }
     )
 
     return () => {
-      globalSetters.delete(updateState)
       subscription.unsubscribe()
     }
   }, [])
 
+  const signUp = async ({ email, password, name, phone, nickname }) => {
+    try {
+      setLoading(true)
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            phone,
+            nickname: nickname || name
+          }
+        }
+      })
+
+      if (error) throw error
+
+      return { success: true, user: data.user }
+    } catch (error) {
+      console.error('회원가입 오류:', error)
+      toast.error(error.message || '회원가입에 실패했습니다')
+      return { success: false, error: error.message }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signInWithPassword = async ({ email, password }) => {
+    try {
+      setLoading(true)
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+
+      if (error) throw error
+
+      return { success: true, user: data.user }
+    } catch (error) {
+      console.error('로그인 오류:', error)
+      toast.error(error.message || '로그인에 실패했습니다')
+      return { success: false, error: error.message }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const signOut = async () => {
     try {
-      console.log('로그아웃 시도')
-      await supabase.auth.signOut()
+      setLoading(true)
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+
+      return { success: true }
     } catch (error) {
-      console.error('Sign out error:', error)
+      console.error('로그아웃 오류:', error)
+      toast.error(error.message || '로그아웃에 실패했습니다')
+      return { success: false, error: error.message }
+    } finally {
+      setLoading(false)
     }
   }
 
-  const signUp = async (credentials) => {
+  const resetPassword = async (email) => {
     try {
-      console.log('회원가입 시도:', credentials)
-      const result = await supabase.auth.signUp(credentials)
-      console.log('회원가입 결과:', result)
-      return result
-    } catch (error) {
-      console.error('Sign up error:', error)
-      return { data: null, error }
-    }
-  }
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      if (error) throw error
 
-  const signInWithPassword = async (credentials) => {
-    try {
-      console.log('로그인 시도:', credentials)
-      const result = await supabase.auth.signInWithPassword(credentials)
-      console.log('로그인 결과:', result)
-      return result
+      toast.success('비밀번호 재설정 이메일을 보냈습니다')
+      return { success: true }
     } catch (error) {
-      console.error('Sign in error:', error)
-      return { data: null, error }
+      toast.error(error.message || '비밀번호 재설정에 실패했습니다')
+      return { success: false, error: error.message }
     }
   }
 
   return {
     user,
     loading,
-    signOut,
     signUp,
     signInWithPassword,
+    signOut,
+    resetPassword,
     isAuthenticated: !!user
   }
 }
-
-// Mock 상품 함수들 re-export
-export const getMockProducts = getMockProductsFromLib

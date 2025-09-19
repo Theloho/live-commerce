@@ -16,7 +16,7 @@ import {
   XMarkIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 

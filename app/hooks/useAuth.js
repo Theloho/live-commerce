@@ -84,7 +84,7 @@ export default function useAuth() {
     }
   }
 
-  const signIn = async ({ email, password }) => {
+  const signInWithPassword = async ({ email, password }) => {
     try {
       setAuthLoading(true)
 
@@ -138,7 +138,7 @@ export default function useAuth() {
     user,
     loading,
     signUp,
-    signIn,
+    signInWithPassword,
     signOut,
     resetPassword
   }
