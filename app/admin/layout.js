@@ -26,8 +26,17 @@ function AdminLayoutContent({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
+    console.log('🏠 AdminLayout useEffect:', {
+      loading,
+      isAdminAuthenticated,
+      pathname
+    })
+
     if (!loading && !isAdminAuthenticated && pathname !== '/admin/login') {
+      console.log('❌ Layout에서 로그인으로 리다이렉트!')
       router.push('/admin/login')
+    } else if (!loading && isAdminAuthenticated) {
+      console.log('✅ Layout에서 인증 확인됨')
     }
   }, [isAdminAuthenticated, loading, pathname, router])
 
@@ -61,6 +70,7 @@ function AdminLayoutContent({ children }) {
   }
 
   if (!isAdminAuthenticated && pathname !== '/admin/login') {
+    console.log('🚫 Layout 렌더링 차단:', { isAdminAuthenticated, pathname })
     return null
   }
 
