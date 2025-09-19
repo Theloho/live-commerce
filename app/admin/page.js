@@ -53,7 +53,7 @@ export default function AdminDashboard() {
       }
       loadStats()
     }
-  }, [user, authLoading, isAuthenticated])
+  }, [])
 
   const loadStats = useCallback(() => {
     try {
