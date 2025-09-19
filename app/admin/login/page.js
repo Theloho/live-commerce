@@ -11,7 +11,7 @@ import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
-import { checkAdminAccess } from '@/lib/adminAuth'
+import { checkAdminAccess, checkMasterAdminCredentials } from '@/lib/adminAuth'
 import toast from 'react-hot-toast'
 
 export default function AdminLoginPage() {
@@ -43,6 +43,14 @@ export default function AdminLoginPage() {
 
     setIsLoading(true)
     try {
+      // 먼저 환경변수 기반 관리자 계정 체크
+      if (checkMasterAdminCredentials(email, password)) {
+        toast.success('마스터 관리자 로그인 성공!')
+        router.push('/admin')
+        return
+      }
+
+      // 일반 Supabase 로그인 시도
       const { user: loginUser, error } = await signIn(email, password)
 
       if (error) {
@@ -219,8 +227,17 @@ export default function AdminLoginPage() {
             카카오로 관리자 로그인
           </button>
 
+          {/* Demo Credentials */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 text-center">
+              <span className="font-medium">기본 관리자 계정</span><br />
+              이메일: master@allok.world<br />
+              비밀번호: admin123!
+            </p>
+          </div>
+
           {/* Info */}
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
             <p className="text-xs text-gray-500">
               관리자 계정이 없으신가요?{' '}
               <span className="text-red-600 font-medium">
