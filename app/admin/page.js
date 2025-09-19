@@ -210,11 +210,15 @@ export default function AdminDashboard() {
 
     if (!isAuthenticated) {
       console.log('Admin page - no localStorage session, not authenticated, redirecting to login')
-      router.push('/admin/login')
+      // 3초 지연 후 리다이렉트
+      setTimeout(() => {
+        router.push('/admin/login')
+      }, 3000)
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-gray-600">로그인이 필요합니다. 잠시 후 로그인 페이지로 이동합니다...</p>
+            <p className="text-gray-600">로그인이 필요합니다. 3초 후 로그인 페이지로 이동합니다...</p>
+            <p className="text-sm text-red-600 mt-2">localStorage 세션 체크 결과: hasLocalAdminSession = {hasLocalAdminSession.toString()}</p>
           </div>
         </div>
       )
