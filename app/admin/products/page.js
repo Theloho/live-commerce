@@ -526,8 +526,9 @@ export default function AdminProductsPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">
-              {typeof window !== 'undefined' ? localStorage.getItem('admin_email') : ''}
-              {user?.email || user?.user_metadata?.email || 'master@allok.world'}
+              {typeof window !== 'undefined'
+                ? localStorage.getItem('admin_email') || 'master@allok.world'
+                : 'master@allok.world'}
             </span>
             <button
               onClick={() => {
