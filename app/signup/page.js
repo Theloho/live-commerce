@@ -104,8 +104,11 @@ export default function SignupPage() {
 
       // Supabase 회원가입
       console.log('Attempting signup with email:', email)
+      console.log('Supabase client:', supabase)
+      console.log('Supabase auth:', supabase.auth)
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // 테스트: 직접 API 호출
+      const signupPayload = {
         email: email,
         password: formData.password,
         options: {
@@ -119,7 +122,11 @@ export default function SignupPage() {
             detail_address: formData.detailAddress
           }
         }
-      })
+      }
+
+      console.log('Signup payload:', signupPayload)
+
+      const { data: authData, error: authError } = await supabase.auth.signUp(signupPayload)
 
       console.log('Signup result:', { authData, authError })
 
