@@ -62,7 +62,7 @@ export default function LoginPage() {
       const email = `user${phone}@allok.app`
 
       const { data, error } = await signInWithPassword({
-        email: email,
+        phone: formData.phone,
         password: formData.password
       })
 

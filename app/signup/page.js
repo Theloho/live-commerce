@@ -107,10 +107,9 @@ export default function SignupPage() {
       console.log('Attempting signup with:', { email, name: formData.name, phone: formData.phone })
 
       const result = await signUp({
-        email: email,
+        phone: formData.phone,
         password: formData.password,
         name: formData.name,
-        phone: formData.phone,
         nickname: formData.nickname || formData.name
       })
 
