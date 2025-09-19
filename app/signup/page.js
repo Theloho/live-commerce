@@ -150,7 +150,6 @@ export default function SignupPage() {
           .from('profiles')
           .upsert({
             id: authData.user.id,
-            email: email,
             name: formData.name,
             phone: formData.phone,
             nickname: formData.nickname || formData.name,
