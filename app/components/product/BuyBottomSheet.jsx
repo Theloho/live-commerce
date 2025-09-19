@@ -11,7 +11,6 @@ import PurchaseChoiceModal from '@/app/components/common/PurchaseChoiceModal'
 import { motion } from 'framer-motion'
 import useCartStore from '@/app/stores/cartStore'
 import useAuth from '@/hooks/useAuth'
-import { createOrder } from '@/lib/supabaseApi'
 import toast from 'react-hot-toast'
 
 export default function BuyBottomSheet({ isOpen, onClose, product }) {
@@ -20,7 +19,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const [isLiked, setIsLiked] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
   const { addItem } = useCartStore()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
   if (!product) return null
@@ -94,15 +93,32 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     console.log('사용자 프로필:', userProfile) // 디버깅
 
     try {
-      // Supabase로 주문 생성 (장바구니 역할)
-      const orderData = {
-        ...cartItem,
+      // Mock 데이터 방식으로 주문 생성
+      const orderId = 'ORD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+      const customerOrderNumber = 'CO' + Date.now().toString().slice(-8)
+
+      const newOrder = {
+        id: orderId,
+        customerOrderNumber: customerOrderNumber,
+        userId: user?.id, // 현재 로그인한 사용자 ID
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        items: [cartItem],
+        shipping: userProfile,
+        payment: {
+          method: 'cart',
+          amount: totalPrice + 4000, // 배송비 추가
+          status: 'pending'
+        },
         orderType: 'cart'
       }
-      const newOrder = await createOrder(orderData, userProfile)
-      console.log('생성된 주문:', newOrder) // 디버깅
 
-      // BuyBottomSheet에서는 토스트 표시 안함 (모달이 표시되므로)
+      // localStorage에 저장
+      const existingOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
+      existingOrders.push(newOrder)
+      localStorage.setItem('mock_orders', JSON.stringify(existingOrders))
+
+      console.log('생성된 주문:', newOrder) // 디버깅
 
       // 주문 업데이트 이벤트 발생
       console.log('주문 목록 업데이트 이벤트 발생 (BuyBottomSheet)')
