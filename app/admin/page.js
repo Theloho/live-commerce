@@ -41,21 +41,30 @@ export default function AdminDashboard() {
   }, [])
 
   useEffect(() => {
-    // localStorage 세션이 있으면 통계만 로드
+    console.log('Admin page useEffect - hasLocalAdminSession:', hasLocalAdminSession, 'authLoading:', authLoading, 'isAuthenticated:', isAuthenticated)
+
+    // localStorage 세션이 있으면 통계만 로드하고 리다이렉트 안함
     if (hasLocalAdminSession) {
       console.log('Loading stats for localStorage admin session')
       loadStats()
       return
     }
 
-    // localStorage 세션이 없는 경우만 Supabase 인증 체크
-    if (!authLoading && !isAuthenticated) {
+    // authLoading이 아직 진행중이면 기다림
+    if (authLoading) {
+      console.log('Auth still loading, waiting...')
+      return
+    }
+
+    // localStorage 세션이 없고 Supabase 인증도 없으면 로그인으로
+    if (!isAuthenticated) {
       console.log('No auth, redirecting to login')
       toast.error('관리자 로그인이 필요합니다')
       router.push('/admin/login')
       return
     }
 
+    // Supabase 사용자가 있으면 권한 체크
     if (user) {
       const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
       if (!hasAccess) {
