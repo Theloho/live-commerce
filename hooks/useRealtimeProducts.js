@@ -13,54 +13,16 @@ export default function useRealtimeProducts() {
     // 초기 데이터 로드
     loadProducts()
 
-    // Supabase 실시간 구독 설정
-    const channel = supabase
-      .channel('products-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // INSERT, UPDATE, DELETE 모든 이벤트 감지
-          schema: 'public',
-          table: 'products'
-        },
-        (payload) => {
-          console.log('🔄 상품 데이터 변경 감지:', payload)
-
-          // 데이터 변경 시 전체 상품 목록 새로고침
-          loadProducts()
-
-          // 커스텀 이벤트 발생시켜 다른 컴포넌트에 알림
-          switch (payload.eventType) {
-            case 'INSERT':
-              window.dispatchEvent(new CustomEvent('productAdded', { detail: payload.new }))
-              break
-            case 'UPDATE':
-              window.dispatchEvent(new CustomEvent('productUpdated', { detail: payload.new }))
-              // 라이브 상태 변경 감지
-              if (payload.old?.is_live !== payload.new?.is_live) {
-                window.dispatchEvent(new CustomEvent('productLiveStatusChanged', { detail: payload.new }))
-              }
-              break
-            case 'DELETE':
-              window.dispatchEvent(new CustomEvent('productDeleted', { detail: payload.old }))
-              break
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ 상품 실시간 구독 시작됨')
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ 상품 실시간 구독 오류')
-        } else if (status === 'TIMED_OUT') {
-          console.warn('⚠️ 상품 실시간 구독 타임아웃')
-        }
-      })
+    // 폴링 방식으로 주기적 업데이트 (10초마다)
+    const pollingInterval = setInterval(() => {
+      console.log('🔄 폴링으로 상품 데이터 업데이트 체크')
+      loadProducts()
+    }, 10000) // 10초마다 체크
 
     // 정리 함수
     return () => {
-      console.log('🧹 상품 실시간 구독 해제')
-      supabase.removeChannel(channel)
+      console.log('🧹 폴링 인터벌 해제')
+      clearInterval(pollingInterval)
     }
   }, [])
 
