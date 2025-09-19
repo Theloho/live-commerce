@@ -30,6 +30,16 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
+    // localStorage 세션 체크 먼저
+    if (typeof window !== 'undefined') {
+      const adminSession = localStorage.getItem('admin_session')
+      if (adminSession === 'master_admin') {
+        loadStats()
+        return
+      }
+    }
+
+    // Supabase 인증 체크
     if (!authLoading && !isAuthenticated) {
       toast.error('관리자 로그인이 필요합니다')
       router.push('/admin/login')
@@ -149,7 +159,10 @@ export default function AdminDashboard() {
     }
   ]
 
-  if (authLoading) {
+  // localStorage 세션이 있으면 로딩/인증 체크 건너뛰기
+  const hasLocalAdminSession = typeof window !== 'undefined' && localStorage.getItem('admin_session') === 'master_admin'
+
+  if (!hasLocalAdminSession && authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -160,7 +173,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!isAuthenticated) {
+  if (!hasLocalAdminSession && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -170,23 +183,25 @@ export default function AdminDashboard() {
     )
   }
 
-  const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-6xl mb-4">🚫</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">접근 권한 없음</h1>
-          <p className="text-gray-600 mb-4">{message}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            홈으로 돌아가기
-          </button>
+  if (!hasLocalAdminSession) {
+    const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
+    if (!hasAccess) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto p-6">
+            <div className="text-6xl mb-4">🚫</div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">접근 권한 없음</h1>
+            <p className="text-gray-600 mb-4">{message}</p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              홈으로 돌아가기
+            </button>
+          </div>
         </div>
-      </div>
-    )
+      )
+    }
   }
 
   return (
