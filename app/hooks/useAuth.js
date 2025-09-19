@@ -83,6 +83,8 @@ export default function useAuth() {
 
       if (data.user) {
         console.log('회원가입 성공 - 사용자 생성됨:', data.user.id)
+        console.log('사용자 이메일 확인 상태:', data.user.email_confirmed_at)
+        console.log('사용자 상태:', data.user)
       } else {
         console.warn('회원가입 응답에 사용자 정보가 없음')
       }
