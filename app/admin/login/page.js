@@ -27,6 +27,7 @@ export default function AdminLoginPage() {
     if (typeof window !== 'undefined') {
       const adminSession = localStorage.getItem('admin_session')
       if (adminSession === 'master_admin') {
+        console.log('Redirecting to admin from localStorage session')
         router.push('/admin')
         return
       }
@@ -35,12 +36,13 @@ export default function AdminLoginPage() {
     if (!loading && isAuthenticated && user) {
       const { hasAccess } = checkAdminAccess(user, isAuthenticated)
       if (hasAccess) {
+        console.log('Redirecting to admin from Supabase auth')
         router.push('/admin')
       } else {
         toast.error('관리자 권한이 없습니다.')
       }
     }
-  }, [user, loading, isAuthenticated, router])
+  }, [user, loading, isAuthenticated])
 
   const handleEmailLogin = async (e) => {
     e.preventDefault()

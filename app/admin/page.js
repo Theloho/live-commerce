@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import useAuth from '@/hooks/useAuth'
@@ -34,6 +34,7 @@ export default function AdminDashboard() {
     if (typeof window !== 'undefined') {
       const adminSession = localStorage.getItem('admin_session')
       if (adminSession === 'master_admin') {
+        console.log('Loading stats for localStorage admin session')
         loadStats()
         return
       }
@@ -41,6 +42,7 @@ export default function AdminDashboard() {
 
     // Supabase 인증 체크
     if (!authLoading && !isAuthenticated) {
+      console.log('No auth, redirecting to login')
       toast.error('관리자 로그인이 필요합니다')
       router.push('/admin/login')
       return
@@ -49,16 +51,18 @@ export default function AdminDashboard() {
     if (user) {
       const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
       if (!hasAccess) {
+        console.log('No admin access, redirecting to home')
         toast.error(message)
         router.push('/')
         return
       }
 
+      console.log('Loading stats for Supabase admin user')
       loadStats()
     }
-  }, [user, authLoading, isAuthenticated, router])
+  }, [user, authLoading, isAuthenticated])
 
-  const loadStats = () => {
+  const loadStats = useCallback(() => {
     try {
       // Mock 주문 데이터에서 통계 계산
       const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
@@ -106,7 +110,7 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('통계 로딩 오류:', error)
     }
-  }
+  }, [])
 
   const statCards = [
     {
