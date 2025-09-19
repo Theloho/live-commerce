@@ -152,15 +152,7 @@ export default function SignupPage() {
             id: authData.user.id,
             name: formData.name,
             phone: formData.phone,
-            nickname: formData.nickname || formData.name,
-            role: 'customer',
-            status: 'active',
-            address: formData.address,
-            detail_address: formData.detailAddress || null,
-            tiktok_id: formData.tiktokId || null,
-            youtube_id: formData.youtubeId || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            nickname: formData.nickname || formData.name
           }, {
             onConflict: 'id'
           })
