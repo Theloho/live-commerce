@@ -60,13 +60,14 @@ export default function useAuth() {
     try {
       setAuthLoading(true)
 
-      console.log('Supabase signUpWithPassword 요청:', { phone, password: '***', name, nickname })
+      console.log('Supabase signUp 요청:', { email, password: '***', name, phone, nickname })
 
-      // 휴대폰 번호로 직접 회원가입 (이메일 대신)
+      // 이메일 기반 회원가입 (휴대폰 → 이메일 변환)
       const { data, error } = await supabase.auth.signUp({
-        phone: phone.replace(/[^0-9]/g, ''), // 숫자만 추출
+        email,
         password,
         options: {
+          emailRedirectTo: undefined,
           data: {
             name,
             phone,
@@ -100,18 +101,16 @@ export default function useAuth() {
     }
   }
 
-  const signInWithPassword = async ({ email, password, phone }) => {
+  const signInWithPassword = async ({ email, password }) => {
     try {
       setAuthLoading(true)
 
-      // 이메일이 제공되면 이메일로, 휴대폰이 제공되면 휴대폰으로 로그인
-      const loginData = phone ?
-        { phone: phone.replace(/[^0-9]/g, ''), password } :
-        { email, password }
+      console.log('Supabase signInWithPassword 요청:', { email, password: '***' })
 
-      console.log('Supabase signInWithPassword 요청:', { ...loginData, password: '***' })
-
-      const { data, error } = await supabase.auth.signInWithPassword(loginData)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
 
       if (error) throw error
 

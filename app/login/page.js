@@ -62,7 +62,7 @@ export default function LoginPage() {
       const email = `user${phone}@allok.app`
 
       const { data, error } = await signInWithPassword({
-        phone: formData.phone,
+        email: email,
         password: formData.password
       })
 
@@ -72,7 +72,7 @@ export default function LoginPage() {
         console.log('로그인 에러 상세:', error)
         console.log('errorMessage:', errorMessage)
 
-        if (errorMessage && errorMessage.includes('Invalid login credentials')) {
+        if (errorMessage && (errorMessage.includes('Invalid login credentials') || errorMessage.includes('Phone logins are disabled') || errorMessage.includes('disabled'))) {
           // 미가입 사용자일 가능성이 높으므로 회원가입 유도 모달 표시
           console.log('로그인 실패 - 회원가입 모달 표시')
           console.log('현재 showSignupPrompt 상태:', showSignupPrompt)
