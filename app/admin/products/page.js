@@ -524,26 +524,6 @@ export default function AdminProductsPage() {
               <p className="text-gray-600">총 {products.length}개의 상품</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              {typeof window !== 'undefined'
-                ? localStorage.getItem('admin_email') || 'master@allok.world'
-                : 'master@allok.world'}
-            </span>
-            <button
-              onClick={() => {
-                if (window.confirm('로그아웃하시겠습니까?')) {
-                  // localStorage 세션 삭제
-                  localStorage.removeItem('admin_session')
-                  localStorage.removeItem('admin_email')
-                  router.push('/admin/login')
-                }
-              }}
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              로그아웃
-            </button>
-          </div>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div></div>

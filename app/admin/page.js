@@ -154,26 +154,6 @@ export default function AdminDashboard() {
               <p className="text-gray-600">allok 라이브 커머스 플랫폼 관리</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              {typeof window !== 'undefined' && localStorage.getItem('admin_email')
-                ? localStorage.getItem('admin_email')
-                : 'master@allok.world'}
-            </span>
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined' && window.confirm('로그아웃하시겠습니까?')) {
-                  // localStorage 세션 삭제
-                  localStorage.removeItem('admin_session')
-                  localStorage.removeItem('admin_email')
-                  router.push('/admin/login')
-                }
-              }}
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              로그아웃
-            </button>
-          </div>
         </div>
       </div>
 
