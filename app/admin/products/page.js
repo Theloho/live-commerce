@@ -494,7 +494,7 @@ export default function AdminProductsPage() {
     )
   }
 
-  if (!isAuthenticated) {
+  if (!isAdminAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -504,24 +504,7 @@ export default function AdminProductsPage() {
     )
   }
 
-  const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-6xl mb-4">🚫</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">접근 권한 없음</h1>
-          <p className="text-gray-600 mb-4">{message}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            홈으로 돌아가기
-          </button>
-        </div>
-      </div>
-    )
-  }
+  // 관리자 권한 체크는 이미 useAdminAuth로 처리됨
 
   return (
     <div className="space-y-6">
