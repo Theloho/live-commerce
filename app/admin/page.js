@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import useAuth from '@/hooks/useAuth'
+import { checkAdminAccess } from '@/lib/adminAuth'
 import {
   CurrencyDollarIcon,
   ShoppingBagIcon,
@@ -36,6 +37,13 @@ export default function AdminDashboard() {
     }
 
     if (user) {
+      const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
+      if (!hasAccess) {
+        toast.error(message)
+        router.push('/')
+        return
+      }
+
       loadStats()
     }
   }, [user, authLoading, isAuthenticated, router])
@@ -157,6 +165,25 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600">로그인이 필요합니다. 잠시 후 로그인 페이지로 이동합니다...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-6xl mb-4">🚫</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">접근 권한 없음</h1>
+          <p className="text-gray-600 mb-4">{message}</p>
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            홈으로 돌아가기
+          </button>
         </div>
       </div>
     )
