@@ -60,6 +60,8 @@ export default function useAuth() {
     try {
       setAuthLoading(true)
 
+      console.log('Supabase signUp 요청:', { email, password: '***', name, phone, nickname })
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -72,7 +74,18 @@ export default function useAuth() {
         }
       })
 
-      if (error) throw error
+      console.log('Supabase signUp 응답:', { data, error })
+
+      if (error) {
+        console.error('Supabase signUp 오류:', error)
+        throw error
+      }
+
+      if (data.user) {
+        console.log('회원가입 성공 - 사용자 생성됨:', data.user.id)
+      } else {
+        console.warn('회원가입 응답에 사용자 정보가 없음')
+      }
 
       return { success: true, user: data.user }
     } catch (error) {

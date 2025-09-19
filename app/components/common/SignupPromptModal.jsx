@@ -32,7 +32,13 @@ export default function SignupPromptModal({ isOpen, onClose, phone }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={(e) => {
+              // Backdrop 직접 클릭 시에만 닫기 (실수 방지)
+              if (e.target === e.currentTarget) {
+                console.log('Backdrop 클릭으로 모달 닫기')
+                onClose()
+              }
+            }}
             className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
           >
             {/* Modal */}
