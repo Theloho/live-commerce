@@ -65,7 +65,18 @@ export default function LoginPage() {
 
       if (error) {
         if (error.message && error.message.includes('Invalid login credentials')) {
-          toast.error('휴대폰 번호 또는 비밀번호가 올바르지 않습니다')
+          // 미가입 사용자일 가능성이 높으므로 회원가입 유도
+          toast.error('가입되지 않은 휴대폰 번호입니다', {
+            duration: 4000
+          })
+
+          // 3초 후 회원가입 페이지로 이동할지 묻기
+          setTimeout(() => {
+            const shouldSignup = window.confirm('아직 회원이 아니신가요? 회원가입 페이지로 이동하시겠습니까?')
+            if (shouldSignup) {
+              router.push('/signup')
+            }
+          }, 3000)
         } else {
           toast.error('로그인 중 오류가 발생했습니다')
         }
