@@ -20,7 +20,6 @@ import toast from 'react-hot-toast'
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading, isAuthenticated } = useAuth()
-  const [hasLocalAdminSession, setHasLocalAdminSession] = useState(null) // null로 초기화
   const [stats, setStats] = useState({
     todayOrders: 0,
     todaySales: 0,
@@ -30,64 +29,31 @@ export default function AdminDashboard() {
     totalProducts: 0
   })
 
-  // localStorage 세션 체크 (한 번만)
   useEffect(() => {
-    console.log('Admin page - localStorage check effect running')
+    // localStorage 세션 체크 먼저
     if (typeof window !== 'undefined') {
       const adminSession = localStorage.getItem('admin_session')
-      console.log('Admin page - checking localStorage session:', adminSession)
-      const isAdmin = adminSession === 'master_admin'
-      setHasLocalAdminSession(isAdmin)
-      console.log('Admin page - hasLocalAdminSession set to:', isAdmin)
-
-      // 즉시 localStorage 세션이 있으면 통계 로드
-      if (isAdmin) {
-        console.log('Admin page - localStorage admin detected, loading stats immediately')
+      if (adminSession === 'master_admin') {
         loadStats()
+        return
       }
-    } else {
-      console.log('Admin page - window is undefined')
-    }
-  }, [])
-
-  useEffect(() => {
-    console.log('Admin page useEffect - hasLocalAdminSession:', hasLocalAdminSession, 'authLoading:', authLoading, 'isAuthenticated:', isAuthenticated)
-
-    // localStorage 세션이 있으면 통계만 로드하고 리다이렉트 안함
-    if (hasLocalAdminSession) {
-      console.log('Loading stats for localStorage admin session')
-      loadStats()
-      return
     }
 
-    // authLoading이 아직 진행중이면 기다림
-    if (authLoading) {
-      console.log('Auth still loading, waiting...')
-      return
-    }
-
-    // localStorage 세션이 없고 Supabase 인증도 없으면 로그인으로
-    if (!isAuthenticated) {
-      console.log('No auth, redirecting to login')
-      toast.error('관리자 로그인이 필요합니다')
+    // Supabase 인증 체크
+    if (!authLoading && !isAuthenticated) {
       router.push('/admin/login')
       return
     }
 
-    // Supabase 사용자가 있으면 권한 체크
     if (user) {
-      const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
+      const { hasAccess } = checkAdminAccess(user, isAuthenticated)
       if (!hasAccess) {
-        console.log('No admin access, redirecting to home')
-        toast.error(message)
         router.push('/')
         return
       }
-
-      console.log('Loading stats for Supabase admin user')
       loadStats()
     }
-  }, [hasLocalAdminSession, user, authLoading, isAuthenticated, loadStats])
+  }, [user, authLoading, isAuthenticated])
 
   const loadStats = useCallback(() => {
     try {
@@ -190,34 +156,50 @@ export default function AdminDashboard() {
     }
   ]
 
-  // localStorage 세션 체크만 하고, 있으면 바로 admin 대시보드 렌더링
-  // 없으면 로그인 페이지로 리다이렉트 (Supabase 인증 체크 생략)
-  if (hasLocalAdminSession === null) {
-    console.log('Admin page - initial loading, checking localStorage')
+  // localStorage 세션이 있으면 로딩/인증 체크 건너뛰기
+  const hasLocalAdminSession = typeof window !== 'undefined' && localStorage.getItem('admin_session') === 'master_admin'
+
+  if (!hasLocalAdminSession && authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">localStorage 세션 확인 중...</p>
+          <p className="text-gray-600">로딩 중...</p>
         </div>
       </div>
     )
   }
 
-  if (hasLocalAdminSession === false) {
-    console.log('Admin page - no localStorage session, redirecting to login')
-    router.push('/admin/login')
+  if (!hasLocalAdminSession && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">로그인이 필요합니다. 로그인 페이지로 이동합니다...</p>
+          <p className="text-gray-600">로그인이 필요합니다. 잠시 후 로그인 페이지로 이동합니다...</p>
         </div>
       </div>
     )
   }
 
-  // hasLocalAdminSession === true 인 경우만 여기 도달
-  console.log('Admin page - localStorage session confirmed, rendering admin dashboard')
+  if (!hasLocalAdminSession) {
+    const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
+    if (!hasAccess) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto p-6">
+            <div className="text-6xl mb-4">🚫</div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">접근 권한 없음</h1>
+            <p className="text-gray-600 mb-4">{message}</p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              홈으로 돌아가기
+            </button>
+          </div>
+        </div>
+      )
+    }
+  }
 
   return (
     <div className="space-y-6">
