@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import useAuth from '@/hooks/useAuth'
 import {
   CurrencyDollarIcon,
   ShoppingBagIcon,
@@ -9,10 +11,14 @@ import {
   TruckIcon,
   ChartBarIcon,
   UsersIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  ArrowLeftIcon
 } from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
 
 export default function AdminDashboard() {
+  const router = useRouter()
+  const { user, loading: authLoading, isAuthenticated } = useAuth()
   const [stats, setStats] = useState({
     todayOrders: 0,
     todaySales: 0,
@@ -23,8 +29,16 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
-    loadStats()
-  }, [])
+    if (!authLoading && !isAuthenticated) {
+      toast.error('관리자 로그인이 필요합니다')
+      router.push('/login')
+      return
+    }
+
+    if (user) {
+      loadStats()
+    }
+  }, [user, authLoading, isAuthenticated, router])
 
   const loadStats = () => {
     try {
@@ -127,12 +141,61 @@ export default function AdminDashboard() {
     }
   ]
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">로그인이 필요합니다. 잠시 후 로그인 페이지로 이동합니다...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      {/* Welcome */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">관리자 대시보드</h1>
-        <p className="text-gray-600">allok 라이브 커머스 플랫폼 관리</p>
+      {/* Header */}
+      <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push('/')}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="홈으로 가기"
+            >
+              <ArrowLeftIcon className="h-6 w-6" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">관리자 대시보드</h1>
+              <p className="text-gray-600">allok 라이브 커머스 플랫폼 관리</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              {user?.email || user?.user_metadata?.email}
+            </span>
+            <button
+              onClick={() => {
+                if (window.confirm('로그아웃하시겠습니까?')) {
+                  router.push('/login')
+                }
+              }}
+              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Stats Grid */}

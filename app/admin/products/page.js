@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import useAuth from '@/hooks/useAuth'
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -12,12 +14,15 @@ import {
   PhotoIcon,
   CameraIcon,
   DocumentArrowUpIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowLeftIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 // Mock functions removed - transitioning to production Supabase
 
 export default function AdminProductsPage() {
+  const router = useRouter()
+  const { user, loading: authLoading, isAuthenticated } = useAuth()
   const [products, setProducts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
@@ -38,8 +43,16 @@ export default function AdminProductsPage() {
   const cameraInputRef = useRef(null)
 
   useEffect(() => {
-    loadProducts()
-  }, [])
+    if (!authLoading && !isAuthenticated) {
+      toast.error('관리자 로그인이 필요합니다')
+      router.push('/login')
+      return
+    }
+
+    if (user) {
+      loadProducts()
+    }
+  }, [user, authLoading, isAuthenticated, router])
 
   const loadProducts = async () => {
     try {
@@ -470,10 +483,23 @@ export default function AdminProductsPage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">로그인이 필요합니다. 잠시 후 로그인 페이지로 이동합니다...</p>
+        </div>
       </div>
     )
   }
@@ -481,11 +507,39 @@ export default function AdminProductsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">상품 관리</h1>
-          <p className="text-gray-600">총 {products.length}개의 상품</p>
+      <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push('/')}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="홈으로 가기"
+            >
+              <ArrowLeftIcon className="h-6 w-6" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">상품 관리</h1>
+              <p className="text-gray-600">총 {products.length}개의 상품</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              {user?.email || user?.user_metadata?.email}
+            </span>
+            <button
+              onClick={() => {
+                if (window.confirm('로그아웃하시겠습니까?')) {
+                  router.push('/login')
+                }
+              }}
+              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div></div>
         <div className="flex gap-2">
           <button
             onClick={async () => {
@@ -558,6 +612,7 @@ export default function AdminProductsPage() {
             <PlusIcon className="w-4 h-4" />
             상품 추가
           </button>
+        </div>
         </div>
       </div>
 
