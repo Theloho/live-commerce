@@ -10,7 +10,7 @@ import useAuth from '@/app/hooks/useAuth'
 
 export default function SignupPage() {
   const router = useRouter()
-  const { signUp } = useAuth()
+  const { signUp, signInWithPassword } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -167,14 +167,14 @@ export default function SignupPage() {
           }, 1000)
         } else {
           console.log('자동 로그인 실패, 로그인 페이지로 이동')
-          toast.info('회원가입 완료! 로그인해주세요.')
+          toast.success('회원가입 완료! 로그인해주세요.')
           setTimeout(() => {
             router.push('/login')
           }, 1000)
         }
       } catch (error) {
         console.error('자동 로그인 오류:', error)
-        toast.info('회원가입 완료! 로그인해주세요.')
+        toast.success('회원가입 완료! 로그인해주세요.')
         setTimeout(() => {
           router.push('/login')
         }, 1000)
