@@ -150,10 +150,13 @@ export default function SignupPage() {
 
       toast.success('회원가입이 완료되었습니다!')
 
-      // 회원가입 성공 후 명시적으로 로그인 처리
-      console.log('회원가입 성공, 자동 로그인 시도 중...')
+      // 회원가입 성공 후 명시적으로 로그인 처리 (2초 딜레이)
+      console.log('회원가입 성공, 2초 후 자동 로그인 시도...')
+
+      await new Promise(resolve => setTimeout(resolve, 2000))
 
       try {
+        console.log('자동 로그인 시도 중...')
         const loginResult = await signInWithPassword({
           email: email,
           password: formData.password

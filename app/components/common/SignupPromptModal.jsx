@@ -7,19 +7,14 @@ import { XMarkIcon, UserPlusIcon } from '@heroicons/react/24/outline'
 export default function SignupPromptModal({ isOpen, onClose, phone }) {
   const router = useRouter()
 
-  console.log('SignupPromptModal - isOpen:', isOpen, 'phone:', phone)
-
   const handleSignup = () => {
     onClose()
     router.push('/signup')
   }
 
   if (!isOpen) {
-    console.log('모달 닫힘 상태')
     return null
   }
-
-  console.log('모달 열림 상태 - 렌더링 중')
 
   return (
     <AnimatePresence>

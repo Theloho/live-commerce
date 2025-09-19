@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import useAuth from '@/app/hooks/useAuth'
 import { motion } from 'framer-motion'
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showSignupPrompt, setShowSignupPrompt] = useState(false)
+  const modalTimerRef = useRef(null)
   const [formData, setFormData] = useState({
     phone: '',
     password: ''
@@ -77,6 +78,14 @@ export default function LoginPage() {
           console.log('현재 showSignupPrompt 상태:', showSignupPrompt)
           setShowSignupPrompt(true)
           console.log('setShowSignupPrompt(true) 호출 완료')
+
+          // 모달이 의도치 않게 닫히는 것을 방지하기 위한 타이머
+          if (modalTimerRef.current) {
+            clearTimeout(modalTimerRef.current)
+          }
+          modalTimerRef.current = setTimeout(() => {
+            console.log('모달 자동 닫힘 방지 타이머 완료')
+          }, 5000)
         } else {
           toast.error('로그인 중 오류가 발생했습니다')
         }
