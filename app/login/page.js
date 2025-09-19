@@ -6,12 +6,14 @@ import useAuth from '@/app/hooks/useAuth'
 import { motion } from 'framer-motion'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import SignupPromptModal from '@/app/components/common/SignupPromptModal'
 
 export default function LoginPage() {
   const router = useRouter()
   const { signInWithPassword } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false)
   const [formData, setFormData] = useState({
     phone: '',
     password: ''
@@ -65,18 +67,8 @@ export default function LoginPage() {
 
       if (error) {
         if (error.message && error.message.includes('Invalid login credentials')) {
-          // 미가입 사용자일 가능성이 높으므로 회원가입 유도
-          toast.error('가입되지 않은 휴대폰 번호입니다', {
-            duration: 4000
-          })
-
-          // 3초 후 회원가입 페이지로 이동할지 묻기
-          setTimeout(() => {
-            const shouldSignup = window.confirm('아직 회원이 아니신가요? 회원가입 페이지로 이동하시겠습니까?')
-            if (shouldSignup) {
-              router.push('/signup')
-            }
-          }, 3000)
+          // 미가입 사용자일 가능성이 높으므로 회원가입 유도 모달 표시
+          setShowSignupPrompt(true)
         } else {
           toast.error('로그인 중 오류가 발생했습니다')
         }
@@ -186,6 +178,13 @@ export default function LoginPage() {
           </button>
         </div>
       </motion.div>
+
+      {/* 회원가입 유도 모달 */}
+      <SignupPromptModal
+        isOpen={showSignupPrompt}
+        onClose={() => setShowSignupPrompt(false)}
+        phone={formData.phone}
+      />
     </div>
   )
 }
