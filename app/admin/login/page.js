@@ -10,13 +10,13 @@ import {
   ShieldCheckIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
-import useAuth from '@/hooks/useAuth'
+// import useAuth from '@/hooks/useAuth'
 import { checkAdminAccess, checkMasterAdminCredentials } from '@/lib/adminAuth'
 import toast from 'react-hot-toast'
 
 export default function AdminLoginPage() {
   const router = useRouter()
-  const { signIn, signInWithKakao, user, loading, isAuthenticated } = useAuth()
+  // const { signIn, signInWithKakao, user, loading, isAuthenticated } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -59,27 +59,13 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_email', email)
 
         toast.success('마스터 관리자 로그인 성공!')
-        router.push('/admin')
+        // 페이지 새로고침으로 완전히 초기화
+        window.location.href = '/admin'
         return
       }
 
-      // 일반 Supabase 로그인 시도
-      const { user: loginUser, error } = await signIn(email, password)
-
-      if (error) {
-        toast.error('로그인에 실패했습니다: ' + error.message)
-        return
-      }
-
-      // 관리자 권한 체크
-      const { hasAccess, message } = checkAdminAccess(loginUser, true)
-      if (!hasAccess) {
-        toast.error(message)
-        return
-      }
-
-      toast.success('관리자 로그인 성공!')
-      router.push('/admin')
+      // 환경변수 관리자 계정이 아닌 경우 오류
+      toast.error('잘못된 관리자 계정입니다')
     } catch (error) {
       console.error('로그인 오류:', error)
       toast.error('로그인 중 오류가 발생했습니다')
@@ -88,27 +74,7 @@ export default function AdminLoginPage() {
     }
   }
 
-  const handleKakaoLogin = async () => {
-    try {
-      setIsLoading(true)
-      await signInWithKakao()
-    } catch (error) {
-      console.error('카카오 로그인 오류:', error)
-      toast.error('카카오 로그인에 실패했습니다')
-      setIsLoading(false)
-    }
-  }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
@@ -221,24 +187,6 @@ export default function AdminLoginPage() {
             <div className="flex-1 border-t border-gray-300"></div>
           </div>
 
-          {/* Kakao Login */}
-          <button
-            onClick={handleKakaoLogin}
-            disabled={isLoading}
-            className="w-full bg-yellow-400 text-gray-900 py-4 rounded-xl font-semibold hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <Image
-              src="/kakao-icon.png"
-              alt="카카오"
-              width={20}
-              height={20}
-              className="rounded"
-              onError={(e) => {
-                e.target.style.display = 'none'
-              }}
-            />
-            카카오로 관리자 로그인
-          </button>
 
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
