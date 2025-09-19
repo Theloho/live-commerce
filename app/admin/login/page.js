@@ -40,12 +40,7 @@ function AdminLoginContent() {
     }
   }
 
-  // 이미 로그인된 경우 리다이렉트
-  useEffect(() => {
-    if (!loading && isAdminAuthenticated) {
-      router.push('/admin')
-    }
-  }, [isAdminAuthenticated, loading, router])
+  // 자동 리다이렉트 제거 - 로그인 버튼을 통해서만 이동
 
 
 
