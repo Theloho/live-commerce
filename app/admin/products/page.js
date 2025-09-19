@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import { supabase } from '@/lib/supabase'
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -42,12 +43,33 @@ export default function AdminProductsPage() {
 
   const loadProducts = async () => {
     try {
-      // Mock 데이터베이스에서 상품 데이터 로드
-      const mockProducts = getMockProducts()
-      setProducts(mockProducts)
-      setLoading(false)
+      setLoading(true)
+      // Supabase에서 상품 데이터 로드 (관리자는 비활성 상품도 포함)
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          product_options (
+            id,
+            name,
+            values
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      // 옵션 데이터 형태 변환
+      const productsWithOptions = data.map(product => ({
+        ...product,
+        options: product.product_options || []
+      }))
+
+      setProducts(productsWithOptions)
     } catch (error) {
       console.error('상품 로딩 오류:', error)
+      setError('상품을 불러오는데 실패했습니다.')
+    } finally {
       setLoading(false)
     }
   }
