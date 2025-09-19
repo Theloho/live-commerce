@@ -3,20 +3,27 @@
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, UserPlusIcon } from '@heroicons/react/24/outline'
+import { createPortal } from 'react-dom'
+import { useEffect, useState } from 'react'
 
 export default function SignupPromptModal({ isOpen, onClose, phone }) {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleSignup = () => {
     onClose()
     router.push('/signup')
   }
 
-  if (!isOpen) {
+  if (!isOpen || !mounted) {
     return null
   }
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -78,4 +85,6 @@ export default function SignupPromptModal({ isOpen, onClose, phone }) {
       )}
     </AnimatePresence>
   )
+
+  return createPortal(modalContent, document.body)
 }

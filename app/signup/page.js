@@ -150,38 +150,13 @@ export default function SignupPage() {
 
       toast.success('회원가입이 완료되었습니다!')
 
-      // 회원가입 성공 후 명시적으로 로그인 처리 (2초 딜레이)
-      console.log('회원가입 성공, 2초 후 자동 로그인 시도...')
-
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      try {
-        console.log('자동 로그인 시도 중...')
-        const loginResult = await signInWithPassword({
-          email: email,
-          password: formData.password
-        })
-
-        if (loginResult.success) {
-          console.log('자동 로그인 성공')
-          toast.success('로그인되었습니다!')
-          setTimeout(() => {
-            router.push('/')
-          }, 1000)
-        } else {
-          console.log('자동 로그인 실패, 로그인 페이지로 이동')
-          toast.success('회원가입 완료! 로그인해주세요.')
-          setTimeout(() => {
-            router.push('/login')
-          }, 1000)
-        }
-      } catch (error) {
-        console.error('자동 로그인 오류:', error)
+      // 회원가입 완료 후 로그인 페이지로 안내
+      setTimeout(() => {
         toast.success('회원가입 완료! 로그인해주세요.')
         setTimeout(() => {
           router.push('/login')
         }, 1000)
-      }
+      }, 1000)
 
     } catch (error) {
       console.error('회원가입 오류:', error)
