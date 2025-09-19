@@ -8,7 +8,6 @@ import {
   PhoneIcon,
   MapPinIcon,
   TagIcon,
-  VideoCameraIcon,
   PencilIcon,
   ShoppingBagIcon,
   ArrowRightOnRectangleIcon,
@@ -51,9 +50,7 @@ export default function MyPage() {
           phone: user.phone || user.user_metadata?.phone || '',
           address: user.address || user.user_metadata?.address || '',
           detail_address: user.detail_address || user.user_metadata?.detail_address || '',
-          nickname: user.nickname || user.user_metadata?.nickname || user.user_metadata?.name || '',
-          tiktok_id: user.tiktokId || user.user_metadata?.tiktok_id || '',
-          youtube_id: user.youtubeId || user.user_metadata?.youtube_id || ''
+          nickname: user.nickname || user.user_metadata?.nickname || user.user_metadata?.name || ''
         }
         setUserProfile(profile)
         setEditValues(profile)
@@ -79,9 +76,7 @@ export default function MyPage() {
             phone: user.user_metadata?.phone || '',
             address: user.user_metadata?.address || '',
             detail_address: user.user_metadata?.detail_address || '',
-            nickname: user.user_metadata?.nickname || user.user_metadata?.name || '',
-            tiktok_id: '',
-            youtube_id: ''
+            nickname: user.user_metadata?.nickname || user.user_metadata?.name || ''
           }
 
           // 프로필이 없는 경우 추가 정보 입력 페이지로 리다이렉트
@@ -249,20 +244,6 @@ export default function MyPage() {
       key: 'nickname',
       label: '닉네임',
       icon: TagIcon,
-      type: 'text',
-      required: false
-    },
-    {
-      key: 'tiktok_id',
-      label: '틱톡 ID',
-      icon: VideoCameraIcon,
-      type: 'text',
-      required: false
-    },
-    {
-      key: 'youtube_id',
-      label: '유튜브 ID',
-      icon: VideoCameraIcon,
       type: 'text',
       required: false
     }
