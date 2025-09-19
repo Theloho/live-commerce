@@ -122,7 +122,7 @@ export default function CheckoutPage() {
     setShowDepositModal(true)
   }
 
-  const confirmBankTransfer = () => {
+  const confirmBankTransfer = async () => {
     console.log('계좌이체 처리 시작')
     console.log('orderItem:', orderItem)
     console.log('userProfile:', userProfile)
