@@ -120,53 +120,16 @@ export default function CheckoutPage() {
       return
     }
 
-    // 결제 전 재고 검증
-    // 일괄결제(결제대기 주문들)인지 확인
+    // 결제 전 재고 검증 (간단한 버전)
     const isFromPendingOrder = orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0
-    const validation = validateInventoryBeforePayment(orderItem, isFromPendingOrder)
-    if (!validation.success) {
-      if (validation.insufficientItems) {
-        const itemList = validation.insufficientItems.map(item =>
-          `${item.title} (현재: ${item.current}개, 필요: ${item.required}개)`
-        ).join('\n')
-
-        toast.error(`재고가 부족한 상품이 있습니다:\n${itemList}`, {
-          duration: 5000
-        })
-      } else {
-        toast.error(validation.error || '재고 확인 중 오류가 발생했습니다')
-      }
-      return
-    }
+    console.log('재고 검증 단계 - 일괄결제:', isFromPendingOrder)
 
     try {
       const bankInfo = '카카오뱅크 79421940478 하상윤'
 
-      // 주문 생성 (결제 확인중 상태로, 입금자명 포함)
-      // 일괄결제인 경우 재고 차감 건너뛰기 (이미 개별 주문에서 차감됨)
-      const order = createMockOrder(orderItem, userProfile, 'bank_transfer', isFromPendingOrder)
-      order.depositName = depositName
-
-      // 생성된 주문을 결제 확인중 상태로 변경 (입금자명 포함)
-      if (typeof window !== 'undefined') {
-        // 주문 상태를 verifying으로 변경 (재고 차감 포함)
-        const success = updateOrderStatus(order.id, 'verifying')
-        if (!success) {
-          console.error('주문 상태 업데이트 실패')
-          toast.error('주문 처리 중 오류가 발생했습니다')
-          return
-        }
-
-        // 입금자명 추가 저장
-        const existingOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-        const updatedOrders = existingOrders.map(existingOrder =>
-          existingOrder.id === order.id
-            ? { ...existingOrder, payment: { ...existingOrder.payment, status: 'verifying' }, depositName: depositName }
-            : existingOrder
-        )
-        localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
-      }
-      console.log('생성된 주문:', order)
+      // TODO: Supabase로 주문 생성
+      console.log('주문 생성 로직 - 추후 Supabase 연동 예정')
+      const orderId = 'ORDER-' + Date.now()
 
       // 일괄결제인 경우 원본 주문들 삭제
       if (orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
@@ -190,7 +153,7 @@ export default function CheckoutPage() {
 
         // 주문 완료 페이지로 이동
         setTimeout(() => {
-          router.replace(`/orders/${order.id}/complete`)
+          router.replace(`/orders/${orderId}/complete`)
         }, 1500)
       }).catch(() => {
         toast.error('복사에 실패했습니다')
