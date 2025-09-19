@@ -14,8 +14,7 @@ import {
   PhotoIcon,
   CameraIcon,
   DocumentArrowUpIcon,
-  XMarkIcon,
-  ArrowLeftIcon
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 // Mock functions removed - transitioning to production Supabase
@@ -512,13 +511,6 @@ export default function AdminProductsPage() {
       <div className="bg-white p-4 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push('/')}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="홈으로 가기"
-            >
-              <ArrowLeftIcon className="h-6 w-6" />
-            </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">상품 관리</h1>
               <p className="text-gray-600">총 {products.length}개의 상품</p>

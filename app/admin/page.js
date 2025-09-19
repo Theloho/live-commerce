@@ -12,8 +12,7 @@ import {
   TruckIcon,
   ChartBarIcon,
   UsersIcon,
-  BanknotesIcon,
-  ArrowLeftIcon
+  BanknotesIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -138,24 +137,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push('/')}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="홈으로 가기"
-            >
-              <ArrowLeftIcon className="h-6 w-6" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">관리자 대시보드</h1>
-              <p className="text-gray-600">allok 라이브 커머스 플랫폼 관리</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
