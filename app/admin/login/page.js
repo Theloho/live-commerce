@@ -22,27 +22,25 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  useEffect(() => {
-    // localStorage 세션 체크
-    if (typeof window !== 'undefined') {
-      const adminSession = localStorage.getItem('admin_session')
-      if (adminSession === 'master_admin') {
-        console.log('Redirecting to admin from localStorage session')
-        router.push('/admin')
-        return
-      }
-    }
+  // 자동 리다이렉트 비활성화 - 로그인 버튼을 통해서만 이동
+  // useEffect(() => {
+  //   if (typeof window !== 'undefined') {
+  //     const adminSession = localStorage.getItem('admin_session')
+  //     if (adminSession === 'master_admin') {
+  //       router.push('/admin')
+  //       return
+  //     }
+  //   }
 
-    if (!loading && isAuthenticated && user) {
-      const { hasAccess } = checkAdminAccess(user, isAuthenticated)
-      if (hasAccess) {
-        console.log('Redirecting to admin from Supabase auth')
-        router.push('/admin')
-      } else {
-        toast.error('관리자 권한이 없습니다.')
-      }
-    }
-  }, [user, loading, isAuthenticated])
+  //   if (!loading && isAuthenticated && user) {
+  //     const { hasAccess } = checkAdminAccess(user, isAuthenticated)
+  //     if (hasAccess) {
+  //       router.push('/admin')
+  //     } else {
+  //       toast.error('관리자 권한이 없습니다.')
+  //     }
+  //   }
+  // }, [user, loading, isAuthenticated])
 
   const handleEmailLogin = async (e) => {
     e.preventDefault()
