@@ -10,29 +10,56 @@ async function clearTestData() {
   console.log('🗑️  테스트 데이터 삭제 시작...')
 
   try {
-    // 1. 모든 상품 삭제 (또는 비활성화)
-    console.log('📦 상품 데이터 삭제 중...')
-    const { error: productsError } = await supabase
+    // 1. 먼저 모든 상품 조회
+    console.log('📦 상품 데이터 확인 중...')
+    const { data: existingProducts, error: fetchError } = await supabase
       .from('products')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000') // 존재하지 않는 ID로 모든 상품 삭제
+      .select('id, title')
 
-    if (productsError) {
-      console.error('상품 삭제 오류:', productsError)
-      // 삭제 실패 시 비활성화로 대체
-      console.log('상품 비활성화 시도 중...')
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ status: 'inactive' })
-        .eq('status', 'active')
-
-      if (updateError) {
-        console.error('상품 비활성화 오류:', updateError)
-      } else {
-        console.log('✅ 모든 상품이 비활성화되었습니다')
-      }
+    if (fetchError) {
+      console.error('상품 조회 오류:', fetchError)
     } else {
-      console.log('✅ 모든 상품이 삭제되었습니다')
+      console.log(`현재 ${existingProducts.length}개의 상품이 있습니다:`)
+      existingProducts.forEach(p => console.log(`  - ${p.title} (${p.id})`))
+    }
+
+    // 2. 상품별로 개별 삭제 시도
+    console.log('\n📦 상품 데이터 삭제 중...')
+
+    if (existingProducts && existingProducts.length > 0) {
+      for (const product of existingProducts) {
+        const { error: deleteError } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', product.id)
+
+        if (deleteError) {
+          console.log(`  ❌ ${product.title} 삭제 실패:`, deleteError.message)
+          // 삭제 실패 시 비활성화
+          const { error: updateError } = await supabase
+            .from('products')
+            .update({ status: 'inactive' })
+            .eq('id', product.id)
+
+          if (!updateError) {
+            console.log(`  ⚠️ ${product.title} 비활성화됨`)
+          }
+        } else {
+          console.log(`  ✅ ${product.title} 삭제됨`)
+        }
+      }
+    }
+
+    // 3. 최종 확인
+    const { data: remainingProducts } = await supabase
+      .from('products')
+      .select('id')
+      .eq('status', 'active')
+
+    if (!remainingProducts || remainingProducts.length === 0) {
+      console.log('✅ 모든 활성 상품이 제거되었습니다')
+    } else {
+      console.log(`⚠️ ${remainingProducts.length}개의 활성 상품이 남아있습니다`)
     }
 
     // 2. 상품 옵션 삭제
