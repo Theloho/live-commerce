@@ -14,6 +14,7 @@ import {
   AtSymbolIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import { getAllOrders } from '@/lib/supabaseApi'
 
 export default function AdminOrdersPage() {
   const router = useRouter()
@@ -32,19 +33,18 @@ export default function AdminOrdersPage() {
     filterOrders()
   }, [orders, searchTerm, statusFilter, paymentFilter])
 
-  const loadOrders = () => {
+  const loadOrders = async () => {
     try {
-      const allOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      console.log('현재 주문 데이터:', allOrders.map(order => ({
+      setLoading(true)
+      const allOrders = await getAllOrders()
+      console.log('Supabase에서 가져온 주문 데이터:', allOrders.map(order => ({
         id: order.id,
         userId: order.userId,
         userName: order.userName,
         userNickname: order.userNickname,
         shipping: order.shipping
       })))
-      // 최신 주문부터 정렬
-      const sortedOrders = allOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      setOrders(sortedOrders)
+      setOrders(allOrders)
       setLoading(false)
     } catch (error) {
       console.error('주문 로딩 오류:', error)

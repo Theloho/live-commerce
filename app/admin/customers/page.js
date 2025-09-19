@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import { getAllCustomers } from '@/lib/supabaseApi'
 
 export default function AdminCustomersPage() {
   const router = useRouter()

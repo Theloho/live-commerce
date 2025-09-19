@@ -14,6 +14,7 @@ import {
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import { getAllOrders } from '@/lib/supabaseApi'
 
 export default function AdminDepositsPage() {
   const router = useRouter()
@@ -43,9 +44,9 @@ export default function AdminDepositsPage() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [quickSearchResults])
 
-  const loadPendingOrders = () => {
+  const loadPendingOrders = async () => {
     try {
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
+      const orders = await getAllOrders()
       // 계좌이체 결제대기/확인중 주문만 필터링
       const bankTransferOrders = orders.filter(order =>
         order.payment?.method === 'bank_transfer' &&
