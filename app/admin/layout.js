@@ -24,6 +24,16 @@ function AdminLayoutContent({ children }) {
   const pathname = usePathname()
   const { isAdminAuthenticated, loading, adminLogout } = useAdminAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [adminEmail, setAdminEmail] = useState('master@allok.world')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const email = localStorage.getItem('admin_email')
+      if (email) {
+        setAdminEmail(email)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     console.log('🏠 AdminLayout useEffect:', {
@@ -168,13 +178,17 @@ function AdminLayoutContent({ children }) {
                 {menuItems.find(item => item.href === pathname)?.label || '관리자 대시보드'}
               </h2>
             </div>
-            <div className="hidden md:block">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600 hidden sm:inline">
+                {adminEmail}
+              </span>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
               >
                 <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                로그아웃
+                <span className="hidden sm:inline">로그아웃</span>
+                <span className="sm:hidden">나가기</span>
               </button>
             </div>
           </div>
