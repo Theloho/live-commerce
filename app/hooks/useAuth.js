@@ -160,7 +160,10 @@ export default function useAuth() {
         provider: 'kakao',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-          scopes: 'profile_nickname profile_image' // 이메일 제외, 기본 프로필만 요청
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
         }
       })
 
