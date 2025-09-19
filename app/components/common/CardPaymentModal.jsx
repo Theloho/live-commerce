@@ -50,7 +50,8 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
           // 체크아웃 세션 데이터 삭제
           sessionStorage.removeItem('checkoutItem')
 
-          router.replace(`/orders/${order.id}/complete`)
+          const orderId = 'ORDER-' + Date.now()
+          router.replace(`/orders/${orderId}/complete`)
         }, 1000)
       }, 2500)
     } catch (error) {
