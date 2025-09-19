@@ -66,11 +66,12 @@ export default function LoginPage() {
       })
 
       if (error) {
+        // error가 문자열인 경우와 객체인 경우 모두 처리
+        const errorMessage = typeof error === 'string' ? error : (error.message || error.toString())
         console.log('로그인 에러 상세:', error)
-        console.log('error.message:', error.message)
-        console.log('includes Invalid login credentials:', error.message && error.message.includes('Invalid login credentials'))
+        console.log('errorMessage:', errorMessage)
 
-        if (error.message && error.message.includes('Invalid login credentials')) {
+        if (errorMessage && errorMessage.includes('Invalid login credentials')) {
           // 미가입 사용자일 가능성이 높으므로 회원가입 유도 모달 표시
           console.log('로그인 실패 - 회원가입 모달 표시')
           setShowSignupPrompt(true)
