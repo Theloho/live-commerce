@@ -150,11 +150,38 @@ export default function useAuth() {
     }
   }
 
+  const signInWithKakao = async () => {
+    try {
+      setAuthLoading(true)
+
+      console.log('카카오 로그인 시작')
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      })
+
+      if (error) throw error
+
+      console.log('카카오 로그인 요청 성공:', data)
+      return { success: true }
+    } catch (error) {
+      console.error('카카오 로그인 오류:', error)
+      toast.error(error.message || '카카오 로그인에 실패했습니다')
+      return { success: false, error: error.message }
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
   return {
     user,
     loading,
     signUp,
     signInWithPassword,
+    signInWithKakao,
     signOut,
     resetPassword
   }

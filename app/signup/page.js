@@ -10,7 +10,7 @@ import useAuth from '@/app/hooks/useAuth'
 
 export default function SignupPage() {
   const router = useRouter()
-  const { signUp, signInWithPassword } = useAuth()
+  const { signUp, signInWithPassword, signInWithKakao } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -164,6 +164,21 @@ export default function SignupPage() {
     } catch (error) {
       console.error('회원가입 오류:', error)
       toast.error('회원가입 중 오류가 발생했습니다')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleKakaoLogin = async () => {
+    try {
+      setLoading(true)
+      const result = await signInWithKakao()
+      if (!result.success) {
+        console.error('카카오 로그인 실패:', result.error)
+      }
+    } catch (error) {
+      console.error('카카오 로그인 오류:', error)
+      toast.error('카카오 로그인 중 오류가 발생했습니다')
     } finally {
       setLoading(false)
     }
@@ -335,6 +350,25 @@ export default function SignupPage() {
               {loading ? '가입 중...' : '회원가입'}
             </button>
           </form>
+
+          {/* 소셜 로그인 구분선 */}
+          <div className="mt-6 mb-4 flex items-center">
+            <div className="flex-1 border-t border-gray-300"></div>
+            <span className="px-4 text-sm text-gray-500">또는</span>
+            <div className="flex-1 border-t border-gray-300"></div>
+          </div>
+
+          {/* 카카오 로그인 버튼 */}
+          <button
+            onClick={handleKakaoLogin}
+            disabled={loading}
+            className="w-full bg-yellow-400 text-gray-900 py-4 rounded-lg font-semibold hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3C7.03 3 3 6.28 3 10.32c0 2.74 1.89 5.13 4.62 6.37l-1.24 4.56c-.11.4.36.7.67.49l5.24-3.63c.23.02.46.03.71.03 4.97 0 9-3.28 9-7.32S16.97 3 12 3z"/>
+            </svg>
+            {loading ? '처리 중...' : '카카오로 간편 가입'}
+          </button>
 
           {/* 로그인 링크 */}
           <div className="mt-6 text-center">
