@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
+    console.log('Admin 페이지 로드됨 - 세션 체크 없음')
     loadStats()
   }, [])
 

@@ -10,29 +10,42 @@ import {
   ShieldCheckIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
-// import useAuth from '@/hooks/useAuth'
-import { checkAdminAccess, checkMasterAdminCredentials } from '@/lib/adminAuth'
+import { useAdminAuth, AdminAuthProvider } from '@/hooks/useAdminAuth'
 import toast from 'react-hot-toast'
 
-export default function AdminLoginPage() {
+function AdminLoginContent() {
   const router = useRouter()
-  // const { signIn, signInWithKakao, user, loading, isAuthenticated } = useAuth()
+  const { adminLogin, isAdminAuthenticated, loading } = useAdminAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
 
-  const handleEmailLogin = async (e) => {
-    e.preventDefault()
+  const handleEmailLogin = () => {
+    console.log('로그인 버튼 클릭됨')
     setIsLoading(true)
 
-    // 그냥 바로 admin으로 이동
-    localStorage.setItem('admin_session', 'master_admin')
-    localStorage.setItem('admin_email', 'master@allok.world')
-    toast.success('관리자 로그인 성공!')
-    window.location.href = '/admin'
+    // adminLogin Hook 사용
+    if (adminLogin(email, password)) {
+      console.log('관리자 로그인 성공!')
+      toast.success('관리자 로그인 성공!')
+      router.push('/admin')
+    } else if (!email || !password) {
+      toast.error('아이디와 비밀번호를 입력하세요')
+      setIsLoading(false)
+    } else {
+      toast.error('이메일: master@allok.world, 비밀번호: yi01buddy!!')
+      setIsLoading(false)
+    }
   }
+
+  // 이미 로그인된 경우 리다이렉트
+  useEffect(() => {
+    if (!loading && isAdminAuthenticated) {
+      router.push('/admin')
+    }
+  }, [isAdminAuthenticated, loading, router])
 
 
 
@@ -78,7 +91,7 @@ export default function AdminLoginPage() {
           className="bg-white rounded-2xl shadow-xl p-8"
         >
 
-          <form onSubmit={handleEmailLogin} className="space-y-6">
+          <div className="space-y-6">
             {/* Email Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -125,7 +138,8 @@ export default function AdminLoginPage() {
 
             {/* Login Button */}
             <button
-              type="submit"
+              type="button"
+              onClick={handleEmailLogin}
               disabled={isLoading}
               className="w-full bg-red-600 text-white py-4 rounded-xl font-semibold hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -138,7 +152,7 @@ export default function AdminLoginPage() {
                 '관리자 로그인'
               )}
             </button>
-          </form>
+          </div>
 
           {/* Divider */}
           <div className="my-6 flex items-center">
@@ -151,7 +165,7 @@ export default function AdminLoginPage() {
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800 text-center">
-              <span className="font-medium">기본 관리자 계정</span><br />
+              <span className="font-medium">관리자 계정</span><br />
               이메일: master@allok.world<br />
               비밀번호: yi01buddy!!
             </p>
@@ -182,4 +196,12 @@ export default function AdminLoginPage() {
       </div>
     </div>
   )
-}// Deploy trigger Fri Sep 19 20:58:44 KST 2025
+}
+
+export default function AdminLoginPage() {
+  return (
+    <AdminAuthProvider>
+      <AdminLoginContent />
+    </AdminAuthProvider>
+  )
+}

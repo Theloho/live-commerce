@@ -30,9 +30,9 @@ export function AdminAuthProvider({ children }) {
 
   const adminLogin = (username, password) => {
     // 하드코딩된 관리자 계정
-    if (username === 'admin' && password === 'admin123') {
+    if (username === 'master@allok.world' && password === 'yi01buddy!!') {
       const session = {
-        username: 'admin',
+        username: 'master@allok.world',
         timestamp: Date.now()
       }
       localStorage.setItem('admin_session', JSON.stringify(session))
