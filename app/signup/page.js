@@ -104,6 +104,7 @@ export default function SignupPage() {
 
       // Supabase 회원가입
       console.log('Attempting signup with email:', email)
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: formData.password,
@@ -119,8 +120,8 @@ export default function SignupPage() {
           }
         }
       })
+
       console.log('Signup result:', { authData, authError })
-      console.log('Auth error details:', authError)
 
       if (authError) {
         if (authError.message.includes('already registered')) {
