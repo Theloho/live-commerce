@@ -150,33 +150,31 @@ export default function CheckoutPage() {
       console.log('주문 생성 로직 - 추후 Supabase 연동 예정')
       const orderId = 'ORDER-' + Date.now()
 
-      // 일괄결제인 경우 원본 주문들 삭제
+      // TODO: 일괄결제인 경우 Supabase에서 원본 주문들 처리
       if (orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
-        const existingOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-        const updatedOrders = existingOrders.filter(existingOrder =>
-          !orderItem.originalOrderIds.includes(existingOrder.id)
-        )
-        localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
-        console.log('일괄결제 완료, 원본 주문들 삭제됨:', orderItem.originalOrderIds)
-
+        console.log('일괄결제 완료, 원본 주문들:', orderItem.originalOrderIds)
         // 주문 업데이트 이벤트 발생시켜 주문내역 페이지에 알림
         window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'bulkPayment', orderIds: orderItem.originalOrderIds } }))
       }
 
-      navigator.clipboard.writeText('79421940478').then(() => {
+      // 계좌번호 복사 시도
+      try {
+        await navigator.clipboard.writeText('79421940478')
         toast.success('계좌번호가 복사되었습니다')
-        setShowDepositModal(false)
+      } catch (error) {
+        console.log('클립보드 복사 실패, 대체 방법 사용')
+        toast.success('계좌번호: 79421940478')
+      }
 
-        // 체크아웃 세션 데이터 삭제
-        sessionStorage.removeItem('checkoutItem')
+      setShowDepositModal(false)
 
-        // 주문 완료 페이지로 이동
-        setTimeout(() => {
-          router.replace(`/orders/${orderId}/complete`)
-        }, 1500)
-      }).catch(() => {
-        toast.error('복사에 실패했습니다')
-      })
+      // 체크아웃 세션 데이터 삭제
+      sessionStorage.removeItem('checkoutItem')
+
+      // 주문 완료 페이지로 이동
+      setTimeout(() => {
+        router.replace(`/orders/${orderId}/complete`)
+      }, 1500)
     } catch (error) {
       console.error('계좌이체 처리 중 오류:', error)
       toast.error('주문 처리 중 오류가 발생했습니다')
