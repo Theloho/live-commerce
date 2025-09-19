@@ -32,11 +32,21 @@ export default function AdminDashboard() {
 
   // localStorage 세션 체크 (한 번만)
   useEffect(() => {
+    console.log('Admin page - localStorage check effect running')
     if (typeof window !== 'undefined') {
       const adminSession = localStorage.getItem('admin_session')
       console.log('Admin page - checking localStorage session:', adminSession)
-      setHasLocalAdminSession(adminSession === 'master_admin')
-      console.log('Admin page - hasLocalAdminSession set to:', adminSession === 'master_admin')
+      const isAdmin = adminSession === 'master_admin'
+      setHasLocalAdminSession(isAdmin)
+      console.log('Admin page - hasLocalAdminSession set to:', isAdmin)
+
+      // 즉시 localStorage 세션이 있으면 통계 로드
+      if (isAdmin) {
+        console.log('Admin page - localStorage admin detected, loading stats immediately')
+        loadStats()
+      }
+    } else {
+      console.log('Admin page - window is undefined')
     }
   }, [])
 
@@ -180,30 +190,39 @@ export default function AdminDashboard() {
     }
   ]
 
-  if (!hasLocalAdminSession && authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
+  // localStorage 세션이 있으면 모든 인증 체크를 건너뛰고 바로 렌더링
+  if (hasLocalAdminSession) {
+    console.log('Admin page - localStorage session confirmed, rendering admin dashboard')
+    // 바로 admin 대시보드 렌더링으로 이동
+  } else {
+    // localStorage 세션이 없는 경우에만 Supabase 인증 체크
+    if (authLoading) {
+      console.log('Admin page - no localStorage session, auth loading')
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">로딩 중...</p>
+          </div>
         </div>
-      </div>
-    )
-  }
+      )
+    }
 
-  if (!hasLocalAdminSession && !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">로그인이 필요합니다. 잠시 후 로그인 페이지로 이동합니다...</p>
+    if (!isAuthenticated) {
+      console.log('Admin page - no localStorage session, not authenticated, redirecting to login')
+      router.push('/admin/login')
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">로그인이 필요합니다. 잠시 후 로그인 페이지로 이동합니다...</p>
+          </div>
         </div>
-      </div>
-    )
-  }
+      )
+    }
 
-  if (!hasLocalAdminSession) {
     const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
     if (!hasAccess) {
+      console.log('Admin page - no localStorage session, no admin access')
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto p-6">
