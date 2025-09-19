@@ -232,7 +232,7 @@ export default function AdminLoginPage() {
             <p className="text-sm text-blue-800 text-center">
               <span className="font-medium">기본 관리자 계정</span><br />
               이메일: master@allok.world<br />
-              비밀번호: admin123!
+              비밀번호: yi01buddy!!
             </p>
           </div>
 
