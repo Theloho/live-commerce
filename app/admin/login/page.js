@@ -24,10 +24,12 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     // localStorage 세션 체크
-    const adminSession = localStorage.getItem('admin_session')
-    if (adminSession === 'master_admin') {
-      router.push('/admin')
-      return
+    if (typeof window !== 'undefined') {
+      const adminSession = localStorage.getItem('admin_session')
+      if (adminSession === 'master_admin') {
+        router.push('/admin')
+        return
+      }
     }
 
     if (!loading && isAuthenticated && user) {
