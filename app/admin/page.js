@@ -209,11 +209,13 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">
-              {localStorage.getItem('admin_email') || user?.email || user?.user_metadata?.email}
+              {typeof window !== 'undefined' && localStorage.getItem('admin_email')
+                ? localStorage.getItem('admin_email')
+                : user?.email || user?.user_metadata?.email || 'master@allok.world'}
             </span>
             <button
               onClick={() => {
-                if (window.confirm('로그아웃하시겠습니까?')) {
+                if (typeof window !== 'undefined' && window.confirm('로그아웃하시겠습니까?')) {
                   // localStorage 세션 삭제
                   localStorage.removeItem('admin_session')
                   localStorage.removeItem('admin_email')
