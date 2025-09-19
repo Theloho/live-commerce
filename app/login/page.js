@@ -64,7 +64,7 @@ export default function LoginPage() {
       })
 
       if (error) {
-        if (error.message.includes('Invalid login credentials')) {
+        if (error.message && error.message.includes('Invalid login credentials')) {
           toast.error('휴대폰 번호 또는 비밀번호가 올바르지 않습니다')
         } else {
           toast.error('로그인 중 오류가 발생했습니다')
