@@ -329,7 +329,7 @@ export default function SignupPage() {
               {/* 닉네임 */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  닉네임
+                  닉네임 <span className="text-xs text-gray-500">(틱톡 또는 유튜브)</span>
                 </label>
                 <input
                   type="text"
@@ -337,36 +337,6 @@ export default function SignupPage() {
                   value={formData.nickname}
                   onChange={handleInputChange}
                   placeholder="닉네임 (미입력시 이름 사용)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-                />
-              </div>
-
-              {/* 틱톡 아이디 */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  틱톡 아이디
-                </label>
-                <input
-                  type="text"
-                  name="tiktokId"
-                  value={formData.tiktokId}
-                  onChange={handleInputChange}
-                  placeholder="@username"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-                />
-              </div>
-
-              {/* 유튜브 아이디 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  유튜브 아이디
-                </label>
-                <input
-                  type="text"
-                  name="youtubeId"
-                  value={formData.youtubeId}
-                  onChange={handleInputChange}
-                  placeholder="채널명 또는 @username"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
                 />
               </div>
