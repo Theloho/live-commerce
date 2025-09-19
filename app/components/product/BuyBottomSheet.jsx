@@ -116,15 +116,21 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   }
 
   const handleBuyNow = async () => {
+    console.log('🛒 구매하기 버튼 클릭됨')
+    console.log('🔐 인증 상태:', isAuthenticated)
+
     if (!isAuthenticated) {
+      console.log('❌ 로그인 필요')
       toast.error('로그인이 필요합니다')
       router.push('/login')
       onClose()
       return
     }
 
+    console.log('✅ 인증 완료, 장바구니 추가 시작')
     // 먼저 장바구니에 추가하고 선택 모달 표시
-    handleAddToCart()
+    await handleAddToCart()
+    console.log('🎯 선택 모달 표시')
     setShowChoiceModal(true)
   }
 
