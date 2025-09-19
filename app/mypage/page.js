@@ -63,7 +63,7 @@ export default function MyPage() {
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .single()
+          .maybeSingle() // single() 대신 maybeSingle() 사용 (없어도 오류 안남)
 
         if (error) {
           console.error('프로필 조회 오류:', error)
@@ -71,8 +71,32 @@ export default function MyPage() {
           return
         }
 
-        setUserProfile(data)
-        setEditValues(data)
+        // 프로필이 없으면 기본값 설정
+        if (!data) {
+          const defaultProfile = {
+            id: user.id,
+            name: user.user_metadata?.name || '',
+            phone: user.user_metadata?.phone || '',
+            address: user.user_metadata?.address || '',
+            detail_address: user.user_metadata?.detail_address || '',
+            nickname: user.user_metadata?.nickname || user.user_metadata?.name || '',
+            tiktok_id: '',
+            youtube_id: ''
+          }
+
+          // 프로필이 없는 경우 추가 정보 입력 페이지로 리다이렉트
+          if (!defaultProfile.phone || !defaultProfile.address) {
+            toast.error('프로필 정보를 완성해주세요')
+            router.push('/auth/complete-profile')
+            return
+          }
+
+          setUserProfile(defaultProfile)
+          setEditValues(defaultProfile)
+        } else {
+          setUserProfile(data)
+          setEditValues(data)
+        }
       }
     } catch (error) {
       console.error('프로필 조회 실패:', error)
