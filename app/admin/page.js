@@ -29,21 +29,7 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
-    // localStorage 세션 체크만
-    if (typeof window !== 'undefined') {
-      const adminSession = localStorage.getItem('admin_session')
-      console.log('Admin session check:', adminSession)
-
-      if (adminSession === 'master_admin') {
-        console.log('Admin session found, loading stats')
-        loadStats()
-        return
-      } else {
-        console.log('No admin session, redirecting to login')
-        router.push('/admin/login')
-        return
-      }
-    }
+    loadStats()
   }, [])
 
   const loadStats = useCallback(() => {
