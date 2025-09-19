@@ -20,7 +20,7 @@ import toast from 'react-hot-toast'
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading, isAuthenticated } = useAuth()
-  const [hasLocalAdminSession, setHasLocalAdminSession] = useState(false)
+  const [hasLocalAdminSession, setHasLocalAdminSession] = useState(null) // null로 초기화
   const [stats, setStats] = useState({
     todayOrders: 0,
     todaySales: 0,
@@ -190,19 +190,32 @@ export default function AdminDashboard() {
     }
   ]
 
-  // localStorage 세션이 있으면 모든 인증 체크를 건너뛰고 바로 렌더링
-  if (hasLocalAdminSession) {
+  // 초기 로딩 중
+  if (hasLocalAdminSession === null) {
+    console.log('Admin page - initial loading, checking localStorage')
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">localStorage 세션 확인 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // localStorage 세션이 있으면 바로 admin 대시보드 렌더링
+  if (hasLocalAdminSession === true) {
     console.log('Admin page - localStorage session confirmed, rendering admin dashboard')
     // 바로 admin 대시보드 렌더링으로 이동
   } else {
-    // localStorage 세션이 없는 경우에만 Supabase 인증 체크
+    // localStorage 세션이 없는 경우만 Supabase 인증 체크
     if (authLoading) {
       console.log('Admin page - no localStorage session, auth loading')
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">로딩 중...</p>
+            <p className="text-gray-600">Supabase 인증 확인 중...</p>
           </div>
         </div>
       )
@@ -218,7 +231,7 @@ export default function AdminDashboard() {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <p className="text-gray-600">로그인이 필요합니다. 3초 후 로그인 페이지로 이동합니다...</p>
-            <p className="text-sm text-red-600 mt-2">localStorage 세션 체크 결과: hasLocalAdminSession = {hasLocalAdminSession.toString()}</p>
+            <p className="text-sm text-red-600 mt-2">localStorage 세션 체크 결과: hasLocalAdminSession = {hasLocalAdminSession?.toString()}</p>
           </div>
         </div>
       )
