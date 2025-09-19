@@ -25,8 +25,21 @@ export default function AuthCallback() {
 
           if (data.session) {
             console.log('OAuth 로그인 성공 (Implicit):', data.session.user)
-            toast.success('카카오 로그인 성공!')
-            router.push('/')
+
+            // 프로필 정보 확인
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.session.user.id)
+              .single()
+
+            if (!profile || !profile.phone || !profile.address) {
+              console.log('추가 정보 입력 필요')
+              router.push('/auth/complete-profile')
+            } else {
+              toast.success('카카오 로그인 성공!')
+              router.push('/')
+            }
             return
           }
         }
@@ -46,8 +59,21 @@ export default function AuthCallback() {
 
           if (data.session) {
             console.log('OAuth 로그인 성공 (Code):', data.session.user)
-            toast.success('카카오 로그인 성공!')
-            router.push('/')
+
+            // 프로필 정보 확인
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.session.user.id)
+              .single()
+
+            if (!profile || !profile.phone || !profile.address) {
+              console.log('추가 정보 입력 필요')
+              router.push('/auth/complete-profile')
+            } else {
+              toast.success('카카오 로그인 성공!')
+              router.push('/')
+            }
             return
           }
         }
@@ -66,8 +92,22 @@ export default function AuthCallback() {
         const { data, error: sessionError } = await supabase.auth.getSession()
         if (data.session) {
           console.log('기존 세션 확인:', data.session.user)
-          toast.success('카카오 로그인 성공!')
-          router.push('/')
+
+          // 프로필 정보 확인
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.session.user.id)
+            .single()
+
+          // 필수 정보가 없으면 추가 정보 입력 페이지로
+          if (!profile || !profile.phone || !profile.address) {
+            console.log('추가 정보 입력 필요')
+            router.push('/auth/complete-profile')
+          } else {
+            toast.success('카카오 로그인 성공!')
+            router.push('/')
+          }
         } else {
           console.log('세션이 없음 - 로그인 페이지로 이동')
           router.push('/login')
