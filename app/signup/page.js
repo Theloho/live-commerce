@@ -150,10 +150,35 @@ export default function SignupPage() {
 
       toast.success('회원가입이 완료되었습니다!')
 
-      // Supabase Auth가 자동으로 로그인 처리하므로 단순히 홈페이지로 이동
-      setTimeout(() => {
-        router.push('/')
-      }, 1000)
+      // 회원가입 성공 후 명시적으로 로그인 처리
+      console.log('회원가입 성공, 자동 로그인 시도 중...')
+
+      try {
+        const loginResult = await signInWithPassword({
+          email: email,
+          password: formData.password
+        })
+
+        if (loginResult.success) {
+          console.log('자동 로그인 성공')
+          toast.success('로그인되었습니다!')
+          setTimeout(() => {
+            router.push('/')
+          }, 1000)
+        } else {
+          console.log('자동 로그인 실패, 로그인 페이지로 이동')
+          toast.info('회원가입 완료! 로그인해주세요.')
+          setTimeout(() => {
+            router.push('/login')
+          }, 1000)
+        }
+      } catch (error) {
+        console.error('자동 로그인 오류:', error)
+        toast.info('회원가입 완료! 로그인해주세요.')
+        setTimeout(() => {
+          router.push('/login')
+        }, 1000)
+      }
 
     } catch (error) {
       console.error('회원가입 오류:', error)
