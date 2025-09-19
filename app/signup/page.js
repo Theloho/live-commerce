@@ -169,13 +169,28 @@ export default function SignupPage() {
         }
       }
 
-      // mockAuth 시스템에서 이미 사용자 생성 및 세션 설정을 처리함
-      // 중복 생성을 방지하기 위해 수동 생성 코드 제거
+      // 회원가입 성공 후 Mock Auth에 사용자 등록
+      const mockUser = {
+        id: authData.user.id,
+        email: email,
+        name: formData.name,
+        phone: formData.phone,
+        nickname: formData.nickname || formData.name,
+        address: formData.address,
+        detailAddress: formData.detailAddress,
+        createdAt: new Date().toISOString()
+      }
+
+      // localStorage에 사용자 정보 저장 (Mock Auth용)
+      localStorage.setItem('mock_current_user', JSON.stringify(mockUser))
+      console.log('Mock Auth 사용자 등록:', mockUser)
 
       toast.success('회원가입이 완료되었습니다!')
 
-      // window reload를 통해 전체 앱 상태 새로고침
-      window.location.href = '/'
+      // 홈페이지로 이동 (새로고침으로 인증 상태 갱신)
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1000)
 
     } catch (error) {
       console.error('회원가입 오류:', error)
