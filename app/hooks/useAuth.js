@@ -66,10 +66,12 @@ export default function useAuth() {
         email,
         password,
         options: {
+          emailRedirectTo: undefined, // 이메일 리다이렉트 비활성화
           data: {
             name,
             phone,
-            nickname: nickname || name
+            nickname: nickname || name,
+            email_confirm: true // 강제 이메일 확인
           }
         }
       })
