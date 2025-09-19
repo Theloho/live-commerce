@@ -46,7 +46,7 @@ export default function AdminProductsPage() {
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast.error('관리자 로그인이 필요합니다')
-      router.push('/login')
+      router.push('/admin/login')
       return
     }
 
@@ -556,7 +556,7 @@ export default function AdminProductsPage() {
             <button
               onClick={() => {
                 if (window.confirm('로그아웃하시겠습니까?')) {
-                  router.push('/login')
+                  router.push('/admin/login')
                 }
               }}
               className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
