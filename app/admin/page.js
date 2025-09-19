@@ -209,11 +209,14 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">
-              {user?.email || user?.user_metadata?.email}
+              {localStorage.getItem('admin_email') || user?.email || user?.user_metadata?.email}
             </span>
             <button
               onClick={() => {
                 if (window.confirm('로그아웃하시겠습니까?')) {
+                  // localStorage 세션 삭제
+                  localStorage.removeItem('admin_session')
+                  localStorage.removeItem('admin_email')
                   router.push('/admin/login')
                 }
               }}

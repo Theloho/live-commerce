@@ -23,6 +23,13 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
+    // localStorage 세션 체크
+    const adminSession = localStorage.getItem('admin_session')
+    if (adminSession === 'master_admin') {
+      router.push('/admin')
+      return
+    }
+
     if (!loading && isAuthenticated && user) {
       const { hasAccess } = checkAdminAccess(user, isAuthenticated)
       if (hasAccess) {
@@ -45,6 +52,10 @@ export default function AdminLoginPage() {
     try {
       // 먼저 환경변수 기반 관리자 계정 체크
       if (checkMasterAdminCredentials(email, password)) {
+        // localStorage에 관리자 세션 저장
+        localStorage.setItem('admin_session', 'master_admin')
+        localStorage.setItem('admin_email', email)
+
         toast.success('마스터 관리자 로그인 성공!')
         router.push('/admin')
         return
