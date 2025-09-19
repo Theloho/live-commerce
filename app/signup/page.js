@@ -6,10 +6,11 @@ import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/app/hooks/useAuth'
 
 export default function SignupPage() {
   const router = useRouter()
+  const { signUp } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -102,55 +103,34 @@ export default function SignupPage() {
       const phone = formData.phone.replace(/[^\d]/g, '')
       const email = `user${phone}@allok.app`
 
-      // Supabase 회원가입
-      console.log('Attempting signup with email:', email)
-      console.log('Supabase client:', supabase)
-      console.log('Supabase auth:', supabase.auth)
+      // useAuth 훅을 통한 Supabase 회원가입
+      console.log('Attempting signup with:', { email, name: formData.name, phone: formData.phone })
 
-      // 테스트: 직접 API 호출
-      const signupPayload = {
+      const result = await signUp({
         email: email,
         password: formData.password,
-        options: {
-          data: {
-            name: formData.name,
-            phone: formData.phone,
-            nickname: formData.nickname || formData.name,
-            tiktok_id: formData.tiktokId,
-            youtube_id: formData.youtubeId,
-            address: formData.address,
-            detail_address: formData.detailAddress
-          }
-        }
-      }
+        name: formData.name,
+        phone: formData.phone,
+        nickname: formData.nickname || formData.name
+      })
 
-      console.log('Signup payload:', signupPayload)
-
-      const { data: authData, error: authError } = await supabase.auth.signUp(signupPayload)
-
-      console.log('Signup result:', { authData, authError })
-
-      if (authError) {
-        if (authError.message.includes('already registered')) {
+      if (!result.success) {
+        if (result.error && result.error.includes('already registered')) {
           toast.error('이미 가입된 휴대폰 번호입니다')
-          // 2초 후 로그인 페이지로 이동
           setTimeout(() => {
-            toast.success('로그인 페이지로 이동합니다')
             router.push('/login')
           }, 2000)
-        } else {
-          toast.error('회원가입 중 오류가 발생했습니다')
         }
         return
       }
 
-      // 프로필 정보 저장 시도 (실패해도 회원가입은 완료)
-      if (authData.user) {
+      // 회원가입 성공 시 프로필 정보 저장 시도 (선택적)
+      if (result.user) {
         try {
           const { error: profileError } = await supabase
             .from('profiles')
             .upsert({
-              id: authData.user.id,
+              id: result.user.id,
               name: formData.name,
               phone: formData.phone,
               nickname: formData.nickname || formData.name
@@ -160,7 +140,6 @@ export default function SignupPage() {
 
           if (profileError) {
             console.warn('프로필 생성 실패 (RLS 정책):', profileError)
-            // 프로필 생성 실패해도 회원가입은 성공으로 처리
           } else {
             console.log('프로필 생성 성공')
           }
@@ -169,27 +148,11 @@ export default function SignupPage() {
         }
       }
 
-      // 회원가입 성공 후 Mock Auth에 사용자 등록
-      const mockUser = {
-        id: authData.user.id,
-        email: email,
-        name: formData.name,
-        phone: formData.phone,
-        nickname: formData.nickname || formData.name,
-        address: formData.address,
-        detailAddress: formData.detailAddress,
-        createdAt: new Date().toISOString()
-      }
-
-      // localStorage에 사용자 정보 저장 (Mock Auth용)
-      localStorage.setItem('mock_current_user', JSON.stringify(mockUser))
-      console.log('Mock Auth 사용자 등록:', mockUser)
-
       toast.success('회원가입이 완료되었습니다!')
 
-      // 홈페이지로 이동 (새로고침으로 인증 상태 갱신)
+      // Supabase Auth가 자동으로 로그인 처리하므로 단순히 홈페이지로 이동
       setTimeout(() => {
-        window.location.href = '/'
+        router.push('/')
       }, 1000)
 
     } catch (error) {
