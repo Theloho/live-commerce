@@ -74,7 +74,9 @@ export default function LoginPage() {
         if (errorMessage && errorMessage.includes('Invalid login credentials')) {
           // 미가입 사용자일 가능성이 높으므로 회원가입 유도 모달 표시
           console.log('로그인 실패 - 회원가입 모달 표시')
+          console.log('현재 showSignupPrompt 상태:', showSignupPrompt)
           setShowSignupPrompt(true)
+          console.log('setShowSignupPrompt(true) 호출 완료')
         } else {
           toast.error('로그인 중 오류가 발생했습니다')
         }
@@ -188,7 +190,10 @@ export default function LoginPage() {
       {/* 회원가입 유도 모달 */}
       <SignupPromptModal
         isOpen={showSignupPrompt}
-        onClose={() => setShowSignupPrompt(false)}
+        onClose={() => {
+          console.log('모달 닫기 요청됨')
+          setShowSignupPrompt(false)
+        }}
         phone={formData.phone}
       />
     </div>
