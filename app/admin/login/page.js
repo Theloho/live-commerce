@@ -23,12 +23,12 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    // localStorage 세션 체크 - 리다이렉트 일시 중단
+    // localStorage 세션 체크
     if (typeof window !== 'undefined') {
       const adminSession = localStorage.getItem('admin_session')
       if (adminSession === 'master_admin') {
-        console.log('Found localStorage session but not redirecting yet')
-        // router.push('/admin')
+        console.log('Redirecting to admin from localStorage session')
+        router.push('/admin')
         return
       }
     }
@@ -61,8 +61,7 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_email', email)
 
         toast.success('마스터 관리자 로그인 성공!')
-        console.log('Master admin login success, redirecting to admin')
-        window.location.href = '/admin' // router.push 대신 window.location.href 사용
+        router.push('/admin')
         return
       }
 
