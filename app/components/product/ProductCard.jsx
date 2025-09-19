@@ -227,7 +227,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
             {/* Quick Actions */}
             <div className="flex gap-2 mt-3">
               <button
-                onClick={currentInventory > 0 ? handleDirectPurchase : undefined}
+                onClick={currentInventory > 0 ? handleBuyClick : undefined}
                 disabled={currentInventory <= 0}
                 className={`w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                   currentInventory <= 0
