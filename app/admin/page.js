@@ -34,7 +34,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const adminSession = localStorage.getItem('admin_session')
+      console.log('Admin page - checking localStorage session:', adminSession)
       setHasLocalAdminSession(adminSession === 'master_admin')
+      console.log('Admin page - hasLocalAdminSession set to:', adminSession === 'master_admin')
     }
   }, [])
 
