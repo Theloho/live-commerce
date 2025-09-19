@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
-import useAuth from '@/hooks/useAuth'
-import { checkAdminAccess } from '@/lib/adminAuth'
+import { useAdminAuth } from '@/hooks/useAdminAuth'
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -23,7 +22,7 @@ import toast from 'react-hot-toast'
 
 export default function AdminProductsPage() {
   const router = useRouter()
-  const { user, loading: authLoading, isAuthenticated } = useAuth()
+  const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
   const [products, setProducts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
@@ -44,23 +43,16 @@ export default function AdminProductsPage() {
   const cameraInputRef = useRef(null)
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && !isAdminAuthenticated) {
       toast.error('관리자 로그인이 필요합니다')
       router.push('/admin/login')
       return
     }
 
-    if (user) {
-      const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
-      if (!hasAccess) {
-        toast.error(message)
-        router.push('/')
-        return
-      }
-
+    if (!authLoading && isAdminAuthenticated) {
       loadProducts()
     }
-  }, [user, authLoading, isAuthenticated, router])
+  }, [authLoading, isAdminAuthenticated, router])
 
   const loadProducts = async () => {
     try {
