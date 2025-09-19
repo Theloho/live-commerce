@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import useAuth from '@/hooks/useAuth'
-import { checkAdminAccess } from '@/lib/adminAuth'
+// import useAuth from '@/hooks/useAuth'
+// import { checkAdminAccess } from '@/lib/adminAuth'
 import {
   CurrencyDollarIcon,
   ShoppingBagIcon,
@@ -19,7 +19,6 @@ import toast from 'react-hot-toast'
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const { user, loading: authLoading, isAuthenticated } = useAuth()
   const [stats, setStats] = useState({
     todayOrders: 0,
     todaySales: 0,
@@ -30,28 +29,20 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
-    // localStorage 세션 체크 먼저
+    // localStorage 세션 체크만
     if (typeof window !== 'undefined') {
       const adminSession = localStorage.getItem('admin_session')
+      console.log('Admin session check:', adminSession)
+
       if (adminSession === 'master_admin') {
+        console.log('Admin session found, loading stats')
         loadStats()
         return
-      }
-    }
-
-    // Supabase 인증 체크
-    if (!authLoading && !isAuthenticated) {
-      router.push('/admin/login')
-      return
-    }
-
-    if (user) {
-      const { hasAccess } = checkAdminAccess(user, isAuthenticated)
-      if (!hasAccess) {
-        router.push('/')
+      } else {
+        console.log('No admin session, redirecting to login')
+        router.push('/admin/login')
         return
       }
-      loadStats()
     }
   }, [])
 
@@ -156,50 +147,7 @@ export default function AdminDashboard() {
     }
   ]
 
-  // localStorage 세션이 있으면 로딩/인증 체크 건너뛰기
-  const hasLocalAdminSession = typeof window !== 'undefined' && localStorage.getItem('admin_session') === 'master_admin'
-
-  if (!hasLocalAdminSession && authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!hasLocalAdminSession && !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">로그인이 필요합니다. 잠시 후 로그인 페이지로 이동합니다...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!hasLocalAdminSession) {
-    const { hasAccess, message } = checkAdminAccess(user, isAuthenticated)
-    if (!hasAccess) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto p-6">
-            <div className="text-6xl mb-4">🚫</div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">접근 권한 없음</h1>
-            <p className="text-gray-600 mb-4">{message}</p>
-            <button
-              onClick={() => router.push('/')}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              홈으로 돌아가기
-            </button>
-          </div>
-        </div>
-      )
-    }
-  }
+  // 조건부 렌더링 제거 - localStorage 체크는 useEffect에서만
 
   return (
     <div className="space-y-6">
@@ -223,7 +171,7 @@ export default function AdminDashboard() {
             <span className="text-sm text-gray-600">
               {typeof window !== 'undefined' && localStorage.getItem('admin_email')
                 ? localStorage.getItem('admin_email')
-                : user?.email || user?.user_metadata?.email || 'master@allok.world'}
+                : 'master@allok.world'}
             </span>
             <button
               onClick={() => {
