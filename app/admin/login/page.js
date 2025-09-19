@@ -61,7 +61,8 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_email', email)
 
         toast.success('마스터 관리자 로그인 성공!')
-        router.push('/admin')
+        console.log('Master admin login success, redirecting to admin')
+        window.location.href = '/admin' // router.push 대신 window.location.href 사용
         return
       }
 
