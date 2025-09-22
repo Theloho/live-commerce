@@ -31,8 +31,8 @@ export async function POST(request) {
         id: crypto.randomUUID(),
         kakao_id: kakao_id,
         email: email,
-        name: name,
-        nickname: nickname,
+        name: name, // 초기에는 카카오 닉네임을 이름으로 사용
+        nickname: nickname, // 카카오 닉네임은 별도 필드로 저장
         avatar_url: avatar_url,
         provider: provider,
         created_at: new Date().toISOString(),

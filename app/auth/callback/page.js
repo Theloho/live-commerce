@@ -132,8 +132,8 @@ export default function AuthCallback() {
                 body: JSON.stringify({
                   kakao_id: kakaoUserId,
                   email: email,
-                  name: userData.kakao_account.profile.nickname,
-                  nickname: userData.kakao_account.profile.nickname,
+                  name: userData.kakao_account.profile.nickname, // 초기에는 카카오 닉네임을 이름으로 사용
+                  nickname: userData.kakao_account.profile.nickname, // 카카오 닉네임을 별도 필드로 저장
                   avatar_url: userData.kakao_account.profile.profile_image_url,
                   provider: 'kakao'
                 })
@@ -155,9 +155,8 @@ export default function AuthCallback() {
                 },
                 body: JSON.stringify({
                   kakao_id: kakaoUserId,
-                  name: userData.kakao_account.profile.nickname,
-                  nickname: userData.kakao_account.profile.nickname,
                   avatar_url: userData.kakao_account.profile.profile_image_url
+                  // name과 nickname은 사용자가 수정했을 수 있으므로 업데이트하지 않음
                 })
               })
 

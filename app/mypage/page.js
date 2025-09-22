@@ -208,29 +208,86 @@ export default function MyPage() {
 
   const handleSave = async (field) => {
     try {
-      if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+      const currentUser = userSession || user
+
+      // 카카오 사용자인 경우 전용 처리
+      if (currentUser.provider === 'kakao') {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+
+        let updateData = {}
+
+        if (field === 'address') {
+          updateData = {
+            address: editValues.address,
+            detail_address: editValues.detail_address,
+            updated_at: new Date().toISOString()
+          }
+        } else {
+          updateData = {
+            [field]: editValues[field],
+            updated_at: new Date().toISOString()
+          }
+        }
+
+        console.log('카카오 사용자 프로필 업데이트:', { field, updateData })
+
+        const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(updateData)
+        })
+
+        if (!response.ok) {
+          const errorData = await response.text()
+          throw new Error(`프로필 업데이트 실패: ${response.status} - ${errorData}`)
+        }
+
+        const updatedProfile = await response.json()
+        console.log('카카오 사용자 프로필 업데이트 성공:', updatedProfile[0])
+
+        // sessionStorage 업데이트
+        const updatedUser = {
+          ...currentUser,
+          ...(field === 'address' ? {
+            address: editValues.address,
+            detail_address: editValues.detail_address
+          } : {
+            [field]: editValues[field]
+          })
+        }
+        sessionStorage.setItem('user', JSON.stringify(updatedUser))
+        setUserSession(updatedUser)
+
+        toast.success('정보가 수정되었습니다')
+      } else if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
         // Mock 모드에서는 localStorage의 사용자 정보 업데이트
-        const currentUser = JSON.parse(localStorage.getItem('mock_current_user'))
-        if (currentUser) {
+        const mockUser = JSON.parse(localStorage.getItem('mock_current_user'))
+        if (mockUser) {
           // combined_address 타입인 경우 주소와 상세주소 모두 업데이트
           if (field === 'address') {
-            currentUser.address = editValues.address
-            currentUser.detail_address = editValues.detail_address
+            mockUser.address = editValues.address
+            mockUser.detail_address = editValues.detail_address
           } else {
             // tiktok_id, youtube_id는 camelCase로 변환
             const fieldName = field === 'tiktok_id' ? 'tiktokId' :
                            field === 'youtube_id' ? 'youtubeId' : field
-            currentUser[fieldName] = editValues[field]
+            mockUser[fieldName] = editValues[field]
           }
 
           // localStorage에 저장
-          localStorage.setItem('mock_current_user', JSON.stringify(currentUser))
+          localStorage.setItem('mock_current_user', JSON.stringify(mockUser))
 
           // users 배열도 업데이트
           const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-          const userIndex = users.findIndex(u => u.id === currentUser.id)
+          const userIndex = users.findIndex(u => u.id === mockUser.id)
           if (userIndex !== -1) {
-            users[userIndex] = currentUser
+            users[userIndex] = mockUser
             localStorage.setItem('mock_users', JSON.stringify(users))
           }
         }
@@ -276,9 +333,31 @@ export default function MyPage() {
   const handleLogout = async () => {
     const confirmed = window.confirm('로그아웃하시겠습니까?')
     if (confirmed) {
-      await signOut()
-      toast.success('로그아웃되었습니다')
-      router.push('/')
+      try {
+        console.log('마이페이지에서 로그아웃 시작')
+
+        // sessionStorage 정리
+        sessionStorage.removeItem('user')
+        setUserSession(null)
+        setUserProfile(null)
+
+        // useAuth의 signOut 호출
+        const result = await signOut()
+
+        if (result && result.success) {
+          console.log('마이페이지에서 로그아웃 성공')
+          // 즉시 홈으로 이동
+          router.push('/')
+        } else {
+          console.error('마이페이지에서 로그아웃 실패:', result?.error)
+          // 실패해도 홈으로 이동 (클라이언트 상태는 이미 정리됨)
+          router.push('/')
+        }
+      } catch (error) {
+        console.error('마이페이지 로그아웃 처리 오류:', error)
+        // 오류가 발생해도 홈으로 이동
+        router.push('/')
+      }
     }
   }
 

@@ -28,8 +28,6 @@ export async function POST(request) {
         'Prefer': 'return=representation'
       },
       body: JSON.stringify({
-        name: name,
-        nickname: nickname,
         avatar_url: avatar_url,
         updated_at: new Date().toISOString()
       })
