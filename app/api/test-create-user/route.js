@@ -32,6 +32,7 @@ export async function GET() {
         'Prefer': 'return=representation'
       },
       body: JSON.stringify({
+        id: crypto.randomUUID(),
         kakao_id: testUserData.kakao_id,
         email: testUserData.email,
         name: testUserData.name,

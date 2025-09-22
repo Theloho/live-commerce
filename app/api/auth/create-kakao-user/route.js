@@ -28,6 +28,7 @@ export async function POST(request) {
         'Prefer': 'return=representation'
       },
       body: JSON.stringify({
+        id: crypto.randomUUID(),
         kakao_id: kakao_id,
         email: email,
         name: name,
