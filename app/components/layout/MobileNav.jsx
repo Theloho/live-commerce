@@ -51,12 +51,19 @@ export default function MobileNav() {
       console.log('네비게이션에서 프로필 완성 이벤트 수신:', userProfile)
     }
 
+    const handleLogout = () => {
+      setUserSession(null)
+      console.log('네비게이션에서 로그아웃 이벤트 수신')
+    }
+
     window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
     window.addEventListener('profileCompleted', handleProfileCompleted)
+    window.addEventListener('userLoggedOut', handleLogout)
 
     return () => {
       window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
       window.removeEventListener('profileCompleted', handleProfileCompleted)
+      window.removeEventListener('userLoggedOut', handleLogout)
     }
   }, [])
 

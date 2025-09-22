@@ -184,11 +184,19 @@ export default function useAuth() {
     try {
       setAuthLoading(true)
 
+      console.log('로그아웃 시작')
+
       // 세션 스토리지에서 사용자 정보 삭제
       sessionStorage.removeItem('user')
+      console.log('sessionStorage 사용자 정보 삭제 완료')
 
       // 사용자 상태 초기화
       clearUser()
+      console.log('사용자 상태 초기화 완료')
+
+      // 로그아웃 이벤트 발생 (다른 컴포넌트들이 감지할 수 있도록)
+      window.dispatchEvent(new CustomEvent('userLoggedOut'))
+      console.log('로그아웃 이벤트 발생 완료')
 
       toast.success('로그아웃되었습니다')
       return { success: true }

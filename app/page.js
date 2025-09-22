@@ -57,12 +57,19 @@ export default function Home() {
       console.log('홈페이지에서 프로필 완성 이벤트 수신:', userProfile)
     }
 
+    const handleLogout = () => {
+      setUserSession(null)
+      console.log('홈페이지에서 로그아웃 이벤트 수신')
+    }
+
     window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
     window.addEventListener('profileCompleted', handleProfileCompleted)
+    window.addEventListener('userLoggedOut', handleLogout)
 
     return () => {
       window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
       window.removeEventListener('profileCompleted', handleProfileCompleted)
+      window.removeEventListener('userLoggedOut', handleLogout)
     }
   }, [])
 
