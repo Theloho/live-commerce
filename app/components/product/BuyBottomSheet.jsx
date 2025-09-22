@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { MinusIcon, PlusIcon, HeartIcon } from '@heroicons/react/24/outline'
@@ -18,8 +18,52 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const [selectedOptions, setSelectedOptions] = useState({})
   const [isLiked, setIsLiked] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
+  const [userSession, setUserSession] = useState(null)
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
+
+  // 직접 세션 확인 (카카오 로그인 지원)
+  useEffect(() => {
+    const checkUserSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          setUserSession(userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('BuyBottomSheet 세션 확인 오류:', error)
+        setUserSession(null)
+      }
+    }
+
+    checkUserSession()
+
+    // 카카오 로그인 이벤트 리스너
+    const handleKakaoLogin = (event) => {
+      setUserSession(event.detail)
+    }
+
+    const handleProfileCompleted = (event) => {
+      setUserSession(event.detail)
+    }
+
+    const handleLogout = () => {
+      setUserSession(null)
+    }
+
+    window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
+    window.addEventListener('profileCompleted', handleProfileCompleted)
+    window.addEventListener('userLoggedOut', handleLogout)
+
+    return () => {
+      window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
+      window.removeEventListener('profileCompleted', handleProfileCompleted)
+      window.removeEventListener('userLoggedOut', handleLogout)
+    }
+  }, [])
 
   if (!product) return null
 
@@ -65,7 +109,10 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   }
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) {
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
+
+    if (!isUserLoggedIn) {
       toast.error('로그인이 필요합니다')
       router.push('/login')
       onClose()
@@ -74,12 +121,12 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
     console.log('BuyBottomSheet 장바구니 담기 클릭됨') // 디버깅
 
-    // 사용자 정보 확인 - 기본값으로 처리
+    // 사용자 정보 확인
     const userProfile = {
-      name: '사용자', // user 정보가 없으므로 기본값 사용
-      phone: '010-0000-0000',
-      address: '기본주소',
-      detail_address: ''
+      name: currentUser?.name || '사용자',
+      phone: currentUser?.phone || '010-0000-0000',
+      address: currentUser?.address || '기본주소',
+      detail_address: currentUser?.detail_address || ''
     }
 
     const cartItem = {
@@ -113,10 +160,13 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   }
 
   const handleBuyNow = async () => {
-    console.log('🛒 구매하기 버튼 클릭됨')
-    console.log('🔐 인증 상태:', isAuthenticated)
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
 
-    if (!isAuthenticated) {
+    console.log('🛒 구매하기 버튼 클릭됨')
+    console.log('🔐 인증 상태:', isUserLoggedIn)
+
+    if (!isUserLoggedIn) {
       console.log('❌ 로그인 필요')
       toast.error('로그인이 필요합니다')
       router.push('/login')

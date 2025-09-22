@@ -19,6 +19,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const [showBuySheet, setShowBuySheet] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
   const [currentInventory, setCurrentInventory] = useState(product.inventory || product.inventory_quantity || 0)
+  const [userSession, setUserSession] = useState(null)
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
@@ -26,6 +27,49 @@ export default function ProductCard({ product, variant = 'default', priority = f
   useEffect(() => {
     setCurrentInventory(product.inventory || product.inventory_quantity || 0)
   }, [product.inventory, product.inventory_quantity])
+
+  // 직접 세션 확인 (카카오 로그인 지원)
+  useEffect(() => {
+    const checkUserSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          setUserSession(userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('ProductCard 세션 확인 오류:', error)
+        setUserSession(null)
+      }
+    }
+
+    checkUserSession()
+
+    // 카카오 로그인 이벤트 리스너
+    const handleKakaoLogin = (event) => {
+      setUserSession(event.detail)
+    }
+
+    const handleProfileCompleted = (event) => {
+      setUserSession(event.detail)
+    }
+
+    const handleLogout = () => {
+      setUserSession(null)
+    }
+
+    window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
+    window.addEventListener('profileCompleted', handleProfileCompleted)
+    window.addEventListener('userLoggedOut', handleLogout)
+
+    return () => {
+      window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
+      window.removeEventListener('profileCompleted', handleProfileCompleted)
+      window.removeEventListener('userLoggedOut', handleLogout)
+    }
+  }, [])
 
   const {
     id,
@@ -60,18 +104,21 @@ export default function ProductCard({ product, variant = 'default', priority = f
       return
     }
 
-    if (!isAuthenticated) {
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
+
+    if (!isUserLoggedIn) {
       toast.error('로그인이 필요합니다')
       router.push('/login')
       return
     }
 
-    // 사용자 정보 확인 - 기본값으로 처리
+    // 사용자 정보 확인
     const userProfile = {
-      name: '사용자',
-      phone: '010-0000-0000',
-      address: '기본주소',
-      detail_address: ''
+      name: currentUser?.name || '사용자',
+      phone: currentUser?.phone || '010-0000-0000',
+      address: currentUser?.address || '기본주소',
+      detail_address: currentUser?.detail_address || ''
     }
 
     const cartItem = {
@@ -109,7 +156,10 @@ export default function ProductCard({ product, variant = 'default', priority = f
       return
     }
 
-    if (!isAuthenticated) {
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
+
+    if (!isUserLoggedIn) {
       toast.error('로그인이 필요합니다')
       router.push('/login')
       return
@@ -131,7 +181,10 @@ export default function ProductCard({ product, variant = 'default', priority = f
       return
     }
 
-    if (!isAuthenticated) {
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
+
+    if (!isUserLoggedIn) {
       toast.error('로그인이 필요합니다')
       router.push('/login')
       return
