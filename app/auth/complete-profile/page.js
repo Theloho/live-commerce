@@ -156,12 +156,22 @@ export default function CompleteProfilePage() {
           address: formData.address,
           profile_completed: true
         }
+
+        console.log('세션 업데이트 전:', sessionUser)
+        console.log('세션 업데이트 후:', updatedUser)
+
         sessionStorage.setItem('user', JSON.stringify(updatedUser))
+
+        // 저장 확인
+        const savedUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+        console.log('저장 확인:', savedUser)
 
         // 프로필 완성 이벤트 발생
         window.dispatchEvent(new CustomEvent('profileCompleted', {
           detail: updatedUser
         }))
+
+        console.log('프로필 완성 이벤트 발생 완료')
 
       } else {
         // Supabase 사용자는 기존 방식 사용
