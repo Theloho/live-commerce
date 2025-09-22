@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   MagnifyingGlassIcon,
@@ -13,8 +13,53 @@ import { useRouter } from 'next/navigation'
 
 export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
+  const [userSession, setUserSession] = useState(null)
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
+
+  // 직접 세션 확인
+  useEffect(() => {
+    const checkUserSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          console.log('헤더에서 세션 복원:', userData)
+          setUserSession(userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('헤더 세션 확인 오류:', error)
+        setUserSession(null)
+      }
+    }
+
+    checkUserSession()
+
+    // 이벤트 리스너 추가
+    const handleKakaoLogin = (event) => {
+      const userProfile = event.detail
+      setUserSession(userProfile)
+      console.log('헤더에서 카카오 로그인 이벤트 수신:', userProfile)
+    }
+
+    const handleProfileCompleted = (event) => {
+      const userProfile = event.detail
+      setUserSession(userProfile)
+      console.log('헤더에서 프로필 완성 이벤트 수신:', userProfile)
+    }
+
+    window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
+    window.addEventListener('profileCompleted', handleProfileCompleted)
+
+    return () => {
+      window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
+      window.removeEventListener('profileCompleted', handleProfileCompleted)
+    }
+  }, [])
+
+  const isUserLoggedIn = userSession || isAuthenticated
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
@@ -36,7 +81,7 @@ export default function Header() {
             </button>
 
             {/* Notification Icon - 로그인한 경우에만 표시 */}
-            {isAuthenticated && (
+            {isUserLoggedIn && (
               <button className="p-2 rounded-md text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors relative">
                 <BellIcon className="h-6 w-6" />
                 <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
@@ -44,7 +89,7 @@ export default function Header() {
             )}
 
             {/* User Icon or Login Button */}
-            {isAuthenticated ? (
+            {isUserLoggedIn ? (
               <button
                 onClick={() => router.push('/mypage')}
                 className="p-2 rounded-md text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors"

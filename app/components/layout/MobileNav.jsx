@@ -10,6 +10,7 @@ import useAuth from '@/hooks/useAuth'
 export default function MobileNav() {
   const pathname = usePathname()
   const { user, isAuthenticated } = useAuth()
+  const [userSession, setUserSession] = useState(null)
   const [orderCounts, setOrderCounts] = useState({
     pending: 0,
     verifying: 0,
@@ -17,13 +18,58 @@ export default function MobileNav() {
     delivered: 0
   })
 
+  // 직접 세션 확인
+  useEffect(() => {
+    const checkUserSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          console.log('네비게이션에서 세션 복원:', userData)
+          setUserSession(userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('네비게이션 세션 확인 오류:', error)
+        setUserSession(null)
+      }
+    }
+
+    checkUserSession()
+
+    // 이벤트 리스너 추가
+    const handleKakaoLogin = (event) => {
+      const userProfile = event.detail
+      setUserSession(userProfile)
+      console.log('네비게이션에서 카카오 로그인 이벤트 수신:', userProfile)
+    }
+
+    const handleProfileCompleted = (event) => {
+      const userProfile = event.detail
+      setUserSession(userProfile)
+      console.log('네비게이션에서 프로필 완성 이벤트 수신:', userProfile)
+    }
+
+    window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
+    window.addEventListener('profileCompleted', handleProfileCompleted)
+
+    return () => {
+      window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
+      window.removeEventListener('profileCompleted', handleProfileCompleted)
+    }
+  }, [])
+
   // 현재 사용자의 주문 상태별 수 조회
   useEffect(() => {
     const loadOrderCounts = () => {
-      if (typeof window !== 'undefined' && isAuthenticated && user?.id) {
+      const currentUser = userSession || user
+      const isUserLoggedIn = userSession || isAuthenticated
+
+      if (typeof window !== 'undefined' && isUserLoggedIn && currentUser?.id) {
         const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
         // 현재 사용자의 주문만 필터링
-        const userOrders = orders.filter(order => order.userId === user.id)
+        const userOrders = orders.filter(order => order.userId === currentUser.id)
         const counts = {
           pending: userOrders.filter(order => order.status === 'pending').length,
           verifying: userOrders.filter(order => order.status === 'verifying').length,
@@ -51,7 +97,7 @@ export default function MobileNav() {
 
     window.addEventListener('orderUpdated', handleOrderUpdate)
     return () => window.removeEventListener('orderUpdated', handleOrderUpdate)
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, user, userSession])
 
   const menuItems = [
     {
