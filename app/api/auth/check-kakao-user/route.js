@@ -13,13 +13,23 @@ export async function POST(request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+    console.log('환경변수 확인:', {
+      urlExists: !!supabaseUrl,
+      keyExists: !!supabaseKey,
+      urlLength: supabaseUrl?.length,
+      keyLength: supabaseKey?.length
+    })
+
     if (!supabaseUrl || !supabaseKey) {
       console.error('Supabase 환경변수가 설정되지 않았습니다')
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
 
     // REST API로 사용자 확인
-    const response = await fetch(`${supabaseUrl}/rest/v1/profiles?kakao_id=eq.${kakao_id}&select=*`, {
+    const fetchUrl = `${supabaseUrl}/rest/v1/profiles?kakao_id=eq.${kakao_id}&select=*`
+    console.log('요청 URL:', fetchUrl)
+
+    const response = await fetch(fetchUrl, {
       headers: {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`,
@@ -27,14 +37,18 @@ export async function POST(request) {
       }
     })
 
+    console.log('응답 상태:', response.status)
+
     if (!response.ok) {
-      throw new Error(`사용자 조회 실패: ${response.status}`)
+      const errorText = await response.text()
+      console.error('Supabase 요청 실패:', errorText)
+      throw new Error(`사용자 조회 실패: ${response.status} - ${errorText}`)
     }
 
     const users = await response.json()
     const exists = users.length > 0
 
-    console.log('카카오 사용자 존재 여부:', exists)
+    console.log('카카오 사용자 존재 여부:', exists, '결과:', users)
 
     return NextResponse.json({
       exists,
@@ -42,7 +56,11 @@ export async function POST(request) {
     })
 
   } catch (error) {
-    console.error('카카오 사용자 확인 오류:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('카카오 사용자 확인 오류:', error.message)
+    console.error('스택 트레이스:', error.stack)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error.message
+    }, { status: 500 })
   }
 }
