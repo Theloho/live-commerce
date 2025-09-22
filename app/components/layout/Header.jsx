@@ -95,22 +95,6 @@ export default function Header() {
               </button>
             )}
 
-            {/* User Icon or Login Button */}
-            {isUserLoggedIn ? (
-              <button
-                onClick={() => router.push('/mypage')}
-                className="p-2 rounded-md text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors"
-              >
-                <UserCircleIcon className="h-6 w-6" />
-              </button>
-            ) : (
-              <button
-                onClick={() => router.push('/login')}
-                className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors"
-              >
-                로그인
-              </button>
-            )}
           </div>
         </div>
 
