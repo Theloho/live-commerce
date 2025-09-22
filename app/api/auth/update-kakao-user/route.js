@@ -10,8 +10,8 @@ export async function POST(request) {
 
     console.log('카카오 사용자 정보 업데이트:', { kakao_id, name })
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('Supabase 환경변수가 설정되지 않았습니다')

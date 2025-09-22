@@ -10,8 +10,8 @@ export async function POST(request) {
 
     console.log('카카오 사용자 확인:', kakao_id)
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
     console.log('환경변수 확인:', {
       urlExists: !!supabaseUrl,
