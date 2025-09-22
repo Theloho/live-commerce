@@ -12,12 +12,58 @@ import MobileNav from './components/layout/MobileNav'
 
 export default function Home() {
   const [liveBroadcast, setLiveBroadcast] = useState(null)
+  const [userSession, setUserSession] = useState(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
   const { isAuthenticated } = useAuth()
   const { products, loading, error, refreshProducts } = useRealtimeProducts()
   const router = useRouter()
 
   useEffect(() => {
     loadLiveBroadcastData()
+    checkUserSession()
+  }, [])
+
+  // 직접 세션 확인
+  const checkUserSession = () => {
+    try {
+      const storedUser = sessionStorage.getItem('user')
+      if (storedUser) {
+        const userData = JSON.parse(storedUser)
+        console.log('홈페이지에서 세션 복원:', userData)
+        setUserSession(userData)
+      } else {
+        console.log('홈페이지에서 세션 없음')
+        setUserSession(null)
+      }
+    } catch (error) {
+      console.error('홈페이지 세션 확인 오류:', error)
+      setUserSession(null)
+    } finally {
+      setSessionLoading(false)
+    }
+  }
+
+  // 카카오 로그인 성공 이벤트 리스너
+  useEffect(() => {
+    const handleKakaoLogin = (event) => {
+      const userProfile = event.detail
+      setUserSession(userProfile)
+      console.log('홈페이지에서 카카오 로그인 이벤트 수신:', userProfile)
+    }
+
+    const handleProfileCompleted = (event) => {
+      const userProfile = event.detail
+      setUserSession(userProfile)
+      console.log('홈페이지에서 프로필 완성 이벤트 수신:', userProfile)
+    }
+
+    window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
+    window.addEventListener('profileCompleted', handleProfileCompleted)
+
+    return () => {
+      window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
+      window.removeEventListener('profileCompleted', handleProfileCompleted)
+    }
   }, [])
 
   async function loadLiveBroadcastData() {
@@ -81,7 +127,7 @@ export default function Home() {
       {/* 메인 콘텐츠 */}
       <main className="px-4 pt-4">
         {/* 로그인/회원가입 배너 (비로그인 사용자만) */}
-        {!isAuthenticated && (
+        {!sessionLoading && !userSession && !isAuthenticated && (
           <div className="bg-gradient-to-r from-red-500 to-pink-500 rounded-lg p-6 mb-6 text-white text-center">
             <div className="mb-4">
               <h3 className="text-xl font-bold mb-2">allok에 오신 것을 환영합니다!</h3>
@@ -100,6 +146,20 @@ export default function Home() {
               >
                 회원가입
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 로그인된 사용자 환영 메시지 */}
+        {(userSession || isAuthenticated) && (
+          <div className="bg-white rounded-lg p-4 mb-6 border border-green-200">
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+              <p className="text-gray-800">
+                <span className="font-semibold text-green-600">
+                  {userSession?.name || '사용자'}
+                </span>님 환영합니다! 🎉
+              </p>
             </div>
           </div>
         )}
