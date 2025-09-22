@@ -20,14 +20,22 @@ export default function CompleteProfilePage() {
   })
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    // 카카오 사용자 확인
+    const sessionUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+
+    if (sessionUser.provider === 'kakao' && sessionUser.id) {
+      // 카카오 로그인 사용자 정보 자동 입력
+      setFormData(prev => ({
+        ...prev,
+        name: sessionUser.name || '',
+        nickname: sessionUser.nickname || sessionUser.name || ''
+      }))
+    } else if (!authLoading && !user) {
       toast.error('로그인이 필요합니다')
       router.push('/login')
       return
-    }
-
-    if (user) {
-      // 카카오에서 받은 정보 자동 입력
+    } else if (user) {
+      // Supabase 사용자 정보 자동 입력
       setFormData(prev => ({
         ...prev,
         name: user.user_metadata?.name || '',
@@ -102,40 +110,93 @@ export default function CompleteProfilePage() {
     setLoading(true)
 
     try {
-      // profiles 테이블에 정보 저장 또는 업데이트
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          name: formData.name,
-          phone: formData.phone,
-          nickname: formData.nickname || formData.name,
-          address: formData.address,
-          detail_address: formData.detailAddress
-        }, {
-          onConflict: 'id'
+      console.log('프로필 완성 시작:', formData)
+
+      // 카카오 로그인 사용자인지 확인
+      const sessionUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+
+      if (sessionUser.provider === 'kakao' && sessionUser.id) {
+        // 카카오 사용자는 REST API로 직접 업데이트
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+
+        const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${sessionUser.id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            phone: formData.phone,
+            nickname: formData.nickname || formData.name,
+            address: formData.address,
+            updated_at: new Date().toISOString()
+          })
         })
 
-      if (profileError) {
-        console.error('프로필 업데이트 오류:', profileError)
-        toast.error('프로필 저장에 실패했습니다')
-        return
-      }
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('카카오 사용자 프로필 업데이트 실패:', errorText)
+          toast.error('프로필 저장에 실패했습니다')
+          return
+        }
 
-      // user_metadata 업데이트
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: {
+        const updatedProfile = await response.json()
+        console.log('카카오 사용자 프로필 업데이트 성공:', updatedProfile)
+
+        // 세션 스토리지 업데이트
+        const updatedUser = {
+          ...sessionUser,
           name: formData.name,
           phone: formData.phone,
           nickname: formData.nickname || formData.name,
           address: formData.address,
-          detail_address: formData.detailAddress,
           profile_completed: true
         }
-      })
+        sessionStorage.setItem('user', JSON.stringify(updatedUser))
 
-      if (updateError) {
-        console.error('메타데이터 업데이트 오류:', updateError)
+        // 프로필 완성 이벤트 발생
+        window.dispatchEvent(new CustomEvent('profileCompleted', {
+          detail: updatedUser
+        }))
+
+      } else {
+        // Supabase 사용자는 기존 방식 사용
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            name: formData.name,
+            phone: formData.phone,
+            nickname: formData.nickname || formData.name,
+            address: formData.address
+          }, {
+            onConflict: 'id'
+          })
+
+        if (profileError) {
+          console.error('프로필 업데이트 오류:', profileError)
+          toast.error('프로필 저장에 실패했습니다')
+          return
+        }
+
+        // user_metadata 업데이트
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: {
+            name: formData.name,
+            phone: formData.phone,
+            nickname: formData.nickname || formData.name,
+            address: formData.address,
+            profile_completed: true
+          }
+        })
+
+        if (updateError) {
+          console.error('메타데이터 업데이트 오류:', updateError)
+        }
       }
 
       toast.success('프로필이 완성되었습니다!')
