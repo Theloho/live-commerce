@@ -185,10 +185,16 @@ export default function AuthCallback() {
               detail: userProfile
             }))
 
-            // 로그인 성공
-            console.log('카카오 로그인 성공')
-            toast.success('카카오 로그인 성공!')
-            router.push('/')
+            // 추가 정보가 필요한지 확인
+            if (!userProfile.phone || !userProfile.address) {
+              console.log('추가 정보 입력 필요')
+              toast.success('카카오 로그인 성공! 추가 정보를 입력해주세요.')
+              router.push('/auth/complete-profile')
+            } else {
+              console.log('카카오 로그인 성공')
+              toast.success('카카오 로그인 성공!')
+              router.push('/')
+            }
             return
 
           } catch (error) {
