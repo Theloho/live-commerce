@@ -40,10 +40,35 @@ export default function useAuth() {
       toast.success('카카오 로그인되었습니다')
     }
 
+    // 프로필 완성 이벤트 리스너
+    const handleProfileCompleted = (event) => {
+      const userProfile = event.detail
+      setUser(userProfile)
+      console.log('프로필 완성 이벤트 수신:', userProfile)
+    }
+
+    // 세션 스토리지 변경 감지
+    const handleStorageChange = (event) => {
+      if (event.key === 'user') {
+        if (event.newValue) {
+          const userData = JSON.parse(event.newValue)
+          setUser(userData)
+          console.log('스토리지 변경 감지 - 사용자 로그인:', userData)
+        } else {
+          clearUser()
+          console.log('스토리지 변경 감지 - 사용자 로그아웃')
+        }
+      }
+    }
+
     window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
+    window.addEventListener('profileCompleted', handleProfileCompleted)
+    window.addEventListener('storage', handleStorageChange)
 
     return () => {
       window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
+      window.removeEventListener('profileCompleted', handleProfileCompleted)
+      window.removeEventListener('storage', handleStorageChange)
     }
   }, [setUser, setAuthLoading, clearUser])
 
