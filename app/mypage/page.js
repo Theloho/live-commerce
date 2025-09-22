@@ -71,17 +71,79 @@ export default function MyPage() {
     try {
       setProfileLoading(true)
 
-      // 카카오 사용자인 경우 sessionStorage 정보 사용
+      // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기
       if (currentUser.provider === 'kakao') {
-        const profile = {
-          name: currentUser.name || '',
-          phone: currentUser.phone || '',
-          address: currentUser.address || '',
-          detail_address: currentUser.detail_address || '',
-          nickname: currentUser.nickname || currentUser.name || ''
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+
+          const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+            method: 'GET',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            }
+          })
+
+          if (response.ok) {
+            const profiles = await response.json()
+            if (profiles && profiles.length > 0) {
+              const dbProfile = profiles[0]
+              console.log('데이터베이스에서 카카오 사용자 프로필 로드:', dbProfile)
+
+              const profile = {
+                name: dbProfile.name || currentUser.name || '',
+                phone: dbProfile.phone || currentUser.phone || '',
+                address: dbProfile.address || currentUser.address || '',
+                detail_address: dbProfile.detail_address || currentUser.detail_address || '',
+                nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || ''
+              }
+              setUserProfile(profile)
+              setEditValues(profile)
+
+              // sessionStorage도 최신 정보로 업데이트
+              const updatedUser = {
+                ...currentUser,
+                ...profile
+              }
+              sessionStorage.setItem('user', JSON.stringify(updatedUser))
+            } else {
+              console.log('데이터베이스에서 프로필을 찾을 수 없음, sessionStorage 사용')
+              const profile = {
+                name: currentUser.name || '',
+                phone: currentUser.phone || '',
+                address: currentUser.address || '',
+                detail_address: currentUser.detail_address || '',
+                nickname: currentUser.nickname || currentUser.name || ''
+              }
+              setUserProfile(profile)
+              setEditValues(profile)
+            }
+          } else {
+            console.error('데이터베이스 조회 실패, sessionStorage 사용')
+            const profile = {
+              name: currentUser.name || '',
+              phone: currentUser.phone || '',
+              address: currentUser.address || '',
+              detail_address: currentUser.detail_address || '',
+              nickname: currentUser.nickname || currentUser.name || ''
+            }
+            setUserProfile(profile)
+            setEditValues(profile)
+          }
+        } catch (error) {
+          console.error('카카오 사용자 프로필 로드 오류:', error)
+          const profile = {
+            name: currentUser.name || '',
+            phone: currentUser.phone || '',
+            address: currentUser.address || '',
+            detail_address: currentUser.detail_address || '',
+            nickname: currentUser.nickname || currentUser.name || ''
+          }
+          setUserProfile(profile)
+          setEditValues(profile)
         }
-        setUserProfile(profile)
-        setEditValues(profile)
       } else if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
         // Mock 모드에서는 user 객체에서 정보 가져오기
         const profile = {
