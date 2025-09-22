@@ -22,35 +22,74 @@ import toast from 'react-hot-toast'
 export default function MyPage() {
   const router = useRouter()
   const { user, loading, signOut, isAuthenticated } = useAuth()
+  const [userSession, setUserSession] = useState(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
   const [userProfile, setUserProfile] = useState(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [editingField, setEditingField] = useState(null)
   const [editValues, setEditValues] = useState({})
 
+  // 직접 세션 확인
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    const checkUserSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          console.log('마이페이지에서 세션 복원:', userData)
+          setUserSession(userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('마이페이지 세션 확인 오류:', error)
+        setUserSession(null)
+      } finally {
+        setSessionLoading(false)
+      }
+    }
+
+    checkUserSession()
+  }, [])
+
+  useEffect(() => {
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
+
+    if (!sessionLoading && !loading && !isUserLoggedIn) {
       toast.error('로그인이 필요합니다')
       router.push('/login')
       return
     }
 
-    if (user) {
-      fetchUserProfile()
+    if (currentUser) {
+      fetchUserProfile(currentUser)
     }
-  }, [user, loading, isAuthenticated, router])
+  }, [user, userSession, loading, sessionLoading, isAuthenticated, router])
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = async (currentUser) => {
     try {
       setProfileLoading(true)
 
-      // Mock 모드에서는 user 객체에서 정보 가져오기
-      if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+      // 카카오 사용자인 경우 sessionStorage 정보 사용
+      if (currentUser.provider === 'kakao') {
         const profile = {
-          name: user.name || user.user_metadata?.name || '',
-          phone: user.phone || user.user_metadata?.phone || '',
-          address: user.address || user.user_metadata?.address || '',
-          detail_address: user.detail_address || user.user_metadata?.detail_address || '',
-          nickname: user.nickname || user.user_metadata?.nickname || user.user_metadata?.name || ''
+          name: currentUser.name || '',
+          phone: currentUser.phone || '',
+          address: currentUser.address || '',
+          detail_address: currentUser.detail_address || '',
+          nickname: currentUser.nickname || currentUser.name || ''
+        }
+        setUserProfile(profile)
+        setEditValues(profile)
+      } else if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+        // Mock 모드에서는 user 객체에서 정보 가져오기
+        const profile = {
+          name: currentUser.name || currentUser.user_metadata?.name || '',
+          phone: currentUser.phone || currentUser.user_metadata?.phone || '',
+          address: currentUser.address || currentUser.user_metadata?.address || '',
+          detail_address: currentUser.detail_address || currentUser.user_metadata?.detail_address || '',
+          nickname: currentUser.nickname || currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || ''
         }
         setUserProfile(profile)
         setEditValues(profile)
@@ -59,7 +98,7 @@ export default function MyPage() {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', currentUser.id)
           .maybeSingle() // single() 대신 maybeSingle() 사용 (없어도 오류 안남)
 
         if (error) {
@@ -71,12 +110,12 @@ export default function MyPage() {
         // 프로필이 없으면 기본값 설정
         if (!data) {
           const defaultProfile = {
-            id: user.id,
-            name: user.user_metadata?.name || '',
-            phone: user.user_metadata?.phone || '',
-            address: user.user_metadata?.address || '',
-            detail_address: user.user_metadata?.detail_address || '',
-            nickname: user.user_metadata?.nickname || user.user_metadata?.name || ''
+            id: currentUser.id,
+            name: currentUser.user_metadata?.name || '',
+            phone: currentUser.user_metadata?.phone || '',
+            address: currentUser.user_metadata?.address || '',
+            detail_address: currentUser.user_metadata?.detail_address || '',
+            nickname: currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || ''
           }
 
           // 프로필이 없는 경우 추가 정보 입력 페이지로 리다이렉트
@@ -196,7 +235,7 @@ export default function MyPage() {
     }
   }
 
-  if (loading || profileLoading) {
+  if (loading || sessionLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

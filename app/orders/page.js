@@ -23,9 +23,34 @@ function OrdersContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
+  const [userSession, setUserSession] = useState(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('pending')
+
+  // 직접 세션 확인
+  useEffect(() => {
+    const checkUserSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          console.log('주문내역에서 세션 복원:', userData)
+          setUserSession(userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('주문내역 세션 확인 오류:', error)
+        setUserSession(null)
+      } finally {
+        setSessionLoading(false)
+      }
+    }
+
+    checkUserSession()
+  }, [])
 
   // URL 쿼리 파라미터에서 탭 정보 확인
   useEffect(() => {
@@ -37,8 +62,11 @@ function OrdersContent() {
 
 
   const loadOrders = async () => {
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
+
     // 현재 로그인한 사용자 확인
-    if (!user?.id) {
+    if (!isUserLoggedIn || !currentUser?.id) {
       console.log('사용자가 로그인되지 않음')
       setOrders([])
       setLoading(false)
@@ -62,9 +90,12 @@ function OrdersContent() {
 
   useEffect(() => {
     const initOrders = async () => {
-      if (authLoading) return
+      const currentUser = userSession || user
+      const isUserLoggedIn = userSession || isAuthenticated
 
-      if (!isAuthenticated) {
+      if (authLoading || sessionLoading) return
+
+      if (!isUserLoggedIn) {
         toast.error('로그인이 필요합니다')
         router.push('/login')
         return
@@ -74,19 +105,20 @@ function OrdersContent() {
     }
 
     initOrders()
-  }, [isAuthenticated, authLoading, router, user])
+  }, [isAuthenticated, authLoading, sessionLoading, router, user, userSession])
 
   // 페이지 포커스 시 주문 목록 새로고침
   useEffect(() => {
     const handleFocus = () => {
-      if (isAuthenticated && !authLoading) {
+      const isUserLoggedIn = userSession || isAuthenticated
+      if (isUserLoggedIn && !authLoading && !sessionLoading) {
         loadOrders()
       }
     }
 
-
     const handleOrderUpdated = (event) => {
-      if (isAuthenticated && !authLoading) {
+      const isUserLoggedIn = userSession || isAuthenticated
+      if (isUserLoggedIn && !authLoading && !sessionLoading) {
         console.log('주문 업데이트 이벤트 감지:', event.detail)
         loadOrders()
       }
@@ -99,9 +131,9 @@ function OrdersContent() {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('orderUpdated', handleOrderUpdated)
     }
-  }, [isAuthenticated, authLoading])
+  }, [isAuthenticated, authLoading, userSession, sessionLoading])
 
-  if (authLoading || loading) {
+  if (authLoading || sessionLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
