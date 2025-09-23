@@ -112,75 +112,37 @@ export async function POST(request) {
 
     console.log('✅ 주문/아이템/배송/결제 정보 생성 완료')
 
-    // 5. 재고 차감
-    console.log('🔧 재고 차감 시작:', {
-      productId,
-      quantity: orderData.quantity,
-      orderData_id: orderData.id,
-      supabaseUrl_exists: !!supabaseUrl,
-      supabaseKey_exists: !!supabaseKey
-    })
+    // 5. 재고 차감 - 단순화된 버전
+    console.log('🔧 재고 차감 시작:', productId, '수량:', orderData.quantity)
 
-    try {
-      console.log('📦 재고 조회 URL:', `${supabaseUrl}/rest/v1/products?id=eq.${productId}`)
+    // Supabase 클라이언트를 사용한 직접 재고 차감
+    const { data: currentProduct, error: fetchError } = await supabaseAdmin
+      .from('products')
+      .select('stock_quantity, title')
+      .eq('id', productId)
+      .single()
 
-      // 현재 재고 조회
-      const stockResponse = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${productId}&select=stock_quantity`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      console.log('📦 재고 조회 응답 상태:', stockResponse.status)
-
-      if (!stockResponse.ok) {
-        const errorText = await stockResponse.text()
-        console.error('📦 재고 조회 실패 상세:', errorText)
-        throw new Error(`재고 조회 실패: ${stockResponse.status} - ${errorText}`)
-      }
-
-      const products = await stockResponse.json()
-      console.log('📦 조회된 상품 데이터:', products)
-
-      if (products.length === 0) {
-        throw new Error('상품을 찾을 수 없습니다')
-      }
-
-      const currentStock = products[0].stock_quantity || 0
+    if (!fetchError && currentProduct) {
+      const currentStock = currentProduct.stock_quantity || 0
       const newStock = Math.max(0, currentStock - orderData.quantity)
 
-      console.log(`🔄 재고 차감: ${currentStock} → ${newStock} (상품: ${productId})`)
+      console.log(`📦 ${currentProduct.title} 재고 차감: ${currentStock} → ${newStock}`)
 
-      // 재고 업데이트
-      const updateResponse = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${productId}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
+      const { error: updateError } = await supabaseAdmin
+        .from('products')
+        .update({
           stock_quantity: newStock,
           updated_at: new Date().toISOString()
         })
-      })
+        .eq('id', productId)
 
-      console.log('📦 재고 업데이트 응답 상태:', updateResponse.status)
-
-      if (!updateResponse.ok) {
-        const errorText = await updateResponse.text()
-        console.error('📦 재고 업데이트 실패 상세:', errorText)
-        throw new Error(`재고 업데이트 실패: ${updateResponse.status} - ${errorText}`)
+      if (updateError) {
+        console.error('❌ 재고 업데이트 실패:', updateError)
+      } else {
+        console.log('✅ 재고 차감 완료!')
       }
-
-      console.log('✅ 재고 차감 완료!')
-    } catch (stockError) {
-      console.error('❌ 재고 차감 오류:', stockError)
-      // 재고 차감 실패 시 주문도 롤백해야 하지만, 일단 경고만 출력
-      console.warn('⚠️ 재고 차감에 실패했지만 주문은 생성되었습니다')
+    } else {
+      console.error('❌ 상품 조회 실패:', fetchError)
     }
 
     const finalOrder = order[0] || order
