@@ -133,6 +133,7 @@ export default function CompleteProfilePage() {
             phone: formData.phone,
             nickname: formData.nickname || formData.name,
             address: formData.address,
+            detail_address: formData.detailAddress || '',
             updated_at: new Date().toISOString()
           })
         })

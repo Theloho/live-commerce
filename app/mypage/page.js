@@ -99,6 +99,7 @@ export default function MyPage() {
                 detail_address: dbProfile.detail_address || currentUser.detail_address || '',
                 nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || ''
               }
+              console.log('마이페이지 프로필 로드:', { dbProfile, currentUser, profile })
               setUserProfile(profile)
               setEditValues(profile)
 
