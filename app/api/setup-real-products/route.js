@@ -30,7 +30,6 @@ export async function POST(request) {
         price: 89000,
         compare_price: 120000,
         thumbnail_url: 'https://images.unsplash.com/photo-1558030006-450675393462',
-        is_live: false
       },
       {
         id: crypto.randomUUID(),
@@ -39,7 +38,6 @@ export async function POST(request) {
         price: 45000,
         compare_price: 55000,
         thumbnail_url: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6',
-        is_live: true
       },
       {
         id: crypto.randomUUID(),
@@ -48,7 +46,6 @@ export async function POST(request) {
         price: 28000,
         compare_price: 35000,
         thumbnail_url: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6',
-        is_live: false
       },
       {
         id: crypto.randomUUID(),
@@ -57,7 +54,6 @@ export async function POST(request) {
         price: 25000,
         compare_price: 30000,
         thumbnail_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999',
-        is_live: false
       },
       {
         id: crypto.randomUUID(),
@@ -66,7 +62,6 @@ export async function POST(request) {
         price: 65000,
         compare_price: 80000,
         thumbnail_url: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b',
-        is_live: false
       }
     ]
 
@@ -105,7 +100,7 @@ export async function GET(request) {
     // 현재 상품 현황 조회
     const { data: products, error } = await supabase
       .from('products')
-      .select('id, title, price, is_visible')
+      .select('id, title, price')
 
     if (error) throw error
 
