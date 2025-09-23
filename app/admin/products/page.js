@@ -130,7 +130,7 @@ export default function AdminProductsPage() {
     try {
       const { error } = await supabase
         .from('products')
-        .update({ is_live: isLive })
+        .update({ /* is_live: isLive */ }) // 스키마에 없는 컬럼 주석처리
         .eq('id', productId)
 
       if (error) throw error
@@ -421,7 +421,7 @@ export default function AdminProductsPage() {
         review_rating: 0,
         review_count: 0,
         is_featured: false,
-        is_live: false
+        // is_live: false // 스키마에 없는 컬럼 주석처리
       }
 
       const { data, error } = await supabase
@@ -700,9 +700,9 @@ export default function AdminProductsPage() {
                   {/* 라이브 라벨 토글 */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateLiveStatus(product.id, !product.is_live)}
+                      onClick={() => updateLiveStatus(product.id, !product.isLive)}
                       className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                        product.is_live
+                        product.isLive
                           ? 'bg-red-500 text-white hover:bg-red-600'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
