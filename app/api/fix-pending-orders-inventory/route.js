@@ -9,6 +9,63 @@ const supabaseAdmin = createClient(
 
 export async function POST(request) {
   try {
+    const requestBody = await request.json().catch(() => ({}))
+
+    // 🔧 개별 상품 재고 차감 모드
+    if (requestBody.forceProductUpdate) {
+      console.log('🔧 개별 상품 재고 차감 시작:', requestBody)
+
+      const { productId, quantity } = requestBody
+
+      try {
+        // 현재 제품 재고 조회
+        const { data: product, error: productError } = await supabaseAdmin
+          .from('products')
+          .select('id, stock_quantity, inventory, inventory_quantity, title')
+          .eq('id', productId)
+          .single()
+
+        if (productError) {
+          throw new Error(`제품 조회 실패: ${productError.message}`)
+        }
+
+        // 현재 재고 확인
+        const currentStock = product.stock_quantity ?? product.inventory ?? product.inventory_quantity ?? 100
+        const newStock = Math.max(0, currentStock + quantity) // quantity가 음수이므로 + 사용
+
+        console.log(`🔧 개별 재고 차감: ${product.title} - ${currentStock} → ${newStock}`)
+
+        // 재고 업데이트
+        const { error: updateError } = await supabaseAdmin
+          .from('products')
+          .update({
+            stock_quantity: newStock,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', productId)
+
+        if (updateError) {
+          throw new Error(`재고 업데이트 실패: ${updateError.message}`)
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: `${product.title} 재고가 ${currentStock}에서 ${newStock}으로 변경되었습니다`,
+          productId,
+          oldStock: currentStock,
+          newStock,
+          quantity
+        })
+
+      } catch (error) {
+        console.error('🔧 개별 재고 차감 실패:', error)
+        return NextResponse.json({
+          success: false,
+          error: error.message
+        }, { status: 500 })
+      }
+    }
+
     console.log('🔧 기존 결제대기 주문들의 재고 차감 시작...')
 
     // 1. 모든 pending 상태 주문들 조회 (디버깅 포함)

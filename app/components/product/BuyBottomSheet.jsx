@@ -174,6 +174,26 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       }
       console.log('생성된 주문:', newOrder) // 디버깅
 
+      // 🔧 임시: 재고 차감 강제 실행
+      try {
+        console.log('🔧 클라이언트에서 재고 차감 시도:', { productId: product.id, quantity })
+
+        const inventoryResponse = await fetch('/api/fix-pending-orders-inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            forceProductUpdate: true,
+            productId: product.id,
+            quantity: -quantity
+          })
+        })
+
+        const inventoryResult = await inventoryResponse.json()
+        console.log('🔧 클라이언트 재고 차감 결과:', inventoryResult)
+      } catch (inventoryError) {
+        console.error('🔧 클라이언트 재고 차감 실패:', inventoryError)
+      }
+
       // 주문 업데이트 이벤트 발생
       console.log('주문 목록 업데이트 이벤트 발생 (BuyBottomSheet)')
       window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'add', order: newOrder } }))
