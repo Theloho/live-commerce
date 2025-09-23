@@ -9,6 +9,15 @@ const supabaseAdmin = createClient(
 
 export async function POST(request) {
   try {
+    // 무한 호출 방지를 위해 임시로 비활성화
+    return NextResponse.json({
+      success: false,
+      message: 'API가 임시로 비활성화되었습니다',
+      processedOrders: 0,
+      processedItems: 0,
+      results: []
+    })
+
     const requestBody = await request.json().catch(() => ({}))
 
     // 🔧 개별 상품 재고 차감 모드
