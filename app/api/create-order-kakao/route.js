@@ -58,11 +58,27 @@ export async function POST(request) {
     console.log('주문 생성 성공:', order[0])
 
     // 2. 주문 아이템 생성
+    // product_id가 문자열인 경우 UUID로 변환하거나 Mock 제품인지 확인
+    let productId = orderData.id
+
+    // Mock 제품인 경우 실제 제품 ID로 매핑 또는 임시 UUID 생성
+    if (typeof productId === 'string' && !productId.includes('-')) {
+      // Mock 제품 ID를 UUID로 변환 (실제로는 매핑 테이블이 필요)
+      const mockToUuidMap = {
+        '1': '11111111-1111-1111-1111-111111111111',
+        '2': '22222222-2222-2222-2222-222222222222',
+        '3': '33333333-3333-3333-3333-333333333333',
+        '4': '44444444-4444-4444-4444-444444444444',
+        '5': '55555555-5555-5555-5555-555555555555'
+      }
+      productId = mockToUuidMap[productId] || crypto.randomUUID()
+    }
+
     const { error: itemError } = await supabase
       .from('order_items')
       .insert([{
         order_id: orderId,
-        product_id: orderData.id,
+        product_id: productId,
         quantity: orderData.quantity,
         unit_price: orderData.price,
         total_price: orderData.totalPrice,
@@ -99,20 +115,25 @@ export async function POST(request) {
 
     if (paymentError) throw paymentError
 
-    // 5. 재고 차감
-    const { data: product } = await supabase
-      .from('products')
-      .select('inventory_quantity')
-      .eq('id', orderData.id)
-      .single()
-
-    if (product) {
-      await supabase
+    // 5. 재고 차감 (Mock 제품은 스킵)
+    if (typeof orderData.id === 'string' && orderData.id.includes('-')) {
+      // 실제 UUID 제품만 재고 차감
+      const { data: product } = await supabase
         .from('products')
-        .update({
-          inventory_quantity: Math.max(0, (product.inventory_quantity || 0) - orderData.quantity)
-        })
+        .select('inventory_quantity')
         .eq('id', orderData.id)
+        .single()
+
+      if (product) {
+        await supabase
+          .from('products')
+          .update({
+            inventory_quantity: Math.max(0, (product.inventory_quantity || 0) - orderData.quantity)
+          })
+          .eq('id', orderData.id)
+      }
+    } else {
+      console.log('Mock 제품이므로 재고 차감 스킵:', orderData.id)
     }
 
     const finalOrder = order[0] || order
