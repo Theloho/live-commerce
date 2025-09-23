@@ -46,8 +46,11 @@ export async function POST(request) {
     const ordersWithItems = data.map(order => ({
       ...order,
       items: order.order_items.map(item => ({
-        ...item.products,
         id: item.product_id,
+        title: item.products?.title || '상품명 없음',
+        description: item.products?.description || '',
+        thumbnail_url: item.products?.thumbnail_url || '/placeholder-product.png',
+        price: item.products?.price || item.unit_price,
         quantity: item.quantity,
         totalPrice: item.total_price,
         selectedOptions: item.selected_options || {},
