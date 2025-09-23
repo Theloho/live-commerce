@@ -21,7 +21,7 @@ export async function POST(request) {
       console.log('기존 상품 삭제 시도:', deleteError.message)
     }
 
-    // 2. 실제 상품 데이터 추가
+    // 2. 실제 상품 데이터 추가 (기존 스키마에 맞게)
     const realProducts = [
       {
         id: crypto.randomUUID(),
@@ -33,12 +33,7 @@ export async function POST(request) {
         category: '육류',
         inventory_quantity: 50,
         is_visible: true,
-        is_live: false,
-        status: 'active',
-        seller: '한우마을',
-        is_featured: true,
-        badge: '베스트',
-        free_shipping: true
+        is_live: false
       },
       {
         id: crypto.randomUUID(),
@@ -50,12 +45,7 @@ export async function POST(request) {
         category: '육류',
         inventory_quantity: 100,
         is_visible: true,
-        is_live: true,
-        status: 'active',
-        seller: '제주농장',
-        is_featured: false,
-        badge: '라이브',
-        free_shipping: false
+        is_live: true
       },
       {
         id: crypto.randomUUID(),
@@ -67,12 +57,7 @@ export async function POST(request) {
         category: '수산물',
         inventory_quantity: 80,
         is_visible: true,
-        is_live: false,
-        status: 'active',
-        seller: '바다마트',
-        is_featured: true,
-        badge: null,
-        free_shipping: true
+        is_live: false
       },
       {
         id: crypto.randomUUID(),
@@ -84,12 +69,7 @@ export async function POST(request) {
         category: '채소',
         inventory_quantity: 120,
         is_visible: true,
-        is_live: false,
-        status: 'active',
-        seller: '유기농장',
-        is_featured: false,
-        badge: null,
-        free_shipping: false
+        is_live: false
       },
       {
         id: crypto.randomUUID(),
@@ -101,12 +81,7 @@ export async function POST(request) {
         category: '과일',
         inventory_quantity: 60,
         is_visible: true,
-        is_live: false,
-        status: 'active',
-        seller: '과일나라',
-        is_featured: true,
-        badge: '선물추천',
-        free_shipping: true
+        is_live: false
       }
     ]
 
@@ -145,7 +120,7 @@ export async function GET(request) {
     // 현재 상품 현황 조회
     const { data: products, error } = await supabase
       .from('products')
-      .select('id, title, price, status, is_visible')
+      .select('id, title, price, is_visible')
 
     if (error) throw error
 
