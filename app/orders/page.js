@@ -202,7 +202,7 @@ function OrdersContent() {
       id: firstItem.id || order.id,
       title: firstItem.title,
       price: firstItem.price || firstItem.totalPrice / (firstItem.quantity || 1),
-      thumbnail_url: firstItem.thumbnail_url,
+      thumbnail_url: firstItem?.thumbnail_url || '/placeholder.png',
       quantity: firstItem.quantity || 1,
       totalPrice: firstItem.totalPrice,
       selectedOptions: firstItem.selectedOptions || {}
@@ -293,7 +293,7 @@ function OrdersContent() {
       title: `${pendingOrders.length}개 상품 일괄결제`,
       price: totalPrice,
       compare_price: null,
-      thumbnail_url: pendingOrders[0].items[0].thumbnail_url, // 첫 번째 상품의 썸네일 사용
+      thumbnail_url: pendingOrders[0]?.items[0]?.thumbnail_url || '/placeholder.png', // 첫 번째 상품의 썸네일 사용
       quantity: totalQuantity,
       totalPrice: totalPrice,
       selectedOptions: {},
@@ -446,7 +446,14 @@ function OrdersContent() {
               {filteredOrders.map((order, index) => {
                 const statusInfo = getStatusInfo(order.status)
                 const StatusIcon = statusInfo.icon
-                const orderItem = order.items[0] // 첫 번째 상품만 표시
+                const orderItem = order.items?.[0] || {
+                  title: '상품명 없음',
+                  thumbnail_url: '/placeholder.png',
+                  price: 0,
+                  quantity: 1,
+                  totalPrice: 0,
+                  selectedOptions: {}
+                } // 첫 번째 상품만 표시, 없으면 기본값
 
                 return (
                   <motion.div
