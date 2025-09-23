@@ -11,22 +11,45 @@ export async function POST(request) {
   try {
     console.log('🔧 기존 결제대기 주문들의 재고 차감 시작...')
 
-    // 1. 모든 pending 상태 주문들 조회
+    // 1. 모든 pending 상태 주문들 조회 (디버깅 포함)
     const { data: pendingOrders, error: ordersError } = await supabaseAdmin
       .from('orders')
       .select(`
         id,
         status,
+        customer_order_number,
         order_items (
+          id,
           product_id,
           quantity
         )
       `)
       .eq('status', 'pending')
 
-    if (ordersError) throw ordersError
+    if (ordersError) {
+      console.error('주문 조회 오류:', ordersError)
+      throw ordersError
+    }
 
     console.log(`📦 발견된 결제대기 주문: ${pendingOrders.length}개`)
+    console.log('🔍 주문 상세:', pendingOrders.map(o => ({
+      id: o.id,
+      customer_order_number: o.customer_order_number,
+      order_items_count: o.order_items?.length || 0,
+      order_items: o.order_items
+    })))
+
+    // 혹시 order_items 테이블이 아닌 다른 구조일 수 있으니 확인
+    console.log('🔍 전체 orders 테이블 구조 확인...')
+    const { data: allOrders, error: allOrdersError } = await supabaseAdmin
+      .from('orders')
+      .select('*')
+      .eq('status', 'pending')
+      .limit(2)
+
+    if (!allOrdersError) {
+      console.log('📋 주문 테이블 샘플 데이터:', allOrders)
+    }
 
     // 2. 각 주문의 아이템들에 대해 재고 차감
     let totalProcessed = 0
