@@ -1,4 +1,11 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+// Service Role Key를 사용한 관리자 클라이언트 생성
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
 
 export async function POST(request) {
   try {
@@ -10,45 +17,49 @@ export async function POST(request) {
 
     console.log('새 카카오 사용자 생성:', { kakao_id, email, name })
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+    const userId = crypto.randomUUID()
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Supabase 환경변수가 설정되지 않았습니다')
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
-    }
-
-    // REST API로 사용자 생성
-    const response = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
-      method: 'POST',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
-      },
-      body: JSON.stringify({
-        id: crypto.randomUUID(),
+    // 1. auth.users 테이블에 사용자 생성 (Service Role Key 필요)
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      id: userId,
+      email: email || `kakao_${kakao_id}@temp.com`,
+      email_confirm: true,
+      user_metadata: {
         kakao_id: kakao_id,
-        email: email,
-        name: name, // 초기에는 카카오 닉네임을 이름으로 사용
-        nickname: nickname, // 카카오 닉네임은 별도 필드로 저장
+        name: name,
+        nickname: nickname,
         avatar_url: avatar_url,
-        provider: provider,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+        provider: provider
+      }
     })
 
-    if (!response.ok) {
-      const errorData = await response.text()
-      throw new Error(`사용자 생성 실패: ${response.status} - ${errorData}`)
+    if (authError) {
+      console.error('auth.users 생성 실패:', authError)
+      // auth.users 생성 실패해도 profiles는 생성 시도
     }
 
-    const newUser = await response.json()
-    console.log('카카오 사용자 생성 성공:', newUser[0])
+    // 2. profiles 테이블에 프로필 생성
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: userId,
+        kakao_id: kakao_id,
+        email: email || `kakao_${kakao_id}@temp.com`,
+        name: name,
+        nickname: nickname,
+        avatar_url: avatar_url,
+        provider: provider
+      })
+      .select()
+      .single()
 
-    return NextResponse.json(newUser[0])
+    if (profileError) {
+      console.error('프로필 생성 실패:', profileError)
+      throw profileError
+    }
+
+    console.log('카카오 사용자 생성 성공:', profile)
+    return NextResponse.json(profile)
 
   } catch (error) {
     console.error('카카오 사용자 생성 오류:', error)
