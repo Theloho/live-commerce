@@ -21,7 +21,7 @@ export async function POST(request) {
       console.log('기존 상품 삭제 시도:', deleteError.message)
     }
 
-    // 2. 실제 상품 데이터 추가 (기존 스키마에 맞게)
+    // 2. 실제 상품 데이터 추가 (기존 스키마에 맞게 - inventory_quantity 제거)
     const realProducts = [
       {
         id: crypto.randomUUID(),
@@ -31,9 +31,9 @@ export async function POST(request) {
         compare_price: 120000,
         thumbnail_url: 'https://images.unsplash.com/photo-1558030006-450675393462',
         category: '육류',
-        inventory_quantity: 50,
         is_visible: true,
-        is_live: false
+        is_live: false,
+        status: 'active'
       },
       {
         id: crypto.randomUUID(),
@@ -43,9 +43,9 @@ export async function POST(request) {
         compare_price: 55000,
         thumbnail_url: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6',
         category: '육류',
-        inventory_quantity: 100,
         is_visible: true,
-        is_live: true
+        is_live: true,
+        status: 'active'
       },
       {
         id: crypto.randomUUID(),
@@ -55,9 +55,9 @@ export async function POST(request) {
         compare_price: 35000,
         thumbnail_url: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6',
         category: '수산물',
-        inventory_quantity: 80,
         is_visible: true,
-        is_live: false
+        is_live: false,
+        status: 'active'
       },
       {
         id: crypto.randomUUID(),
@@ -67,9 +67,9 @@ export async function POST(request) {
         compare_price: 30000,
         thumbnail_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999',
         category: '채소',
-        inventory_quantity: 120,
         is_visible: true,
-        is_live: false
+        is_live: false,
+        status: 'active'
       },
       {
         id: crypto.randomUUID(),
@@ -79,9 +79,9 @@ export async function POST(request) {
         compare_price: 80000,
         thumbnail_url: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b',
         category: '과일',
-        inventory_quantity: 60,
         is_visible: true,
-        is_live: false
+        is_live: false,
+        status: 'active'
       }
     ]
 
