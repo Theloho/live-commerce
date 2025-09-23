@@ -707,8 +707,8 @@ export default function AdminProductsPage() {
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      <div className={`w-2 h-2 rounded-full ${product.is_live ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
-                      {product.is_live ? '🔴 LIVE' : 'LIVE 설정'}
+                      <div className={`w-2 h-2 rounded-full ${product.isLive ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
+                      {product.isLive ? '🔴 LIVE' : 'LIVE 설정'}
                     </button>
                   </div>
 
