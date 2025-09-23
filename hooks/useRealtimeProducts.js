@@ -13,16 +13,25 @@ export default function useRealtimeProducts() {
     // 초기 데이터 로드
     loadProducts()
 
-    // 폴링 일시 중단 - 사용자 구매 과정 방해 방지
-    // const pollingInterval = setInterval(() => {
-    //   console.log('🔄 폴링으로 상품 데이터 업데이트 체크')
-    //   loadProducts()
-    // }, 10000) // 10초마다 체크
+    // 주문 업데이트 이벤트 리스너 추가
+    const handleOrderUpdated = (event) => {
+      console.log('🔄 주문 업데이트 감지 - 제품 목록 새로고침', event.detail)
+      loadProducts() // 주문이 생성/취소/수정되면 제품 목록 새로고침
+    }
+
+    const handleWindowFocus = () => {
+      console.log('🔄 창 포커스 감지 - 제품 목록 새로고침')
+      loadProducts() // 창이 포커스되면 최신 데이터로 새로고침
+    }
+
+    window.addEventListener('orderUpdated', handleOrderUpdated)
+    window.addEventListener('focus', handleWindowFocus)
 
     // 정리 함수
     return () => {
-      console.log('🧹 폴링 인터벌 해제')
-      // clearInterval(pollingInterval)
+      console.log('🧹 이벤트 리스너 해제')
+      window.removeEventListener('orderUpdated', handleOrderUpdated)
+      window.removeEventListener('focus', handleWindowFocus)
     }
   }, [])
 
