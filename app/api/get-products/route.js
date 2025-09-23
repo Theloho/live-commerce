@@ -17,6 +17,15 @@ export async function GET(request) {
       .select('*')
       .order('created_at', { ascending: false })
 
+    // 디버깅: 각 상품의 재고 관련 필드 출력
+    console.log('🔍 상품 재고 필드 확인:', products?.map(p => ({
+      id: p.id,
+      title: p.title?.slice(0, 20) + '...',
+      stock_quantity: p.stock_quantity,
+      inventory: p.inventory,
+      inventory_quantity: p.inventory_quantity
+    })))
+
     if (error) {
       console.error('상품 조회 오류:', error)
       throw error
