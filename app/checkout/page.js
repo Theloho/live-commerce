@@ -534,13 +534,14 @@ export default function CheckoutPage() {
                   checked={depositOption === 'nickname'}
                   onChange={(e) => {
                     setDepositOption(e.target.value)
-                    setDepositName(user?.nickname || user?.user_metadata?.nickname || userProfile.name)
+                    const currentUser = userSession || user
+                    setDepositName(currentUser?.nickname || currentUser?.user_metadata?.nickname || userProfile.name)
                   }}
                   className="mr-3"
                 />
                 <div>
                   <p className="font-medium text-gray-900">닉네임</p>
-                  <p className="text-sm text-gray-500">{user?.nickname || user?.user_metadata?.nickname || userProfile.name}</p>
+                  <p className="text-sm text-gray-500">{(userSession || user)?.nickname || (userSession || user)?.user_metadata?.nickname || userProfile.name}</p>
                 </div>
               </label>
 
