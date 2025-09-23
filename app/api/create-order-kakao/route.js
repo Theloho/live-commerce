@@ -44,8 +44,7 @@ export async function POST(request) {
         user_id: userId || null, // 카카오 사용자 ID 저장
         status: 'pending',
         order_type: orderData.orderType || 'direct',
-        created_at: new Date().toISOString(),
-        metadata: { kakao_user_id: userId } // 메타데이터에도 저장
+        created_at: new Date().toISOString()
       })
     })
 
