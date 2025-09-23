@@ -107,21 +107,8 @@ export async function POST(request) {
 
     if (paymentError) throw paymentError
 
-    // 5. 재고 차감
-    const { data: product } = await supabase
-      .from('products')
-      .select('inventory_quantity')
-      .eq('id', productId)
-      .single()
-
-    if (product) {
-      await supabase
-        .from('products')
-        .update({
-          inventory_quantity: Math.max(0, (product.inventory_quantity || 0) - orderData.quantity)
-        })
-        .eq('id', productId)
-    }
+    // 5. 재고 차감 (inventory_quantity 컬럼이 없으므로 생략)
+    console.log('재고 차감 기능은 inventory_quantity 컬럼이 있을 때 활성화됩니다')
 
     const finalOrder = order[0] || order
     console.log('카카오 사용자 주문 생성 성공:', finalOrder)
