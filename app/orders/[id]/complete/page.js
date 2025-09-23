@@ -23,6 +23,7 @@ export default function OrderCompletePage() {
   const [orderData, setOrderData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isEditingAddress, setIsEditingAddress] = useState(false)
+  const [userSession, setUserSession] = useState(null)
   const [shippingForm, setShippingForm] = useState({
     name: '',
     phone: '',
@@ -30,8 +31,35 @@ export default function OrderCompletePage() {
     detail_address: ''
   })
 
+  // 카카오 세션 확인
   useEffect(() => {
-    if (!isAuthenticated) {
+    const checkKakaoSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          setUserSession(userData)
+          console.log('주문완료 페이지 - 카카오 세션 복원:', userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('주문완료 페이지 - 세션 확인 오류:', error)
+        setUserSession(null)
+      }
+    }
+
+    checkKakaoSession()
+  }, [])
+
+  useEffect(() => {
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
+
+    console.log('주문완료 페이지 인증 확인:', { isAuthenticated, userSession, isUserLoggedIn })
+
+    if (!isUserLoggedIn) {
+      console.log('인증되지 않은 사용자, 로그인 페이지로 리다이렉트')
       toast.error('로그인이 필요합니다')
       router.push('/login')
       return
@@ -76,7 +104,7 @@ export default function OrderCompletePage() {
     }
 
     setLoading(false)
-  }, [isAuthenticated, params.id, router, user])
+  }, [isAuthenticated, userSession, params.id, router, user])
 
   if (loading) {
     return (
