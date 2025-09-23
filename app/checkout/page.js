@@ -28,20 +28,47 @@ export default function CheckoutPage() {
   const [depositName, setDepositName] = useState('')
   const [depositOption, setDepositOption] = useState('name')
   const [customDepositName, setCustomDepositName] = useState('')
+  const [userSession, setUserSession] = useState(null)
+
+  // 카카오 세션 확인
+  useEffect(() => {
+    const checkKakaoSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          setUserSession(userData)
+          console.log('Checkout - 카카오 세션 복원:', userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('Checkout - 세션 확인 오류:', error)
+        setUserSession(null)
+      }
+    }
+
+    checkKakaoSession()
+  }, [])
 
   useEffect(() => {
     const initCheckout = async () => {
+      const currentUser = userSession || user
+      const isUserLoggedIn = userSession || isAuthenticated
+
       console.log('Checkout page - isAuthenticated:', isAuthenticated)
       console.log('Checkout page - authLoading:', authLoading)
       console.log('Checkout page - user:', user)
+      console.log('Checkout page - userSession:', userSession)
+      console.log('Checkout page - isUserLoggedIn:', isUserLoggedIn)
 
       // 인증 로딩 중이면 대기
-      if (authLoading) {
+      if (authLoading && !userSession) {
         console.log('Still loading auth state, waiting...')
         return
       }
 
-      if (!isAuthenticated) {
+      if (!isUserLoggedIn) {
         console.log('Not authenticated, redirecting to login')
         toast.error('로그인이 필요합니다')
         router.push('/login')
@@ -85,14 +112,14 @@ export default function CheckoutPage() {
       }
 
       // 사용자 정보 가져오기
-      if (user) {
+      if (currentUser) {
         const profile = {
-          name: user.name || user.user_metadata?.name || '',
-          phone: user.phone || user.user_metadata?.phone || '',
-          address: user.address || user.user_metadata?.address || '',
-          detail_address: user.detailAddress || user.user_metadata?.detail_address || ''
+          name: currentUser.name || currentUser.user_metadata?.name || '사용자',
+          phone: currentUser.phone || currentUser.user_metadata?.phone || '010-0000-0000',
+          address: currentUser.address || currentUser.user_metadata?.address || '기본주소',
+          detail_address: currentUser.detail_address || currentUser.user_metadata?.detail_address || ''
         }
-        console.log('User profile:', profile)
+        console.log('User profile (카카오/일반 통합):', profile)
         setUserProfile(profile)
         // 기본 입금자명을 사용자 이름으로 설정
         setDepositName(profile.name)
@@ -102,9 +129,9 @@ export default function CheckoutPage() {
     }
 
     initCheckout()
-  }, [isAuthenticated, user, authLoading, router])
+  }, [isAuthenticated, user, authLoading, userSession, router])
 
-  if (authLoading || pageLoading) {
+  if ((authLoading && !userSession) || pageLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
