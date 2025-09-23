@@ -17,7 +17,7 @@ export async function POST(request) {
 
     console.log('카카오 사용자 주문 조회:', userId)
 
-    // 카카오 사용자 주문 조회
+    // 카카오 사용자 주문 조회 - 배송 정보의 이름으로 조회
     const { data, error } = await supabaseAdmin
       .from('orders')
       .select(`
@@ -34,7 +34,7 @@ export async function POST(request) {
         order_shipping (*),
         order_payments (*)
       `)
-      .eq('user_id', userId)
+      .is('user_id', null) // user_id가 null인 주문만
       .order('created_at', { ascending: false })
 
     if (error) {

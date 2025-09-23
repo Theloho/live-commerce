@@ -41,7 +41,7 @@ export async function POST(request) {
       body: JSON.stringify({
         id: orderId,
         customer_order_number: customerOrderNumber,
-        user_id: userId || null, // 카카오 사용자 ID 저장
+        user_id: null, // 카카오 사용자는 항상 null (외래 키 제약 회피)
         status: 'pending',
         order_type: orderData.orderType || 'direct',
         created_at: new Date().toISOString()
@@ -116,7 +116,8 @@ export async function POST(request) {
     return NextResponse.json({
       ...finalOrder,
       items: [orderData],
-      success: true
+      success: true,
+      customerOrderNumber // 클라이언트에서 sessionStorage에 저장용
     })
 
   } catch (error) {
