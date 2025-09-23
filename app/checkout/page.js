@@ -20,7 +20,12 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
   const [orderItem, setOrderItem] = useState(null)
-  const [userProfile, setUserProfile] = useState(null)
+  const [userProfile, setUserProfile] = useState({
+    name: '로딩 중...',
+    phone: '로딩 중...',
+    address: '로딩 중...',
+    detail_address: ''
+  })
   const [pageLoading, setPageLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [showCardModal, setShowCardModal] = useState(false)
@@ -113,6 +118,7 @@ export default function CheckoutPage() {
 
       // 사용자 정보 가져오기
       if (currentUser) {
+        // 카카오 사용자인 경우 프로필 정보가 직접 저장되어 있음
         const profile = {
           name: currentUser.name || currentUser.user_metadata?.name || '사용자',
           phone: currentUser.phone || currentUser.user_metadata?.phone || '010-0000-0000',
@@ -120,9 +126,19 @@ export default function CheckoutPage() {
           detail_address: currentUser.detail_address || currentUser.user_metadata?.detail_address || ''
         }
         console.log('User profile (카카오/일반 통합):', profile)
+        console.log('Current user data:', currentUser)
         setUserProfile(profile)
         // 기본 입금자명을 사용자 이름으로 설정
         setDepositName(profile.name)
+      } else {
+        console.log('currentUser가 없음')
+        // 기본값 설정
+        setUserProfile({
+          name: '사용자 정보 없음',
+          phone: '전화번호를 입력해주세요',
+          address: '주소를 입력해주세요',
+          detail_address: ''
+        })
       }
 
       setPageLoading(false)
@@ -342,11 +358,11 @@ export default function CheckoutPage() {
               </button>
             </div>
             <div className="space-y-1 text-sm">
-              <p className="font-medium text-gray-900">{userProfile.name}</p>
-              <p className="text-gray-600">{userProfile.phone}</p>
+              <p className="font-medium text-gray-900">{userProfile?.name || '이름 없음'}</p>
+              <p className="text-gray-600">{userProfile?.phone || '전화번호 없음'}</p>
               <p className="text-gray-600">
-                {userProfile.address}
-                {userProfile.detail_address && ` ${userProfile.detail_address}`}
+                {userProfile?.address || '주소를 입력해주세요'}
+                {userProfile?.detail_address && ` ${userProfile.detail_address}`}
               </p>
             </div>
           </motion.div>

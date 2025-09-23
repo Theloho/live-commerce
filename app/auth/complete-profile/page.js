@@ -154,6 +154,7 @@ export default function CompleteProfilePage() {
           phone: formData.phone,
           nickname: formData.nickname || formData.name,
           address: formData.address,
+          detail_address: formData.detailAddress || '',
           profile_completed: true
         }
 
