@@ -24,6 +24,7 @@ export default function OrderCompletePage() {
   const [loading, setLoading] = useState(true)
   const [isEditingAddress, setIsEditingAddress] = useState(false)
   const [userSession, setUserSession] = useState(null)
+  const [sessionLoaded, setSessionLoaded] = useState(false)
   const [shippingForm, setShippingForm] = useState({
     name: '',
     phone: '',
@@ -50,13 +51,20 @@ export default function OrderCompletePage() {
     }
 
     checkKakaoSession()
+    setSessionLoaded(true)
   }, [])
 
   useEffect(() => {
+    // 세션이 완전히 로드될 때까지 기다림
+    if (!sessionLoaded) {
+      console.log('세션 로딩 중, 대기...')
+      return
+    }
+
     const currentUser = userSession || user
     const isUserLoggedIn = userSession || isAuthenticated
 
-    console.log('주문완료 페이지 인증 확인:', { isAuthenticated, userSession, isUserLoggedIn })
+    console.log('주문완료 페이지 인증 확인:', { isAuthenticated, userSession, isUserLoggedIn, sessionLoaded })
 
     if (!isUserLoggedIn) {
       console.log('인증되지 않은 사용자, 로그인 페이지로 리다이렉트')
@@ -104,7 +112,7 @@ export default function OrderCompletePage() {
     }
 
     setLoading(false)
-  }, [isAuthenticated, userSession, params.id, router, user])
+  }, [isAuthenticated, userSession, sessionLoaded, params.id, router, user])
 
   if (loading) {
     return (
