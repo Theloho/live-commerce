@@ -46,7 +46,8 @@ export async function POST(request) {
     const ordersWithItems = data.map(order => ({
       ...order,
       items: order.order_items.map(item => ({
-        id: item.product_id,
+        id: item.id, // order_items 테이블의 실제 id
+        product_id: item.product_id, // 별도로 product_id도 포함
         title: item.products?.title || '상품명 없음',
         description: item.products?.description || '',
         thumbnail_url: item.products?.thumbnail_url || '/placeholder-product.png',
