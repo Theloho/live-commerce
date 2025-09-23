@@ -118,12 +118,12 @@ export async function POST(request) {
     // Supabase 클라이언트를 사용한 직접 재고 차감
     const { data: currentProduct, error: fetchError } = await supabase
       .from('products')
-      .select('stock_quantity, title')
+      .select('inventory, title')
       .eq('id', productId)
       .single()
 
     if (!fetchError && currentProduct) {
-      const currentStock = currentProduct.stock_quantity || 0
+      const currentStock = currentProduct.inventory || 0
       const newStock = Math.max(0, currentStock - orderData.quantity)
 
       console.log(`📦 ${currentProduct.title} 재고 차감: ${currentStock} → ${newStock}`)
@@ -131,7 +131,7 @@ export async function POST(request) {
       const { error: updateError } = await supabase
         .from('products')
         .update({
-          stock_quantity: newStock,
+          inventory: newStock,
           updated_at: new Date().toISOString()
         })
         .eq('id', productId)
