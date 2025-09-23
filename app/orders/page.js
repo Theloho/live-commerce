@@ -74,12 +74,31 @@ function OrdersContent() {
     }
 
     try {
-      console.log('Supabase에서 주문 데이터 로드 중...')
-      // Supabase에서 주문 데이터 가져오기
-      const supabaseOrders = await getOrders(user.id)
-      console.log('Loaded Supabase orders:', supabaseOrders) // 디버깅용
+      console.log('주문 데이터 로드 중...')
 
-      setOrders(supabaseOrders)
+      // 카카오 사용자인 경우 별도 API 사용
+      if (userSession && !user) {
+        console.log('카카오 사용자 주문 조회 API 사용')
+        const response = await fetch('/api/get-orders-kakao', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.id })
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          console.log('카카오 주문 조회 성공:', result.orders.length)
+          setOrders(result.orders)
+        } else {
+          throw new Error(result.error)
+        }
+      } else {
+        // 일반 Supabase 사용자
+        const supabaseOrders = await getOrders(currentUser.id)
+        console.log('Loaded Supabase orders:', supabaseOrders)
+        setOrders(supabaseOrders)
+      }
     } catch (error) {
       console.error('주문 데이터 로드 오류:', error)
       setOrders([])

@@ -41,10 +41,11 @@ export async function POST(request) {
       body: JSON.stringify({
         id: orderId,
         customer_order_number: customerOrderNumber,
-        user_id: null, // null로 설정하여 외래 키 제약 우회
+        user_id: userId || null, // 카카오 사용자 ID 저장
         status: 'pending',
         order_type: orderData.orderType || 'direct',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        metadata: { kakao_user_id: userId } // 메타데이터에도 저장
       })
     })
 
