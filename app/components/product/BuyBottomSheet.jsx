@@ -74,14 +74,15 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     price,
     compare_price,
     thumbnail_url,
-    inventory,
-    inventory_quantity,
+    stock_quantity,
+    inventory, // 호환성을 위해 유지
+    inventory_quantity, // 호환성을 위해 유지
     options = [],
     minOrder = 1,
-    maxOrder = (inventory || inventory_quantity || 50)
+    maxOrder = (stock_quantity || inventory || inventory_quantity || 50)
   } = product
 
-  const stock = inventory || inventory_quantity
+  const stock = stock_quantity || inventory || inventory_quantity || 0
   const originalPrice = compare_price
   const image = thumbnail_url
 

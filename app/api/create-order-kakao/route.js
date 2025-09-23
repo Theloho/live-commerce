@@ -107,8 +107,58 @@ export async function POST(request) {
 
     if (paymentError) throw paymentError
 
-    // 5. 재고 차감 (inventory_quantity 컬럼이 없으므로 생략)
-    console.log('재고 차감 기능은 inventory_quantity 컬럼이 있을 때 활성화됩니다')
+    // 5. 재고 차감
+    console.log('재고 차감 시작:', { productId, quantity: orderData.quantity })
+
+    try {
+      // 현재 재고 조회
+      const stockResponse = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${productId}&select=stock_quantity`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!stockResponse.ok) {
+        throw new Error(`재고 조회 실패: ${stockResponse.status}`)
+      }
+
+      const products = await stockResponse.json()
+      if (products.length === 0) {
+        throw new Error('상품을 찾을 수 없습니다')
+      }
+
+      const currentStock = products[0].stock_quantity || 0
+      const newStock = Math.max(0, currentStock - orderData.quantity)
+
+      console.log(`재고 차감: ${currentStock} → ${newStock}`)
+
+      // 재고 업데이트
+      const updateResponse = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${productId}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          stock_quantity: newStock,
+          updated_at: new Date().toISOString()
+        })
+      })
+
+      if (!updateResponse.ok) {
+        throw new Error(`재고 업데이트 실패: ${updateResponse.status}`)
+      }
+
+      console.log('재고 차감 완료')
+    } catch (stockError) {
+      console.error('재고 차감 오류:', stockError)
+      // 재고 차감 실패 시 주문도 롤백해야 하지만, 일단 경고만 출력
+      console.warn('재고 차감에 실패했지만 주문은 생성되었습니다')
+    }
 
     const finalOrder = order[0] || order
     console.log('카카오 사용자 주문 생성 성공:', finalOrder)

@@ -18,15 +18,15 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const [imageError, setImageError] = useState(false)
   const [showBuySheet, setShowBuySheet] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
-  const [currentInventory, setCurrentInventory] = useState(product.inventory || product.inventory_quantity || 0)
+  const [currentInventory, setCurrentInventory] = useState(product.stock_quantity || product.inventory || product.inventory_quantity || 0)
   const [userSession, setUserSession] = useState(null)
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
   // 재고 정보 - 상품 데이터에서 직접 사용
   useEffect(() => {
-    setCurrentInventory(product.inventory || product.inventory_quantity || 0)
-  }, [product.inventory, product.inventory_quantity])
+    setCurrentInventory(product.stock_quantity || product.inventory || product.inventory_quantity || 0)
+  }, [product.stock_quantity, product.inventory, product.inventory_quantity])
 
   // 직접 세션 확인 (카카오 로그인 지원)
   useEffect(() => {
