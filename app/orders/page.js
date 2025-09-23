@@ -177,10 +177,19 @@ function OrdersContent() {
   }
 
 
-  const handleOrderClick = (e, orderId) => {
+  const [selectedGroupOrder, setSelectedGroupOrder] = useState(null)
+
+  const handleOrderClick = (e, order) => {
     e.preventDefault()
     e.stopPropagation()
-    router.push(`/orders/${orderId}/complete`)
+
+    // 그룹 주문인 경우 모달 표시
+    if (order.isGroup) {
+      setSelectedGroupOrder(order)
+    } else {
+      // 개별 주문인 경우 기존 로직
+      router.push(`/orders/${order.id}/complete`)
+    }
   }
 
   // 개별 결제 (체크아웃으로 이동)
@@ -477,7 +486,7 @@ function OrdersContent() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    onClick={order.status !== 'pending' ? (e) => handleOrderClick(e, order.id) : undefined}
+                    onClick={order.status !== 'pending' ? (e) => handleOrderClick(e, order) : undefined}
                     className={`bg-white rounded-lg border border-gray-200 p-4 ${
                       order.status !== 'pending' ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
                     }`}
@@ -486,7 +495,16 @@ function OrdersContent() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900">
-                          주문번호: {order.customerOrderNumber || order.id.slice(-8)}
+                          {order.isGroup ? (
+                            <>
+                              <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full mr-2">
+                                일괄결제 {order.groupOrderCount}건
+                              </span>
+                              주문번호: {order.customer_order_number || order.id.slice(-8)}
+                            </>
+                          ) : (
+                            `주문번호: ${order.customerOrderNumber || order.id.slice(-8)}`
+                          )}
                         </span>
                       </div>
                       <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
@@ -508,7 +526,7 @@ function OrdersContent() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm">
-                          {orderItem.title}
+                          {order.isGroup ? `${order.groupOrderCount}개 상품 일괄결제` : orderItem.title}
                         </h3>
 
                         {/* 선택된 옵션 표시 */}
@@ -622,7 +640,7 @@ function OrdersContent() {
                              order.payment.method === 'bank_transfer' ? '계좌이체' : '카드결제'}
                             {order.orderType === 'cart' && ' (장바구니에서)'}
                           </span>
-                          <span>상세보기 →</span>
+                          <span>{order.isGroup ? '상세목록 보기 →' : '상세보기 →'}</span>
                         </div>
                       )}
                     </div>
@@ -633,6 +651,99 @@ function OrdersContent() {
           )}
         </div>
       </div>
+
+      {/* 그룹 주문 상세 모달 */}
+      {selectedGroupOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden">
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                일괄결제 상세내역
+              </h3>
+              <button
+                onClick={() => setSelectedGroupOrder(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 모달 내용 */}
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {/* 주문 그룹 정보 */}
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-blue-900">
+                    주문번호: {selectedGroupOrder.customer_order_number}
+                  </span>
+                  <span className="text-xs text-blue-700">
+                    {selectedGroupOrder.groupOrderCount}개 상품
+                  </span>
+                </div>
+                <div className="text-lg font-bold text-blue-900">
+                  총 ₩{selectedGroupOrder.items.reduce((sum, item) => sum + item.totalPrice, 0).toLocaleString()}
+                </div>
+              </div>
+
+              {/* 상품 목록 */}
+              <div className="space-y-3">
+                {selectedGroupOrder.items.map((item, index) => (
+                  <div key={`${item.id}-${index}`} className="flex gap-3 p-3 border border-gray-200 rounded-lg">
+                    <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                      <Image
+                        src={item.thumbnail_url || '/placeholder.png'}
+                        alt={item.title}
+                        fill
+                        sizes="48px"
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">
+                        {item.title}
+                      </h4>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                          수량: {item.quantity}개
+                        </span>
+                        <span className="font-semibold text-gray-900">
+                          ₩{item.totalPrice.toLocaleString()}
+                        </span>
+                      </div>
+                      {/* 선택된 옵션 표시 */}
+                      {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                        <div className="mt-1">
+                          {Object.entries(item.selectedOptions).map(([optionId, value]) => (
+                            <span
+                              key={optionId}
+                              className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1"
+                            >
+                              {value}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 모달 푸터 */}
+            <div className="p-4 border-t border-gray-200">
+              <button
+                onClick={() => setSelectedGroupOrder(null)}
+                className="w-full bg-gray-500 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

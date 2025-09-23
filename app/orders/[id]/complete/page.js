@@ -92,26 +92,52 @@ export default function OrderCompletePage() {
       }
     }
 
-    // 세션에 없다면 localStorage에서 주문 찾기
-    const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-    // 현재 사용자의 주문만 찾기
-    const order = orders.find(o => o.id === params.id && o.userId === user?.id)
+    // 세션에 없다면 API에서 주문 찾기 (카카오 사용자 지원)
+    const fetchOrderData = async () => {
+      try {
+        let order = null
 
-    if (order) {
-      setOrderData(order)
-      setShippingForm({
-        name: order.shipping.name,
-        phone: order.shipping.phone,
-        address: order.shipping.address,
-        detail_address: order.shipping.detail_address || ''
-      })
-    } else {
-      toast.error('주문 정보를 찾을 수 없습니다')
-      router.push('/')
-      return
+        if (currentUser && currentUser.provider === 'kakao') {
+          // 카카오 사용자는 API에서 조회
+          const response = await fetch('/api/get-orders-kakao', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id })
+          })
+
+          if (response.ok) {
+            const result = await response.json()
+            order = result.orders?.find(o => o.id === params.id)
+          }
+        } else {
+          // 일반 사용자는 localStorage에서 조회
+          const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
+          order = orders.find(o => o.id === params.id && o.userId === currentUser?.id)
+        }
+
+        if (order) {
+          setOrderData(order)
+          setShippingForm({
+            name: order.shipping?.name || '',
+            phone: order.shipping?.phone || '',
+            address: order.shipping?.address || '',
+            detail_address: order.shipping?.detail_address || ''
+          })
+        } else {
+          toast.error('주문 정보를 찾을 수 없습니다')
+          router.push('/orders')
+          return
+        }
+      } catch (error) {
+        console.error('주문 정보 조회 실패:', error)
+        toast.error('주문 정보를 불러오는데 실패했습니다')
+        router.push('/orders')
+        return
+      }
+      setLoading(false)
     }
 
-    setLoading(false)
+    fetchOrderData()
   }, [isAuthenticated, userSession, sessionLoaded, params.id, router, user])
 
   if (loading) {
