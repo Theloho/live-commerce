@@ -116,7 +116,7 @@ export async function POST(request) {
     console.log('🔧 재고 차감 시작:', productId, '수량:', orderData.quantity)
 
     // Supabase 클라이언트를 사용한 직접 재고 차감
-    const { data: currentProduct, error: fetchError } = await supabaseAdmin
+    const { data: currentProduct, error: fetchError } = await supabase
       .from('products')
       .select('stock_quantity, title')
       .eq('id', productId)
@@ -128,7 +128,7 @@ export async function POST(request) {
 
       console.log(`📦 ${currentProduct.title} 재고 차감: ${currentStock} → ${newStock}`)
 
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await supabase
         .from('products')
         .update({
           stock_quantity: newStock,

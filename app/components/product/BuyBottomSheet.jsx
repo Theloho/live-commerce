@@ -109,7 +109,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     }))
   }
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (shouldClose = true) => {
     const currentUser = userSession || user
     const isUserLoggedIn = userSession || isAuthenticated
 
@@ -180,7 +180,9 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       console.log('주문 목록 업데이트 이벤트 발생 (BuyBottomSheet)')
       window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'add', order: newOrder } }))
 
-      onClose()
+      if (shouldClose) {
+        onClose()
+      }
     } catch (error) {
       console.error('주문 생성 실패:', error)
       toast.error('장바구니 추가에 실패했습니다')
@@ -203,10 +205,17 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     }
 
     console.log('✅ 인증 완료, 장바구니 추가 시작')
-    // 먼저 장바구니에 추가하고 선택 모달 표시
-    await handleAddToCart()
-    console.log('🎯 선택 모달 표시')
-    setShowChoiceModal(true)
+
+    try {
+      // 장바구니에 추가 (BottomSheet 닫지 않음)
+      await handleAddToCart(false)
+      console.log('🎯 장바구니 추가 성공, 선택 모달 표시')
+      setShowChoiceModal(true)
+    } catch (error) {
+      console.error('장바구니 추가 실패:', error)
+      // 오류가 발생해도 모달은 표시 (사용자가 주문 확인할 수 있도록)
+      setShowChoiceModal(true)
+    }
   }
 
   const handleLike = () => {

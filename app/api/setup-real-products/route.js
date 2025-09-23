@@ -21,7 +21,7 @@ export async function POST(request) {
       console.log('기존 상품 삭제 시도:', deleteError.message)
     }
 
-    // 2. 실제 상품 데이터 추가 (스키마에 맞는 필수 필드만)
+    // 2. 실제 상품 데이터 추가 (재고 수량 포함)
     const realProducts = [
       {
         id: crypto.randomUUID(),
@@ -30,6 +30,7 @@ export async function POST(request) {
         price: 89000,
         compare_price: 120000,
         thumbnail_url: 'https://images.unsplash.com/photo-1558030006-450675393462',
+        stock_quantity: 50,
       },
       {
         id: crypto.randomUUID(),
@@ -38,6 +39,7 @@ export async function POST(request) {
         price: 45000,
         compare_price: 55000,
         thumbnail_url: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6',
+        stock_quantity: 50,
       },
       {
         id: crypto.randomUUID(),
@@ -46,6 +48,7 @@ export async function POST(request) {
         price: 28000,
         compare_price: 35000,
         thumbnail_url: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6',
+        stock_quantity: 50,
       },
       {
         id: crypto.randomUUID(),
@@ -54,6 +57,7 @@ export async function POST(request) {
         price: 25000,
         compare_price: 30000,
         thumbnail_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999',
+        stock_quantity: 50,
       },
       {
         id: crypto.randomUUID(),
@@ -62,6 +66,7 @@ export async function POST(request) {
         price: 65000,
         compare_price: 80000,
         thumbnail_url: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b',
+        stock_quantity: 50,
       }
     ]
 
