@@ -18,9 +18,12 @@ function generateCustomerOrderNumber() {
 
 export async function POST(request) {
   try {
+    console.log('🔄 카카오 주문 API 호출됨')
+
     const { orderData, userProfile, userId } = await request.json()
 
-    console.log('카카오 사용자 주문 생성:', { userId, orderData })
+    console.log('🔄 카카오 사용자 주문 생성:', { userId, orderData })
+    console.log('🔄 재고 차감 대상 상품:', { productId: orderData.id, quantity: orderData.quantity })
 
     // 1. 주문 생성 (user_id를 null로 설정하여 외래 키 제약 우회)
     const orderId = crypto.randomUUID()
@@ -106,6 +109,8 @@ export async function POST(request) {
       }])
 
     if (paymentError) throw paymentError
+
+    console.log('✅ 주문/아이템/배송/결제 정보 생성 완료')
 
     // 5. 재고 차감
     console.log('🔧 재고 차감 시작:', {
