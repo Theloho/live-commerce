@@ -21,7 +21,7 @@ export async function POST(request) {
       console.log('기존 상품 삭제 시도:', deleteError.message)
     }
 
-    // 2. 실제 상품 데이터 추가 (기존 스키마에 맞게 - inventory_quantity 제거)
+    // 2. 실제 상품 데이터 추가 (최소한의 필수 필드만)
     const realProducts = [
       {
         id: crypto.randomUUID(),
@@ -29,11 +29,7 @@ export async function POST(request) {
         description: '최고급 1++ 한우 등심 500g',
         price: 89000,
         compare_price: 120000,
-        thumbnail_url: 'https://images.unsplash.com/photo-1558030006-450675393462',
-        category: '육류',
-        is_visible: true,
-        is_live: false,
-        status: 'active'
+        thumbnail_url: 'https://images.unsplash.com/photo-1558030006-450675393462'
       },
       {
         id: crypto.randomUUID(),
@@ -41,11 +37,7 @@ export async function POST(request) {
         description: '제주산 흑돼지 삼겹살 600g',
         price: 45000,
         compare_price: 55000,
-        thumbnail_url: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6',
-        category: '육류',
-        is_visible: true,
-        is_live: true,
-        status: 'active'
+        thumbnail_url: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6'
       },
       {
         id: crypto.randomUUID(),
@@ -53,11 +45,7 @@ export async function POST(request) {
         description: '신선한 노르웨이산 연어 300g',
         price: 28000,
         compare_price: 35000,
-        thumbnail_url: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6',
-        category: '수산물',
-        is_visible: true,
-        is_live: false,
-        status: 'active'
+        thumbnail_url: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6'
       },
       {
         id: crypto.randomUUID(),
@@ -65,11 +53,7 @@ export async function POST(request) {
         description: '신선한 유기농 채소 모음',
         price: 25000,
         compare_price: 30000,
-        thumbnail_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999',
-        category: '채소',
-        is_visible: true,
-        is_live: false,
-        status: 'active'
+        thumbnail_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999'
       },
       {
         id: crypto.randomUUID(),
@@ -77,11 +61,7 @@ export async function POST(request) {
         description: '엄선된 제철 과일 모음',
         price: 65000,
         compare_price: 80000,
-        thumbnail_url: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b',
-        category: '과일',
-        is_visible: true,
-        is_live: false,
-        status: 'active'
+        thumbnail_url: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b'
       }
     ]
 
