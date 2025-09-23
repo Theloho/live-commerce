@@ -250,17 +250,33 @@ function OrdersContent() {
     }
 
     try {
-      // Supabase에서 주문 수량 업데이트
+      // 1. 로컬 상태 즉시 업데이트 (옵티미스틱 업데이트)
+      const updatedOrders = orders.map(o => {
+        if (o.id === orderId) {
+          const updatedItems = o.items.map((itm, idx) => {
+            if (idx === itemIndex) {
+              return {
+                ...itm,
+                quantity: newQuantity,
+                totalPrice: (itm.totalPrice / itm.quantity) * newQuantity
+              }
+            }
+            return itm
+          })
+          return { ...o, items: updatedItems }
+        }
+        return o
+      })
+      setOrders(updatedOrders)
+
+      // 2. 서버 업데이트
       await updateOrderItemQuantity(item.id, newQuantity)
       toast.success('수량이 변경되었습니다')
 
-      // 주문 목록 새로고침
-      loadOrders()
-
-      // 주문 업데이트 이벤트 발생
-      window.dispatchEvent(new CustomEvent('orderUpdated', {
-        detail: { action: 'quantity_change', orderId, itemIndex, change }
-      }))
+      // 3. 서버에서 최신 데이터 가져와서 동기화
+      setTimeout(() => {
+        loadOrders()
+      }, 500)
     } catch (error) {
       console.error('수량 변경 중 오류:', error)
       toast.error('수량 변경에 실패했습니다')
