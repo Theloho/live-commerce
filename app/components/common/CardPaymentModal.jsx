@@ -35,7 +35,7 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
 
       let result;
 
-      // 일괄결제인 경우 기존 주문들 상태 업데이트
+      // 카드결제는 항상 기존 주문 상태 업데이트만 처리 (새 주문 생성하지 않음)
       if (orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
         console.log('💳 카드 일괄결제 처리 시작')
         console.log('💳 대상 주문 ID들:', orderItem.originalOrderIds)
@@ -57,27 +57,8 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
         // 주문 업데이트 이벤트 발생시켜 주문내역 페이지에 알림
         window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'bulkPayment', orderIds: orderItem.originalOrderIds } }))
       } else {
-        // 직접구매인 경우 새로운 카드결제 주문 생성
-        console.log('💳 카드 직접결제 주문 생성 시작')
-
-        const response = await fetch('/api/create-order-card', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderData: orderItem,
-            userProfile,
-            userId: user.id
-          })
-        })
-
-        result = await response.json()
-        console.log('💳 카드결제 주문 생성 결과:', result)
-
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || '카드결제 주문 생성에 실패했습니다')
-        }
+        console.log('💳 카드결제: originalOrderIds가 없습니다. 기존 주문 업데이트를 건너뜁니다.')
+        result = { success: true }
       }
 
       // 2.5초 후 완료 메시지
