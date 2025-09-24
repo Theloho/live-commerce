@@ -33,23 +33,26 @@ export default function AdminShippingPage() {
     filterOrders()
   }, [orders, searchTerm, activeTab])
 
-  const loadPaidOrders = () => {
+  const loadPaidOrders = async () => {
     try {
       setLoading(true)
 
-      // 결제 완료된 주문들만 가져오기
-      const allOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
+      // DB에서 결제 완료된 주문들 가져오기
+      const { getAllOrders } = await import('@/lib/supabaseApi')
+      const allOrders = await getAllOrders()
+
+      // 결제완료, 배송중, 배송완료 주문만 필터링
       const paidOrders = allOrders.filter(order =>
         order.status === 'paid' || order.status === 'shipping' || order.status === 'delivered'
       )
 
-      // 사용자 정보 추가
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
       const ordersWithUserInfo = paidOrders.map(order => {
-        const user = users.find(u => u.id === order.userId)
         return {
           ...order,
-          user: user || {}
+          user: {
+            name: order.shipping?.recipient_name || order.userName || '정보없음',
+            phone: order.shipping?.recipient_phone || '정보없음'
+          }
         }
       })
 

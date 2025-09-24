@@ -14,7 +14,7 @@ import {
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { getAllOrders } from '@/lib/supabaseApi'
+import { getAllOrders, updateOrderStatus, getUserById } from '@/lib/supabaseApi'
 
 export default function AdminDepositsPage() {
   const router = useRouter()
@@ -52,7 +52,21 @@ export default function AdminDepositsPage() {
         order.payment?.method === 'bank_transfer' &&
         (order.status === 'pending' || order.status === 'verifying')
       )
-      setPendingOrders(bankTransferOrders)
+
+      // 사용자 정보를 각 주문에 추가
+      const ordersWithUsers = await Promise.all(
+        bankTransferOrders.map(async (order) => {
+          try {
+            const user = order.userId ? await getUserById(order.userId) : null
+            return { ...order, user }
+          } catch (error) {
+            console.error(`사용자 정보 로딩 실패 (${order.userId}):`, error)
+            return { ...order, user: null }
+          }
+        })
+      )
+
+      setPendingOrders(ordersWithUsers)
     } catch (error) {
       console.error('주문 로딩 오류:', error)
     }
@@ -277,20 +291,17 @@ export default function AdminDepositsPage() {
     const unmatched = []
 
     transactions.forEach(transaction => {
-      // 먼저 사용자 정보 로드
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-
       // 1차: 입금자명과 주문자 정보 정확 매칭 + 금액 일치
       let matchingOrder = pendingOrders.find(order => {
-        const orderUser = users.find(u => u.id === order.userId)
+        const orderUser = order.user || {}
         const orderAmount = order.payment?.amount || 0
 
         // 매칭할 이름들: 입금자명, 주문자명, 닉네임, 사용자 이름
         const namesToMatch = [
           order.depositName || '',
           order.shipping?.name || '',
-          orderUser?.nickname || orderUser?.user_metadata?.nickname || '',
-          orderUser?.name || orderUser?.user_metadata?.name || ''
+          orderUser.nickname || orderUser.user_metadata?.nickname || '',
+          orderUser.name || orderUser.user_metadata?.name || ''
         ].filter(name => name.trim())
 
         // 입금자명과 이름들 매칭 (공백 제거 후 비교)
@@ -313,13 +324,13 @@ export default function AdminDepositsPage() {
       } else {
         // 2차: 입금자명만 매칭 (금액 무관)
         matchingOrder = pendingOrders.find(order => {
-          const orderUser = users.find(u => u.id === order.userId)
+          const orderUser = order.user || {}
 
           const namesToMatch = [
             order.depositName || '',
             order.shipping?.name || '',
-            orderUser?.nickname || orderUser?.user_metadata?.nickname || '',
-            orderUser?.name || orderUser?.user_metadata?.name || ''
+            orderUser.nickname || orderUser.user_metadata?.nickname || '',
+            orderUser.name || orderUser.user_metadata?.name || ''
           ].filter(name => name.trim())
 
           return namesToMatch.some(name =>
@@ -357,17 +368,10 @@ export default function AdminDepositsPage() {
     setUnmatchedTransactions(unmatched)
   }
 
-  const confirmPayment = (matchedItem) => {
+  const confirmPayment = async (matchedItem) => {
     try {
       // 주문 상태를 'paid'로 변경
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      const updatedOrders = orders.map(order =>
-        order.id === matchedItem.order.id
-          ? { ...order, status: 'paid', paid_at: new Date().toISOString() }
-          : order
-      )
-
-      localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
+      await updateOrderStatus(matchedItem.order.id, 'paid')
 
       // 매칭된 항목에서 제거
       setMatchedTransactions(prev => prev.filter(item => item.order.id !== matchedItem.order.id))
@@ -429,33 +433,22 @@ export default function AdminDepositsPage() {
     setQuickSearchResults(sortedResults)
   }
 
-  const handleConfirmPayment = (transaction, relatedOrder) => {
+  const handleConfirmPayment = async (transaction, relatedOrder) => {
     if (!relatedOrder) {
       toast.error('매칭된 주문이 없습니다')
       return
     }
 
     try {
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      const orderIndex = orders.findIndex(order => order.id === relatedOrder.id)
-
-      if (orderIndex === -1) {
-        toast.error('주문을 찾을 수 없습니다')
-        return
-      }
-
       // 주문 상태를 paid로 변경
-      orders[orderIndex].status = 'paid'
-      orders[orderIndex].paid_at = new Date().toISOString()
-      orders[orderIndex].payment.status = 'confirmed'
+      await updateOrderStatus(relatedOrder.id, 'paid')
 
-      localStorage.setItem('mock_orders', JSON.stringify(orders))
       toast.success(`${relatedOrder.customerOrderNumber || relatedOrder.id.slice(-8)} 주문의 입금이 확인되었습니다`)
 
       // 데이터 새로고침
       loadPendingOrders()
       if (bankTransactions.length > 0) {
-        processTransactions(bankTransactions)
+        performMatching(bankTransactions)
       }
 
       // 모달 닫기
@@ -884,8 +877,8 @@ export default function AdminDepositsPage() {
                       </h3>
                       <div className="space-y-1 md:space-y-2 text-xs md:text-sm">
                         {(() => {
-                          const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-                          const orderUser = users.find(u => u.id === item.order.userId)
+                          // 사용자 정보는 매칭 시 이미 로드되어 order 객체에 포함됨
+                          const orderUser = item.order.user || {}
 
                           // 매칭되는 이름 찾기
                           const depositorName = item.transaction.depositor
@@ -1019,8 +1012,8 @@ export default function AdminDepositsPage() {
                       </h3>
                       <div className="space-y-1 md:space-y-2 text-xs md:text-sm">
                         {(() => {
-                          const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-                          const orderUser = users.find(u => u.id === item.order.userId)
+                          // 사용자 정보는 매칭 시 이미 로드되어 order 객체에 포함됨
+                          const orderUser = item.order.user || {}
 
                           const depositorName = item.transaction.depositor
                           const orderNames = [
@@ -1129,8 +1122,8 @@ export default function AdminDepositsPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     {(() => {
-                      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-                      const orderUser = users.find(u => u.id === order.userId)
+                      // 사용자 정보는 주문 로딩 시 함께 로드됨
+                      const orderUser = order.user || {}
                       return (
                         <div>
                           <div className="space-y-1">
@@ -1181,8 +1174,8 @@ export default function AdminDepositsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {(() => {
-                      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-                      const orderUser = users.find(u => u.id === order.userId)
+                      // 사용자 정보는 주문 로딩 시 함께 로드됨
+                      const orderUser = order.user || {}
 
                       if (orderUser?.kakaoLink) {
                         return (

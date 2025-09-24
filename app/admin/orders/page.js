@@ -87,17 +87,24 @@ export default function AdminOrdersPage() {
     setFilteredOrders(filtered)
   }
 
-  const updateOrderStatus = (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus) => {
     try {
+      // Supabase로 직접 상태 업데이트
+      const { updateOrderStatus: updateStatus } = await import('@/lib/supabaseApi')
+      await updateStatus(orderId, newStatus)
+
+      // UI 업데이트
       const updatedOrders = orders.map(order =>
         order.id === orderId ? { ...order, status: newStatus } : order
       )
       setOrders(updatedOrders)
-      localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
+
       toast.success('주문 상태가 변경되었습니다')
     } catch (error) {
       console.error('주문 상태 변경 오류:', error)
       toast.error('상태 변경에 실패했습니다')
+      // 실패 시 데이터 다시 로드
+      loadOrders()
     }
   }
 

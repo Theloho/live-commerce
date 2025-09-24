@@ -29,10 +29,11 @@ export default function AdminOrderDetailPage() {
     loadOrderDetail()
   }, [params.id])
 
-  const loadOrderDetail = () => {
+  const loadOrderDetail = async () => {
     try {
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      const foundOrder = orders.find(o => o.id === params.id)
+      setLoading(true)
+      const { getOrderById } = await import('@/lib/supabaseApi')
+      const foundOrder = await getOrderById(params.id)
 
       if (foundOrder) {
         setOrder(foundOrder)
@@ -40,26 +41,25 @@ export default function AdminOrderDetailPage() {
         toast.error('주문을 찾을 수 없습니다')
         router.push('/admin/orders')
       }
-      setLoading(false)
     } catch (error) {
       console.error('주문 상세 로딩 오류:', error)
       toast.error('주문 정보를 불러오는데 실패했습니다')
+    } finally {
       setLoading(false)
     }
   }
 
-  const updateOrderStatus = (newStatus) => {
+  const updateOrderStatus = async (newStatus) => {
     try {
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      const updatedOrders = orders.map(o =>
-        o.id === order.id ? { ...o, status: newStatus } : o
-      )
-      localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
+      const { updateOrderStatus: updateStatus } = await import('@/lib/supabaseApi')
+      await updateStatus(order.id, newStatus)
       setOrder({ ...order, status: newStatus })
       toast.success('주문 상태가 변경되었습니다')
     } catch (error) {
       console.error('주문 상태 변경 오류:', error)
       toast.error('상태 변경에 실패했습니다')
+      // 실패 시 데이터 다시 로드
+      loadOrderDetail()
     }
   }
 
