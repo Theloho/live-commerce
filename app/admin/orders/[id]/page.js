@@ -389,6 +389,15 @@ export default function AdminOrderDetailPage() {
               const itemsTotal = order.items.reduce((sum, item) => sum + (item.totalPrice || (item.price * item.quantity)), 0)
               const shippingFee = totalAmount - itemsTotal
 
+              // 디버깅 로그
+              console.log('💰 결제 금액 디버깅:', {
+                'order.payment?.amount': order.payment?.amount,
+                'itemsTotal': itemsTotal,
+                'shippingFee': shippingFee,
+                'order.payment': order.payment,
+                'order.items': order.items
+              })
+
               return (
                 <>
                   <div className="flex justify-between text-sm">
