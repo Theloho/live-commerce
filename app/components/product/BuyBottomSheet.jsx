@@ -141,37 +141,12 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     console.log('사용자 프로필:', userProfile) // 디버깅
 
     try {
-      // 카카오 사용자인지 확인
-      let newOrder
-      if (userSession && !user) {
-        console.log('카카오 사용자 주문 생성')
-        // 카카오 사용자용 API 사용
-        const response = await fetch('/api/create-order-kakao', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderData: {
-              ...cartItem,
-              orderType: 'cart'
-            },
-            userProfile,
-            userId: currentUser.id
-          })
-        })
-
-        const result = await response.json()
-        if (!result.success) {
-          throw new Error(result.error)
-        }
-        newOrder = result
-      } else {
-        // 일반 Supabase 사용자
-        const orderData = {
-          ...cartItem,
-          orderType: 'cart'
-        }
-        newOrder = await createOrder(orderData, userProfile)
+      // 모든 사용자 (카카오/일반) 통합 처리
+      const orderData = {
+        ...cartItem,
+        orderType: 'cart'
       }
+      const newOrder = await createOrder(orderData, userProfile)
       console.log('생성된 주문:', newOrder) // 디버깅
 
       // 재고 차감은 서버에서 처리되어야 함

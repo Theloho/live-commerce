@@ -314,7 +314,7 @@ export default function AdminOrdersPage() {
                       </div>
                       <div className="text-sm text-gray-500 flex items-center gap-1">
                         <AtSymbolIcon className="w-3 h-3" />
-                        {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.recipient_name || order.userId?.split('-').pop()?.substring(0, 8) || '익명')}
+                        {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || order.userId?.split('-').pop()?.substring(0, 8) || '익명')}
                       </div>
                       <div className="text-sm text-gray-500">
                         {order.shipping?.phone || ''}

@@ -162,7 +162,7 @@ export default function AdminOrderDetailPage() {
                   <UserIcon className="w-4 h-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{order.userName || order.shipping?.recipient_name || '정보없음'}</p>
+                  <p className="font-medium text-gray-900">{order.userName || order.shipping?.name || '정보없음'}</p>
                   <p className="text-sm text-gray-500">고객명</p>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function AdminOrderDetailPage() {
                   <AtSymbolIcon className="w-4 h-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.recipient_name || '익명')}</p>
+                  <p className="font-medium text-gray-900">{order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || '익명')}</p>
                   <p className="text-sm text-gray-500">닉네임</p>
                 </div>
               </div>
@@ -182,7 +182,7 @@ export default function AdminOrderDetailPage() {
                   <PhoneIcon className="w-4 h-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{order.shipping?.recipient_phone || '정보없음'}</p>
+                  <p className="font-medium text-gray-900">{order.shipping?.phone || '정보없음'}</p>
                   <p className="text-sm text-gray-500">휴대폰 번호</p>
                 </div>
               </div>
@@ -203,11 +203,11 @@ export default function AdminOrderDetailPage() {
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500 mb-1">받는 분</p>
-                <p className="font-medium text-gray-900">{order.shipping?.recipient_name || '정보없음'}</p>
+                <p className="font-medium text-gray-900">{order.shipping?.name || '정보없음'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">연락처</p>
-                <p className="font-medium text-gray-900">{order.shipping?.recipient_phone || '정보없음'}</p>
+                <p className="font-medium text-gray-900">{order.shipping?.phone || '정보없음'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">배송지</p>
