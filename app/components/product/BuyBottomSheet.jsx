@@ -207,14 +207,24 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     console.log('✅ 인증 완료, 장바구니 추가 시작')
 
     try {
-      // 장바구니에 추가 (BottomSheet 닫지 않음)
+      // 장바구니에 추가
       await handleAddToCart(false)
-      console.log('🎯 장바구니 추가 성공, 선택 모달 표시')
-      setShowChoiceModal(true)
+      console.log('🎯 장바구니 추가 성공, BottomSheet 닫고 모달 표시')
+
+      // BottomSheet 먼저 닫기
+      onClose()
+
+      // 잠깐 딜레이 후 모달 표시 (애니메이션 완료 후)
+      setTimeout(() => {
+        setShowChoiceModal(true)
+      }, 300)
     } catch (error) {
       console.error('장바구니 추가 실패:', error)
-      // 오류가 발생해도 모달은 표시 (사용자가 주문 확인할 수 있도록)
-      setShowChoiceModal(true)
+      // 오류가 발생해도 모달은 표시
+      onClose()
+      setTimeout(() => {
+        setShowChoiceModal(true)
+      }, 300)
     }
   }
 
