@@ -77,11 +77,14 @@ export default function AdminProductsPage() {
         options: product.product_options || []
       }))
 
-      console.log('📦 상품 데이터 로딩 완료:', productsWithOptions.map(p => ({
+      console.log('📦 관리자 상품 데이터 로딩 완료:', productsWithOptions.map(p => ({
         id: p.id,
-        title: p.title,
+        title: p.title?.slice(0, 20) + '...',
         inventory_quantity: p.inventory_quantity,
-        price: p.price
+        stock_quantity: p.stock_quantity,
+        inventory: p.inventory,
+        price: p.price,
+        is_active: p.is_active
       })))
 
       setProducts(productsWithOptions)
@@ -120,7 +123,10 @@ export default function AdminProductsPage() {
     try {
       const { error } = await supabase
         .from('products')
-        .update({ inventory_quantity: newQuantity })
+        .update({
+          inventory_quantity: newQuantity,
+          stock_quantity: newQuantity  // 호환성을 위해 두 필드 모두 업데이트
+        })
         .eq('id', productId)
 
       if (error) throw error
@@ -135,9 +141,21 @@ export default function AdminProductsPage() {
 
   const updateLiveStatus = async (productId, isLive) => {
     try {
+      // tags 배열에서 LIVE 라벨 추가/제거
+      const product = products.find(p => p.id === productId)
+      let updatedTags = product.tags || []
+
+      if (isLive) {
+        if (!updatedTags.includes('LIVE')) {
+          updatedTags = [...updatedTags, 'LIVE']
+        }
+      } else {
+        updatedTags = updatedTags.filter(tag => tag !== 'LIVE')
+      }
+
       const { error } = await supabase
         .from('products')
-        .update({ /* is_live: isLive */ }) // 스키마에 없는 컬럼 주석처리
+        .update({ tags: updatedTags })
         .eq('id', productId)
 
       if (error) throw error
@@ -428,7 +446,7 @@ export default function AdminProductsPage() {
         review_rating: 0,
         review_count: 0,
         is_featured: false,
-        // is_live: false // 스키마에 없는 컬럼 주석처리
+        tags: [] // LIVE 라벨은 별도로 추가
       }
 
       const { data, error } = await supabase
@@ -708,15 +726,15 @@ export default function AdminProductsPage() {
                   {/* 라이브 라벨 토글 */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateLiveStatus(product.id, !product.isLive)}
+                      onClick={() => updateLiveStatus(product.id, !(product.tags?.includes('LIVE')))}
                       className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                        product.isLive
+                        product.tags?.includes('LIVE')
                           ? 'bg-red-500 text-white hover:bg-red-600'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      <div className={`w-2 h-2 rounded-full ${product.isLive ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
-                      {product.isLive ? '🔴 LIVE' : 'LIVE 설정'}
+                      <div className={`w-2 h-2 rounded-full ${product.tags?.includes('LIVE') ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
+                      {product.tags?.includes('LIVE') ? '🔴 LIVE' : 'LIVE 설정'}
                     </button>
                   </div>
 
