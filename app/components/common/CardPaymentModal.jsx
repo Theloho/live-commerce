@@ -35,14 +35,17 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
 
       // 일괄결제인 경우 Supabase에서 원본 주문들의 상태를 'verifying'으로 업데이트
       if (orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
-        console.log('일괄결제 위한 주문 상태 업데이트:', orderItem.originalOrderIds)
+        console.log('💳 카드 일괄결제 처리 시작')
+        console.log('💳 대상 주문 ID들:', orderItem.originalOrderIds)
+        console.log('💳 주문 개수:', orderItem.originalOrderIds.length)
+
         try {
-          await updateMultipleOrderStatus(
+          const updateResult = await updateMultipleOrderStatus(
             orderItem.originalOrderIds,
             'verifying',
             { method: 'card' }
           )
-          console.log('주문 상태 업데이트 성공')
+          console.log('💳 주문 상태 업데이트 성공:', updateResult)
         } catch (error) {
           console.error('주문 상태 업데이트 실패:', error)
           // 실패해도 계속 진행 (사용자 경험을 위해)

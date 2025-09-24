@@ -28,6 +28,7 @@ function OrdersContent() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('pending')
+  const [selectedGroupOrder, setSelectedGroupOrder] = useState(null)
 
   // 직접 세션 확인
   useEffect(() => {
@@ -175,9 +176,6 @@ function OrdersContent() {
     }
     return statusMap[status] || statusMap['pending']
   }
-
-
-  const [selectedGroupOrder, setSelectedGroupOrder] = useState(null)
 
   const handleOrderClick = (e, order) => {
     e.preventDefault()

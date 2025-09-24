@@ -193,10 +193,13 @@ export default function CheckoutPage() {
 
       // 일괄결제인 경우
       if (orderItem.isBulkPayment && orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
-        console.log('일괄결제 처리 중...', orderItem.originalOrderIds)
+        console.log('💳 일괄결제 처리 시작')
+        console.log('💳 대상 주문 ID들:', orderItem.originalOrderIds)
+        console.log('💳 주문 개수:', orderItem.originalOrderIds.length)
 
         // 원본 주문들을 'verifying' 상태로 업데이트
-        await updateMultipleOrderStatus(orderItem.originalOrderIds, 'verifying')
+        const updateResult = await updateMultipleOrderStatus(orderItem.originalOrderIds, 'verifying')
+        console.log('💳 업데이트 결과:', updateResult)
 
         // 첫 번째 주문 ID를 사용 (일괄결제의 대표 ID)
         orderId = orderItem.originalOrderIds[0]
