@@ -25,6 +25,53 @@ export async function POST(request) {
     console.log('🔄 카드결제 주문 생성:', { userId, orderData })
     console.log('🔄 재고 차감 대상 상품:', { productId: orderData.id, quantity: orderData.quantity })
 
+    // 0. 사용자 존재 여부 확인 및 생성
+    let validUserId = userId
+    if (userId) {
+      console.log('👤 사용자 존재 여부 확인:', userId)
+
+      // 사용자 조회
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .single()
+
+      if (userCheckError && userCheckError.code === 'PGRST116') {
+        console.log('👤 사용자가 존재하지 않음, 생성 시도')
+        // 사용자가 존재하지 않으면 생성 시도
+        try {
+          const { error: userInsertError } = await supabase
+            .from('users')
+            .insert([{
+              id: userId,
+              name: userProfile.name || '카카오사용자',
+              nickname: userProfile.nickname || userProfile.name || '사용자',
+              phone: userProfile.phone || '',
+              address: userProfile.address || '',
+              detail_address: userProfile.detail_address || '',
+              created_at: new Date().toISOString()
+            }])
+
+          if (userInsertError) {
+            console.error('❌ 사용자 생성 실패:', userInsertError)
+            console.log('🔄 user_id를 null로 설정하여 계속 진행')
+            validUserId = null
+          } else {
+            console.log('✅ 사용자 생성 성공')
+          }
+        } catch (error) {
+          console.error('❌ 사용자 생성 중 오류:', error)
+          validUserId = null
+        }
+      } else if (userCheckError) {
+        console.error('❌ 사용자 조회 오류:', userCheckError)
+        validUserId = null
+      } else {
+        console.log('✅ 기존 사용자 확인됨')
+      }
+    }
+
     // 1. 주문 생성
     const orderId = crypto.randomUUID()
     const customerOrderNumber = generateCustomerOrderNumber()
@@ -44,7 +91,7 @@ export async function POST(request) {
       body: JSON.stringify({
         id: orderId,
         customer_order_number: customerOrderNumber,
-        user_id: userId, // 실제 사용자 ID 저장
+        user_id: validUserId, // 검증된 사용자 ID 저장 (존재하지 않으면 null)
         status: 'verifying', // 카드결제는 바로 확인중 상태
         order_type: orderData.orderType || 'direct',
         created_at: new Date().toISOString()
