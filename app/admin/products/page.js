@@ -35,7 +35,7 @@ export default function AdminProductsPage() {
     title: '',
     description: '',
     price: '',
-    inventory_quantity: '',
+    inventory: '',
     options: []
   })
   const fileInputRef = useRef(null)
@@ -80,8 +80,6 @@ export default function AdminProductsPage() {
       console.log('📦 관리자 상품 데이터 로딩 완료:', productsWithOptions.map(p => ({
         id: p.id,
         title: p.title?.slice(0, 20) + '...',
-        inventory_quantity: p.inventory_quantity,
-        stock_quantity: p.stock_quantity,
         inventory: p.inventory,
         price: p.price,
         status: p.status
@@ -139,8 +137,7 @@ export default function AdminProductsPage() {
       const { error } = await supabase
         .from('products')
         .update({
-          inventory_quantity: newQuantity,
-          stock_quantity: newQuantity  // 호환성을 위해 두 필드 모두 업데이트
+          inventory: newQuantity
         })
         .eq('id', productId)
 
@@ -189,7 +186,7 @@ export default function AdminProductsPage() {
       title: product.title,
       description: product.description || '',
       price: product.price,
-      inventory_quantity: product.inventory_quantity,
+      inventory: product.inventory,
       compare_price: product.compare_price || '',
       seller: product.seller || '',
       badge: product.badge || '',
@@ -208,7 +205,7 @@ export default function AdminProductsPage() {
       title: '',
       description: '',
       price: '',
-      inventory_quantity: '',
+      inventory: '',
       options: []
     })
     setImagePreview('')
@@ -230,7 +227,7 @@ export default function AdminProductsPage() {
       return
     }
 
-    if (productData.inventory_quantity < 0) {
+    if (productData.inventory < 0) {
       toast.error('재고는 0개 이상이어야 합니다')
       return
     }
@@ -241,7 +238,7 @@ export default function AdminProductsPage() {
         title: productData.title.trim(),
         description: productData.description.trim() || '',
         price: parseInt(productData.price),
-        inventory_quantity: parseInt(productData.inventory_quantity) || 0,
+        inventory: parseInt(productData.inventory) || 0,
         compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
         seller: productData.seller || editingProduct.seller,
         badge: productData.badge || null,
@@ -292,7 +289,7 @@ export default function AdminProductsPage() {
     setProductData({
       title: '',
       price: '',
-      inventory_quantity: '',
+      inventory: '',
       options: []
     })
   }
@@ -336,7 +333,7 @@ export default function AdminProductsPage() {
       title: '',
       description: '',
       price: '',
-      inventory_quantity: '',
+      inventory: '',
       options: []
     })
   }
@@ -456,7 +453,7 @@ export default function AdminProductsPage() {
         price: parseInt(productData.price),
         compare_price: null,
         thumbnail_url: imagePreview,
-        inventory_quantity: parseInt(productData.inventory_quantity) || 50,
+        inventory: parseInt(productData.inventory) || 50,
         status: 'active',
         review_rating: 0,
         review_count: 0,
@@ -568,7 +565,7 @@ export default function AdminProductsPage() {
                 try {
                   const { error } = await supabase
                     .from('products')
-                    .update({ inventory_quantity: 50 })
+                    .update({ inventory: 50 })
                     .neq('id', '00000000-0000-0000-0000-000000000000')
 
                   if (error) throw error
@@ -715,22 +712,22 @@ export default function AdminProductsPage() {
                   <span className="text-sm text-gray-600">재고</span>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateInventory(product.id, (product.inventory_quantity ?? 0) - 1)}
+                      onClick={() => updateInventory(product.id, (product.inventory ?? 0) - 1)}
                       className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
                     >
                       -
                     </button>
                     <span className="text-sm font-medium w-8 text-center">
-                      {product.inventory_quantity ?? 0}
+                      {product.inventory ?? 0}
                     </span>
                     <button
-                      onClick={() => updateInventory(product.id, (product.inventory_quantity ?? 0) + 1)}
+                      onClick={() => updateInventory(product.id, (product.inventory ?? 0) + 1)}
                       className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
                     >
                       +
                     </button>
                     <span className="text-xs ml-2">
-                      {getInventoryStatus(product.inventory_quantity)}
+                      {getInventoryStatus(product.inventory)}
                     </span>
                   </div>
                 </div>
@@ -958,8 +955,8 @@ export default function AdminProductsPage() {
                       </label>
                       <input
                         type="number"
-                        value={productData.inventory_quantity}
-                        onChange={(e) => handleProductDataChange('inventory_quantity', e.target.value)}
+                        value={productData.inventory}
+                        onChange={(e) => handleProductDataChange('inventory', e.target.value)}
                         placeholder="50"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       />
@@ -1227,7 +1224,7 @@ export default function AdminProductsPage() {
                     <input
                       type="number"
                       value={productData.inventory_quantity}
-                      onChange={(e) => setProductData(prev => ({ ...prev, inventory_quantity: e.target.value }))}
+                      onChange={(e) => setProductData(prev => ({ ...prev, inventory: e.target.value }))
                       placeholder="재고 수량"
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     />
