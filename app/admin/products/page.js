@@ -1223,8 +1223,8 @@ export default function AdminProductsPage() {
                     </label>
                     <input
                       type="number"
-                      value={productData.inventory_quantity}
-                      onChange={(e) => setProductData(prev => ({ ...prev, inventory: e.target.value }))
+                      value={productData.inventory}
+                      onChange={(e) => setProductData(prev => ({ ...prev, inventory: e.target.value }))}
                       placeholder="재고 수량"
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     />
