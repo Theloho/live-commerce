@@ -33,7 +33,9 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
         duration: 2000
       })
 
-      // 일괄결제인 경우 Supabase에서 원본 주문들의 상태를 'verifying'으로 업데이트
+      let result;
+
+      // 일괄결제인 경우 기존 주문들 상태 업데이트
       if (orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
         console.log('💳 카드 일괄결제 처리 시작')
         console.log('💳 대상 주문 ID들:', orderItem.originalOrderIds)
@@ -46,12 +48,36 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
             { method: 'card' }
           )
           console.log('💳 주문 상태 업데이트 성공:', updateResult)
+          result = { success: true }
         } catch (error) {
           console.error('주문 상태 업데이트 실패:', error)
           // 실패해도 계속 진행 (사용자 경험을 위해)
+          result = { success: true }
         }
         // 주문 업데이트 이벤트 발생시켜 주문내역 페이지에 알림
         window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'bulkPayment', orderIds: orderItem.originalOrderIds } }))
+      } else {
+        // 직접구매인 경우 새로운 카드결제 주문 생성
+        console.log('💳 카드 직접결제 주문 생성 시작')
+
+        const response = await fetch('/api/create-order-card', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderData: orderItem,
+            userProfile,
+            userId: user.id
+          })
+        })
+
+        result = await response.json()
+        console.log('💳 카드결제 주문 생성 결과:', result)
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || '카드결제 주문 생성에 실패했습니다')
+        }
       }
 
       // 2.5초 후 완료 메시지
@@ -71,7 +97,8 @@ export default function CardPaymentModal({ isOpen, onClose, totalAmount, product
           // 체크아웃 세션 데이터 삭제
           sessionStorage.removeItem('checkoutItem')
 
-          const orderId = 'ORDER-' + Date.now()
+          // 실제 주문 ID 사용 (새 주문 생성한 경우) 또는 기본 ID
+          const orderId = result?.id || 'ORDER-' + Date.now()
           router.replace(`/orders/${orderId}/complete`)
         }, 1000)
       }, 2500)
