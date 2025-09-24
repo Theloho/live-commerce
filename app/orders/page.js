@@ -481,7 +481,7 @@ function OrdersContent() {
             <div className="space-y-4">
               {filteredOrders.map((order, index) => {
                 // payment 정보에서 결제 방법 가져오기
-                const paymentMethod = order.payment?.payment_method || null
+                const paymentMethod = order.payment?.method || null
                 const statusInfo = getStatusInfo(order.status, paymentMethod)
                 const StatusIcon = statusInfo.icon
                 const orderItem = order.items?.[0] || {
@@ -626,22 +626,22 @@ function OrdersContent() {
                       ) : order.status === 'verifying' ? (
                         // 결제 확인중 상태일 때 메시지 표시 (결제 방법별 색상 구분)
                         <div className={`${
-                          order.payment?.payment_method === 'card'
+                          order.payment?.method === 'card'
                             ? 'bg-blue-50 border border-blue-200'
                             : 'bg-orange-50 border border-orange-200'
                         } rounded-lg p-3`}>
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 ${
-                              order.payment?.payment_method === 'card' ? 'bg-blue-500' : 'bg-orange-500'
+                              order.payment?.method === 'card' ? 'bg-blue-500' : 'bg-orange-500'
                             } rounded-full animate-pulse`}></div>
                             <span className={`${
-                              order.payment?.payment_method === 'card' ? 'text-blue-700' : 'text-orange-700'
+                              order.payment?.method === 'card' ? 'text-blue-700' : 'text-orange-700'
                             } text-sm font-medium`}>
-                              {order.payment?.payment_method === 'card' ? '카드결제 확인중' : '계좌입금 확인중'}
+                              {order.payment?.method === 'card' ? '카드결제 확인중' : '계좌입금 확인중'}
                             </span>
                           </div>
                           <p className={`${
-                            order.payment?.payment_method === 'card' ? 'text-blue-600' : 'text-orange-600'
+                            order.payment?.method === 'card' ? 'text-blue-600' : 'text-orange-600'
                           } text-xs mt-1`}>
                             결제 확인이 완료되면 자동으로 처리됩니다
                           </p>
@@ -649,9 +649,9 @@ function OrdersContent() {
                       ) : (
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>
-                            {order.payment?.payment_method === 'cart' ? '장바구니' :
-                             order.payment?.payment_method === 'bank_transfer' ? '계좌이체' :
-                             order.payment?.payment_method === 'card' ? '카드결제' : '결제대기'}
+                            {order.payment?.method === 'cart' ? '장바구니' :
+                             order.payment?.method === 'bank_transfer' ? '계좌이체' :
+                             order.payment?.method === 'card' ? '카드결제' : '결제대기'}
                             {order.orderType === 'cart' && ' (장바구니에서)'}
                           </span>
                           <span>{order.isGroup ? '상세목록 보기 →' : '상세보기 →'}</span>
