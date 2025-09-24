@@ -383,18 +383,29 @@ export default function AdminOrderDetailPage() {
         {/* Order Summary */}
         <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">상품 금액</span>
-              <span>₩{order.payment?.amount?.toLocaleString() || '0'}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">배송비</span>
-              <span>무료</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold pt-2 border-t">
-              <span>총 결제 금액</span>
-              <span className="text-red-600">₩{order.payment?.amount?.toLocaleString() || '0'}</span>
-            </div>
+            {(() => {
+              // 총 주문 금액에서 상품 금액을 빼서 배송비 계산
+              const totalAmount = order.payment?.amount || 0
+              const itemsTotal = order.items.reduce((sum, item) => sum + (item.totalPrice || (item.price * item.quantity)), 0)
+              const shippingFee = totalAmount - itemsTotal
+
+              return (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">상품 금액</span>
+                    <span>₩{itemsTotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">배송비</span>
+                    <span>{shippingFee > 0 ? `₩${shippingFee.toLocaleString()}` : '무료'}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>총 결제 금액</span>
+                    <span className="text-red-600">₩{totalAmount.toLocaleString()}</span>
+                  </div>
+                </>
+              )
+            })()}
           </div>
         </div>
       </motion.div>
