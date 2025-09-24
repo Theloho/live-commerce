@@ -307,6 +307,10 @@ function OrdersContent() {
       return
     }
 
+    console.log('🛍️ 전체결제 시작')
+    console.log('🛍️ 결제대기 주문 수:', pendingOrders.length)
+    console.log('🛍️ 주문 ID들:', pendingOrders.map(o => o.id))
+
     // 결제대기 주문의 경우 재고가 이미 차감되어 있으므로 검증 건너뛰기
     console.log('일괄결제: 결제대기 주문들의 재고는 이미 확보되어 있으므로 검증 생략')
 
