@@ -84,8 +84,23 @@ export default function AdminProductsPage() {
         stock_quantity: p.stock_quantity,
         inventory: p.inventory,
         price: p.price,
-        is_active: p.is_active
+        status: p.status
       })))
+
+      // 재고 필드 분석
+      const firstProduct = productsWithOptions[0]
+      if (firstProduct) {
+        console.log('🔍 첫 번째 상품의 모든 재고 관련 필드:')
+        console.log('- inventory:', firstProduct.inventory)
+        console.log('- inventory_quantity:', firstProduct.inventory_quantity)
+        console.log('- stock_quantity:', firstProduct.stock_quantity)
+
+        // 실제로 값이 있는 필드 확인
+        const realInventoryField = firstProduct.inventory !== undefined ? 'inventory' :
+                                 firstProduct.inventory_quantity !== undefined ? 'inventory_quantity' :
+                                 firstProduct.stock_quantity !== undefined ? 'stock_quantity' : 'none'
+        console.log('✅ 실제 사용 중인 재고 필드:', realInventoryField)
+      }
 
       setProducts(productsWithOptions)
     } catch (error) {
