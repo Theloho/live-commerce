@@ -60,16 +60,34 @@ export default function ProductCard({ product, variant = 'default', priority = f
       setUserSession(null)
     }
 
+    // 주문 업데이트 이벤트 처리 (재고 반영)
+    const handleOrderUpdate = (event) => {
+      console.log('ProductCard - 주문 업데이트 이벤트 수신:', event.detail)
+      const { action, order, quantity } = event.detail
+
+      // 주문이 생성되어 재고가 차감된 경우
+      if (action === 'add' && order && order.items) {
+        const orderItem = order.items.find(item => item.id === product.id || item.product_id === product.id)
+        if (orderItem) {
+          const orderedQuantity = orderItem.quantity || 1
+          console.log(`ProductCard - 상품 ${product.id} 재고 차감: ${orderedQuantity}개`)
+          setCurrentInventory(prev => Math.max(0, prev - orderedQuantity))
+        }
+      }
+    }
+
     window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
     window.addEventListener('profileCompleted', handleProfileCompleted)
     window.addEventListener('userLoggedOut', handleLogout)
+    window.addEventListener('orderUpdated', handleOrderUpdate)
 
     return () => {
       window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
       window.removeEventListener('profileCompleted', handleProfileCompleted)
       window.removeEventListener('userLoggedOut', handleLogout)
+      window.removeEventListener('orderUpdated', handleOrderUpdate)
     }
-  }, [])
+  }, [product.id])
 
   const {
     id,
@@ -136,8 +154,20 @@ export default function ProductCard({ product, variant = 'default', priority = f
       }
       const newOrder = await createOrder(orderData, userProfile)
 
-      // 주문 업데이트 이벤트 발생
-      window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'add', order: newOrder } }))
+      // 주문 업데이트 이벤트 발생 (재고 업데이트용)
+      window.dispatchEvent(new CustomEvent('orderUpdated', {
+        detail: {
+          action: 'add',
+          order: {
+            ...newOrder,
+            items: [{
+              id: product.id,
+              product_id: product.id,
+              quantity: 1
+            }]
+          }
+        }
+      }))
 
       toast.success('장바구니에 추가되었습니다')
     } catch (error) {

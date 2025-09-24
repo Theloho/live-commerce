@@ -176,9 +176,21 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
       // 재고 차감은 서버에서 처리되어야 함
 
-      // 주문 업데이트 이벤트 발생
+      // 주문 업데이트 이벤트 발생 (재고 업데이트용)
       console.log('주문 목록 업데이트 이벤트 발생 (BuyBottomSheet)')
-      window.dispatchEvent(new CustomEvent('orderUpdated', { detail: { action: 'add', order: newOrder } }))
+      window.dispatchEvent(new CustomEvent('orderUpdated', {
+        detail: {
+          action: 'add',
+          order: {
+            ...newOrder,
+            items: [{
+              id: product.id,
+              product_id: product.id,
+              quantity: quantity
+            }]
+          }
+        }
+      }))
 
       if (shouldClose) {
         onClose()
