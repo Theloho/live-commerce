@@ -77,6 +77,13 @@ export default function AdminProductsPage() {
         options: product.product_options || []
       }))
 
+      console.log('📦 상품 데이터 로딩 완료:', productsWithOptions.map(p => ({
+        id: p.id,
+        title: p.title,
+        inventory_quantity: p.inventory_quantity,
+        price: p.price
+      })))
+
       setProducts(productsWithOptions)
     } catch (error) {
       console.error('상품 로딩 오류:', error)
@@ -473,9 +480,10 @@ export default function AdminProductsPage() {
   }
 
   const getInventoryStatus = (quantity) => {
-    if (quantity === 0) {
+    const qty = quantity ?? 0
+    if (qty === 0) {
       return <span className="text-red-600 font-medium">품절</span>
-    } else if (quantity <= 5) {
+    } else if (qty <= 5) {
       return <span className="text-yellow-600 font-medium">품절임박</span>
     } else {
       return <span className="text-green-600 font-medium">충분</span>
@@ -674,16 +682,16 @@ export default function AdminProductsPage() {
                   <span className="text-sm text-gray-600">재고</span>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateInventory(product.id, product.inventory_quantity - 1)}
+                      onClick={() => updateInventory(product.id, (product.inventory_quantity ?? 0) - 1)}
                       className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
                     >
                       -
                     </button>
                     <span className="text-sm font-medium w-8 text-center">
-                      {product.inventory_quantity}
+                      {product.inventory_quantity ?? 0}
                     </span>
                     <button
-                      onClick={() => updateInventory(product.id, product.inventory_quantity + 1)}
+                      onClick={() => updateInventory(product.id, (product.inventory_quantity ?? 0) + 1)}
                       className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
                     >
                       +
