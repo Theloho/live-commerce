@@ -288,7 +288,7 @@ export default function AdminOrdersPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
-                        {order.id.slice(-8)}
+                        {order.customer_order_number || order.id.slice(-8)}
                       </div>
                       <div className="text-sm text-gray-500">
                         {new Date(order.created_at).toLocaleString('ko-KR')}

@@ -138,7 +138,7 @@ export default function AdminOrderDetailPage() {
             {getStatusBadge(order.status)}
           </div>
           <p className="text-gray-600 mt-1">
-            주문번호: {order.customerOrderNumber || order.id} • {new Date(order.created_at).toLocaleString('ko-KR')}
+            주문번호: {order.customer_order_number || order.id} • {new Date(order.created_at).toLocaleString('ko-KR')}
           </p>
         </div>
       </div>
