@@ -42,6 +42,28 @@ export async function POST(request) {
       throw error
     }
 
+    // 최적 결제 방법 선택 함수 (카드 > 기타 > bank_transfer 순서)
+    const getBestPayment = (payments) => {
+      if (!payments || payments.length === 0) return {}
+
+      // 카드 결제가 있으면 우선 선택
+      const cardPayment = payments.find(p => p.method === 'card')
+      if (cardPayment) return cardPayment
+
+      // bank_transfer가 아닌 다른 방법이 있으면 선택
+      const nonBankPayment = payments.find(p => p.method !== 'bank_transfer')
+      if (nonBankPayment) return nonBankPayment
+
+      // 가장 최근 업데이트된 결제 방법 선택
+      const sortedPayments = [...payments].sort((a, b) => {
+        const aTime = new Date(a.updated_at || a.created_at)
+        const bTime = new Date(b.updated_at || b.created_at)
+        return bTime - aTime
+      })
+
+      return sortedPayments[0] || {}
+    }
+
     // 주문 데이터 형태 변환
     const ordersWithItems = data.map(order => ({
       ...order,
@@ -58,7 +80,7 @@ export async function POST(request) {
         unit_price: item.unit_price
       })),
       shipping: order.order_shipping[0] || {},
-      payment: order.order_payments[0] || {}
+      payment: getBestPayment(order.order_payments)
     }))
 
     console.log(`${ordersWithItems.length}개의 주문 조회 성공`)
