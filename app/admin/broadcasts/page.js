@@ -22,59 +22,31 @@ export default function AdminBroadcastsPage() {
     loadBroadcasts()
   }, [])
 
-  const loadBroadcasts = () => {
+  const loadBroadcasts = async () => {
     try {
-      // Mock 방송 데이터
-      const mockBroadcasts = [
-        {
-          id: 1,
-          title: "🔥 신상품 라이브 쇼핑 🔥",
-          description: "새로 출시된 무선 이어폰과 스마트 워치를 특가로 만나보세요!",
-          status: "live",
-          scheduled_at: new Date().toISOString(),
-          started_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30분 전 시작
-          viewer_count: 1247,
-          products: [
-            { id: 1, title: "프리미엄 무선 이어폰", price: 89000 },
-            { id: 2, title: "스마트 워치 시리즈 X", price: 299000 }
-          ],
-          thumbnail_url: "https://picsum.photos/400/300?random=1"
-        },
-        {
-          id: 2,
-          title: "주말 특가 방송",
-          description: "주말 한정 특가 상품들을 소개합니다",
-          status: "scheduled",
-          scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2시간 후
-          started_at: null,
-          viewer_count: 0,
-          products: [
-            { id: 3, title: "울트라 슬림 노트북", price: 1290000 },
-            { id: 4, title: "블루투스 스피커", price: 79000 }
-          ],
-          thumbnail_url: "https://picsum.photos/400/300?random=2"
-        },
-        {
-          id: 3,
-          title: "어제의 베스트 상품 리뷰",
-          description: "어제 가장 인기 있었던 상품들을 다시 한번 소개합니다",
-          status: "ended",
-          scheduled_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 어제
-          started_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          ended_at: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(), // 2시간 방송
-          viewer_count: 892,
-          products: [
-            { id: 1, title: "프리미엄 무선 이어폰", price: 89000 }
-          ],
-          thumbnail_url: "https://picsum.photos/400/300?random=3"
-        }
-      ]
+      console.log('📺 방송 목록 로딩 시작')
+      setLoading(true)
 
-      setBroadcasts(mockBroadcasts)
+      const response = await fetch('/api/admin/broadcasts', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ 방송 데이터:', data.broadcasts)
+        setBroadcasts(data.broadcasts)
+      } else {
+        console.warn('⚠️ 방송 데이터 로딩 실패')
+        setBroadcasts([])
+        toast.error('방송 데이터를 불러오는데 실패했습니다')
+      }
+
       setLoading(false)
     } catch (error) {
       console.error('방송 로딩 오류:', error)
       setLoading(false)
+      toast.error('방송 데이터를 불러오는데 실패했습니다')
     }
   }
 

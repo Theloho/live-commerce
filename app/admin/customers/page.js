@@ -34,83 +34,21 @@ export default function AdminCustomersPage() {
     filterCustomers()
   }, [customers, searchTerm, sortBy])
 
-  const removeDuplicateUsers = () => {
+  const loadCustomers = async () => {
     try {
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-      console.log('=== 안전한 중복 제거 로직 시작 ===')
-      console.log('원본 사용자 수:', users.length)
-      console.log('원본 사용자 데이터:', users.map(u => ({ id: u.id, name: u.name, nickname: u.nickname, email: u.email })))
+      console.log('📋 고객 데이터 로딩 시작')
+      setLoading(true)
 
-      // 더 안전한 중복 제거: ID가 같은 경우에만 제거
-      const uniqueUsers = []
-      const seenIds = new Set()
+      // 실제 DB에서 고객 데이터 가져오기
+      const customersData = await getAllCustomers()
+      console.log('✅ DB 고객 데이터:', customersData)
 
-      users.forEach(user => {
-        if (!seenIds.has(user.id)) {
-          seenIds.add(user.id)
-          uniqueUsers.push(user)
-        } else {
-          console.log('ID 중복 제거된 사용자:', user.name, 'ID:', user.id)
-        }
-      })
-
-      if (uniqueUsers.length !== users.length) {
-        console.log(`ID 중복 사용자 ${users.length - uniqueUsers.length}명 제거됨`)
-        localStorage.setItem('mock_users', JSON.stringify(uniqueUsers))
-      } else {
-        console.log('중복된 사용자 없음 - 모든 데이터 유지')
-      }
-
-      console.log('최종 사용자 수:', uniqueUsers.length)
-      return uniqueUsers
-    } catch (error) {
-      console.error('중복 사용자 제거 중 오류:', error)
-      return JSON.parse(localStorage.getItem('mock_users') || '[]')
-    }
-  }
-
-  const loadCustomers = () => {
-    try {
-      // 중복 사용자 먼저 제거
-      const users = removeDuplicateUsers()
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-
-      console.log('=== 고객 데이터 디버그 ===')
-      console.log('로드된 사용자 수:', users.length)
-      console.log('로드된 사용자 데이터:', users)
-      console.log('로드된 주문 수:', orders.length)
-
-      // 사용자별 주문 통계 계산
-      const customerData = users.map(user => {
-        const userOrders = orders.filter(order => order.userId === user.id)
-        const totalSpent = userOrders.reduce((sum, order) => sum + (order.payment?.amount || 0), 0)
-        const lastOrderDate = userOrders.length > 0
-          ? Math.max(...userOrders.map(order => new Date(order.created_at).getTime()))
-          : null
-
-        return {
-          id: user.id,
-          name: user.name || user.user_metadata?.name || '정보없음',
-          nickname: user.nickname || user.user_metadata?.nickname || 'Unknown',
-          phone: user.phone || user.user_metadata?.phone || '정보없음',
-          address: user.address || user.user_metadata?.address || '정보없음',
-          tiktokId: user.tiktokId || user.user_metadata?.tiktokId || '',
-          youtubeId: user.youtubeId || user.user_metadata?.youtubeId || '',
-          kakaoLink: user.kakaoLink || '',
-          created_at: user.created_at,
-          orderCount: userOrders.length,
-          totalSpent: totalSpent,
-          lastOrderDate: lastOrderDate ? new Date(lastOrderDate).toISOString() : null,
-          status: userOrders.length > 0 ? 'active' : 'inactive'
-        }
-      })
-
-      console.log('고객 데이터:', customerData)
-      setCustomers(customerData)
+      setCustomers(customersData)
       setLoading(false)
     } catch (error) {
       console.error('고객 데이터 로딩 오류:', error)
       setLoading(false)
+      toast.error('고객 데이터를 불러오는데 실패했습니다')
     }
   }
 
