@@ -119,9 +119,14 @@ export async function POST(request) {
             // 모든 아이템 합치기
             items: groupOrders.flatMap(o => o.items),
 
-            // 첫 번째 주문의 배송/결제 정보 사용
+            // 첫 번째 주문의 배송 정보 사용
             shipping: order.shipping,
-            payment: order.payment,
+
+            // 결제 정보는 총 금액으로 재계산 (아이템 가격 합계 + 배송비)
+            payment: {
+              ...getBestPayment(order.order_payments),
+              amount: groupOrders.flatMap(o => o.items).reduce((sum, item) => sum + item.totalPrice, 0) + 4000
+            },
 
             // 그룹 정보 추가
             isGroup: true,
