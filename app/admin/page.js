@@ -32,53 +32,42 @@ export default function AdminDashboard() {
     loadStats()
   }, [])
 
-  const loadStats = useCallback(() => {
+  const loadStats = useCallback(async () => {
     try {
-      // Mock 주문 데이터에서 통계 계산
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      const today = new Date()
-      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      console.log('📊 관리자 대시보드 통계 로딩 시작')
 
-      // 오늘 주문 수
-      const todayOrders = orders.filter(order => {
-        const orderDate = new Date(order.created_at)
-        return orderDate >= todayStart
-      }).length
-
-      // 오늘 매출 (결제완료 주문만)
-      const todaySales = orders
-        .filter(order => {
-          const orderDate = new Date(order.created_at)
-          return orderDate >= todayStart && order.status === 'paid'
-        })
-        .reduce((total, order) => total + (order.payment?.amount || 0), 0)
-
-      // 입금대기 건수 (계좌이체만)
-      const pendingPayments = orders.filter(order =>
-        order.payment?.method === 'bank_transfer' &&
-        (order.status === 'pending' || order.status === 'verifying')
-      ).length
-
-      // 배송준비 건수 (결제완료)
-      const readyToShip = orders.filter(order => order.status === 'paid').length
-
-      // 사용자 수 (간단한 카운트)
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-      const totalUsers = users.length || 5 // 기본값
-
-      // 상품 수 (Mock 데이터 기반)
-      const totalProducts = 12 // 기본 Mock 상품 수
-
-      setStats({
-        todayOrders,
-        todaySales,
-        pendingPayments,
-        readyToShip,
-        totalUsers,
-        totalProducts
+      // 실제 DB에서 통계 데이터 가져오기
+      const response = await fetch('/api/admin/stats', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
       })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ DB 통계 데이터:', data)
+        setStats(data)
+      } else {
+        console.warn('⚠️ DB 통계 로딩 실패, 기본값 사용')
+        // 기본값 설정
+        setStats({
+          todayOrders: 0,
+          todaySales: 0,
+          pendingPayments: 0,
+          readyToShip: 0,
+          totalUsers: 0,
+          totalProducts: 0
+        })
+      }
     } catch (error) {
       console.error('통계 로딩 오류:', error)
+      setStats({
+        todayOrders: 0,
+        todaySales: 0,
+        pendingPayments: 0,
+        readyToShip: 0,
+        totalUsers: 0,
+        totalProducts: 0
+      })
     }
   }, [])
 
