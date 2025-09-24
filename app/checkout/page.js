@@ -198,6 +198,11 @@ export default function CheckoutPage() {
         console.log('💳 주문 개수:', orderItem.originalOrderIds.length)
 
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
+        console.log('🔍 체크아웃에서 updateMultipleOrderStatus 호출:', {
+          orderIds: orderItem.originalOrderIds,
+          status: 'verifying',
+          paymentData: { method: 'bank_transfer', depositorName: depositName }
+        })
         const updateResult = await updateMultipleOrderStatus(
           orderItem.originalOrderIds,
           'verifying',
