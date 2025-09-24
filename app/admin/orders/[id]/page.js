@@ -163,7 +163,6 @@ export default function AdminOrderDetailPage() {
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">{order.userName || order.shipping?.name || '정보없음'}</p>
-                  <p className="text-sm text-gray-500">고객명</p>
                 </div>
               </div>
 
@@ -172,8 +171,7 @@ export default function AdminOrderDetailPage() {
                   <AtSymbolIcon className="w-4 h-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || '익명')}</p>
-                  <p className="text-sm text-gray-500">닉네임</p>
+                  <p className="font-medium text-gray-900">{order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : '익명'}</p>
                 </div>
               </div>
 
@@ -183,7 +181,6 @@ export default function AdminOrderDetailPage() {
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">{order.shipping?.phone || '정보없음'}</p>
-                  <p className="text-sm text-gray-500">휴대폰 번호</p>
                 </div>
               </div>
             </div>

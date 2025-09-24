@@ -201,7 +201,7 @@ export default function CheckoutPage() {
         const updateResult = await updateMultipleOrderStatus(
           orderItem.originalOrderIds,
           'verifying',
-          { method: 'bank_transfer' }
+          { method: 'bank_transfer', depositorName: depositName }
         )
         console.log('💳 업데이트 결과:', updateResult)
 
