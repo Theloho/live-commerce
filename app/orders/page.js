@@ -169,14 +169,7 @@ function OrdersContent() {
   const filteredOrders = orders.filter(order => order.status === filterStatus)
 
   const getStatusInfo = (status, paymentMethod = null) => {
-    // verifying 상태일 때 결제 방법에 따라 다른 라벨 표시
-    if (status === 'verifying' && paymentMethod) {
-      if (paymentMethod === 'card') {
-        return { label: '카드결제 확인중', color: 'text-purple-600 bg-purple-50', icon: ClockIcon }
-      } else if (paymentMethod === 'bank_transfer') {
-        return { label: '입금확인중', color: 'text-purple-600 bg-purple-50', icon: ClockIcon }
-      }
-    }
+    // 상단 중복 배지 제거 - 결제 방법별 구분은 하단 결제 정보에서만 표시
 
     const statusMap = {
       'pending': { label: '결제대기', color: 'text-yellow-600 bg-yellow-50', icon: ClockIcon },
@@ -509,16 +502,7 @@ function OrdersContent() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900">
-                          {order.isGroup ? (
-                            <>
-                              <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full mr-2">
-                                일괄결제 {order.groupOrderCount}건
-                              </span>
-                              주문번호: {order.customer_order_number || order.id.slice(-8)}
-                            </>
-                          ) : (
-                            `주문번호: ${order.customerOrderNumber || order.id.slice(-8)}`
-                          )}
+                          주문번호: {order.isGroup ? (order.customer_order_number || order.id.slice(-8)) : (order.customerOrderNumber || order.id.slice(-8))}
                         </span>
                       </div>
                       <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
