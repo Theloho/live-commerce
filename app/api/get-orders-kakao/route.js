@@ -63,9 +63,73 @@ export async function POST(request) {
 
     console.log(`${ordersWithItems.length}개의 주문 조회 성공`)
 
+    // payment_group_id로 주문 그룹화 (getOrders 함수와 동일한 로직)
+    const groupedOrders = []
+    const processedGroupIds = new Set()
+
+    console.log('🔍 카카오 사용자 그룹화 시작 - 전체 주문:', ordersWithItems.length)
+
+    for (const order of ordersWithItems) {
+      // payment_group_id가 있고 아직 처리되지 않은 그룹인 경우
+      if (order.payment_group_id && !processedGroupIds.has(order.payment_group_id)) {
+        // 같은 group_id를 가진 모든 주문 찾기
+        const groupOrders = ordersWithItems.filter(o => o.payment_group_id === order.payment_group_id)
+
+        console.log('🔍 카카오 그룹 발견:', {
+          groupId: order.payment_group_id,
+          orderCount: groupOrders.length,
+          orderIds: groupOrders.map(o => o.id)
+        })
+
+        if (groupOrders.length > 1) {
+          // 여러 개 주문이 그룹화된 경우
+          const groupOrder = {
+            id: `GROUP-${order.payment_group_id}`,
+            payment_group_id: order.payment_group_id,
+            customer_order_number: `GROUP-${order.payment_group_id.split('-')[1]}`,
+            status: order.status,
+            created_at: order.created_at,
+            updated_at: order.updated_at,
+            user_id: order.user_id,
+            order_type: 'bulk_payment',
+            total_amount: groupOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0),
+
+            // 모든 아이템 합치기
+            items: groupOrders.flatMap(o => o.items),
+
+            // 첫 번째 주문의 배송/결제 정보 사용
+            shipping: order.shipping,
+            payment: order.payment,
+
+            // 그룹 정보 추가
+            isGroup: true,
+            groupOrderCount: groupOrders.length,
+            originalOrderIds: groupOrders.map(o => o.id)
+          }
+
+          groupedOrders.push(groupOrder)
+          processedGroupIds.add(order.payment_group_id)
+        } else if (groupOrders.length === 1) {
+          // 단일 주문이지만 payment_group_id가 있는 경우
+          groupedOrders.push(order)
+          processedGroupIds.add(order.payment_group_id)
+        }
+      }
+      // payment_group_id가 없는 개별 주문
+      else if (!order.payment_group_id) {
+        groupedOrders.push(order)
+      }
+    }
+
+    console.log('🔍 카카오 최종 그룹화 결과:', {
+      totalOrders: groupedOrders.length,
+      groupOrders: groupedOrders.filter(o => o.isGroup).length,
+      regularOrders: groupedOrders.filter(o => !o.isGroup).length
+    })
+
     return NextResponse.json({
       success: true,
-      orders: ordersWithItems
+      orders: groupedOrders
     })
 
   } catch (error) {
