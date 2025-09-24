@@ -172,7 +172,7 @@ export default function AdminOrderDetailPage() {
                   <AtSymbolIcon className="w-4 h-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{order.userNickname !== '정보없음' ? order.userNickname : '익명'}</p>
+                  <p className="font-medium text-gray-900">{order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.recipient_name || '익명')}</p>
                   <p className="text-sm text-gray-500">닉네임</p>
                 </div>
               </div>

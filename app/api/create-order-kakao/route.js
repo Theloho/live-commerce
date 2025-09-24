@@ -25,7 +25,7 @@ export async function POST(request) {
     console.log('🔄 카카오 사용자 주문 생성:', { userId, orderData })
     console.log('🔄 재고 차감 대상 상품:', { productId: orderData.id, quantity: orderData.quantity })
 
-    // 1. 주문 생성 (user_id를 null로 설정하여 외래 키 제약 우회)
+    // 1. 주문 생성 (user_id 저장)
     const orderId = crypto.randomUUID()
     const customerOrderNumber = generateCustomerOrderNumber()
 
@@ -44,7 +44,7 @@ export async function POST(request) {
       body: JSON.stringify({
         id: orderId,
         customer_order_number: customerOrderNumber,
-        user_id: null, // 카카오 사용자는 항상 null (외래 키 제약 회피)
+        user_id: userId, // 실제 사용자 ID 저장
         status: 'pending',
         order_type: orderData.orderType || 'direct',
         created_at: new Date().toISOString()
@@ -87,10 +87,12 @@ export async function POST(request) {
       .from('order_shipping')
       .insert([{
         order_id: orderId,
-        name: userProfile.name,
-        phone: userProfile.phone || '010-0000-0000',
+        recipient_name: userProfile.name,
+        recipient_phone: userProfile.phone || '010-0000-0000',
         address: userProfile.address || '기본주소',
-        detail_address: userProfile.detail_address || ''
+        detail_address: userProfile.detail_address || '',
+        zipcode: userProfile.zipcode || '00000',
+        delivery_memo: userProfile.delivery_memo || ''
       }])
 
     if (shippingError) throw shippingError
