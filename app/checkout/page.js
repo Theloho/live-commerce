@@ -197,8 +197,12 @@ export default function CheckoutPage() {
         console.log('💳 대상 주문 ID들:', orderItem.originalOrderIds)
         console.log('💳 주문 개수:', orderItem.originalOrderIds.length)
 
-        // 원본 주문들을 'verifying' 상태로 업데이트
-        const updateResult = await updateMultipleOrderStatus(orderItem.originalOrderIds, 'verifying')
+        // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
+        const updateResult = await updateMultipleOrderStatus(
+          orderItem.originalOrderIds,
+          'verifying',
+          { method: 'bank_transfer' }
+        )
         console.log('💳 업데이트 결과:', updateResult)
 
         // 첫 번째 주문 ID를 사용 (일괄결제의 대표 ID)

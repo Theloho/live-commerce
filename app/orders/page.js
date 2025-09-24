@@ -167,7 +167,16 @@ function OrdersContent() {
   // 상태별 필터링
   const filteredOrders = orders.filter(order => order.status === filterStatus)
 
-  const getStatusInfo = (status) => {
+  const getStatusInfo = (status, paymentMethod = null) => {
+    // verifying 상태일 때 결제 방법에 따라 다른 라벨 표시
+    if (status === 'verifying' && paymentMethod) {
+      if (paymentMethod === 'card') {
+        return { label: '카드결제 확인중', color: 'text-purple-600 bg-purple-50', icon: ClockIcon }
+      } else if (paymentMethod === 'bank_transfer') {
+        return { label: '입금확인중', color: 'text-purple-600 bg-purple-50', icon: ClockIcon }
+      }
+    }
+
     const statusMap = {
       'pending': { label: '결제대기', color: 'text-yellow-600 bg-yellow-50', icon: ClockIcon },
       'verifying': { label: '결제 확인중', color: 'text-purple-600 bg-purple-50', icon: ClockIcon },
@@ -467,7 +476,9 @@ function OrdersContent() {
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order, index) => {
-                const statusInfo = getStatusInfo(order.status)
+                // payment 정보에서 결제 방법 가져오기
+                const paymentMethod = order.payment?.payment_method || null
+                const statusInfo = getStatusInfo(order.status, paymentMethod)
                 const StatusIcon = statusInfo.icon
                 const orderItem = order.items?.[0] || {
                   title: '상품명 없음',
