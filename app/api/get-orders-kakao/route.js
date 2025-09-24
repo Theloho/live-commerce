@@ -108,7 +108,17 @@ export async function POST(request) {
           const groupOrder = {
             id: `GROUP-${order.payment_group_id}`,
             payment_group_id: order.payment_group_id,
-            customer_order_number: `GROUP-${order.payment_group_id.split('-')[1]}`,
+            customer_order_number: (() => {
+              // G + YYMMDD-NNNN 형태로 생성
+              const now = new Date(order.created_at)
+              const year = now.getFullYear().toString().slice(-2)
+              const month = (now.getMonth() + 1).toString().padStart(2, '0')
+              const date = now.getDate().toString().padStart(2, '0')
+              // payment_group_id의 타임스탬프를 4자리 순번으로 변환
+              const timestamp = order.payment_group_id.split('-')[1]
+              const sequence = timestamp.slice(-4).padStart(4, '0')
+              return `G${year}${month}${date}-${sequence}`
+            })(),
             status: order.status,
             created_at: order.created_at,
             updated_at: order.updated_at,
