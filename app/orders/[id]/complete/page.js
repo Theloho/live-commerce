@@ -240,10 +240,10 @@ export default function OrderCompletePage() {
             transition={{ delay: 0.2 }}
           >
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {orderData.payment?.method === 'card' ? '카드결제 확인중입니다' : '입금확인중입니다'}
+              {orderData.payment?.payment_method === 'card' ? '카드결제 확인중입니다' : '입금확인중입니다'}
             </h1>
             <p className="text-gray-600">
-              {orderData.payment?.method === 'card' ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'}
+              {orderData.payment?.payment_method === 'card' ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'}
             </p>
           </motion.div>
         </div>
@@ -257,11 +257,11 @@ export default function OrderCompletePage() {
             className="bg-white border border-gray-200 rounded-lg p-4"
           >
             <h2 className="font-semibold text-gray-900 mb-3">
-              {orderData.payment?.method === 'card' ? '카드결제 안내' : '입금 안내'}
+              {orderData.payment?.payment_method === 'card' ? '카드결제 안내' : '입금 안내'}
             </h2>
 
             <div className="space-y-3">
-              {orderData.payment?.method === 'card' ? (
+              {orderData.payment?.payment_method === 'card' ? (
                 // 카드결제 정보
                 <>
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -398,7 +398,7 @@ export default function OrderCompletePage() {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">결제상태</span>
                 <span className="text-yellow-600 font-medium">
-                  {orderData.payment?.method === 'card' ? '카드결제 대기중' : '입금대기'}
+                  {orderData.payment?.payment_method === 'card' ? '카드결제 대기중' : '입금대기'}
                 </span>
               </div>
             </div>
