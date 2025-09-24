@@ -42,20 +42,30 @@ export async function POST(request) {
       throw error
     }
 
-    // 최적 결제 방법 선택 함수 (카드 > 기타 > bank_transfer 순서)
+    // 최적 결제 방법 선택 함수 (0원이 아닌 금액 우선, 카드 > 기타 > bank_transfer 순서)
     const getBestPayment = (payments) => {
       if (!payments || payments.length === 0) return {}
 
+      // 0원이 아닌 결제 정보만 필터링
+      const nonZeroPayments = payments.filter(p => p.amount && p.amount > 0)
+
+      // 0원이 아닌 결제가 있으면 그 중에서 선택
+      const paymentsToCheck = nonZeroPayments.length > 0 ? nonZeroPayments : payments
+
+      // depositor_name이 있는 결제를 우선 선택
+      const paymentWithDepositor = paymentsToCheck.find(p => p.depositor_name)
+      if (paymentWithDepositor) return paymentWithDepositor
+
       // 카드 결제가 있으면 우선 선택
-      const cardPayment = payments.find(p => p.method === 'card')
+      const cardPayment = paymentsToCheck.find(p => p.method === 'card')
       if (cardPayment) return cardPayment
 
       // bank_transfer가 아닌 다른 방법이 있으면 선택
-      const nonBankPayment = payments.find(p => p.method !== 'bank_transfer')
+      const nonBankPayment = paymentsToCheck.find(p => p.method !== 'bank_transfer')
       if (nonBankPayment) return nonBankPayment
 
       // 가장 최근 업데이트된 결제 방법 선택
-      const sortedPayments = [...payments].sort((a, b) => {
+      const sortedPayments = [...paymentsToCheck].sort((a, b) => {
         const aTime = new Date(a.updated_at || a.created_at)
         const bTime = new Date(b.updated_at || b.created_at)
         return bTime - aTime

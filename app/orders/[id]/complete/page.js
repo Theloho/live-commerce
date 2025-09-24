@@ -339,7 +339,7 @@ export default function OrderCompletePage() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">입금자명</span>
                       <span className="text-lg font-bold text-gray-900">
-                        {orderData.depositName || orderData.shipping.name}
+                        {orderData.payment?.depositor_name || orderData.depositName || orderData.shipping.name}
                       </span>
                     </div>
                   </div>
