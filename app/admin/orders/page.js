@@ -287,8 +287,13 @@ export default function AdminOrdersPage() {
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                         {order.customer_order_number || order.id.slice(-8)}
+                        {order.isGroup && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                            그룹결제
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-gray-500">
                         {new Date(order.created_at).toLocaleString('ko-KR')}
@@ -298,7 +303,9 @@ export default function AdminOrdersPage() {
                           const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
                           const uniqueProducts = order.items.length
 
-                          if (uniqueProducts === 1) {
+                          if (order.isGroup) {
+                            return `${order.groupOrderCount}개 주문 일괄결제 (총 ${uniqueProducts}종 ${totalQuantity}개)`
+                          } else if (uniqueProducts === 1) {
                             return `${totalQuantity}개`
                           } else {
                             return `${uniqueProducts}종 ${totalQuantity}개`
@@ -348,18 +355,32 @@ export default function AdminOrdersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => router.push(`/admin/orders/${order.id}`)}
+                        onClick={() => {
+                          // 그룹 주문인 경우 첫 번째 원본 주문으로 이동
+                          const targetId = order.isGroup ? order.originalOrders[0]?.id : order.id
+                          router.push(`/admin/orders/${targetId}`)
+                        }}
                         className="text-indigo-600 hover:text-indigo-900"
-                        title="상세보기"
+                        title={order.isGroup ? "그룹 주문 상세보기" : "상세보기"}
                       >
                         <EyeIcon className="w-4 h-4" />
                       </button>
 
                       {order.status === 'verifying' && (
                         <button
-                          onClick={() => updateOrderStatus(order.id, 'paid')}
+                          onClick={() => {
+                            if (order.isGroup) {
+                              // 그룹 주문인 경우 모든 원본 주문 상태 변경
+                              const orderIds = order.originalOrders.map(o => o.id)
+                              Promise.all(orderIds.map(id => updateOrderStatus(id, 'paid')))
+                                .then(() => loadOrders())
+                                .catch(error => console.error('그룹 주문 상태 변경 실패:', error))
+                            } else {
+                              updateOrderStatus(order.id, 'paid')
+                            }
+                          }}
                           className="text-green-600 hover:text-green-900"
-                          title="결제 확인"
+                          title={order.isGroup ? "그룹 결제 확인" : "결제 확인"}
                         >
                           <CheckIcon className="w-4 h-4" />
                         </button>
@@ -367,9 +388,19 @@ export default function AdminOrdersPage() {
 
                       {order.status === 'paid' && (
                         <button
-                          onClick={() => updateOrderStatus(order.id, 'delivered')}
+                          onClick={() => {
+                            if (order.isGroup) {
+                              // 그룹 주문인 경우 모든 원본 주문 상태 변경
+                              const orderIds = order.originalOrders.map(o => o.id)
+                              Promise.all(orderIds.map(id => updateOrderStatus(id, 'delivered')))
+                                .then(() => loadOrders())
+                                .catch(error => console.error('그룹 주문 발송 처리 실패:', error))
+                            } else {
+                              updateOrderStatus(order.id, 'delivered')
+                            }
+                          }}
                           className="text-blue-600 hover:text-blue-900"
-                          title="발송 처리"
+                          title={order.isGroup ? "그룹 발송 처리" : "발송 처리"}
                         >
                           <CheckIcon className="w-4 h-4" />
                         </button>
@@ -378,12 +409,24 @@ export default function AdminOrdersPage() {
                       {(order.status === 'pending' || order.status === 'verifying') && (
                         <button
                           onClick={() => {
-                            if (window.confirm('이 주문을 취소하시겠습니까?')) {
-                              updateOrderStatus(order.id, 'cancelled')
+                            const confirmMessage = order.isGroup
+                              ? `이 그룹 주문(${order.groupOrderCount}개)을 취소하시겠습니까?`
+                              : '이 주문을 취소하시겠습니까?'
+
+                            if (window.confirm(confirmMessage)) {
+                              if (order.isGroup) {
+                                // 그룹 주문인 경우 모든 원본 주문 취소
+                                const orderIds = order.originalOrders.map(o => o.id)
+                                Promise.all(orderIds.map(id => updateOrderStatus(id, 'cancelled')))
+                                  .then(() => loadOrders())
+                                  .catch(error => console.error('그룹 주문 취소 실패:', error))
+                              } else {
+                                updateOrderStatus(order.id, 'cancelled')
+                              }
                             }
                           }}
                           className="text-red-600 hover:text-red-900"
-                          title="주문 취소"
+                          title={order.isGroup ? "그룹 주문 취소" : "주문 취소"}
                         >
                           <XMarkIcon className="w-4 h-4" />
                         </button>
