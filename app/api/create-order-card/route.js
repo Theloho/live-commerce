@@ -137,9 +137,7 @@ export async function POST(request) {
         recipient_name: userProfile.name,
         recipient_phone: userProfile.phone || '010-0000-0000',
         address: userProfile.address || '기본주소',
-        detail_address: userProfile.detail_address || '',
-        zipcode: userProfile.zipcode || '00000',
-        delivery_memo: userProfile.delivery_memo || ''
+        detail_address: userProfile.detail_address || ''
       }])
 
     if (shippingError) throw shippingError
