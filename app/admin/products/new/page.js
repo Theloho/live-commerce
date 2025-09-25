@@ -29,6 +29,8 @@ export default function NewProductPage() {
     optionInventories: {}
   })
 
+  const [showSizeTemplateSelector, setShowSizeTemplateSelector] = useState(false)
+
   // 미리 정의된 옵션 템플릿
   const SIZE_TEMPLATES = {
     number: ['55', '66', '77', '88', '99'],
@@ -37,6 +39,105 @@ export default function NewProductPage() {
   }
 
   const COLOR_PRESETS = ['블랙', '화이트', '그레이', '베이지', '네이비', '브라운', '카키', '핑크', '레드', '블루']
+
+  // 사이즈 옵션 추가
+  const handleSizeOptionAdd = (templateType) => {
+    const selectedOptions = [...SIZE_TEMPLATES[templateType]]
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: selectedOptions,
+      optionType: prev.optionType === 'color' ? 'both' : 'size'
+    }))
+    setShowSizeTemplateSelector(false)
+    toast.success(`${templateType} 사이즈 템플릿이 적용되었습니다`)
+  }
+
+  // 컬러 옵션 추가
+  const handleColorOptionAdd = () => {
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: [...COLOR_PRESETS],
+      optionType: prev.optionType === 'size' ? 'both' : 'color'
+    }))
+    toast.success('컬러 옵션이 추가되었습니다')
+  }
+
+  // 개별 사이즈 옵션 수정
+  const updateSizeOption = (index, value) => {
+    const newSizeOptions = [...productData.sizeOptions]
+    newSizeOptions[index] = value
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: newSizeOptions
+    }))
+  }
+
+  // 개별 사이즈 옵션 삭제
+  const removeSizeOption = (index) => {
+    const newSizeOptions = productData.sizeOptions.filter((_, i) => i !== index)
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: newSizeOptions,
+      optionType: newSizeOptions.length === 0 ? (prev.colorOptions.length > 0 ? 'color' : 'none') : prev.optionType
+    }))
+    toast.success('사이즈 옵션이 삭제되었습니다')
+  }
+
+  // 새 사이즈 옵션 추가
+  const addNewSizeOption = () => {
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: [...prev.sizeOptions, '']
+    }))
+  }
+
+  // 개별 컬러 옵션 수정
+  const updateColorOption = (index, value) => {
+    const newColorOptions = [...productData.colorOptions]
+    newColorOptions[index] = value
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: newColorOptions
+    }))
+  }
+
+  // 개별 컬러 옵션 삭제
+  const removeColorOption = (index) => {
+    const newColorOptions = productData.colorOptions.filter((_, i) => i !== index)
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: newColorOptions,
+      optionType: newColorOptions.length === 0 ? (prev.sizeOptions.length > 0 ? 'size' : 'none') : prev.optionType
+    }))
+    toast.success('컬러 옵션이 삭제되었습니다')
+  }
+
+  // 새 컬러 옵션 추가
+  const addNewColorOption = () => {
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: [...prev.colorOptions, '']
+    }))
+  }
+
+  // 옵션 완전 제거
+  const removeAllSizeOptions = () => {
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: [],
+      optionType: prev.colorOptions.length > 0 ? 'color' : 'none'
+    }))
+    toast.success('모든 사이즈 옵션이 제거되었습니다')
+  }
+
+  const removeAllColorOptions = () => {
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: [],
+      optionType: prev.sizeOptions.length > 0 ? 'size' : 'none'
+    }))
+    toast.success('모든 컬러 옵션이 제거되었습니다')
+  }
 
   // 권한 체크
   useEffect(() => {
@@ -318,13 +419,6 @@ export default function NewProductPage() {
               )}
             </div>
           </div>
-          <button
-            onClick={handleSaveProduct}
-            disabled={loading}
-            className="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {loading ? '저장 중...' : '등록하기'}
-          </button>
         </div>
       </div>
 
@@ -478,59 +572,146 @@ export default function NewProductPage() {
           {/* 오른쪽: 옵션 설정 */}
           <div className="space-y-6">
 
-            {/* 옵션 타입 선택 */}
+            {/* 사이즈 옵션 */}
             <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-lg font-medium mb-4">옵션 설정</h2>
-
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="optionType"
-                    value="none"
-                    checked={productData.optionType === 'none'}
-                    onChange={(e) => handleOptionTypeChange(e.target.value)}
-                    className="text-red-600"
-                  />
-                  <span className="font-medium">옵션 없음</span>
-                </label>
-
-                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="optionType"
-                    value="size"
-                    checked={productData.optionType === 'size'}
-                    onChange={(e) => handleOptionTypeChange(e.target.value)}
-                    className="text-red-600"
-                  />
-                  <span className="font-medium">사이즈 옵션</span>
-                </label>
-
-                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="optionType"
-                    value="color"
-                    checked={productData.optionType === 'color'}
-                    onChange={(e) => handleOptionTypeChange(e.target.value)}
-                    className="text-red-600"
-                  />
-                  <span className="font-medium">색상 옵션</span>
-                </label>
-
-                <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="optionType"
-                    value="both"
-                    checked={productData.optionType === 'both'}
-                    onChange={(e) => handleOptionTypeChange(e.target.value)}
-                    className="text-red-600"
-                  />
-                  <span className="font-medium">사이즈 + 색상 옵션</span>
-                </label>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium">사이즈 옵션</h2>
+                {productData.sizeOptions.length > 0 && (
+                  <button
+                    onClick={removeAllSizeOptions}
+                    className="text-red-600 hover:text-red-700 text-sm font-medium"
+                  >
+                    전체 삭제
+                  </button>
+                )}
               </div>
+
+              {productData.sizeOptions.length === 0 ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setShowSizeTemplateSelector(true)}
+                    className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600 transition-colors"
+                  >
+                    + 사이즈 템플릿 선택
+                  </button>
+
+                  {/* 사이즈 템플릿 선택 모달 */}
+                  {showSizeTemplateSelector && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                      <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                        <h3 className="text-lg font-medium mb-4">사이즈 템플릿 선택</h3>
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => handleSizeOptionAdd('number')}
+                            className="w-full p-3 border rounded-lg hover:bg-gray-50 text-left"
+                          >
+                            <div className="font-medium">숫자 사이즈</div>
+                            <div className="text-sm text-gray-500">55, 66, 77, 88, 99</div>
+                          </button>
+                          <button
+                            onClick={() => handleSizeOptionAdd('alpha')}
+                            className="w-full p-3 border rounded-lg hover:bg-gray-50 text-left"
+                          >
+                            <div className="font-medium">알파벳 사이즈</div>
+                            <div className="text-sm text-gray-500">XS, S, M, L, XL, XXL</div>
+                          </button>
+                          <button
+                            onClick={() => handleSizeOptionAdd('free')}
+                            className="w-full p-3 border rounded-lg hover:bg-gray-50 text-left"
+                          >
+                            <div className="font-medium">프리 사이즈</div>
+                            <div className="text-sm text-gray-500">FREE</div>
+                          </button>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                          <button
+                            onClick={() => setShowSizeTemplateSelector(false)}
+                            className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                          >
+                            취소
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {productData.sizeOptions.map((size, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={size}
+                        onChange={(e) => updateSizeOption(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="사이즈명"
+                      />
+                      <button
+                        onClick={() => removeSizeOption(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <MinusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={addNewSizeOption}
+                    className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600"
+                  >
+                    + 사이즈 추가
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 컬러 옵션 */}
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium">컬러 옵션</h2>
+                {productData.colorOptions.length > 0 && (
+                  <button
+                    onClick={removeAllColorOptions}
+                    className="text-red-600 hover:text-red-700 text-sm font-medium"
+                  >
+                    전체 삭제
+                  </button>
+                )}
+              </div>
+
+              {productData.colorOptions.length === 0 ? (
+                <button
+                  onClick={handleColorOptionAdd}
+                  className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600 transition-colors"
+                >
+                  + 컬러 옵션 추가
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  {productData.colorOptions.map((color, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={color}
+                        onChange={(e) => updateColorOption(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="컬러명"
+                      />
+                      <button
+                        onClick={() => removeColorOption(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <MinusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={addNewColorOption}
+                    className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600"
+                  >
+                    + 컬러 추가
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 옵션별 재고 설정 */}
@@ -564,6 +745,27 @@ export default function NewProductPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* 하단 등록 버튼 */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={handleSaveProduct}
+            disabled={loading}
+            className="px-8 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-lg"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                저장 중...
+              </>
+            ) : (
+              <>
+                <PlusIcon className="w-5 h-5" />
+                제품 등록하기
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
