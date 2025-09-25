@@ -57,7 +57,7 @@ function OrdersContent() {
   // URL 쿼리 파라미터에서 탭 정보 확인
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab && ['pending', 'verifying', 'paid', 'delivered'].includes(tab)) {
+    if (tab && ['pending', 'verifying', 'paid', 'preparing', 'shipped', 'delivered', 'cancelled'].includes(tab)) {
       setFilterStatus(tab)
     }
   }, [searchParams])
@@ -169,13 +169,14 @@ function OrdersContent() {
   const filteredOrders = orders.filter(order => order.status === filterStatus)
 
   const getStatusInfo = (status, paymentMethod = null) => {
-    // 상단 중복 배지 제거 - 결제 방법별 구분은 하단 결제 정보에서만 표시
-
     const statusMap = {
-      'pending': { label: '결제대기', color: 'text-yellow-600 bg-yellow-50', icon: ClockIcon },
-      'verifying': { label: '결제 확인중', color: 'text-purple-600 bg-purple-50', icon: ClockIcon },
-      'paid': { label: '결제완료', color: 'text-blue-600 bg-blue-50', icon: CheckCircleIcon },
-      'delivered': { label: '발송완료', color: 'text-green-600 bg-green-50', icon: TruckIcon }
+      'pending': { label: paymentMethod === 'card' ? '카드결제 대기' : '입금대기', color: 'text-yellow-600 bg-yellow-50', icon: ClockIcon },
+      'verifying': { label: paymentMethod === 'card' ? '카드결제 확인중' : '입금확인중', color: 'text-purple-600 bg-purple-50', icon: ClockIcon },
+      'paid': { label: '결제완료', color: 'text-green-600 bg-green-50', icon: CheckCircleIcon },
+      'preparing': { label: '배송준비중', color: 'text-blue-600 bg-blue-50', icon: ClockIcon },
+      'shipped': { label: '배송중', color: 'text-blue-600 bg-blue-50', icon: TruckIcon },
+      'delivered': { label: '배송완료', color: 'text-green-600 bg-green-50', icon: TruckIcon },
+      'cancelled': { label: '주문취소', color: 'text-red-600 bg-red-50', icon: ClockIcon }
     }
     return statusMap[status] || statusMap['pending']
   }
@@ -378,7 +379,10 @@ function OrdersContent() {
               { key: 'pending', label: '결제대기' },
               { key: 'verifying', label: '결제 확인중' },
               { key: 'paid', label: '결제완료' },
-              { key: 'delivered', label: '발송완료' }
+              { key: 'preparing', label: '배송준비중' },
+              { key: 'shipped', label: '배송중' },
+              { key: 'delivered', label: '배송완료' },
+              { key: 'cancelled', label: '주문취소' }
             ].map(filter => {
               const count = orders.filter(order => order.status === filter.key).length
               return (
@@ -634,9 +638,29 @@ function OrdersContent() {
                       ) : (
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>
-                            {order.payment?.method === 'cart' ? '장바구니' :
-                             order.payment?.method === 'bank_transfer' ? '계좌이체' :
-                             order.payment?.method === 'card' ? '카드결제' : '결제대기'}
+                            {(() => {
+                              const { status, payment } = order
+                              const isCard = payment?.method === 'card'
+
+                              switch (status) {
+                                case 'pending':
+                                  return isCard ? '카드결제 대기중' : '입금대기'
+                                case 'verifying':
+                                  return isCard ? '카드결제 확인중' : '입금확인중'
+                                case 'paid':
+                                  return '결제완료'
+                                case 'preparing':
+                                  return '결제완료 (배송준비중)'
+                                case 'shipped':
+                                  return '결제완료 (배송중)'
+                                case 'delivered':
+                                  return '결제완료 (배송완료)'
+                                case 'cancelled':
+                                  return '결제취소'
+                                default:
+                                  return isCard ? '카드결제 대기중' : '입금대기'
+                              }
+                            })()}
                             {order.orderType === 'cart' && ' (장바구니에서)'}
                           </span>
                           <span>{order.isGroup ? '상세목록 보기 →' : '상세보기 →'}</span>
