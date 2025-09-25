@@ -456,7 +456,6 @@ export default function AdminProductsPage() {
         inventory: parseInt(productData.inventory) || 50,
         status: 'active',
         review_rating: 0,
-        review_count: 0,
         is_featured: false,
         tags: [] // LIVE 라벨은 별도로 추가
       }
