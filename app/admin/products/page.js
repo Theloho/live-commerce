@@ -30,7 +30,9 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null)
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
-  const [currentStep, setCurrentStep] = useState('photo') // 'photo', 'info', 'options'
+  const [currentStep, setCurrentStep] = useState('photo') // 'photo', 'info', 'options', 'inventory'
+  const [optionCombinations, setOptionCombinations] = useState([])
+  const [combinationInventories, setCombinationInventories] = useState({})
   const [productData, setProductData] = useState({
     title: '',
     description: '',
@@ -343,11 +345,61 @@ export default function AdminProductsPage() {
       setCurrentStep('info')
     } else if (currentStep === 'info') {
       setCurrentStep('options')
+    } else if (currentStep === 'options') {
+      // 옵션 조합 생성
+      generateOptionCombinations()
+      setCurrentStep('inventory')
     }
   }
 
+  // 옵션 조합 생성 함수
+  const generateOptionCombinations = () => {
+    if (productData.options.length === 0) {
+      setOptionCombinations([])
+      return
+    }
+
+    const combinations = []
+
+    // 재귀적으로 모든 옵션 조합 생성
+    const generateCombos = (currentCombo, optionIndex) => {
+      if (optionIndex >= productData.options.length) {
+        const key = currentCombo.map(item => `${item.optionId}:${item.value}`).join('|')
+        const label = currentCombo.map(item => item.value).join(' × ')
+        combinations.push({
+          key,
+          label,
+          combination: [...currentCombo]
+        })
+        return
+      }
+
+      const currentOption = productData.options[optionIndex]
+      const values = currentOption.values.filter(v => v.trim() !== '') // 빈 값 제거
+
+      for (const value of values) {
+        generateCombos(
+          [...currentCombo, { optionId: currentOption.id, optionName: currentOption.name, value }],
+          optionIndex + 1
+        )
+      }
+    }
+
+    generateCombos([], 0)
+    setOptionCombinations(combinations)
+
+    // 기본 재고 10개로 초기화
+    const defaultInventories = {}
+    combinations.forEach(combo => {
+      defaultInventories[combo.key] = 10
+    })
+    setCombinationInventories(defaultInventories)
+  }
+
   const goToPrevStep = () => {
-    if (currentStep === 'options') {
+    if (currentStep === 'inventory') {
+      setCurrentStep('options')
+    } else if (currentStep === 'options') {
       setCurrentStep('info')
     } else if (currentStep === 'info') {
       setCurrentStep('photo')
@@ -358,6 +410,13 @@ export default function AdminProductsPage() {
     setProductData(prev => ({
       ...prev,
       [field]: value
+    }))
+  }
+
+  const handleCombinationInventoryChange = (comboKey, inventory) => {
+    setCombinationInventories(prev => ({
+      ...prev,
+      [comboKey]: parseInt(inventory) || 0
     }))
   }
 
@@ -384,46 +443,23 @@ export default function AdminProductsPage() {
     const optionTemplates = {
       size: {
         name: '사이즈',
-        values: [
-          { name: 'S', inventory: 10 },
-          { name: 'M', inventory: 10 },
-          { name: 'L', inventory: 10 },
-          { name: 'XL', inventory: 10 }
-        ]
+        values: ['S', 'M', 'L', 'XL']
       },
       color: {
         name: '색상',
-        values: [
-          { name: '블랙', inventory: 10 },
-          { name: '화이트', inventory: 10 },
-          { name: '그레이', inventory: 10 },
-          { name: '네이비', inventory: 10 }
-        ]
+        values: ['블랙', '화이트', '그레이', '네이비']
       },
       storage: {
         name: '용량',
-        values: [
-          { name: '128GB', inventory: 10 },
-          { name: '256GB', inventory: 10 },
-          { name: '512GB', inventory: 10 },
-          { name: '1TB', inventory: 10 }
-        ]
+        values: ['128GB', '256GB', '512GB', '1TB']
       },
       material: {
         name: '재질',
-        values: [
-          { name: '면', inventory: 10 },
-          { name: '폴리에스터', inventory: 10 },
-          { name: '나일론', inventory: 10 },
-          { name: '가죽', inventory: 10 }
-        ]
+        values: ['면', '폴리에스터', '나일론', '가죽']
       },
       custom: {
         name: '옵션명',
-        values: [
-          { name: '옵션1', inventory: 10 },
-          { name: '옵션2', inventory: 10 }
-        ]
+        values: ['옵션1', '옵션2']
       }
     }
 
@@ -830,6 +866,7 @@ export default function AdminProductsPage() {
                   {currentStep === 'photo' && '📷 상품 사진 추가'}
                   {currentStep === 'info' && '📝 상품 정보 입력'}
                   {currentStep === 'options' && '⚙️ 상품 옵션 설정'}
+                  {currentStep === 'inventory' && '📦 옵션별 재고 설정'}
                 </h2>
                 <button
                   onClick={closeAddModal}
@@ -995,7 +1032,7 @@ export default function AdminProductsPage() {
                         onClick={goToNextStep}
                         className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                       >
-                        옵션 설정
+                        다음: 재고 설정
                       </button>
                     </div>
                   </div>
@@ -1065,45 +1102,22 @@ export default function AdminProductsPage() {
                           </button>
                         </div>
                         <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            옵션값 입력 (재고는 다음 단계에서 조합별로 설정)
+                          </div>
                           {option.values.map((value, index) => (
                             <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
-                              <div className="flex-1">
-                                <input
-                                  type="text"
-                                  value={typeof value === 'string' ? value : value.name || ''}
-                                  onChange={(e) => {
-                                    const newValues = [...option.values]
-                                    if (typeof newValues[index] === 'string') {
-                                      newValues[index] = { name: e.target.value, inventory: 10 }
-                                    } else {
-                                      newValues[index] = { ...newValues[index], name: e.target.value }
-                                    }
-                                    updateOption(option.id, 'values', newValues)
-                                  }}
-                                  className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                                  placeholder={`옵션명 ${index + 1}`}
-                                />
-                              </div>
-                              <div className="w-20">
-                                <input
-                                  type="number"
-                                  value={typeof value === 'string' ? 10 : value.inventory || 10}
-                                  onChange={(e) => {
-                                    const newValues = [...option.values]
-                                    const newInventory = parseInt(e.target.value) || 0
-                                    if (typeof newValues[index] === 'string') {
-                                      newValues[index] = { name: newValues[index], inventory: newInventory }
-                                    } else {
-                                      newValues[index] = { ...newValues[index], inventory: newInventory }
-                                    }
-                                    updateOption(option.id, 'values', newValues)
-                                  }}
-                                  min="0"
-                                  className="w-full px-2 py-1 text-sm text-center bg-white border border-gray-300 rounded focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                                  placeholder="재고"
-                                />
-                              </div>
-                              <span className="text-xs text-gray-500 w-6">개</span>
+                              <input
+                                type="text"
+                                value={typeof value === 'string' ? value : value.name || value}
+                                onChange={(e) => {
+                                  const newValues = [...option.values]
+                                  newValues[index] = e.target.value
+                                  updateOption(option.id, 'values', newValues)
+                                }}
+                                className="flex-1 px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                placeholder="예: S, 블랙, 128GB"
+                              />
                               {option.values.length > 1 && (
                                 <button
                                   onClick={() => {
@@ -1119,14 +1133,89 @@ export default function AdminProductsPage() {
                             </div>
                           ))}
                           <button
-                            onClick={() => updateOption(option.id, 'values', [...option.values, { name: '', inventory: 10 }])}
+                            onClick={() => updateOption(option.id, 'values', [...option.values, ''])}
                             className="px-2 py-1 text-sm text-gray-500 border border-dashed border-gray-300 rounded hover:bg-gray-50"
                           >
-                            +
+                            + 옵션값 추가
                           </button>
                         </div>
                       </div>
                     ))}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        onClick={goToPrevStep}
+                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                      >
+                        이전
+                      </button>
+                      <button
+                        onClick={saveProduct}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        상품 저장
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 'inventory' && (
+                  <div className="space-y-4">
+                    {productData.options.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-600 mb-4">옵션이 없는 상품입니다.</p>
+                        <p className="text-sm text-gray-500">기본 재고는 상품 정보에서 설정한 수량을 사용합니다.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="text-center mb-6">
+                          <h3 className="font-medium text-gray-900 mb-2">옵션 조합별 재고 설정</h3>
+                          <p className="text-sm text-gray-600">
+                            각 옵션 조합마다 개별 재고를 설정해주세요
+                          </p>
+                        </div>
+
+                        <div className="max-h-64 overflow-y-auto space-y-3">
+                          {optionCombinations.map((combo) => (
+                            <div key={combo.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                              <div className="flex-1">
+                                <span className="font-medium text-gray-900">
+                                  {combo.label}
+                                </span>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {combo.combination.map(c => `${c.optionName}: ${c.value}`).join(' | ')}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  value={combinationInventories[combo.key] || 0}
+                                  onChange={(e) => handleCombinationInventoryChange(combo.key, e.target.value)}
+                                  min="0"
+                                  className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  placeholder="0"
+                                />
+                                <span className="text-sm text-gray-500">개</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="text-blue-600">💡</div>
+                            <div>
+                              <p className="text-sm text-blue-800 font-medium mb-1">팁</p>
+                              <p className="text-xs text-blue-700">
+                                사이즈별, 색상별로 인기도에 따라 재고를 다르게 설정하세요.<br/>
+                                예: S 블랙(20개), M 화이트(15개), L 블랙(10개)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-4">
