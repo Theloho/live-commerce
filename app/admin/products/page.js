@@ -326,9 +326,9 @@ export default function AdminProductsPage() {
   // 관리자 권한 체크는 이미 useAdminAuth로 처리됨
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 px-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
+      <div className="bg-white p-8 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <div>
@@ -392,7 +392,7 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Search */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
+      <div className="bg-white p-8 rounded-lg border border-gray-200">
         <div className="relative max-w-md">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
@@ -407,7 +407,7 @@ export default function AdminProductsPage() {
 
       {/* Products Grid */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-2 gap-6 p-6">
+        <div className="grid grid-cols-2 gap-10 p-10">
           {filteredProducts.map((product, index) => (
             <motion.div
               key={product.id}
@@ -448,7 +448,7 @@ export default function AdminProductsPage() {
               </div>
 
               {/* Product Info */}
-              <div className="p-4">
+              <div className="p-8">
                 <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
                   {product.title}
                 </h3>
@@ -570,7 +570,7 @@ export default function AdminProductsPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-hidden"
+              className="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-6 max-h-[90vh] overflow-hidden"
             >
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b">
@@ -584,7 +584,7 @@ export default function AdminProductsPage() {
               </div>
 
               {/* Modal Content */}
-              <div className="p-6 max-h-[70vh] overflow-y-auto">
+              <div className="p-8 max-h-[70vh] overflow-y-auto">
                 <div className="space-y-4">
                   {/* 썸네일 이미지 */}
                   {imagePreview && (
