@@ -12,8 +12,8 @@ function generateCustomerOrderNumber() {
   const dateStr = date.getFullYear().toString().slice(-2) +
     String(date.getMonth() + 1).padStart(2, '0') +
     String(date.getDate()).padStart(2, '0')
-  const randomStr = Math.random().toString(36).substr(2, 6).toUpperCase()
-  return `${dateStr}-${randomStr}`
+  const randomStr = Math.random().toString(36).substr(2, 4).toUpperCase()
+  return `S${dateStr}-${randomStr}`
 }
 
 export async function POST(request) {
