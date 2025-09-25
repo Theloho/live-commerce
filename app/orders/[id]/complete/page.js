@@ -145,6 +145,7 @@ export default function OrderCompletePage() {
   }, [isAuthenticated, userSession, sessionLoaded, params.id, router, user])
 
   if (loading) {
+    console.log('주문 상세 페이지 로딩 중...')
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -156,8 +157,11 @@ export default function OrderCompletePage() {
   }
 
   if (!orderData) {
+    console.log('주문 데이터 없음')
     return null
   }
+
+  console.log('주문 상세 페이지 렌더링:', { status: orderData.status, payment: orderData.payment })
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
