@@ -326,9 +326,10 @@ export default function AdminProductsPage() {
   // 관리자 권한 체크는 이미 useAdminAuth로 처리됨
 
   return (
-    <div className="space-y-8 px-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="bg-white p-8 rounded-lg border border-gray-200">
+    <div className="min-h-screen bg-gray-50 pb-6">
+      <div className="max-w-4xl mx-auto px-4 space-y-4">
+        {/* Header */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <div>
@@ -391,8 +392,8 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="bg-white p-8 rounded-lg border border-gray-200">
+        {/* Search */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
         <div className="relative max-w-md">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
@@ -405,16 +406,15 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Products Grid */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-2 gap-10 p-10">
+        {/* Products Grid */}
+        <div className="grid grid-cols-2 gap-6">
           {filteredProducts.map((product, index) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+              className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
             >
               {/* Product Image */}
               <div className="relative aspect-square">
@@ -448,7 +448,7 @@ export default function AdminProductsPage() {
               </div>
 
               {/* Product Info */}
-              <div className="p-8">
+              <div className="p-6">
                 <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
                   {product.title}
                 </h3>
@@ -545,14 +545,12 @@ export default function AdminProductsPage() {
         </div>
 
         {filteredProducts.length === 0 && (
-          <div className="text-center py-12">
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <p className="text-gray-500">조건에 맞는 상품이 없습니다.</p>
           </div>
         )}
-      </div>
 
-
-      {/* Edit Product Modal */}
+        {/* Edit Product Modal */}
       <AnimatePresence>
         {showEditModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -744,7 +742,8 @@ export default function AdminProductsPage() {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

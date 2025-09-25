@@ -475,7 +475,7 @@ export default function NewProductPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <div className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/admin/products')}
@@ -494,18 +494,18 @@ export default function NewProductPage() {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-6xl mx-auto px-6 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* 왼쪽: 기본 정보 */}
-          <div className="space-y-8">
+          <div className="space-y-6">
 
             {/* 제품 이미지 */}
-            <div className="bg-white p-8 rounded-lg shadow-sm">
+            <div className="bg-white p-6 rounded-lg shadow-sm">
               <h2 className="text-lg font-medium mb-4">제품 이미지</h2>
 
               {imagePreview ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {/* 이미지 미리보기 */}
                   <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     <Image
@@ -535,7 +535,7 @@ export default function NewProductPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {/* 이미지 업로드 안내 */}
                   <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
                     <PhotoIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -583,10 +583,10 @@ export default function NewProductPage() {
             </div>
 
             {/* 기본 정보 */}
-            <div className="bg-white p-8 rounded-lg shadow-sm">
+            <div className="bg-white p-6 rounded-lg shadow-sm">
               <h2 className="text-lg font-medium mb-4">기본 정보</h2>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     제품번호
@@ -715,10 +715,10 @@ export default function NewProductPage() {
           </div>
 
           {/* 오른쪽: 옵션 설정 */}
-          <div className="space-y-8">
+          <div className="space-y-6">
 
             {/* 사이즈 옵션 */}
-            <div className="bg-white p-8 rounded-lg shadow-sm">
+            <div className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">사이즈 옵션</h2>
                 {productData.sizeOptions.length > 0 && (
@@ -810,7 +810,7 @@ export default function NewProductPage() {
             </div>
 
             {/* 컬러 옵션 */}
-            <div className="bg-white p-8 rounded-lg shadow-sm">
+            <div className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">컬러 옵션</h2>
                 {productData.colorOptions.length > 0 && (
@@ -861,7 +861,7 @@ export default function NewProductPage() {
 
             {/* 옵션별 재고 설정 */}
             {combinations.length > 0 && (
-              <div className="bg-white p-8 rounded-lg shadow-sm">
+              <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-lg font-medium mb-4">옵션별 재고 설정</h2>
 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -898,7 +898,7 @@ export default function NewProductPage() {
 
       {/* 하단 고정 네비게이션 바 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-50 shadow-lg">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <button
             onClick={() => {
               if (canSubmit || showMissingFieldsAlert()) {
