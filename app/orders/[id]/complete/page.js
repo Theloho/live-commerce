@@ -380,9 +380,9 @@ export default function OrderCompletePage() {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">주문번호</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-gray-900">{orderData.id}</span>
+                  <span className="font-mono text-gray-900">{orderData.customer_order_number || orderData.id}</span>
                   <button
-                    onClick={() => copyToClipboard(orderData.id)}
+                    onClick={() => copyToClipboard(orderData.customer_order_number || orderData.id)}
                     className="p-1 hover:bg-gray-100 rounded"
                   >
                     <ClipboardDocumentIcon className="w-4 h-4 text-gray-400" />

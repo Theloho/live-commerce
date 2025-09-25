@@ -502,7 +502,7 @@ function OrdersContent() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900">
-                          주문번호: {order.isGroup ? (order.customer_order_number || order.id.slice(-8)) : (order.customerOrderNumber || order.id.slice(-8))}
+                          주문번호: {order.customer_order_number || order.id.slice(-8)}
                         </span>
                       </div>
                       <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
