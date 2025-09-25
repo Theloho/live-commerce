@@ -395,7 +395,7 @@ export default function AdminProductsPage() {
         {/* Search */}
         <div className="bg-white rounded-lg border border-gray-200">
         <div className="relative max-w-md p-6">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute left-9 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             placeholder="상품명으로 검색..."
@@ -407,7 +407,8 @@ export default function AdminProductsPage() {
       </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="grid grid-cols-2 gap-6">
           {filteredProducts.map((product, index) => (
             <motion.div
               key={product.id}
@@ -544,11 +545,13 @@ export default function AdminProductsPage() {
           ))}
         </div>
 
-        {filteredProducts.length === 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-            <p className="text-gray-500">조건에 맞는 상품이 없습니다.</p>
+          {filteredProducts.length === 0 && (
+            <div className="col-span-2 p-12 text-center">
+              <p className="text-gray-500">조건에 맞는 상품이 없습니다.</p>
+            </div>
+          )}
           </div>
-        )}
+        </div>
 
         {/* Edit Product Modal */}
       <AnimatePresence>
