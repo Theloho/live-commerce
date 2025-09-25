@@ -706,14 +706,8 @@ function OrdersContent() {
                       return 'bg-yellow-100'
                     case 'paid':
                       return 'bg-green-100'
-                    case 'preparing':
-                      return 'bg-blue-100'
-                    case 'shipped':
-                      return 'bg-purple-100'
                     case 'delivered':
                       return 'bg-green-100'
-                    case 'cancelled':
-                      return 'bg-red-100'
                     default:
                       return 'bg-yellow-100'
                   }
@@ -727,14 +721,8 @@ function OrdersContent() {
                       return <ClockIcon className="w-12 h-12 text-yellow-600" />
                     case 'paid':
                       return <CheckCircleIcon className="w-12 h-12 text-green-600" />
-                    case 'preparing':
-                      return <ExclamationCircleIcon className="w-12 h-12 text-blue-600" />
-                    case 'shipped':
-                      return <TruckIcon className="w-12 h-12 text-purple-600" />
                     case 'delivered':
                       return <TruckIcon className="w-12 h-12 text-green-600" />
-                    case 'cancelled':
-                      return <XCircleIcon className="w-12 h-12 text-red-600" />
                     default:
                       return <ClockIcon className="w-12 h-12 text-yellow-600" />
                   }
@@ -759,14 +747,8 @@ function OrdersContent() {
                         return isCard ? '카드결제 확인중입니다' : '입금확인중입니다'
                       case 'paid':
                         return '결제가 완료되었습니다'
-                      case 'preparing':
-                        return '배송 준비중입니다'
-                      case 'shipped':
-                        return '배송이 시작되었습니다'
                       case 'delivered':
                         return '출고가 완료되었습니다'
-                      case 'cancelled':
-                        return '주문이 취소되었습니다'
                       default:
                         return isCard ? '카드결제 확인중입니다' : '입금확인중입니다'
                     }
@@ -784,14 +766,8 @@ function OrdersContent() {
                         return isCard ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'
                       case 'paid':
                         return '곧 배송 준비를 시작합니다'
-                      case 'preparing':
-                        return '상품을 포장하고 있습니다'
-                      case 'shipped':
-                        return '배송 정보를 확인해보세요'
                       case 'delivered':
                         return '상품이 안전하게 출고되었습니다'
-                      case 'cancelled':
-                        return '주문 취소가 완료되었습니다'
                       default:
                         return isCard ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'
                     }
@@ -960,14 +936,8 @@ function OrdersContent() {
                         case 'verifying':
                           return 'text-yellow-600'
                         case 'paid':
-                          return 'text-green-600'
-                        case 'preparing':
-                        case 'shipped':
-                          return 'text-blue-600'
                         case 'delivered':
                           return 'text-green-600'
-                        case 'cancelled':
-                          return 'text-red-600'
                         default:
                           return 'text-yellow-600'
                       }
@@ -983,14 +953,8 @@ function OrdersContent() {
                             return isCard ? '카드결제 확인중' : '입금확인중'
                           case 'paid':
                             return '결제완료'
-                          case 'preparing':
-                            return '결제완료 (배송준비중)'
-                          case 'shipped':
-                            return '결제완료 (배송중)'
                           case 'delivered':
                             return '결제완료 (출고완료)'
-                          case 'cancelled':
-                            return '결제취소'
                           default:
                             return isCard ? '카드결제 대기중' : '입금대기'
                         }

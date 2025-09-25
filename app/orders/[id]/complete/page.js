@@ -247,15 +247,8 @@ export default function OrderCompletePage() {
                 case 'verifying':
                   return 'bg-yellow-100'
                 case 'paid':
-                  return 'bg-green-100'
-                case 'preparing':
-                  return 'bg-blue-100'
-                case 'shipped':
-                  return 'bg-purple-100'
                 case 'delivered':
                   return 'bg-green-100'
-                case 'cancelled':
-                  return 'bg-red-100'
                 default:
                   return 'bg-yellow-100'
               }
@@ -269,14 +262,8 @@ export default function OrderCompletePage() {
                   return <ClockIcon className="w-12 h-12 text-yellow-600" />
                 case 'paid':
                   return <CheckCircleIcon className="w-12 h-12 text-green-600" />
-                case 'preparing':
-                  return <ExclamationCircleIcon className="w-12 h-12 text-blue-600" />
-                case 'shipped':
-                  return <TruckIcon className="w-12 h-12 text-purple-600" />
                 case 'delivered':
                   return <TruckIcon className="w-12 h-12 text-green-600" />
-                case 'cancelled':
-                  return <XCircleIcon className="w-12 h-12 text-red-600" />
                 default:
                   return <ClockIcon className="w-12 h-12 text-yellow-600" />
               }
