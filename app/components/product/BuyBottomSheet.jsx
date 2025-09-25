@@ -179,9 +179,11 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       if (shouldClose) {
         onClose()
       }
+      return true // 성공 시 true 반환
     } catch (error) {
       console.error('주문 생성 실패:', error)
       toast.error('장바구니 추가에 실패했습니다')
+      throw error // 에러를 다시 throw
     } finally {
       setIsLoading(false) // 로딩 종료
     }
@@ -206,23 +208,23 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
     try {
       // 장바구니에 추가
-      await handleAddToCart(false)
-      console.log('🎯 장바구니 추가 성공, BottomSheet 닫고 모달 표시')
+      const success = await handleAddToCart(false)
 
-      // BottomSheet 먼저 닫기
-      onClose()
+      if (success) {
+        console.log('🎯 장바구니 추가 성공, BottomSheet 닫고 모달 표시')
 
-      // 잠깐 딜레이 후 모달 표시 (애니메이션 완료 후)
-      setTimeout(() => {
-        setShowChoiceModal(true)
-      }, 300)
+        // BottomSheet 먼저 닫기
+        onClose()
+
+        // 잠깐 딜레이 후 모달 표시 (애니메이션 완료 후)
+        setTimeout(() => {
+          setShowChoiceModal(true)
+        }, 300)
+      }
     } catch (error) {
       console.error('장바구니 추가 실패:', error)
-      // 오류가 발생해도 모달은 표시
+      // 에러가 발생해도 BottomSheet는 닫기
       onClose()
-      setTimeout(() => {
-        setShowChoiceModal(true)
-      }, 300)
     }
   }
 
