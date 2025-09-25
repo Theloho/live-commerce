@@ -57,7 +57,7 @@ function OrdersContent() {
   // URL 쿼리 파라미터에서 탭 정보 확인
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab && ['pending', 'verifying', 'paid', 'preparing', 'shipped', 'delivered', 'cancelled'].includes(tab)) {
+    if (tab && ['pending', 'verifying', 'paid', 'delivered'].includes(tab)) {
       setFilterStatus(tab)
     }
   }, [searchParams])
@@ -379,10 +379,7 @@ function OrdersContent() {
               { key: 'pending', label: '결제대기' },
               { key: 'verifying', label: '결제 확인중' },
               { key: 'paid', label: '결제완료' },
-              { key: 'preparing', label: '배송준비중' },
-              { key: 'shipped', label: '배송중' },
-              { key: 'delivered', label: '배송완료' },
-              { key: 'cancelled', label: '주문취소' }
+              { key: 'delivered', label: '배송완료' }
             ].map(filter => {
               const count = orders.filter(order => order.status === filter.key).length
               return (
