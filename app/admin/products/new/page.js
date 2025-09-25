@@ -31,6 +31,7 @@ export default function NewProductPage() {
   })
 
   const [showSizeTemplateSelector, setShowSizeTemplateSelector] = useState(false)
+  const [useThousandUnit, setUseThousandUnit] = useState(true) // 천원단위 입력 기본값 true
 
   // 필수값 검증 함수
   const validateRequiredFields = () => {
@@ -247,6 +248,42 @@ export default function NewProductPage() {
         setImagePreview(e.target.result)
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  // 가격 입력 처리
+  const handlePriceChange = (value) => {
+    if (!value) {
+      setProductData(prev => ({ ...prev, price: '' }))
+      return
+    }
+
+    if (useThousandUnit) {
+      // 천원 단위 모드: 소수점 1자리까지 허용
+      const numValue = parseFloat(value)
+      if (!isNaN(numValue)) {
+        const actualPrice = Math.floor(numValue * 1000)
+        setProductData(prev => ({ ...prev, price: actualPrice }))
+      }
+    } else {
+      // 일반 모드: 숫자만 허용
+      const numValue = parseInt(value)
+      if (!isNaN(numValue)) {
+        setProductData(prev => ({ ...prev, price: numValue }))
+      }
+    }
+  }
+
+  // 가격 표시 값 계산
+  const getDisplayPrice = () => {
+    if (!productData.price) return ''
+
+    if (useThousandUnit) {
+      // 천원 단위로 표시 (19000 → 19)
+      return (productData.price / 1000).toString()
+    } else {
+      // 실제 금액 표시
+      return productData.price.toString()
     }
   }
 
@@ -585,15 +622,45 @@ export default function NewProductPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     판매가격 *
                   </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={productData.price}
-                      onChange={(e) => setProductData(prev => ({ ...prev, price: e.target.value }))}
-                      placeholder="0"
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    />
-                    <span className="absolute left-3 top-2.5 text-gray-500">₩</span>
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step={useThousandUnit ? "0.1" : "1"}
+                        value={getDisplayPrice()}
+                        onChange={(e) => handlePriceChange(e.target.value)}
+                        placeholder={useThousandUnit ? "19.5" : "19500"}
+                        className="w-full pl-8 pr-16 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      />
+                      <span className="absolute left-3 top-2.5 text-gray-500">₩</span>
+                      <span className="absolute right-3 top-2.5 text-sm text-gray-500">
+                        {useThousandUnit ? '천원' : '원'}
+                      </span>
+                    </div>
+
+                    {/* 천원단위 입력 체크박스 */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useThousandUnit}
+                        onChange={(e) => setUseThousandUnit(e.target.checked)}
+                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                      />
+                      <span className="text-sm text-gray-700">천원 단위로 입력하기</span>
+                      <span className="text-xs text-gray-500">
+                        (예: 19.5 → 19,500원)
+                      </span>
+                    </label>
+
+                    {/* 실시간 가격 미리보기 */}
+                    {productData.price > 0 && (
+                      <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="text-sm text-blue-800">
+                          <span className="font-medium">최종 가격: </span>
+                          <span className="font-bold">₩{productData.price.toLocaleString()}원</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
