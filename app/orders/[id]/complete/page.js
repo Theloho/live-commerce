@@ -298,7 +298,7 @@ export default function OrderCompletePage() {
                   case 'shipped':
                     return '배송이 시작되었습니다'
                   case 'delivered':
-                    return '배송이 완료되었습니다'
+                    return '출고가 완료되었습니다'
                   case 'cancelled':
                     return '주문이 취소되었습니다'
                   default:
@@ -323,7 +323,7 @@ export default function OrderCompletePage() {
                   case 'shipped':
                     return '배송 정보를 확인해보세요'
                   case 'delivered':
-                    return '상품이 안전하게 배송되었습니다'
+                    return '상품이 안전하게 출고되었습니다'
                   case 'cancelled':
                     return '주문 취소가 완료되었습니다'
                   default:
@@ -518,7 +518,7 @@ export default function OrderCompletePage() {
                       case 'shipped':
                         return '결제완료 (배송중)'
                       case 'delivered':
-                        return '결제완료 (배송완료)'
+                        return '결제완료 (출고완료)'
                       case 'cancelled':
                         return '결제취소'
                       default:

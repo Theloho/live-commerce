@@ -175,7 +175,7 @@ function OrdersContent() {
       'paid': { label: '결제완료', color: 'text-green-600 bg-green-50', icon: CheckCircleIcon },
       'preparing': { label: '배송준비중', color: 'text-blue-600 bg-blue-50', icon: ClockIcon },
       'shipped': { label: '배송중', color: 'text-blue-600 bg-blue-50', icon: TruckIcon },
-      'delivered': { label: '배송완료', color: 'text-green-600 bg-green-50', icon: TruckIcon },
+      'delivered': { label: '출고완료', color: 'text-green-600 bg-green-50', icon: TruckIcon },
       'cancelled': { label: '주문취소', color: 'text-red-600 bg-red-50', icon: ClockIcon }
     }
     return statusMap[status] || statusMap['pending']
@@ -379,7 +379,7 @@ function OrdersContent() {
               { key: 'pending', label: '결제대기' },
               { key: 'verifying', label: '결제 확인중' },
               { key: 'paid', label: '결제완료' },
-              { key: 'delivered', label: '배송완료' }
+              { key: 'delivered', label: '출고완료' }
             ].map(filter => {
               const count = orders.filter(order => order.status === filter.key).length
               return (
@@ -651,7 +651,7 @@ function OrdersContent() {
                                 case 'shipped':
                                   return '결제완료 (배송중)'
                                 case 'delivered':
-                                  return '결제완료 (배송완료)'
+                                  return '결제완료 (출고완료)'
                                 case 'cancelled':
                                   return '결제취소'
                                 default:
