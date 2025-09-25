@@ -475,7 +475,7 @@ export default function NewProductPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <div className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto py-4 px-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/admin/products')}
@@ -494,7 +494,7 @@ export default function NewProductPage() {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-4xl mx-auto px-4 py-4">
+      <div className="max-w-4xl mx-auto py-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* 왼쪽: 기본 정보 */}
