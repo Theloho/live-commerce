@@ -53,30 +53,35 @@ export default function NewProductPage() {
     }
   }, [isAdminAuthenticated])
 
-  // 제품번호 자동 생성
+  // 제품번호 자동 생성 (title 필드에서 추출)
   const generateProductNumber = async () => {
     try {
-      // 기존 제품번호들 조회
+      // 기존 제품들의 title에서 번호 패턴 추출
       const { data: products, error } = await supabase
         .from('products')
-        .select('product_number')
-        .not('product_number', 'is', null)
-        .order('product_number')
+        .select('title')
+        .not('title', 'is', null)
 
       if (error) throw error
 
-      // 사용 중인 번호들 추출
+      // title에서 숫자 패턴 추출 (0001, 0042/제품명 등)
       const usedNumbers = products
-        .map(p => parseInt(p.product_number))
-        .filter(num => !isNaN(num))
+        .map(p => {
+          const match = p.title.match(/^(\d{4})/)
+          return match ? parseInt(match[1]) : null
+        })
+        .filter(num => num !== null)
 
       // 1부터 9999까지 중 가장 작은 미사용 번호 찾기
       for (let i = 1; i <= 9999; i++) {
         if (!usedNumbers.includes(i)) {
           setProductNumber(String(i).padStart(4, '0'))
-          break
+          return
         }
       }
+
+      // 모든 번호가 사용 중이면 랜덤 번호
+      setProductNumber(String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0'))
     } catch (error) {
       console.error('제품번호 생성 오류:', error)
       // 실패 시 랜덤 번호
@@ -201,11 +206,10 @@ export default function NewProductPage() {
         totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
       }
 
-      // 제품 저장
+      // 제품 저장 (product_number 제거, title에 번호 포함)
       const { data: product, error } = await supabase
         .from('products')
         .insert({
-          product_number: productNumber,
           title: displayName,
           price: parseInt(productData.price),
           inventory: totalInventory,
