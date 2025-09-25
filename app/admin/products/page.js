@@ -342,30 +342,6 @@ export default function AdminProductsPage() {
         <div className="flex gap-2">
           <button
             onClick={async () => {
-              // 재고 초기화
-              if (window.confirm('모든 상품의 재고를 50개로 초기화하시겠습니까?')) {
-                try {
-                  const { error } = await supabase
-                    .from('products')
-                    .update({ inventory: 50 })
-                    .neq('id', '00000000-0000-0000-0000-000000000000')
-
-                  if (error) throw error
-
-                  toast.success('재고가 초기화되었습니다')
-                  loadProducts()
-                } catch (error) {
-                  console.error('재고 초기화 오류:', error)
-                  toast.error('재고 초기화에 실패했습니다')
-                }
-              }
-            }}
-            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
-          >
-            재고 초기화
-          </button>
-          <button
-            onClick={async () => {
               // 전체 상품 데이터 완전 삭제
               if (window.confirm('모든 상품을 완전히 삭제하시겠습니까? (홈화면에서도 사라집니다)')) {
                 try {
