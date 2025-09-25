@@ -384,23 +384,46 @@ export default function AdminProductsPage() {
     const optionTemplates = {
       size: {
         name: '사이즈',
-        values: ['S', 'M', 'L', 'XL']
+        values: [
+          { name: 'S', inventory: 10 },
+          { name: 'M', inventory: 10 },
+          { name: 'L', inventory: 10 },
+          { name: 'XL', inventory: 10 }
+        ]
       },
       color: {
         name: '색상',
-        values: ['블랙', '화이트', '그레이', '네이비']
+        values: [
+          { name: '블랙', inventory: 10 },
+          { name: '화이트', inventory: 10 },
+          { name: '그레이', inventory: 10 },
+          { name: '네이비', inventory: 10 }
+        ]
       },
       storage: {
         name: '용량',
-        values: ['128GB', '256GB', '512GB', '1TB']
+        values: [
+          { name: '128GB', inventory: 10 },
+          { name: '256GB', inventory: 10 },
+          { name: '512GB', inventory: 10 },
+          { name: '1TB', inventory: 10 }
+        ]
       },
       material: {
         name: '재질',
-        values: ['면', '폴리에스터', '나일론', '가죽']
+        values: [
+          { name: '면', inventory: 10 },
+          { name: '폴리에스터', inventory: 10 },
+          { name: '나일론', inventory: 10 },
+          { name: '가죽', inventory: 10 }
+        ]
       },
       custom: {
         name: '옵션명',
-        values: ['옵션1', '옵션2']
+        values: [
+          { name: '옵션1', inventory: 10 },
+          { name: '옵션2', inventory: 10 }
+        ]
       }
     }
 
@@ -1041,20 +1064,46 @@ export default function AdminProductsPage() {
                             <XMarkIcon className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="space-y-2">
                           {option.values.map((value, index) => (
-                            <div key={index} className="flex items-center gap-1 bg-gray-50 rounded border">
-                              <input
-                                type="text"
-                                value={value}
-                                onChange={(e) => {
-                                  const newValues = [...option.values]
-                                  newValues[index] = e.target.value
-                                  updateOption(option.id, 'values', newValues)
-                                }}
-                                className="px-2 py-1 text-sm bg-transparent border-none focus:ring-0 focus:outline-none"
-                                placeholder={`옵션 ${index + 1}`}
-                              />
+                            <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                              <div className="flex-1">
+                                <input
+                                  type="text"
+                                  value={typeof value === 'string' ? value : value.name || ''}
+                                  onChange={(e) => {
+                                    const newValues = [...option.values]
+                                    if (typeof newValues[index] === 'string') {
+                                      newValues[index] = { name: e.target.value, inventory: 10 }
+                                    } else {
+                                      newValues[index] = { ...newValues[index], name: e.target.value }
+                                    }
+                                    updateOption(option.id, 'values', newValues)
+                                  }}
+                                  className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                  placeholder={`옵션명 ${index + 1}`}
+                                />
+                              </div>
+                              <div className="w-20">
+                                <input
+                                  type="number"
+                                  value={typeof value === 'string' ? 10 : value.inventory || 10}
+                                  onChange={(e) => {
+                                    const newValues = [...option.values]
+                                    const newInventory = parseInt(e.target.value) || 0
+                                    if (typeof newValues[index] === 'string') {
+                                      newValues[index] = { name: newValues[index], inventory: newInventory }
+                                    } else {
+                                      newValues[index] = { ...newValues[index], inventory: newInventory }
+                                    }
+                                    updateOption(option.id, 'values', newValues)
+                                  }}
+                                  min="0"
+                                  className="w-full px-2 py-1 text-sm text-center bg-white border border-gray-300 rounded focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                  placeholder="재고"
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500 w-6">개</span>
                               {option.values.length > 1 && (
                                 <button
                                   onClick={() => {
@@ -1070,7 +1119,7 @@ export default function AdminProductsPage() {
                             </div>
                           ))}
                           <button
-                            onClick={() => updateOption(option.id, 'values', [...option.values, ''])}
+                            onClick={() => updateOption(option.id, 'values', [...option.values, { name: '', inventory: 10 }])}
                             className="px-2 py-1 text-sm text-gray-500 border border-dashed border-gray-300 rounded hover:bg-gray-50"
                           >
                             +
