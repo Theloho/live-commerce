@@ -539,20 +539,11 @@ export default function NewProductPage() {
                   {/* 이미지 업로드 안내 */}
                   <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
                     <PhotoIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 font-medium mb-2">제품 사진을 추가하세요</p>
-                    <p className="text-sm text-gray-500">아래 버튼을 선택해주세요</p>
+                    <p className="text-gray-600 font-medium">제품 이미지를 선택하세요</p>
                   </div>
 
-                  {/* 업로드 옵션 버튼들 */}
+                  {/* 업로드 옵션 버튼들 - 사진보관함 좌측, 사진촬영 우측 */}
                   <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => cameraInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                    >
-                      <CameraIcon className="w-8 h-8 text-blue-600" />
-                      <span className="font-medium text-blue-700">사진 촬영</span>
-                      <span className="text-xs text-blue-600">카메라로 찍기</span>
-                    </button>
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
@@ -560,6 +551,14 @@ export default function NewProductPage() {
                       <PhotoIcon className="w-8 h-8 text-green-600" />
                       <span className="font-medium text-green-700">사진 보관함</span>
                       <span className="text-xs text-green-600">갤러리에서 선택</span>
+                    </button>
+                    <button
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <CameraIcon className="w-8 h-8 text-blue-600" />
+                      <span className="font-medium text-blue-700">사진 촬영</span>
+                      <span className="text-xs text-blue-600">카메라로 찍기</span>
                     </button>
                   </div>
                 </div>
