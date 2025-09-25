@@ -31,6 +31,39 @@ export default function NewProductPage() {
 
   const [showSizeTemplateSelector, setShowSizeTemplateSelector] = useState(false)
 
+  // 필수값 검증 함수
+  const validateRequiredFields = () => {
+    const errors = []
+
+    if (!imagePreview) {
+      errors.push('제품 이미지')
+    }
+    if (!productData.price || productData.price <= 0) {
+      errors.push('판매가격')
+    }
+    if (productData.optionType !== 'none') {
+      const totalOptionInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
+      if (totalOptionInventory === 0) {
+        errors.push('옵션별 재고')
+      }
+    }
+
+    return errors
+  }
+
+  // 등록 가능 여부 확인
+  const canSubmit = validateRequiredFields().length === 0
+
+  // 필수값 누락 알림
+  const showMissingFieldsAlert = () => {
+    const missingFields = validateRequiredFields()
+    if (missingFields.length > 0) {
+      toast.error(`다음 항목을 입력해주세요: ${missingFields.join(', ')}`)
+      return false
+    }
+    return true
+  }
+
   // 미리 정의된 옵션 템플릿
   const SIZE_TEMPLATES = {
     number: ['55', '66', '77', '88', '99'],
@@ -274,23 +307,10 @@ export default function NewProductPage() {
 
   // 제품 저장
   const handleSaveProduct = async () => {
-    // 유효성 검사
-    if (!imagePreview) {
-      toast.error('제품 사진을 추가해주세요')
+    // 필수값 검증 (이미 canSubmit에서 체크했지만 한번 더 확인)
+    if (!canSubmit) {
+      showMissingFieldsAlert()
       return
-    }
-    if (!productData.price || productData.price <= 0) {
-      toast.error('판매가격을 입력해주세요')
-      return
-    }
-
-    // 옵션이 있는 경우 재고 확인
-    if (productData.optionType !== 'none') {
-      const totalOptionInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
-      if (totalOptionInventory === 0) {
-        toast.error('옵션별 재고를 설정해주세요')
-        return
-      }
     }
 
     setLoading(true)
@@ -747,25 +767,58 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* 하단 등록 버튼 */}
-        <div className="mt-8 flex justify-center">
+        {/* 하단 여백 (고정 네비바 공간 확보) */}
+        <div className="pb-20"></div>
+      </div>
+
+      {/* 하단 고정 네비게이션 바 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-50 shadow-lg">
+        <div className="max-w-4xl mx-auto">
           <button
-            onClick={handleSaveProduct}
+            onClick={() => {
+              if (canSubmit || showMissingFieldsAlert()) {
+                handleSaveProduct()
+              }
+            }}
             disabled={loading}
-            className="px-8 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-lg"
+            className={`w-full py-3 px-6 rounded-lg font-medium text-lg flex items-center justify-center gap-2 transition-all duration-200 ${
+              canSubmit
+                ? 'bg-red-600 text-white hover:bg-red-700 active:scale-95'
+                : 'bg-gray-200 text-gray-500 cursor-pointer hover:bg-gray-300'
+            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                저장 중...
+                등록 중...
               </>
             ) : (
               <>
                 <PlusIcon className="w-5 h-5" />
-                제품 등록하기
+                {canSubmit ? '제품 등록하기' : '필수 정보를 입력하세요'}
               </>
             )}
           </button>
+
+          {/* 필수값 상태 표시 */}
+          <div className="mt-2 flex justify-center">
+            <div className="flex items-center gap-4 text-xs">
+              <div className={`flex items-center gap-1 ${imagePreview ? 'text-green-600' : 'text-red-500'}`}>
+                <div className={`w-2 h-2 rounded-full ${imagePreview ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                이미지
+              </div>
+              <div className={`flex items-center gap-1 ${productData.price > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                <div className={`w-2 h-2 rounded-full ${productData.price > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                가격
+              </div>
+              {(productData.sizeOptions.length > 0 || productData.colorOptions.length > 0) && (
+                <div className={`flex items-center gap-1 ${Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0) > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  <div className={`w-2 h-2 rounded-full ${Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0) > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  옵션재고
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
