@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeftIcon, CameraIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, CameraIcon, PlusIcon, MinusIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import toast from 'react-hot-toast'
@@ -12,6 +12,7 @@ export default function NewProductPage() {
   const router = useRouter()
   const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
   const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
 
   const [loading, setLoading] = useState(false)
   const [productNumber, setProductNumber] = useState('')
@@ -223,8 +224,21 @@ export default function NewProductPage() {
     }
   }
 
-  // 이미지 업로드
+  // 이미지 업로드 (갤러리)
   const handleImageUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setSelectedImage(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // 카메라 촬영
+  const handleCameraCapture = (e) => {
     const file = e.target.files[0]
     if (file) {
       setSelectedImage(file)
@@ -452,39 +466,84 @@ export default function NewProductPage() {
             {/* 제품 이미지 */}
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <h2 className="text-lg font-medium mb-4">제품 이미지</h2>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors border-2 border-dashed border-gray-300"
-              >
-                {imagePreview ? (
-                  <>
+
+              {imagePreview ? (
+                <div className="space-y-4">
+                  {/* 이미지 미리보기 */}
+                  <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     <Image
                       src={imagePreview}
                       alt="제품 이미지"
                       fill
                       className="object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
-                      <div className="bg-white/90 px-3 py-1 rounded-lg text-sm opacity-0 hover:opacity-100 transition-opacity">
-                        변경하기
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                    <CameraIcon className="w-12 h-12 mb-3" />
-                    <p className="font-medium">이미지 업로드</p>
-                    <p className="text-sm">클릭하여 이미지를 선택하세요</p>
                   </div>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-              </div>
+
+                  {/* 이미지 변경 버튼들 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex items-center justify-center gap-2 p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <CameraIcon className="w-5 h-5 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700">다시 촬영</span>
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center justify-center gap-2 p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <PhotoIcon className="w-5 h-5 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700">갤러리에서</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* 이미지 업로드 안내 */}
+                  <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                    <PhotoIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 font-medium mb-2">제품 사진을 추가하세요</p>
+                    <p className="text-sm text-gray-500">아래 버튼을 선택해주세요</p>
+                  </div>
+
+                  {/* 업로드 옵션 버튼들 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <CameraIcon className="w-8 h-8 text-blue-600" />
+                      <span className="font-medium text-blue-700">사진 촬영</span>
+                      <span className="text-xs text-blue-600">카메라로 찍기</span>
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
+                    >
+                      <PhotoIcon className="w-8 h-8 text-green-600" />
+                      <span className="font-medium text-green-700">사진 보관함</span>
+                      <span className="text-xs text-green-600">갤러리에서 선택</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 숨겨진 input 요소들 */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleCameraCapture}
+                className="hidden"
+              />
             </div>
 
             {/* 기본 정보 */}
