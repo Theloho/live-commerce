@@ -455,7 +455,6 @@ export default function AdminProductsPage() {
         thumbnail_url: imagePreview,
         inventory: parseInt(productData.inventory) || 50,
         status: 'active',
-        review_rating: 0,
         is_featured: false,
         tags: [] // LIVE 라벨은 별도로 추가
       }
