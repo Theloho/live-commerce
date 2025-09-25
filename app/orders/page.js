@@ -732,7 +732,7 @@ function OrdersContent() {
                     case 'shipped':
                       return <TruckIcon className="w-12 h-12 text-purple-600" />
                     case 'delivered':
-                      return <CheckCircleIcon className="w-12 h-12 text-green-600" />
+                      return <TruckIcon className="w-12 h-12 text-green-600" />
                     case 'cancelled':
                       return <XCircleIcon className="w-12 h-12 text-red-600" />
                     default:
