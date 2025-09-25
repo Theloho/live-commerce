@@ -213,7 +213,10 @@ export default function OrderCompletePage() {
                   'pending': 'pending',
                   'verifying': 'verifying',
                   'paid': 'paid',
-                  'delivered': 'delivered'
+                  'preparing': 'paid',
+                  'shipped': 'delivered',
+                  'delivered': 'delivered',
+                  'cancelled': 'pending'
                 }
                 const tab = statusToTab[orderData?.status] || 'pending'
                 router.push(`/orders?tab=${tab}`)
@@ -285,6 +288,7 @@ export default function OrderCompletePage() {
               {(() => {
                 const { status, payment } = orderData
                 const isCard = payment?.method === 'card'
+                console.log('주문 상세 페이지 상태 확인:', { status, paymentMethod: payment?.method, orderData })
 
                 switch (status) {
                   case 'pending':
