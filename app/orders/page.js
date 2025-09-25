@@ -707,10 +707,55 @@ function OrdersContent() {
                 transition={{ delay: 0.2 }}
               >
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  {selectedGroupOrder.payment?.method === 'card' ? '카드결제 확인중입니다' : '입금확인중입니다'}
+                  {(() => {
+                    const { status, payment } = selectedGroupOrder
+                    const isCard = payment?.method === 'card'
+                    console.log('그룹 주문 모달 상태 확인:', { status, paymentMethod: payment?.method })
+
+                    switch (status) {
+                      case 'pending':
+                        return isCard ? '카드결제 확인중입니다' : '입금확인중입니다'
+                      case 'verifying':
+                        return isCard ? '카드결제 확인중입니다' : '입금확인중입니다'
+                      case 'paid':
+                        return '결제가 완료되었습니다'
+                      case 'preparing':
+                        return '배송 준비중입니다'
+                      case 'shipped':
+                        return '배송이 시작되었습니다'
+                      case 'delivered':
+                        return '출고가 완료되었습니다'
+                      case 'cancelled':
+                        return '주문이 취소되었습니다'
+                      default:
+                        return isCard ? '카드결제 확인중입니다' : '입금확인중입니다'
+                    }
+                  })()}
                 </h1>
                 <p className="text-gray-600">
-                  {selectedGroupOrder.payment?.method === 'card' ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'}
+                  {(() => {
+                    const { status, payment } = selectedGroupOrder
+                    const isCard = payment?.method === 'card'
+
+                    switch (status) {
+                      case 'pending':
+                        return isCard ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'
+                      case 'verifying':
+                        return isCard ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'
+                      case 'paid':
+                        return '곧 배송 준비를 시작합니다'
+                      case 'preparing':
+                        return '상품을 포장하고 있습니다'
+                      case 'shipped':
+                        return '배송 정보를 확인해보세요'
+                      case 'delivered':
+                        return '상품이 안전하게 출고되었습니다'
+                      case 'cancelled':
+                        return '주문 취소가 완료되었습니다'
+                      default:
+                        return isCard ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'
+                    }
+                  })()}
                 </p>
               </motion.div>
             </div>
