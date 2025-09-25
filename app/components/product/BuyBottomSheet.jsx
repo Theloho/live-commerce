@@ -19,6 +19,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const [isLiked, setIsLiked] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
   const [userSession, setUserSession] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
@@ -110,6 +111,12 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   }
 
   const handleAddToCart = async (shouldClose = true) => {
+    // 이미 처리 중이면 중복 실행 방지
+    if (isLoading) {
+      console.log('이미 처리 중입니다')
+      return
+    }
+
     const currentUser = userSession || user
     const isUserLoggedIn = userSession || isAuthenticated
 
@@ -139,6 +146,8 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
     console.log('장바구니 항목:', cartItem) // 디버깅
     console.log('사용자 프로필:', userProfile) // 디버깅
+
+    setIsLoading(true) // 로딩 시작
 
     try {
       // 모든 사용자 (카카오/일반) 통합 처리
@@ -173,6 +182,8 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     } catch (error) {
       console.error('주문 생성 실패:', error)
       toast.error('장바구니 추가에 실패했습니다')
+    } finally {
+      setIsLoading(false) // 로딩 종료
     }
   }
 
@@ -383,10 +394,10 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
         <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4">
           <Button
             onClick={handleBuyNow}
-            disabled={stock === 0}
+            disabled={stock === 0 || isLoading}
             fullWidth
           >
-            구매하기
+            {isLoading ? '처리 중...' : '구매하기'}
           </Button>
         </div>
       </BottomSheet>

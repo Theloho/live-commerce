@@ -20,6 +20,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const [showChoiceModal, setShowChoiceModal] = useState(false)
   const [currentInventory, setCurrentInventory] = useState(product.stock_quantity || product.inventory || product.inventory_quantity || 0)
   const [userSession, setUserSession] = useState(null)
+  const [isProcessing, setIsProcessing] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
@@ -205,6 +206,12 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const handleBuyClick = (e) => {
     e.preventDefault()
 
+    // 이미 처리 중이면 중복 클릭 방지
+    if (isProcessing) {
+      console.log('이미 처리 중입니다')
+      return
+    }
+
     // 품절 체크
     if (currentInventory <= 0) {
       toast.error('죄송합니다. 해당 상품이 품절되었습니다')
@@ -220,7 +227,10 @@ export default function ProductCard({ product, variant = 'default', priority = f
       return
     }
 
+    setIsProcessing(true)
     setShowBuySheet(true)
+    // BuyBottomSheet가 열린 후 처리 상태 해제
+    setTimeout(() => setIsProcessing(false), 500)
   }
 
   // 더 주문하기 - 홈으로 이동
@@ -244,9 +254,9 @@ export default function ProductCard({ product, variant = 'default', priority = f
   return (
     <>
       <motion.div
-        whileHover={currentInventory > 0 ? { y: -4 } : {}}
+        whileHover={currentInventory > 0 && !isProcessing ? { y: -4 } : {}}
         transition={{ duration: 0.2 }}
-        onClick={currentInventory > 0 ? handleBuyClick : undefined}
+        onClick={currentInventory > 0 && !isProcessing ? handleBuyClick : undefined}
         className={currentInventory > 0 ? "cursor-pointer" : "cursor-not-allowed"}
       >
         <div className={`${variants[variant]} ${currentInventory <= 0 ? 'opacity-60 grayscale' : ''}`}>
