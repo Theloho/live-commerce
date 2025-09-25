@@ -913,8 +913,48 @@ function OrdersContent() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">결제상태</span>
-                    <span className="text-yellow-600 font-medium">
-                      {selectedGroupOrder.payment?.method === 'card' ? '카드결제 대기중' : '입금대기'}
+                    <span className={`font-medium ${(() => {
+                      const { status } = selectedGroupOrder
+                      switch (status) {
+                        case 'pending':
+                        case 'verifying':
+                          return 'text-yellow-600'
+                        case 'paid':
+                          return 'text-green-600'
+                        case 'preparing':
+                        case 'shipped':
+                          return 'text-blue-600'
+                        case 'delivered':
+                          return 'text-green-600'
+                        case 'cancelled':
+                          return 'text-red-600'
+                        default:
+                          return 'text-yellow-600'
+                      }
+                    })()}`}>
+                      {(() => {
+                        const { status, payment } = selectedGroupOrder
+                        const isCard = payment?.method === 'card'
+
+                        switch (status) {
+                          case 'pending':
+                            return isCard ? '카드결제 대기중' : '입금대기'
+                          case 'verifying':
+                            return isCard ? '카드결제 확인중' : '입금확인중'
+                          case 'paid':
+                            return '결제완료'
+                          case 'preparing':
+                            return '결제완료 (배송준비중)'
+                          case 'shipped':
+                            return '결제완료 (배송중)'
+                          case 'delivered':
+                            return '결제완료 (출고완료)'
+                          case 'cancelled':
+                            return '결제취소'
+                          default:
+                            return isCard ? '카드결제 대기중' : '입금대기'
+                        }
+                      })()}
                     </span>
                   </div>
                 </div>
