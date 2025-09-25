@@ -7,6 +7,25 @@ const supabaseAdmin = createClient(
   (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.replace(/[\r\n\s]+/g, '')
 )
 
+// 그룹 주문번호 생성: G + YYMMDD-NNNN (4자리 순번)
+const generateGroupOrderNumber = (paymentGroupId) => {
+  const date = new Date()
+  const year = date.getFullYear().toString().slice(-2)
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+
+  // payment_group_id가 있으면 그 ID의 타임스탬프에서 4자리 추출
+  if (paymentGroupId) {
+    const timestamp = paymentGroupId.split('-')[1] || ''
+    const sequence = timestamp.slice(-4).padStart(4, '0')
+    return `G${year}${month}${day}-${sequence}`
+  }
+
+  // payment_group_id가 없으면 랜덤 4자리
+  const sequence = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+  return `G${year}${month}${day}-${sequence}`
+}
+
 export async function POST(request) {
   try {
     const { userId } = await request.json()
@@ -118,17 +137,7 @@ export async function POST(request) {
           const groupOrder = {
             id: `GROUP-${order.payment_group_id}`,
             payment_group_id: order.payment_group_id,
-            customer_order_number: (() => {
-              // G + YYMMDD-NNNN 형태로 생성
-              const now = new Date(order.created_at)
-              const year = now.getFullYear().toString().slice(-2)
-              const month = (now.getMonth() + 1).toString().padStart(2, '0')
-              const date = now.getDate().toString().padStart(2, '0')
-              // payment_group_id의 타임스탬프를 4자리 순번으로 변환
-              const timestamp = order.payment_group_id.split('-')[1]
-              const sequence = timestamp.slice(-4).padStart(4, '0')
-              return `G${year}${month}${date}-${sequence}`
-            })(),
+            customer_order_number: generateGroupOrderNumber(order.payment_group_id),
             status: order.status,
             created_at: order.created_at,
             updated_at: order.updated_at,
