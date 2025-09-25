@@ -11,7 +11,11 @@ import {
   HomeIcon,
   InformationCircleIcon,
   ArrowLeftIcon,
-  PencilIcon
+  PencilIcon,
+  CheckCircleIcon,
+  TruckIcon,
+  ExclamationCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
@@ -229,9 +233,47 @@ export default function OrderCompletePage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 rounded-full mb-6"
+            className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-6 ${(() => {
+              const { status } = orderData
+              switch (status) {
+                case 'pending':
+                case 'verifying':
+                  return 'bg-yellow-100'
+                case 'paid':
+                  return 'bg-green-100'
+                case 'preparing':
+                  return 'bg-blue-100'
+                case 'shipped':
+                  return 'bg-purple-100'
+                case 'delivered':
+                  return 'bg-green-100'
+                case 'cancelled':
+                  return 'bg-red-100'
+                default:
+                  return 'bg-yellow-100'
+              }
+            })()}`}
           >
-            <ClockIcon className="w-12 h-12 text-yellow-600" />
+            {(() => {
+              const { status } = orderData
+              switch (status) {
+                case 'pending':
+                case 'verifying':
+                  return <ClockIcon className="w-12 h-12 text-yellow-600" />
+                case 'paid':
+                  return <CheckCircleIcon className="w-12 h-12 text-green-600" />
+                case 'preparing':
+                  return <ExclamationCircleIcon className="w-12 h-12 text-blue-600" />
+                case 'shipped':
+                  return <TruckIcon className="w-12 h-12 text-purple-600" />
+                case 'delivered':
+                  return <CheckCircleIcon className="w-12 h-12 text-green-600" />
+                case 'cancelled':
+                  return <XCircleIcon className="w-12 h-12 text-red-600" />
+                default:
+                  return <ClockIcon className="w-12 h-12 text-yellow-600" />
+              }
+            })()}
           </motion.div>
 
           <motion.div
@@ -240,10 +282,54 @@ export default function OrderCompletePage() {
             transition={{ delay: 0.2 }}
           >
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {orderData.payment?.method === 'card' ? '카드결제 확인중입니다' : '입금확인중입니다'}
+              {(() => {
+                const { status, payment } = orderData
+                const isCard = payment?.method === 'card'
+
+                switch (status) {
+                  case 'pending':
+                    return isCard ? '카드결제 확인중입니다' : '입금확인중입니다'
+                  case 'verifying':
+                    return isCard ? '카드결제 확인중입니다' : '입금확인중입니다'
+                  case 'paid':
+                    return '결제가 완료되었습니다'
+                  case 'preparing':
+                    return '배송 준비중입니다'
+                  case 'shipped':
+                    return '배송이 시작되었습니다'
+                  case 'delivered':
+                    return '배송이 완료되었습니다'
+                  case 'cancelled':
+                    return '주문이 취소되었습니다'
+                  default:
+                    return isCard ? '카드결제 확인중입니다' : '입금확인중입니다'
+                }
+              })()}
             </h1>
             <p className="text-gray-600">
-              {orderData.payment?.method === 'card' ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'}
+              {(() => {
+                const { status, payment } = orderData
+                const isCard = payment?.method === 'card'
+
+                switch (status) {
+                  case 'pending':
+                    return isCard ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'
+                  case 'verifying':
+                    return isCard ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'
+                  case 'paid':
+                    return '곧 배송 준비를 시작합니다'
+                  case 'preparing':
+                    return '상품을 포장하고 있습니다'
+                  case 'shipped':
+                    return '배송 정보를 확인해보세요'
+                  case 'delivered':
+                    return '상품이 안전하게 배송되었습니다'
+                  case 'cancelled':
+                    return '주문 취소가 완료되었습니다'
+                  default:
+                    return isCard ? '카드결제 확인 후 배송을 시작합니다' : '입금 확인 후 배송을 시작합니다'
+                }
+              })()}
             </p>
           </motion.div>
         </div>
