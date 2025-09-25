@@ -501,11 +501,11 @@ export default function NewProductPage() {
           <div className="space-y-6">
 
             {/* 제품 이미지 */}
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-lg font-medium mb-4">제품 이미지</h2>
+            <div className="bg-white rounded-lg shadow-sm">
+              <h2 className="text-lg font-medium mb-4 p-6 pb-4">제품 이미지</h2>
 
               {imagePreview ? (
-                <div className="space-y-6">
+                <div className="space-y-6 px-6 pb-6">
                   {/* 이미지 미리보기 */}
                   <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
                     <Image
@@ -535,7 +535,7 @@ export default function NewProductPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-6 px-6 pb-6">
                   {/* 이미지 업로드 안내 */}
                   <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
                     <PhotoIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -583,10 +583,10 @@ export default function NewProductPage() {
             </div>
 
             {/* 기본 정보 */}
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-lg font-medium mb-4">기본 정보</h2>
+            <div className="bg-white rounded-lg shadow-sm">
+              <h2 className="text-lg font-medium mb-4 p-6 pb-4">기본 정보</h2>
 
-              <div className="space-y-6">
+              <div className="space-y-6 px-6 pb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     제품번호
@@ -718,7 +718,7 @@ export default function NewProductPage() {
           <div className="space-y-6">
 
             {/* 사이즈 옵션 */}
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-white rounded-lg shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">사이즈 옵션</h2>
                 {productData.sizeOptions.length > 0 && (
@@ -810,7 +810,7 @@ export default function NewProductPage() {
             </div>
 
             {/* 컬러 옵션 */}
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-white rounded-lg shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">컬러 옵션</h2>
                 {productData.colorOptions.length > 0 && (
@@ -861,7 +861,7 @@ export default function NewProductPage() {
 
             {/* 옵션별 재고 설정 */}
             {combinations.length > 0 && (
-              <div className="bg-white p-6 rounded-lg shadow-sm">
+              <div className="bg-white rounded-lg shadow-sm">
                 <h2 className="text-lg font-medium mb-4">옵션별 재고 설정</h2>
 
                 <div className="space-y-3 max-h-96 overflow-y-auto">

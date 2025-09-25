@@ -329,8 +329,8 @@ export default function AdminProductsPage() {
     <div className="min-h-screen bg-gray-50 pb-6">
       <div className="max-w-4xl mx-auto px-4 space-y-4">
         {/* Header */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between mb-4 p-6 pb-4">
           <div className="flex items-center gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">상품 관리</h1>
@@ -338,7 +338,7 @@ export default function AdminProductsPage() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-6 pb-6">
           <div></div>
         <div className="flex gap-2">
           <button
@@ -393,8 +393,8 @@ export default function AdminProductsPage() {
       </div>
 
         {/* Search */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <div className="relative max-w-md">
+        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="relative max-w-md p-6">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
@@ -448,7 +448,7 @@ export default function AdminProductsPage() {
               </div>
 
               {/* Product Info */}
-              <div className="p-6">
+              <div className="p-4">
                 <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
                   {product.title}
                 </h3>
