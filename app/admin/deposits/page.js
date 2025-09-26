@@ -1134,11 +1134,11 @@ export default function AdminDepositsPage() {
                             <p className="text-sm">
                               <span className="text-gray-500">닉네임:</span>
                               <button
-                                onClick={() => handleQuickSearch(orderUser?.nickname || orderUser?.user_metadata?.nickname || orderUser?.name)}
+                                onClick={() => handleQuickSearch(orderUser?.nickname || orderUser?.name)}
                                 className="text-purple-600 ml-1 font-medium hover:text-purple-800 hover:underline transition-colors"
-                                disabled={!orderUser?.nickname && !orderUser?.user_metadata?.nickname && !orderUser?.name}
+                                disabled={!orderUser?.nickname && !orderUser?.name}
                               >
-                                {orderUser?.nickname || orderUser?.user_metadata?.nickname || orderUser?.name || '정보없음'}
+                                {orderUser?.nickname || orderUser?.name || '정보없음'}
                               </button>
                             </p>
                             <p className="text-sm">
