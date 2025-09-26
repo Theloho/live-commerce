@@ -21,6 +21,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import { supabase } from '@/lib/supabase'
 
 export default function AdminCustomerDetailPage() {
   const params = useParams()
@@ -35,68 +36,112 @@ export default function AdminCustomerDetailPage() {
     loadCustomerDetail()
   }, [params.id])
 
-  const loadCustomerDetail = () => {
+  const loadCustomerDetail = async () => {
     try {
-      // Mock 사용자 데이터와 주문 데이터 로드
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
+      setLoading(true)
 
-      // 해당 고객 찾기
-      const user = users.find(u => u.id === params.id)
-      if (!user) {
-        console.error('고객을 찾을 수 없습니다')
+      // profiles 테이블에서 고객 정보 가져오기
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', params.id)
+        .single()
+
+      if (profileError || !profile) {
+        console.error('고객을 찾을 수 없습니다:', profileError)
+        toast.error('고객을 찾을 수 없습니다')
         setLoading(false)
         return
       }
 
-      // 고객의 주문들 찾기
-      const userOrders = orders.filter(order => order.userId === user.id)
-      const totalSpent = userOrders.reduce((sum, order) => sum + (order.payment?.amount || 0), 0)
-      const lastOrderDate = userOrders.length > 0
-        ? Math.max(...userOrders.map(order => new Date(order.created_at).getTime()))
-        : null
+      // 해당 고객의 주문 정보 가져오기
+      const { data: orders, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            products (
+              title,
+              thumbnail_url
+            )
+          ),
+          order_shipping (
+            name,
+            phone,
+            address,
+            detail_address
+          ),
+          order_payments (
+            amount,
+            method,
+            status
+          )
+        `)
+        .eq('user_id', params.id)
+        .order('created_at', { ascending: false })
+
+      if (orderError) {
+        console.warn('주문 조회 오류:', orderError)
+      }
+
+      // 주문 통계 계산
+      const userOrders = orders || []
+      let totalSpent = 0
+      let lastOrderDate = null
+
+      userOrders.forEach(order => {
+        if (order.status === 'paid' || order.status === 'delivered') {
+          const payment = order.order_payments?.[0]
+          totalSpent += payment?.amount || order.total_amount || 0
+        }
+      })
+
+      if (userOrders.length > 0) {
+        lastOrderDate = userOrders[0].created_at
+      }
 
       // 고객 정보 구성
       const customerData = {
-        id: user.id,
-        name: user.name || user.user_metadata?.name || '정보없음',
-        nickname: user.nickname || user.user_metadata?.nickname || 'Unknown',
-        phone: user.phone || user.user_metadata?.phone || '정보없음',
-        address: user.address || user.user_metadata?.address || '정보없음',
-        tiktokId: user.tiktokId || user.user_metadata?.tiktokId || '',
-        youtubeId: user.youtubeId || user.user_metadata?.youtubeId || '',
-        kakaoLink: user.kakaoLink || '',
-        created_at: user.created_at,
+        id: profile.id,
+        name: profile.name || '정보없음',
+        nickname: profile.nickname || profile.name || '사용자',
+        phone: profile.phone || '정보없음',
+        address: profile.address || '정보없음',
+        tiktokId: profile.tiktok_id || '',
+        youtubeId: profile.youtube_id || '',
+        kakaoLink: profile.kakao_link || profile.kakao_id || '',
+        created_at: profile.created_at,
         orderCount: userOrders.length,
         totalSpent: totalSpent,
-        lastOrderDate: lastOrderDate ? new Date(lastOrderDate).toISOString() : null,
+        lastOrderDate: lastOrderDate,
         status: userOrders.length > 0 ? 'active' : 'inactive'
       }
 
       setCustomer(customerData)
       setKakaoLink(customerData.kakaoLink)
-      setCustomerOrders(userOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+      setCustomerOrders(userOrders)
       setLoading(false)
     } catch (error) {
       console.error('고객 상세 정보 로드 실패:', error)
+      toast.error('고객 정보를 불러오는데 실패했습니다')
       setLoading(false)
     }
   }
 
-  const saveKakaoLink = () => {
+  const saveKakaoLink = async () => {
     try {
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-      const userIndex = users.findIndex(u => u.id === params.id)
+      const { error } = await supabase
+        .from('profiles')
+        .update({ kakao_link: kakaoLink })
+        .eq('id', params.id)
 
-      if (userIndex !== -1) {
-        users[userIndex].kakaoLink = kakaoLink
-        localStorage.setItem('mock_users', JSON.stringify(users))
+      if (error) throw error
 
-        // 현재 customer 상태 업데이트
-        setCustomer(prev => ({ ...prev, kakaoLink }))
-        setIsEditingKakao(false)
-        toast.success('카카오톡 링크가 저장되었습니다')
-      }
+      // 현재 customer 상태 업데이트
+      setCustomer(prev => ({ ...prev, kakaoLink }))
+      setIsEditingKakao(false)
+      toast.success('카카오톡 링크가 저장되었습니다')
     } catch (error) {
       console.error('카카오톡 링크 저장 실패:', error)
       toast.error('저장에 실패했습니다')
@@ -116,7 +161,7 @@ export default function AdminCustomerDetailPage() {
       pending: { text: '결제대기', color: 'bg-yellow-100 text-yellow-800' },
       verifying: { text: '결제확인중', color: 'bg-blue-100 text-blue-800' },
       paid: { text: '결제완료', color: 'bg-green-100 text-green-800' },
-      shipped: { text: '발송완료', color: 'bg-purple-100 text-purple-800' },
+      delivered: { text: '배송완료', color: 'bg-purple-100 text-purple-800' },
       cancelled: { text: '취소됨', color: 'bg-red-100 text-red-800' }
     }
     return statusMap[status] || { text: status, color: 'bg-gray-100 text-gray-800' }
@@ -126,7 +171,7 @@ export default function AdminCustomerDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">로딩 중...</p>
         </div>
       </div>
@@ -140,7 +185,7 @@ export default function AdminCustomerDetailPage() {
           <h1 className="text-2xl font-bold text-gray-900">고객을 찾을 수 없습니다</h1>
           <button
             onClick={() => router.back()}
-            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
             돌아가기
           </button>
@@ -185,8 +230,8 @@ export default function AdminCustomerDetailPage() {
             >
               {/* 프로필 헤더 */}
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <UserIcon className="w-10 h-10 text-indigo-600" />
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <UserIcon className="w-10 h-10 text-red-600" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">{customer.name}</h2>
                 <div className="flex items-center justify-center gap-2 mt-2">
@@ -245,7 +290,7 @@ export default function AdminCustomerDetailPage() {
                   {!isEditingKakao && (
                     <button
                       onClick={() => setIsEditingKakao(true)}
-                      className="text-xs text-indigo-600 hover:text-indigo-700"
+                      className="text-xs text-red-600 hover:text-red-700"
                     >
                       <PencilIcon className="w-4 h-4" />
                     </button>
@@ -259,12 +304,12 @@ export default function AdminCustomerDetailPage() {
                       value={kakaoLink}
                       onChange={(e) => setKakaoLink(e.target.value)}
                       placeholder="https://open.kakao.com/..."
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                     <div className="flex gap-2">
                       <button
                         onClick={saveKakaoLink}
-                        className="flex-1 px-3 py-1 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                        className="flex-1 px-3 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
                       >
                         <CheckIcon className="w-3 h-3 inline mr-1" />
                         저장
@@ -403,13 +448,13 @@ export default function AdminCustomerDetailPage() {
                         </div>
 
                         <div className="space-y-2">
-                          {order.items.map((item, itemIndex) => (
+                          {order.order_items?.map((item, itemIndex) => (
                             <div key={itemIndex} className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                                {item.image ? (
+                                {item.products?.thumbnail_url ? (
                                   <img
-                                    src={item.image}
-                                    alt={item.title}
+                                    src={item.products.thumbnail_url}
+                                    alt={item.products?.title || '상품'}
                                     className="w-full h-full object-cover rounded-lg"
                                   />
                                 ) : (
@@ -417,23 +462,23 @@ export default function AdminCustomerDetailPage() {
                                 )}
                               </div>
                               <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">{item.title}</p>
+                                <p className="text-sm font-medium text-gray-900">{item.products?.title || '상품명 없음'}</p>
                                 <p className="text-xs text-gray-500">수량: {item.quantity || 1}개</p>
                               </div>
                               <div className="text-right">
                                 <p className="text-sm font-medium text-gray-900">
-                                  ₩{(item.totalPrice || 0).toLocaleString()}
+                                  ₩{(item.price * item.quantity || 0).toLocaleString()}
                                 </p>
                               </div>
                             </div>
-                          ))}
+                          )) || []}
                         </div>
 
                         <div className="mt-3 pt-3 border-t border-gray-100">
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">총 결제금액</span>
                             <span className="text-sm font-bold text-gray-900">
-                              ₩{(order.payment?.amount || 0).toLocaleString()}
+                              ₩{(order.order_payments?.[0]?.amount || order.total_amount || 0).toLocaleString()}
                             </span>
                           </div>
                         </div>
