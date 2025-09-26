@@ -127,73 +127,77 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {statCards.map((card, index) => {
-          const Icon = card.icon
-          return (
-            <motion.div
-              key={card.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`${card.bgColor} rounded-lg p-6 border border-gray-200`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">{card.title}</p>
-                  <p className={`text-2xl font-bold ${card.textColor}`}>
-                    {card.value}
-                  </p>
-                </div>
-                <div className={`${card.color} p-3 rounded-lg`}>
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
-
-      {/* Quick Actions */}
+      {/* Compact Stats */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="bg-white rounded-lg border border-gray-200 p-6"
+        className="bg-white rounded-lg border border-gray-200"
       >
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">빠른 작업</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-gray-200">
+          {statCards.map((card, index) => {
+            const Icon = card.icon
+            return (
+              <motion.div
+                key={card.title}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={`p-3 text-center ${card.bgColor}`}
+              >
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Icon className={`w-4 h-4 ${card.textColor}`} />
+                  <span className="text-xs text-gray-600 font-medium">{card.title}</span>
+                </div>
+                <p className={`text-lg font-bold ${card.textColor}`}>
+                  {typeof card.value === 'string' && card.value.includes('₩')
+                    ? card.value.replace('₩', '₩')
+                    : card.value}
+                </p>
+              </motion.div>
+            )
+          })}
+        </div>
+      </motion.div>
+
+      {/* Compact Quick Actions */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-white rounded-lg border border-gray-200 p-4"
+      >
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">빠른 작업</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <button
             onClick={() => window.location.href = '/admin/deposits'}
-            className="p-4 text-left bg-yellow-50 hover:bg-yellow-100 rounded-lg border border-yellow-200 transition-colors"
+            className="p-3 text-left bg-yellow-50 hover:bg-yellow-100 rounded-lg border border-yellow-200 transition-colors"
           >
-            <h3 className="font-medium text-yellow-800 mb-1">💰 입금 확인</h3>
-            <p className="text-sm text-yellow-600">{stats.pendingPayments}건 대기중</p>
+            <h3 className="font-medium text-yellow-800 text-sm mb-1">💰 입금 확인</h3>
+            <p className="text-xs text-yellow-600">{stats.pendingPayments}건 대기</p>
           </button>
 
           <button
-            onClick={() => window.location.href = '/admin/orders?status=paid'}
-            className="p-4 text-left bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors"
+            onClick={() => window.location.href = '/admin/shipping'}
+            className="p-3 text-left bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors"
           >
-            <h3 className="font-medium text-purple-800 mb-1">배송 처리</h3>
-            <p className="text-sm text-purple-600">{stats.readyToShip}건 준비중</p>
+            <h3 className="font-medium text-purple-800 text-sm mb-1">🚚 발송 관리</h3>
+            <p className="text-xs text-purple-600">{stats.readyToShip}건 준비</p>
           </button>
 
           <button
             onClick={() => window.location.href = '/admin/products'}
-            className="p-4 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
+            className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
           >
-            <h3 className="font-medium text-blue-800 mb-1">상품 관리</h3>
-            <p className="text-sm text-blue-600">재고 및 가격 관리</p>
+            <h3 className="font-medium text-blue-800 text-sm mb-1">📦 상품 관리</h3>
+            <p className="text-xs text-blue-600">재고 및 가격</p>
           </button>
 
           <button
-            onClick={() => window.location.href = '/admin/broadcasts'}
-            className="p-4 text-left bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
+            onClick={() => window.location.href = '/admin/customers'}
+            className="p-3 text-left bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors"
           >
-            <h3 className="font-medium text-red-800 mb-1">방송 관리</h3>
-            <p className="text-sm text-red-600">라이브 방송 설정</p>
+            <h3 className="font-medium text-green-800 text-sm mb-1">👥 고객 관리</h3>
+            <p className="text-xs text-green-600">{stats.totalUsers}명 등록</p>
           </button>
         </div>
       </motion.div>
