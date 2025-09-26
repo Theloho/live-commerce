@@ -59,17 +59,6 @@ export default function AdminDepositsPage() {
           try {
             const user = order.userId ? await getUserById(order.userId) : null
 
-            // 디버깅: 사용자 정보 확인
-            if (order.customer_order_number?.includes('250925-BLLBS0')) {
-              console.log('🔍 250925-BLLBS0 주문의 사용자 정보:', {
-                orderId: order.id,
-                userId: order.userId,
-                user: user,
-                userNickname: user?.nickname,
-                userName: user?.name,
-                orderShipping: order.order_shipping
-              })
-            }
 
             return { ...order, user }
           } catch (error) {
@@ -1132,16 +1121,6 @@ export default function AdminDepositsPage() {
                       // 사용자 정보는 주문 로딩 시 함께 로드됨
                       const orderUser = order.user || {}
 
-                      // 디버깅: 특정 주문의 렌더링 정보 확인
-                      if (order.customer_order_number?.includes('250925-BLLBS0')) {
-                        console.log('🎯 250925-BLLBS0 렌더링 시 사용자 정보:', {
-                          orderUser: orderUser,
-                          nickname: orderUser?.nickname,
-                          name: orderUser?.name,
-                          allOrderUserKeys: Object.keys(orderUser || {}),
-                          orderShipping: order.order_shipping
-                        })
-                      }
 
                       return (
                         <div>
@@ -1149,21 +1128,21 @@ export default function AdminDepositsPage() {
                             <p className="text-sm">
                               <span className="text-gray-500">이름:</span>
                               <button
-                                onClick={() => handleQuickSearch(orderUser?.name || order.shipping?.name)}
+                                onClick={() => handleQuickSearch(orderUser?.name || order.order_shipping?.[0]?.name || order.shipping?.name)}
                                 className="text-blue-600 ml-1 font-medium hover:text-blue-800 hover:underline transition-colors"
-                                disabled={!orderUser?.name && !order.shipping?.name}
+                                disabled={!orderUser?.name && !order.order_shipping?.[0]?.name && !order.shipping?.name}
                               >
-                                {orderUser?.name || order.shipping?.name || '정보없음'}
+                                {orderUser?.name || order.order_shipping?.[0]?.name || order.shipping?.name || '정보없음'}
                               </button>
                             </p>
                             <p className="text-sm">
                               <span className="text-gray-500">닉네임:</span>
                               <button
-                                onClick={() => handleQuickSearch(orderUser?.nickname || orderUser?.name)}
+                                onClick={() => handleQuickSearch(orderUser?.nickname || orderUser?.name || order.order_shipping?.[0]?.name)}
                                 className="text-purple-600 ml-1 font-medium hover:text-purple-800 hover:underline transition-colors"
-                                disabled={!orderUser?.nickname && !orderUser?.name}
+                                disabled={!orderUser?.nickname && !orderUser?.name && !order.order_shipping?.[0]?.name}
                               >
-                                {orderUser?.nickname || orderUser?.name || '정보없음'}
+                                {orderUser?.nickname || orderUser?.name || order.order_shipping?.[0]?.name || '정보없음'}
                               </button>
                             </p>
                             <p className="text-sm">
