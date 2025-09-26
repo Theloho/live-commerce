@@ -261,8 +261,16 @@ export default function AdminCustomersPage() {
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                        <UserIcon className="w-5 h-5 text-gray-500" />
+                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                        {customer.avatar_url ? (
+                          <img
+                            src={customer.avatar_url}
+                            alt={customer.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <UserIcon className="w-5 h-5 text-gray-500" />
+                        )}
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{customer.name}</div>
