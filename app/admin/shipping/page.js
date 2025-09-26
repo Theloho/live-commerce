@@ -182,8 +182,8 @@ export default function AdminShippingPage() {
 
       return [
         order.customer_order_number || order.id.slice(-8),
-        order.order_shipping?.name || '정보없음',
-        order.order_shipping?.phone || '정보없음',
+        order.user?.name || order.order_shipping?.name || '정보없음',
+        order.user?.phone || order.order_shipping?.phone || '정보없음',
         `"${fullAddress}"`,
         `"${items}"`,
         order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
