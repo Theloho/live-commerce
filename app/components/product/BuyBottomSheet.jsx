@@ -89,60 +89,38 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const image = thumbnail_url
 
   // 옵션 조합 생성 함수
-  const generateOptionCombinations = () => {
+  // Get inventory for current selected options
+  const getSelectedOptionInventory = () => {
     if (!options || options.length === 0) {
-      return [{ key: 'no-options', label: '기본', options: {} }]
+      return stock
     }
 
-    const combinations = []
-    const optionKeys = options.map(opt => opt.id)
+    // If not all options are selected, return 0
+    if (Object.keys(selectedOptions).length !== options.length) {
+      return 0
+    }
 
-    // 첫 번째 옵션부터 시작
-    const generateCombos = (currentCombo, optionIndex) => {
-      if (optionIndex >= options.length) {
-        const key = Object.entries(currentCombo).map(([k, v]) => `${k}:${v}`).join('|')
-        const label = Object.values(currentCombo).join(' / ')
+    let minInventory = Infinity
 
-        // 해당 조합의 최소 재고 찾기
-        let minInventory = Infinity
-        for (const [optionId, selectedValue] of Object.entries(currentCombo)) {
-          const option = options.find(opt => opt.id == optionId)
-          if (option) {
-            const valueObj = option.values.find(val =>
-              (typeof val === 'string' ? val : val.name) === selectedValue
-            )
-            if (valueObj && typeof valueObj === 'object' && valueObj.inventory !== undefined) {
-              minInventory = Math.min(minInventory, valueObj.inventory)
-            } else {
-              minInventory = Math.min(minInventory, stock) // 기본값으로 전체 재고 사용
-            }
-          }
-        }
+    // Find minimum inventory from selected options
+    for (const option of options) {
+      const selectedValue = selectedOptions[option.name]
+      if (!selectedValue) continue
 
-        combinations.push({
-          key,
-          label,
-          options: { ...currentCombo },
-          inventory: minInventory === Infinity ? stock : minInventory
-        })
-        return
-      }
+      const valueObj = option.values.find(val => {
+        const displayValue = typeof val === 'string' ? val : val?.name || val?.value || String(val)
+        return displayValue === selectedValue
+      })
 
-      const currentOption = options[optionIndex]
-      for (const value of currentOption.values) {
-        const valueName = typeof value === 'string' ? value : value.name
-        generateCombos(
-          { ...currentCombo, [currentOption.id]: valueName },
-          optionIndex + 1
-        )
+      if (valueObj && typeof valueObj === 'object' && valueObj.inventory !== undefined) {
+        minInventory = Math.min(minInventory, valueObj.inventory)
+      } else {
+        minInventory = Math.min(minInventory, stock)
       }
     }
 
-    generateCombos({}, 0)
-    return combinations
+    return minInventory === Infinity ? stock : minInventory
   }
-
-  const optionCombinations = generateOptionCombinations()
 
   // 총 수량과 총 가격 계산
   // Calculate totals based on new option selection method
@@ -494,17 +472,11 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                         </span>
                         <button
                           onClick={() => {
-                            const selectedCombo = optionCombinations.find(combo =>
-                              combo.key === Object.values(selectedOptions).join('-')
-                            )
-                            const maxInventory = selectedCombo ? selectedCombo.inventory : product?.inventory || 0
+                            const maxInventory = getSelectedOptionInventory()
                             setQuantity(Math.min(maxInventory, quantity + 1))
                           }}
                           disabled={(() => {
-                            const selectedCombo = optionCombinations.find(combo =>
-                              combo.key === Object.values(selectedOptions).join('-')
-                            )
-                            const maxInventory = selectedCombo ? selectedCombo.inventory : product?.inventory || 0
+                            const maxInventory = getSelectedOptionInventory()
                             return quantity >= maxInventory
                           })()}
                           className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg transition-colors"
@@ -515,10 +487,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
                       <div className="text-sm">
                         {(() => {
-                          const selectedCombo = optionCombinations.find(combo =>
-                            combo.key === Object.values(selectedOptions).join('-')
-                          )
-                          const inventory = selectedCombo ? selectedCombo.inventory : product?.inventory || 0
+                          const inventory = getSelectedOptionInventory()
 
                           if (inventory === 0) {
                             return <span className="text-red-500 font-medium">품절</span>
