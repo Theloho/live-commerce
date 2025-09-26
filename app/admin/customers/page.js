@@ -83,160 +83,7 @@ export default function AdminCustomersPage() {
     setFilteredCustomers(filtered)
   }
 
-  const cleanupDuplicates = () => {
-    try {
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-      console.log('=== 휴대폰 번호 기준 중복 고객 정리 시작 ===')
-      console.log('현재 고객 수:', users.length)
-      console.log('모든 고객:', users.map(u => ({ id: u.id, name: u.name, phone: u.phone || u.user_metadata?.phone })))
 
-      // 휴대폰 번호별로 그룹화하여 중복 찾기
-      const phoneGroups = {}
-      const noPhoneUsers = []
-
-      users.forEach(user => {
-        const phone = user.phone || user.user_metadata?.phone
-        if (phone && phone.trim() && phone !== '정보없음') {
-          if (!phoneGroups[phone]) {
-            phoneGroups[phone] = []
-          }
-          phoneGroups[phone].push(user)
-        } else {
-          // 휴대폰 번호가 없는 고객은 별도로 보관 (삭제하지 않음)
-          noPhoneUsers.push(user)
-        }
-      })
-
-      console.log('휴대폰 번호별 그룹:', Object.keys(phoneGroups).map(phone => ({ phone, count: phoneGroups[phone].length })))
-
-      const uniqueUsers = [...noPhoneUsers] // 휴대폰 번호 없는 고객들은 그대로 유지
-      let removedCount = 0
-
-      Object.entries(phoneGroups).forEach(([phone, usersWithSamePhone]) => {
-        if (usersWithSamePhone.length > 1) {
-          console.log(`휴대폰 번호 중복 발견: "${phone}" - ${usersWithSamePhone.length}명`)
-          // 가장 최근에 생성된 것만 유지 (created_at 기준)
-          const sortedUsers = usersWithSamePhone.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          const keepUser = sortedUsers[0]
-          const removeUsers = sortedUsers.slice(1)
-
-          console.log(`유지할 고객:`, { id: keepUser.id, name: keepUser.name, phone: keepUser.phone, created_at: keepUser.created_at })
-          console.log(`삭제할 고객들:`, removeUsers.map(u => ({ id: u.id, name: u.name, phone: u.phone, created_at: u.created_at })))
-
-          uniqueUsers.push(keepUser)
-          removedCount += removeUsers.length
-        } else {
-          // 중복되지 않은 고객은 그대로 유지
-          uniqueUsers.push(usersWithSamePhone[0])
-        }
-      })
-
-      if (removedCount > 0) {
-        localStorage.setItem('mock_users', JSON.stringify(uniqueUsers))
-        toast.success(`휴대폰 번호 중복 고객 ${removedCount}명이 정리되었습니다`)
-        console.log(`총 ${removedCount}명의 중복 고객 제거됨`)
-        loadCustomers()
-      } else {
-        toast.info('휴대폰 번호 중복 고객이 없습니다')
-        console.log('휴대폰 번호 중복 고객 없음')
-      }
-
-      console.log('=== 휴대폰 번호 기준 중복 정리 완료 ===')
-    } catch (error) {
-      console.error('중복 고객 정리 오류:', error)
-      toast.error('중복 고객 정리에 실패했습니다')
-    }
-  }
-
-  const createTestCustomer = () => {
-    try {
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
-
-      // 기존에 같은 이름의 고객이 있는지 확인
-      const existingKimuchin = users.find(user => user.name === '기무친')
-      const existingHolgildong = users.find(user => user.name === '홀길동')
-
-      const newCustomers = []
-
-      // 기무친 고객이 없으면 생성
-      if (!existingKimuchin) {
-        const testCustomer1 = {
-          id: 'test-customer-kimuchin-' + Date.now(),
-          name: '기무친',
-          nickname: '기무친',
-          phone: '010-1234-5678',
-          address: '서울시 강남구 테스트동 123-45',
-          created_at: new Date().toISOString(),
-          kakaoLink: ''
-        }
-        newCustomers.push(testCustomer1)
-        users.push(testCustomer1)
-      }
-
-      // 홀길동 고객이 없으면 생성
-      if (!existingHolgildong) {
-        const testCustomer2 = {
-          id: 'test-customer-holgildong-' + Date.now(),
-          name: '홀길동',
-          nickname: '홀길동',
-          phone: '010-9876-5432',
-          address: '서울시 강서구 홀길동 987-65',
-          created_at: new Date().toISOString(),
-          kakaoLink: ''
-        }
-        newCustomers.push(testCustomer2)
-        users.push(testCustomer2)
-      }
-
-      if (newCustomers.length === 0) {
-        toast.info('기무친, 홀길동 고객이 이미 존재합니다')
-        return
-      }
-
-      localStorage.setItem('mock_users', JSON.stringify(users))
-
-      // 새로 생성된 고객에 대해서만 테스트 주문 추가
-      const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      const newOrders = []
-
-      newCustomers.forEach(customer => {
-        const testOrder = {
-          id: 'test-order-' + customer.name + '-' + Date.now(),
-          userId: customer.id,
-          customerOrderNumber: 'ORD-' + Date.now() + Math.random().toString(36).substr(2, 4),
-          status: 'paid',
-          payment: {
-            method: 'bank_transfer',
-            amount: customer.name === '기무친' ? 50000 : 30000
-          },
-          shipping: {
-            name: customer.name,
-            phone: customer.phone,
-            address: customer.address
-          },
-          items: [{
-            name: customer.name === '기무친' ? '테스트 상품' : '테스트 상품2',
-            quantity: 1,
-            price: customer.name === '기무친' ? 50000 : 30000,
-            title: customer.name === '기무친' ? '테스트 상품' : '테스트 상품2'
-          }],
-          created_at: new Date().toISOString(),
-          depositName: customer.name
-        }
-        newOrders.push(testOrder)
-        orders.push(testOrder)
-      })
-
-      localStorage.setItem('mock_orders', JSON.stringify(orders))
-
-      const customerNames = newCustomers.map(c => c.name).join(', ')
-      toast.success(`테스트 고객 "${customerNames}"이 생성되었습니다`)
-      loadCustomers()
-    } catch (error) {
-      console.error('테스트 고객 생성 오류:', error)
-      toast.error('테스트 고객 생성에 실패했습니다')
-    }
-  }
 
   const getCustomerGrade = (totalSpent) => {
     if (totalSpent >= 1000000) {
@@ -282,18 +129,6 @@ export default function AdminCustomersPage() {
           <p className="text-gray-600">총 {customers.length}명의 고객</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={createTestCustomer}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            테스트 고객 생성
-          </button>
-          <button
-            onClick={cleanupDuplicates}
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-          >
-            중복 정리
-          </button>
           <button
             onClick={loadCustomers}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -431,8 +266,7 @@ export default function AdminCustomersPage() {
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                        <div className="text-sm text-gray-500 flex items-center gap-1">
-                          <AtSymbolIcon className="w-3 h-3" />
+                        <div className="text-sm text-gray-500">
                           {customer.nickname}
                         </div>
                         <div className="text-xs text-gray-400">
