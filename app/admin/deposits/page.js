@@ -202,36 +202,12 @@ export default function AdminDepositsPage() {
 
   // 입금자 추출 함수
   const extractDepositor = (row, mapping, headerRow) => {
-    const cleanupDepositorName = (text) => {
-      if (!text) return ''
-      let cleaned = String(text).trim()
-
-      // 날짜 패턴 제거
-      cleaned = cleaned.replace(/\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/g, '')
-      cleaned = cleaned.replace(/\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}/g, '')
-
-      // 시간 패턴 제거
-      cleaned = cleaned.replace(/\d{1,2}:\d{2}(:\d{2})?/g, '')
-
-      // 거래 유형 관련 단어 제거 (단독으로 나타나는 경우만)
-      // "입금자명"처럼 이름에 포함된 경우는 제거하지 않음
-      cleaned = cleaned.replace(/\b입금\b/g, '').replace(/\b출금\b/g, '')
-      cleaned = cleaned.replace(/\b송금\b/g, '').replace(/\b이체\b/g, '')
-      cleaned = cleaned.replace(/\b입출금\b/g, '').replace(/\b거래\b/g, '')
-      cleaned = cleaned.replace(/\b계좌\b/g, '').replace(/\b통장\b/g, '')
-
-      // 특수문자와 공백 정리
-      cleaned = cleaned.replace(/[()[\]{}]/g, '').replace(/\s+/g, ' ').trim()
-
-      return cleaned
-    }
-
-    // 매핑된 컬럼이 있으면 사용
+    // 매핑된 컬럼이 있으면 그대로 사용 (사용자가 F열을 지정했으므로)
     if (mapping.depositor >= 0 && row[mapping.depositor]) {
-      return cleanupDepositorName(row[mapping.depositor])
+      return String(row[mapping.depositor]).trim()
     }
 
-    // 매핑이 없으면 휴리스틱으로 찾기
+    // 매핑이 없으면 휴리스틱으로 찾기 (백업용)
     const depositor = row.find(cell =>
       typeof cell === 'string' &&
       cell.trim().length > 1 &&
@@ -239,13 +215,10 @@ export default function AdminDepositsPage() {
       !/^\d+$/.test(cell.trim()) && // 숫자만 있는 문자열 제외
       !/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(cell.trim()) && // 날짜 형식 제외
       !/^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}/.test(cell.trim()) && // 날짜 형식 제외
-      !/^\d+:\d+/.test(cell.trim()) && // 시간 형식 제외
-      !cell.includes('시간') && !cell.includes('시') &&
-      !cell.includes('잔액') && !cell.includes('수수료') &&
-      !/^(입금|출금|송금|이체)$/.test(cell.trim()) // 거래 유형만 있는 것 제외
+      !/^\d+:\d+/.test(cell.trim()) // 시간 형식 제외
     )
 
-    return cleanupDepositorName(depositor)
+    return depositor ? String(depositor).trim() : ''
   }
 
   // 금액 추출 함수
