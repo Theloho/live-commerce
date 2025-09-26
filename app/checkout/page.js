@@ -34,6 +34,7 @@ export default function CheckoutPage() {
   const [depositOption, setDepositOption] = useState('name')
   const [customDepositName, setCustomDepositName] = useState('')
   const [userSession, setUserSession] = useState(null)
+  const [enableCardPayment, setEnableCardPayment] = useState(false) // 카드결제 활성화 여부
 
   // 카카오 세션 확인
   useEffect(() => {
@@ -54,6 +55,34 @@ export default function CheckoutPage() {
     }
 
     checkKakaoSession()
+  }, [])
+
+  // 관리자 설정 로드
+  useEffect(() => {
+    const loadSettings = () => {
+      try {
+        const savedSettings = localStorage.getItem('admin_site_settings')
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings)
+          setEnableCardPayment(settings.enable_card_payment || false)
+          console.log('결제 설정 로드:', { enable_card_payment: settings.enable_card_payment })
+        }
+      } catch (error) {
+        console.error('설정 로드 오류:', error)
+      }
+    }
+
+    loadSettings()
+
+    // 설정 변경 감지 (다른 탭에서 변경된 경우)
+    const handleStorageChange = (e) => {
+      if (e.key === 'admin_site_settings') {
+        loadSettings()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
   useEffect(() => {
@@ -482,18 +511,31 @@ export default function CheckoutPage() {
               💳 계좌이체 (₩{finalTotal.toLocaleString()})
             </button>
 
-            {/* 카드결제 버튼 */}
-            <button
-              onClick={handleCardPayment}
-              disabled={!userProfile.name}
-              className="w-full bg-green-500 text-white font-semibold py-4 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              💳 카드결제신청 (₩{(Math.floor(orderItem.totalPrice * 1.1) + shippingFee).toLocaleString()})
-            </button>
+            {/* 카드결제 버튼 - 관리자 설정에 따라 표시 */}
+            {enableCardPayment ? (
+              <>
+                <button
+                  onClick={handleCardPayment}
+                  disabled={!userProfile.name}
+                  className="w-full bg-green-500 text-white font-semibold py-4 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  💳 카드결제신청 (₩{(Math.floor(orderItem.totalPrice * 1.1) + shippingFee).toLocaleString()})
+                </button>
 
-            <p className="text-xs text-gray-500 text-center">
-              카드결제는 부가세 10%가 추가됩니다
-            </p>
+                <p className="text-xs text-gray-500 text-center">
+                  카드결제는 부가세 10%가 추가됩니다
+                </p>
+              </>
+            ) : (
+              <div className="bg-gray-100 border border-gray-300 rounded-lg p-4 text-center">
+                <p className="text-gray-600 text-sm">
+                  💳 카드결제는 현재 서비스 점검 중입니다
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  계좌이체를 이용해 주세요
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

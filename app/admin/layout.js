@@ -14,7 +14,8 @@ import {
   TruckIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  CogIcon
 } from '@heroicons/react/24/outline'
 import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuth'
 import toast from 'react-hot-toast'
@@ -66,6 +67,7 @@ function AdminLayoutContent({ children }) {
     { href: '/admin/customers', label: '고객관리', icon: UsersIcon },
     { href: '/admin/deposits', label: '입금확인', icon: BanknotesIcon },
     { href: '/admin/shipping', label: '발송관리', icon: TruckIcon },
+    { href: '/admin/settings', label: '시스템설정', icon: CogIcon },
   ]
 
   if (loading) {
