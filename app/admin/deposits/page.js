@@ -58,6 +58,19 @@ export default function AdminDepositsPage() {
         bankTransferOrders.map(async (order) => {
           try {
             const user = order.userId ? await getUserById(order.userId) : null
+
+            // 디버깅: 사용자 정보 확인
+            if (order.customer_order_number?.includes('250925-BLLBS0')) {
+              console.log('🔍 250925-BLLBS0 주문의 사용자 정보:', {
+                orderId: order.id,
+                userId: order.userId,
+                user: user,
+                userNickname: user?.nickname,
+                userName: user?.name,
+                orderShipping: order.order_shipping
+              })
+            }
+
             return { ...order, user }
           } catch (error) {
             console.error(`사용자 정보 로딩 실패 (${order.userId}):`, error)
@@ -1118,6 +1131,18 @@ export default function AdminDepositsPage() {
                     {(() => {
                       // 사용자 정보는 주문 로딩 시 함께 로드됨
                       const orderUser = order.user || {}
+
+                      // 디버깅: 특정 주문의 렌더링 정보 확인
+                      if (order.customer_order_number?.includes('250925-BLLBS0')) {
+                        console.log('🎯 250925-BLLBS0 렌더링 시 사용자 정보:', {
+                          orderUser: orderUser,
+                          nickname: orderUser?.nickname,
+                          name: orderUser?.name,
+                          allOrderUserKeys: Object.keys(orderUser || {}),
+                          orderShipping: order.order_shipping
+                        })
+                      }
+
                       return (
                         <div>
                           <div className="space-y-1">
