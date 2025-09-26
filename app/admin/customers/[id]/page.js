@@ -90,16 +90,35 @@ export default function AdminCustomerDetailPage() {
       let totalSpent = 0
       let lastOrderDate = null
 
+      console.log('📊 주문 통계 계산 시작:', {
+        총주문수: userOrders.length,
+        주문목록: userOrders.map(order => ({
+          id: order.id,
+          status: order.status,
+          payments: order.order_payments?.length || 0,
+          total_amount: order.total_amount
+        }))
+      })
+
       userOrders.forEach(order => {
-        if (order.status === 'paid' || order.status === 'delivered') {
+        // 모든 상태의 주문에서 결제 금액 계산 (pending 제외)
+        if (order.status !== 'pending' && order.status !== 'cancelled') {
           const payment = order.order_payments?.[0]
-          totalSpent += payment?.amount || order.total_amount || 0
+          const orderAmount = payment?.amount || order.total_amount || 0
+          totalSpent += orderAmount
+          console.log(`💰 주문 ${order.id}: ${orderAmount}원 추가 (상태: ${order.status})`)
         }
       })
 
       if (userOrders.length > 0) {
         lastOrderDate = userOrders[0].created_at
       }
+
+      console.log('📊 주문 통계 완료:', {
+        총구매금액: totalSpent,
+        주문수: userOrders.length,
+        최근주문일: lastOrderDate
+      })
 
       // 고객 정보 구성
       const customerData = {
@@ -108,6 +127,7 @@ export default function AdminCustomerDetailPage() {
         nickname: profile.nickname || profile.name || '사용자',
         phone: profile.phone || '정보없음',
         address: profile.address || '정보없음',
+        detailAddress: profile.detail_address || '',
         tiktokId: profile.tiktok_id || '',
         youtubeId: profile.youtube_id || '',
         kakaoLink: profile.kakao_link || profile.kakao_id || '',
@@ -117,6 +137,13 @@ export default function AdminCustomerDetailPage() {
         lastOrderDate: lastOrderDate,
         status: userOrders.length > 0 ? 'active' : 'inactive'
       }
+
+      console.log('✅ 고객 데이터 구성 완료:', {
+        name: customerData.name,
+        orderCount: customerData.orderCount,
+        totalSpent: customerData.totalSpent,
+        ordersData: userOrders.length
+      })
 
       setCustomer(customerData)
       setKakaoLink(customerData.kakaoLink)
@@ -266,6 +293,9 @@ export default function AdminCustomerDetailPage() {
                     <div>
                       <p className="text-sm text-gray-500">주소</p>
                       <p className="font-medium text-gray-900">{customer.address}</p>
+                      {customer.detailAddress && (
+                        <p className="text-xs text-gray-600 mt-1">{customer.detailAddress}</p>
+                      )}
                     </div>
                   </div>
                 )}
