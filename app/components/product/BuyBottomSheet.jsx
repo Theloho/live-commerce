@@ -78,10 +78,42 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     stock_quantity,
     inventory, // 호환성을 위해 유지
     inventory_quantity, // 호환성을 위해 유지
-    options = [],
+    options: rawOptions = [],
     minOrder = 1,
     maxOrder = (stock_quantity || inventory || inventory_quantity || 50)
   } = product
+
+  // Process options to handle combination format
+  const options = rawOptions.map(option => {
+    // If option name is "조합" (combination), split into individual options
+    if (option.name === '조합') {
+      // Parse combination values like "xs × 블랙" into separate size and color options
+      const sizeValues = []
+      const colorValues = []
+
+      option.values.forEach(value => {
+        const name = typeof value === 'string' ? value : value.name
+        if (name.includes('×')) {
+          const [size, color] = name.split('×').map(s => s.trim())
+          if (size && !sizeValues.includes(size)) sizeValues.push(size)
+          if (color && !colorValues.includes(color)) colorValues.push(color)
+        }
+      })
+
+      // Return both size and color as separate options
+      return [
+        {
+          name: '사이즈',
+          values: sizeValues
+        },
+        {
+          name: '색상',
+          values: colorValues
+        }
+      ]
+    }
+    return option
+  }).flat() // Flatten in case we split combination into multiple options
 
   const stock = stock_quantity || inventory || inventory_quantity || 0
   const originalPrice = compare_price
