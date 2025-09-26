@@ -47,11 +47,12 @@ export default function AdminShippingPage() {
       )
 
       const ordersWithUserInfo = paidOrders.map(order => {
+        const shipping = order.order_shipping?.[0] || order.order_shipping || {}
         return {
           ...order,
           user: {
-            name: order.order_shipping?.name || order.userName || '정보없음',
-            phone: order.order_shipping?.phone || '정보없음'
+            name: shipping?.name || order.userName || '정보없음',
+            phone: shipping?.phone || '정보없음'
           }
         }
       })
@@ -77,7 +78,7 @@ export default function AdminShippingPage() {
       filtered = filtered.filter(order =>
         order.customer_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.shipping?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.user?.phone?.includes(searchTerm)
       )
     }
@@ -176,14 +177,15 @@ export default function AdminShippingPage() {
     const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
     const csvData = selectedOrderData.map(order => {
       const items = order.order_items?.map(item => `${item.products?.title || '상품'}(${item.quantity}개)`).join(';') || '정보없음'
-      const address = order.order_shipping?.address || '정보없음'
-      const detailAddress = order.order_shipping?.detail_address || ''
+      const shipping = order.order_shipping?.[0] || order.order_shipping || {}
+      const address = shipping?.address || '정보없음'
+      const detailAddress = shipping?.detail_address || ''
       const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
 
       return [
         order.customer_order_number || order.id.slice(-8),
-        order.user?.name || order.order_shipping?.name || '정보없음',
-        order.user?.phone || order.order_shipping?.phone || '정보없음',
+        order.user?.name || '정보없음',
+        order.user?.phone || '정보없음',
         `"${fullAddress}"`,
         `"${items}"`,
         order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
@@ -360,7 +362,7 @@ export default function AdminShippingPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="space-y-1">
                         <div className="text-sm font-medium text-gray-900">
-                          {order.shipping?.name}
+                          {order.user?.name}
                         </div>
                         <div className="text-sm text-gray-500">
                           {order.user?.phone}
@@ -370,12 +372,12 @@ export default function AdminShippingPage() {
 
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900 max-w-xs">
-                        {order.shipping?.address}
-                        {order.shipping?.detailAddress && (
-                          <div className="text-gray-500">
-                            {order.shipping.detailAddress}
-                          </div>
-                        )}
+                        {(() => {
+                          const shipping = order.order_shipping?.[0] || order.order_shipping || {}
+                          const address = shipping?.address || '정보없음'
+                          const detailAddress = shipping?.detail_address || ''
+                          return detailAddress ? `${address} ${detailAddress}` : address
+                        })()}
                       </div>
                     </td>
 
@@ -392,15 +394,20 @@ export default function AdminShippingPage() {
                           onClick={() => {
                             // 개별 송장 다운로드
                             const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
-                            const items = order.items?.map(item => `${item.name}(${item.quantity}개)`).join(';') || '정보없음'
+                            const items = order.order_items?.map(item => `${item.products?.title || '상품'}(${item.quantity}개)`).join(';') || '정보없음'
+                            const shipping = order.order_shipping?.[0] || order.order_shipping || {}
+                            const address = shipping?.address || '정보없음'
+                            const detailAddress = shipping?.detail_address || ''
+                            const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+
                             const csvData = [
-                              order.customerOrderNumber || order.id.slice(-8),
-                              order.shipping?.name || '정보없음',
+                              order.customer_order_number || order.id.slice(-8),
+                              order.user?.name || '정보없음',
                               order.user?.phone || '정보없음',
-                              `"${order.shipping?.address || '정보없음'}"`,
+                              `"${fullAddress}"`,
                               `"${items}"`,
-                              order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
-                              order.payment?.amount || 0,
+                              order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
+                              order.order_payments?.[0]?.amount || order.total_amount || 0,
                               getStatusInfo(order.status).label
                             ].join(',')
 
