@@ -346,8 +346,24 @@ export default function AdminDepositsPage() {
 
   const confirmPayment = async (matchedItem) => {
     try {
-      // 주문 상태를 'paid'로 변경
-      await updateOrderStatus(matchedItem.order.id, 'paid')
+      // 그룹 주문인지 확인
+      if (matchedItem.order.isGroup && matchedItem.order.originalOrders) {
+        // 그룹 주문의 경우 모든 개별 주문 상태를 'paid'로 변경
+        console.log('그룹 주문 입금확인:', {
+          groupId: matchedItem.order.id,
+          individualOrders: matchedItem.order.originalOrders.length
+        })
+
+        for (const individualOrder of matchedItem.order.originalOrders) {
+          await updateOrderStatus(individualOrder.id, 'paid')
+        }
+
+        toast.success(`그룹 주문 ${matchedItem.order.originalOrders.length}건의 입금이 확인되었습니다`)
+      } else {
+        // 일반 주문의 경우
+        await updateOrderStatus(matchedItem.order.id, 'paid')
+        toast.success('입금이 확인되었습니다')
+      }
 
       // 매칭된 항목에서 제거
       setMatchedTransactions(prev => prev.filter(item => item.order.id !== matchedItem.order.id))
@@ -355,7 +371,6 @@ export default function AdminDepositsPage() {
       // 대기 주문 목록 새로고침
       loadPendingOrders()
 
-      toast.success('입금이 확인되었습니다')
     } catch (error) {
       console.error('결제 확인 오류:', error)
       toast.error('결제 확인에 실패했습니다')
