@@ -862,7 +862,37 @@ export default function NewProductPage() {
             {/* 옵션별 재고 설정 */}
             {combinations.length > 0 && (
               <div className="bg-white rounded-lg shadow-sm">
-                <h2 className="text-lg font-medium mb-4">옵션별 재고 설정</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-medium">옵션별 재고 설정</h2>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      id="bulkInventory"
+                      placeholder="일괄 입력"
+                      min="0"
+                      className="w-24 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                    <button
+                      onClick={() => {
+                        const bulkValue = document.getElementById('bulkInventory').value
+                        if (bulkValue) {
+                          const newInventories = {}
+                          combinations.forEach(combo => {
+                            newInventories[combo.key] = parseInt(bulkValue) || 0
+                          })
+                          setProductData(prev => ({
+                            ...prev,
+                            optionInventories: newInventories
+                          }))
+                          document.getElementById('bulkInventory').value = ''
+                        }
+                      }}
+                      className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      일괄 적용
+                    </button>
+                  </div>
+                </div>
 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {combinations.map((combo) => (
