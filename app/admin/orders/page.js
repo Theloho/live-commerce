@@ -93,18 +93,21 @@ export default function AdminOrdersPage() {
     let filtered = [...orders]
 
     // 결제 방법 필터
-    if (paymentFilter !== 'all') {
-      if (paymentFilter === 'paid') {
-        filtered = filtered.filter(order => order.status === 'paid')
-      } else if (paymentFilter === 'delivered') {
-        filtered = filtered.filter(order => order.status === 'delivered')
-      } else {
-        // 계좌이체/카드결제 탭은 결제확인중 상태만 표시
-        filtered = filtered.filter(order =>
-          order.payment?.method === paymentFilter &&
-          (order.status === 'pending' || order.status === 'verifying')
-        )
-      }
+    if (paymentFilter === 'all') {
+      // '결제대기' 탭 - pending, verifying 상태만 표시
+      filtered = filtered.filter(order =>
+        order.status === 'pending' || order.status === 'verifying'
+      )
+    } else if (paymentFilter === 'paid') {
+      filtered = filtered.filter(order => order.status === 'paid')
+    } else if (paymentFilter === 'delivered') {
+      filtered = filtered.filter(order => order.status === 'delivered')
+    } else {
+      // 계좌이체/카드결제 탭은 결제확인중 상태만 표시
+      filtered = filtered.filter(order =>
+        order.payment?.method === paymentFilter &&
+        (order.status === 'pending' || order.status === 'verifying')
+      )
     }
 
     // 상태 필터 (기존)
@@ -214,7 +217,11 @@ export default function AdminOrdersPage() {
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="flex border-b border-gray-200">
           {[
-            { id: 'all', label: '전체', count: orders.length },
+            {
+              id: 'all',
+              label: '결제대기',
+              count: orders.filter(o => o.status === 'pending' || o.status === 'verifying').length
+            },
             {
               id: 'bank_transfer',
               label: '계좌이체',
