@@ -881,7 +881,7 @@ export default function AdminDepositsPage() {
                           const orderNames = [
                             { label: '입금자명', value: item.order.depositName || '', key: 'depositName' },
                             { label: '주문자', value: item.order.shipping?.name || '', key: 'orderName' },
-                            { label: '닉네임', value: orderUser?.profile?.nickname || orderUser?.nickname || '', key: 'nickname' }
+                            { label: '닉네임', value: item.order.userNickname || orderUser?.profile?.nickname || orderUser?.nickname || '', key: 'nickname' }
                           ].filter(name => name.value)
 
                           // 매칭되는 이름 찾기
@@ -944,7 +944,7 @@ export default function AdminDepositsPage() {
                         const orderNames = [
                           { label: '입금자명', value: item.order.depositName || '', key: 'depositName' },
                           { label: '주문자', value: item.order.shipping?.name || '', key: 'orderName' },
-                          { label: '닉네임', value: orderUser?.profile?.nickname || orderUser?.nickname || '', key: 'nickname' }
+                          { label: '닉네임', value: item.order.userNickname || orderUser?.profile?.nickname || orderUser?.nickname || '', key: 'nickname' }
                         ].filter(name => name.value)
 
                         const matchedName = orderNames.find(name =>
@@ -1015,7 +1015,7 @@ export default function AdminDepositsPage() {
                           const orderNames = [
                             { label: '입금자명', value: item.order.depositName || '', key: 'depositName' },
                             { label: '주문자', value: item.order.shipping?.name || '', key: 'orderName' },
-                            { label: '닉네임', value: orderUser?.profile?.nickname || orderUser?.nickname || '', key: 'nickname' }
+                            { label: '닉네임', value: item.order.userNickname || orderUser?.profile?.nickname || orderUser?.nickname || '', key: 'nickname' }
                           ].filter(name => name.value)
 
                           const matchedName = orderNames.find(name =>
@@ -1147,11 +1147,11 @@ export default function AdminDepositsPage() {
                             <p className="text-sm">
                               <span className="text-gray-500">닉네임:</span>
                               <button
-                                onClick={() => handleQuickSearch(orderUser?.profile?.nickname || orderUser?.nickname || orderUser?.name || order.order_shipping?.[0]?.name)}
+                                onClick={() => handleQuickSearch(order.userNickname || orderUser?.profile?.nickname || orderUser?.nickname || orderUser?.name || order.order_shipping?.[0]?.name)}
                                 className="text-purple-600 ml-1 font-medium hover:text-purple-800 hover:underline transition-colors"
-                                disabled={!orderUser?.profile?.nickname && !orderUser?.nickname && !orderUser?.name && !order.order_shipping?.[0]?.name}
+                                disabled={!order.userNickname && !orderUser?.profile?.nickname && !orderUser?.nickname && !orderUser?.name && !order.order_shipping?.[0]?.name}
                               >
-                                {orderUser?.profile?.nickname || orderUser?.nickname || orderUser?.name || order.order_shipping?.[0]?.name || '정보없음'}
+                                {order.userNickname || orderUser?.profile?.nickname || orderUser?.nickname || orderUser?.name || order.order_shipping?.[0]?.name || '정보없음'}
                               </button>
                             </p>
                             <p className="text-sm">
