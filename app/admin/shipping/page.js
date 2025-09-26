@@ -50,8 +50,8 @@ export default function AdminShippingPage() {
         return {
           ...order,
           user: {
-            name: order.shipping?.recipient_name || order.userName || '정보없음',
-            phone: order.shipping?.recipient_phone || '정보없음'
+            name: order.order_shipping?.name || order.userName || '정보없음',
+            phone: order.order_shipping?.phone || '정보없음'
           }
         }
       })
@@ -75,7 +75,7 @@ export default function AdminShippingPage() {
     // 검색어 필터
     if (searchTerm) {
       filtered = filtered.filter(order =>
-        order.customerOrderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customer_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.shipping?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.user?.phone?.includes(searchTerm)
@@ -175,15 +175,19 @@ export default function AdminShippingPage() {
     // CSV 형태로 송장 데이터 생성
     const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
     const csvData = selectedOrderData.map(order => {
-      const items = order.items?.map(item => `${item.name}(${item.quantity}개)`).join(';') || '정보없음'
+      const items = order.order_items?.map(item => `${item.products?.title || '상품'}(${item.quantity}개)`).join(';') || '정보없음'
+      const address = order.order_shipping?.address || '정보없음'
+      const detailAddress = order.order_shipping?.detail_address || ''
+      const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+
       return [
-        order.customerOrderNumber || order.id.slice(-8),
-        order.shipping?.name || '정보없음',
-        order.user?.phone || '정보없음',
-        `"${order.shipping?.address || '정보없음'}"`,
+        order.customer_order_number || order.id.slice(-8),
+        order.order_shipping?.name || '정보없음',
+        order.order_shipping?.phone || '정보없음',
+        `"${fullAddress}"`,
         `"${items}"`,
-        order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
-        order.payment?.amount || 0,
+        order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
+        order.order_payments?.[0]?.amount || order.total_amount || 0,
         getStatusInfo(order.status).label
       ].join(',')
     }).join('\n')
