@@ -419,15 +419,26 @@ export default function NewProductPage() {
             }))
           })
         } else if (productData.optionType === 'both') {
-          // 사이즈와 색상 모두 있는 경우 - 조합별 재고를 어떻게 저장할지 고민 필요
-          // 일단 간단하게 조합 정보를 JSON으로 저장
+          // 사이즈와 색상을 개별 옵션으로 저장
           optionInserts.push({
             product_id: product.id,
-            name: '조합',
-            values: combinations.map(combo => ({
-              name: combo.label,
-              inventory: productData.optionInventories[combo.key] || 0,
-              combination: combo.type === 'both' ? { size: combo.size, color: combo.color } : null
+            name: '사이즈',
+            values: productData.sizeOptions.map(size => ({
+              name: size,
+              inventory: Math.max(...productData.colorOptions.map(color =>
+                productData.optionInventories[`size:${size}|color:${color}`] || 0
+              ))
+            }))
+          })
+
+          optionInserts.push({
+            product_id: product.id,
+            name: '색상',
+            values: productData.colorOptions.map(color => ({
+              name: color,
+              inventory: Math.max(...productData.sizeOptions.map(size =>
+                productData.optionInventories[`size:${size}|color:${color}`] || 0
+              ))
             }))
           })
         }
