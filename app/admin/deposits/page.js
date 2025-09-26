@@ -1121,6 +1121,15 @@ export default function AdminDepositsPage() {
                       // 사용자 정보는 주문 로딩 시 함께 로드됨
                       const orderUser = order.user || {}
 
+                      // 프론트엔드 디버깅
+                      console.log('🎭 프론트엔드 디버깅:', {
+                        order_id: order.id,
+                        orderUser,
+                        profile_nickname: orderUser?.profile?.nickname,
+                        user_nickname: orderUser?.nickname,
+                        user_name: orderUser?.name,
+                        shipping_name: order.order_shipping?.[0]?.name
+                      })
 
                       return (
                         <div>
