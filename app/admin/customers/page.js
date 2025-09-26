@@ -138,59 +138,45 @@ export default function AdminCustomersPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <UserIcon className="w-6 h-6 text-white" />
+      {/* Compact Stats */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-200">
+          <div className="p-3 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <UserIcon className="w-4 h-4 text-blue-500" />
+              <span className="text-xs text-gray-600">전체 고객</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">전체 고객</p>
-              <p className="text-xl font-bold text-gray-900">{customers.length}</p>
-            </div>
+            <p className="text-lg font-bold text-gray-900">{customers.length}</p>
           </div>
-        </div>
 
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-              <ShoppingBagIcon className="w-6 h-6 text-white" />
+          <div className="p-3 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <ShoppingBagIcon className="w-4 h-4 text-green-500" />
+              <span className="text-xs text-gray-600">활성 고객</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">활성 고객</p>
-              <p className="text-xl font-bold text-gray-900">
-                {customers.filter(c => c.status === 'active').length}
-              </p>
-            </div>
+            <p className="text-lg font-bold text-gray-900">
+              {customers.filter(c => c.status === 'active').length}
+            </p>
           </div>
-        </div>
 
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">👑</span>
+          <div className="p-3 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <span className="text-sm">👑</span>
+              <span className="text-xs text-gray-600">VIP 고객</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">VIP 고객</p>
-              <p className="text-xl font-bold text-gray-900">
-                {customers.filter(c => c.totalSpent >= 1000000).length}
-              </p>
-            </div>
+            <p className="text-lg font-bold text-gray-900">
+              {customers.filter(c => c.totalSpent >= 1000000).length}
+            </p>
           </div>
-        </div>
 
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-              <CalendarIcon className="w-6 h-6 text-white" />
+          <div className="p-3 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <CalendarIcon className="w-4 h-4 text-purple-500" />
+              <span className="text-xs text-gray-600">신규 고객</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">신규 고객</p>
-              <p className="text-xl font-bold text-gray-900">
-                {customers.filter(c => c.orderCount === 0).length}
-              </p>
-            </div>
+            <p className="text-lg font-bold text-gray-900">
+              {customers.filter(c => c.orderCount === 0).length}
+            </p>
           </div>
         </div>
       </div>
