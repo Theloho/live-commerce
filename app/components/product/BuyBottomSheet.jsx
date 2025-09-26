@@ -402,39 +402,70 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
               <div className="space-y-4">
                 <h4 className="font-medium text-gray-900">옵션 선택</h4>
 
-                {/* Step-by-step option selection */}
+                {/* Sequential option selection */}
                 <div className="space-y-4">
-                  {options.map((option, index) => (
-                    <div key={index} className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">{option.name}</label>
-                      <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
-                        {option.values.map((value, valueIndex) => {
-                          // Handle both string and object values
-                          const displayValue = typeof value === 'string' ? value : value?.name || value?.value || String(value)
-                          const keyValue = typeof value === 'string' ? value : value?.name || value?.value || valueIndex
+                  {options.map((option, index) => {
+                    // Show current option only if previous options are selected
+                    const shouldShow = index === 0 || Object.keys(selectedOptions).length >= index
 
-                          return (
-                            <button
-                              key={keyValue}
-                              onClick={() => {
-                                setSelectedOptions(prev => ({
-                                  ...prev,
-                                  [option.name]: displayValue
-                                }))
-                              }}
-                              className={`p-2 text-sm border rounded-lg transition-colors ${
-                                selectedOptions[option.name] === displayValue
-                                  ? 'border-red-500 bg-red-50 text-red-700'
-                                  : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                              }`}
-                            >
-                              {displayValue}
-                            </button>
-                          )
-                        })}
+                    if (!shouldShow) return null
+
+                    return (
+                      <div key={index} className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {option.name}
+                          {selectedOptions[option.name] && (
+                            <span className="ml-2 text-xs text-red-600">
+                              선택됨: {selectedOptions[option.name]}
+                            </span>
+                          )}
+                        </label>
+                        <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
+                          {option.values.map((value, valueIndex) => {
+                            // Handle both string and object values
+                            const displayValue = typeof value === 'string' ? value : value?.name || value?.value || String(value)
+                            const keyValue = typeof value === 'string' ? value : value?.name || value?.value || valueIndex
+
+                            return (
+                              <button
+                                key={keyValue}
+                                onClick={() => {
+                                  setSelectedOptions(prev => {
+                                    const newSelected = { ...prev }
+
+                                    // If selecting a different value for current option, clear subsequent options
+                                    if (newSelected[option.name] !== displayValue) {
+                                      // Clear all options after the current one
+                                      options.slice(index + 1).forEach(laterOption => {
+                                        delete newSelected[laterOption.name]
+                                      })
+                                    }
+
+                                    newSelected[option.name] = displayValue
+                                    return newSelected
+                                  })
+                                }}
+                                className={`p-2 text-sm border rounded-lg transition-colors ${
+                                  selectedOptions[option.name] === displayValue
+                                    ? 'border-red-500 bg-red-50 text-red-700'
+                                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                                }`}
+                              >
+                                {displayValue}
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        {/* Show "다음 단계" indicator */}
+                        {selectedOptions[option.name] && index < options.length - 1 && (
+                          <div className="text-xs text-gray-500 mt-2">
+                            👇 다음으로 {options[index + 1].name}를 선택해주세요
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
 
                 {/* Selected option combination and quantity */}
