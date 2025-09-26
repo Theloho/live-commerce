@@ -854,9 +854,19 @@ export default function AdminDepositsPage() {
                         입금 확인
                       </button>
                       <button
-                        onClick={() => router.push(`/admin/customers/${item.order.userId}`)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="고객 상세보기"
+                        onClick={() => {
+                          if (item.order.userId) {
+                            router.push(`/admin/customers/${item.order.userId}`)
+                          } else {
+                            alert('이 주문은 회원 정보가 없어 상세보기를 할 수 없습니다.')
+                          }
+                        }}
+                        className={`p-2 rounded-lg transition-colors ${
+                          item.order.userId
+                            ? 'text-gray-600 hover:bg-gray-100'
+                            : 'text-gray-300 cursor-not-allowed'
+                        }`}
+                        title={item.order.userId ? "고객 상세보기" : "회원 정보 없음"}
                       >
                         <EyeIcon className="w-4 h-4" />
                       </button>
@@ -1198,9 +1208,19 @@ export default function AdminDepositsPage() {
                       return null
                     })()}
                     <button
-                      onClick={() => router.push(`/admin/customers/${order.userId}`)}
-                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="고객 상세보기"
+                      onClick={() => {
+                        if (order.userId) {
+                          router.push(`/admin/customers/${order.userId}`)
+                        } else {
+                          alert('이 주문은 회원 정보가 없어 상세보기를 할 수 없습니다.')
+                        }
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        order.userId
+                          ? 'text-gray-600 hover:bg-gray-100'
+                          : 'text-gray-300 cursor-not-allowed'
+                      }`}
+                      title={order.userId ? "고객 상세보기" : "회원 정보 없음"}
                     >
                       <EyeIcon className="w-4 h-4" />
                     </button>
