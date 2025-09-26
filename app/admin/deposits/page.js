@@ -213,11 +213,12 @@ export default function AdminDepositsPage() {
       // 시간 패턴 제거
       cleaned = cleaned.replace(/\d{1,2}:\d{2}(:\d{2})?/g, '')
 
-      // 거래 유형 관련 단어 제거
-      cleaned = cleaned.replace(/입금/g, '').replace(/출금/g, '')
-      cleaned = cleaned.replace(/송금/g, '').replace(/이체/g, '')
-      cleaned = cleaned.replace(/입출금/g, '').replace(/거래/g, '')
-      cleaned = cleaned.replace(/계좌/g, '').replace(/통장/g, '')
+      // 거래 유형 관련 단어 제거 (단독으로 나타나는 경우만)
+      // "입금자명"처럼 이름에 포함된 경우는 제거하지 않음
+      cleaned = cleaned.replace(/\b입금\b/g, '').replace(/\b출금\b/g, '')
+      cleaned = cleaned.replace(/\b송금\b/g, '').replace(/\b이체\b/g, '')
+      cleaned = cleaned.replace(/\b입출금\b/g, '').replace(/\b거래\b/g, '')
+      cleaned = cleaned.replace(/\b계좌\b/g, '').replace(/\b통장\b/g, '')
 
       // 특수문자와 공백 정리
       cleaned = cleaned.replace(/[()[\]{}]/g, '').replace(/\s+/g, ' ').trim()
