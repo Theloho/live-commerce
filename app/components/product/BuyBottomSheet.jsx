@@ -145,7 +145,10 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const optionCombinations = generateOptionCombinations()
 
   // 총 수량과 총 가격 계산
-  const totalQuantity = Object.values(optionQuantities).reduce((sum, qty) => sum + (qty || 0), 0) || quantity
+  // Calculate totals based on new option selection method
+  const totalQuantity = options.length > 0
+    ? (Object.keys(selectedOptions).length === options.length ? quantity : 0)
+    : quantity
   const totalPrice = price * totalQuantity
   const discount = originalPrice ? originalPrice - price : 0
 
@@ -209,31 +212,25 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       detail_address: currentUser?.detail_address || ''
     }
 
-    // 옵션별 수량이 있는 경우와 없는 경우 처리
-    const hasOptionQuantities = options.length > 0 && Object.keys(optionQuantities).some(key => optionQuantities[key] > 0)
-
+    // 새로운 옵션 선택 방식에 따른 처리
     let cartItems = []
 
-    if (hasOptionQuantities) {
-      // 옵션별 수량으로 여러 아이템 생성
-      for (const [optionKey, qty] of Object.entries(optionQuantities)) {
-        if (qty > 0) {
-          const combo = optionCombinations.find(c => c.key === optionKey)
-          cartItems.push({
-            ...product,
-            quantity: qty,
-            selectedOptions: combo.options,
-            totalPrice: price * qty,
-            optionLabel: combo.label
-          })
-        }
-      }
-    } else {
-      // 기존 방식 (옵션 없음 또는 기본 수량)
+    if (options.length > 0 && Object.keys(selectedOptions).length === options.length) {
+      // 옵션이 있고 모든 옵션이 선택된 경우
+      const optionLabel = Object.values(selectedOptions).join(' / ')
       cartItems.push({
         ...product,
         quantity,
         selectedOptions,
+        totalPrice,
+        optionLabel
+      })
+    } else if (options.length === 0) {
+      // 옵션이 없는 경우
+      cartItems.push({
+        ...product,
+        quantity,
+        selectedOptions: {},
         totalPrice
       })
     }
@@ -400,52 +397,105 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
               </div>
             )}
 
-            {/* Options and Quantities */}
+            {/* Step-by-step Options Selection */}
             {options.length > 0 ? (
               <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">옵션별 수량 선택</h4>
-                <div className="space-y-3">
-                  {optionCombinations.map((combo) => (
-                    <div key={combo.key} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-900">{combo.label}</span>
-                        <span className="text-sm text-gray-500">
-                          ₩{(price * (optionQuantities[combo.key] || 0)).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center border border-gray-300 rounded-lg">
+                <h4 className="font-medium text-gray-900">옵션 선택</h4>
+
+                {/* Step-by-step option selection */}
+                <div className="space-y-4">
+                  {options.map((option, index) => (
+                    <div key={index} className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">{option.name}</label>
+                      <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
+                        {option.values.map((value) => (
                           <button
-                            onClick={() => handleOptionQuantityChange(combo.key, (optionQuantities[combo.key] || 0) - 1)}
-                            disabled={(optionQuantities[combo.key] || 0) <= 0}
-                            className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg transition-colors"
+                            key={value}
+                            onClick={() => {
+                              setSelectedOptions(prev => ({
+                                ...prev,
+                                [option.name]: value
+                              }))
+                            }}
+                            className={`p-2 text-sm border rounded-lg transition-colors ${
+                              selectedOptions[option.name] === value
+                                ? 'border-red-500 bg-red-50 text-red-700'
+                                : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                            }`}
                           >
-                            <MinusIcon className="h-4 w-4" />
+                            {value}
                           </button>
-                          <span className="px-4 py-2 font-medium min-w-[50px] text-center">
-                            {optionQuantities[combo.key] || 0}
-                          </span>
-                          <button
-                            onClick={() => handleOptionQuantityChange(combo.key, (optionQuantities[combo.key] || 0) + 1)}
-                            disabled={(optionQuantities[combo.key] || 0) >= combo.inventory}
-                            className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg transition-colors"
-                          >
-                            <PlusIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="text-sm">
-                          {combo.inventory === 0 ? (
-                            <span className="text-red-500 font-medium">품절</span>
-                          ) : combo.inventory <= 5 ? (
-                            <span className="text-yellow-600 font-medium">재고 {combo.inventory}개</span>
-                          ) : (
-                            <span className="text-gray-500">최대 {combo.inventory}개</span>
-                          )}
-                        </div>
+                        ))}
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Selected option combination and quantity */}
+                {Object.keys(selectedOptions).length === options.length && (
+                  <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900">
+                        {Object.values(selectedOptions).join(' / ')}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        ₩{(price * quantity).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center border border-gray-300 rounded-lg">
+                        <button
+                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                          disabled={quantity <= 1}
+                          className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg transition-colors"
+                        >
+                          <MinusIcon className="h-4 w-4" />
+                        </button>
+                        <span className="px-4 py-2 font-medium min-w-[60px] text-center">
+                          {quantity}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const selectedCombo = optionCombinations.find(combo =>
+                              combo.key === Object.values(selectedOptions).join('-')
+                            )
+                            const maxInventory = selectedCombo ? selectedCombo.inventory : product?.inventory || 0
+                            setQuantity(Math.min(maxInventory, quantity + 1))
+                          }}
+                          disabled={(() => {
+                            const selectedCombo = optionCombinations.find(combo =>
+                              combo.key === Object.values(selectedOptions).join('-')
+                            )
+                            const maxInventory = selectedCombo ? selectedCombo.inventory : product?.inventory || 0
+                            return quantity >= maxInventory
+                          })()}
+                          className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg transition-colors"
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="text-sm">
+                        {(() => {
+                          const selectedCombo = optionCombinations.find(combo =>
+                            combo.key === Object.values(selectedOptions).join('-')
+                          )
+                          const inventory = selectedCombo ? selectedCombo.inventory : product?.inventory || 0
+
+                          if (inventory === 0) {
+                            return <span className="text-red-500 font-medium">품절</span>
+                          } else if (inventory <= 5) {
+                            return <span className="text-yellow-600 font-medium">재고 {inventory}개</span>
+                          } else {
+                            return <span className="text-gray-500">최대 {inventory}개</span>
+                          }
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-900">총 수량</span>
