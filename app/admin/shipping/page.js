@@ -62,6 +62,22 @@ export default function AdminShippingPage() {
 
       setOrders(ordersWithUserInfo)
       console.log('결제 완료 주문:', ordersWithUserInfo)
+
+      // G250926-0827 주문 디버깅
+      const targetOrder = ordersWithUserInfo.find(order =>
+        order.customer_order_number === 'G250926-0827'
+      )
+      if (targetOrder) {
+        console.log('🔍 G250926-0827 주문 상세 분석:', {
+          id: targetOrder.id,
+          customer_order_number: targetOrder.customer_order_number,
+          user: targetOrder.user,
+          order_shipping: targetOrder.order_shipping,
+          order_items: targetOrder.order_items,
+          order_payments: targetOrder.order_payments,
+          total_amount: targetOrder.total_amount
+        })
+      }
     } catch (error) {
       console.error('주문 로딩 오류:', error)
       toast.error('주문 정보를 불러올 수 없습니다')
@@ -176,20 +192,52 @@ export default function AdminShippingPage() {
     // CSV 형태로 송장 데이터 생성
     const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
     const csvData = selectedOrderData.map(order => {
-      const items = order.order_items?.map(item => `${item.products?.title || '상품'}(${item.quantity}개)`).join(';') || '정보없음'
-      const shipping = order.order_shipping?.[0] || order.order_shipping || {}
-      const address = shipping?.address || '정보없음'
-      const detailAddress = shipping?.detail_address || ''
-      const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+      // 디버깅을 위한 로그
+      if (order.customer_order_number === 'G250926-0827') {
+        console.log('🔥 CSV 생성 시 G250926-0827 데이터:', order)
+      }
+
+      // 상품 정보 - 다양한 구조 대응
+      let items = '정보없음'
+      if (order.order_items && order.order_items.length > 0) {
+        items = order.order_items.map(item => {
+          const title = item.products?.title || item.product?.title || item.title || '상품'
+          const quantity = item.quantity || 1
+          return `${title}(${quantity}개)`
+        }).join(';')
+      }
+
+      // 배송 정보 - 다양한 구조 대응
+      const shipping = order.order_shipping?.[0] || order.order_shipping || order.shipping || {}
+      let address = '정보없음'
+      let fullAddress = '정보없음'
+
+      if (shipping.address) {
+        address = shipping.address
+        const detailAddress = shipping.detail_address || shipping.detailAddress || ''
+        fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+      }
+
+      // 고객명 - 다양한 소스에서 확인
+      const customerName = order.user?.name || shipping?.name || order.shipping?.name || order.userName || '정보없음'
+
+      // 연락처 - 다양한 소스에서 확인
+      const phone = order.user?.phone || shipping?.phone || order.shipping?.phone || order.userPhone || '정보없음'
+
+      // 수량 계산
+      const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+
+      // 금액 - 다양한 소스에서 확인
+      const amount = order.order_payments?.[0]?.amount || order.payment?.amount || order.total_amount || order.amount || 0
 
       return [
-        order.customer_order_number || order.id.slice(-8),
-        order.user?.name || '정보없음',
-        order.user?.phone || '정보없음',
+        order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
+        customerName,
+        phone,
         `"${fullAddress}"`,
         `"${items}"`,
-        order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
-        order.order_payments?.[0]?.amount || order.total_amount || 0,
+        totalQuantity,
+        amount,
         getStatusInfo(order.status).label
       ].join(',')
     }).join('\n')
@@ -394,20 +442,42 @@ export default function AdminShippingPage() {
                           onClick={() => {
                             // 개별 송장 다운로드
                             const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
-                            const items = order.order_items?.map(item => `${item.products?.title || '상품'}(${item.quantity}개)`).join(';') || '정보없음'
-                            const shipping = order.order_shipping?.[0] || order.order_shipping || {}
-                            const address = shipping?.address || '정보없음'
-                            const detailAddress = shipping?.detail_address || ''
-                            const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+
+                            // 상품 정보 - 다양한 구조 대응
+                            let items = '정보없음'
+                            if (order.order_items && order.order_items.length > 0) {
+                              items = order.order_items.map(item => {
+                                const title = item.products?.title || item.product?.title || item.title || '상품'
+                                const quantity = item.quantity || 1
+                                return `${title}(${quantity}개)`
+                              }).join(';')
+                            }
+
+                            // 배송 정보 - 다양한 구조 대응
+                            const shipping = order.order_shipping?.[0] || order.order_shipping || order.shipping || {}
+                            let fullAddress = '정보없음'
+                            if (shipping.address) {
+                              const address = shipping.address
+                              const detailAddress = shipping.detail_address || shipping.detailAddress || ''
+                              fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+                            }
+
+                            // 고객명과 연락처 - 다양한 소스에서 확인
+                            const customerName = order.user?.name || shipping?.name || order.shipping?.name || order.userName || '정보없음'
+                            const phone = order.user?.phone || shipping?.phone || order.shipping?.phone || order.userPhone || '정보없음'
+
+                            // 수량과 금액
+                            const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+                            const amount = order.order_payments?.[0]?.amount || order.payment?.amount || order.total_amount || order.amount || 0
 
                             const csvData = [
-                              order.customer_order_number || order.id.slice(-8),
-                              order.user?.name || '정보없음',
-                              order.user?.phone || '정보없음',
+                              order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
+                              customerName,
+                              phone,
                               `"${fullAddress}"`,
                               `"${items}"`,
-                              order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
-                              order.order_payments?.[0]?.amount || order.total_amount || 0,
+                              totalQuantity,
+                              amount,
                               getStatusInfo(order.status).label
                             ].join(',')
 
