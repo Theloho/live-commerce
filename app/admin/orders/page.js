@@ -94,9 +94,9 @@ export default function AdminOrdersPage() {
 
     // 결제 방법 필터
     if (paymentFilter === 'all') {
-      // '결제대기' 탭 - pending, verifying 상태만 표시
+      // '결제대기' 탭 - pending 상태만 표시
       filtered = filtered.filter(order =>
-        order.status === 'pending' || order.status === 'verifying'
+        order.status === 'pending'
       )
     } else if (paymentFilter === 'paid') {
       filtered = filtered.filter(order => order.status === 'paid')
@@ -106,7 +106,7 @@ export default function AdminOrdersPage() {
       // 계좌이체/카드결제 탭은 결제확인중 상태만 표시
       filtered = filtered.filter(order =>
         order.payment?.method === paymentFilter &&
-        (order.status === 'pending' || order.status === 'verifying')
+        order.status === 'verifying'
       )
     }
 
@@ -220,14 +220,14 @@ export default function AdminOrdersPage() {
             {
               id: 'all',
               label: '결제대기',
-              count: orders.filter(o => o.status === 'pending' || o.status === 'verifying').length
+              count: orders.filter(o => o.status === 'pending').length
             },
             {
               id: 'bank_transfer',
               label: '계좌이체',
               count: orders.filter(o =>
                 o.payment?.method === 'bank_transfer' &&
-                (o.status === 'pending' || o.status === 'verifying')
+                o.status === 'verifying'
               ).length
             },
             {
@@ -235,7 +235,7 @@ export default function AdminOrdersPage() {
               label: '카드결제',
               count: orders.filter(o =>
                 o.payment?.method === 'card' &&
-                (o.status === 'pending' || o.status === 'verifying')
+                o.status === 'verifying'
               ).length
             },
             { id: 'paid', label: '결제완료', count: orders.filter(o => o.status === 'paid').length },
