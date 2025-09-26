@@ -16,7 +16,6 @@ import toast from 'react-hot-toast'
 export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const [quantity, setQuantity] = useState(1)
   const [selectedOptions, setSelectedOptions] = useState({})
-  const [optionQuantities, setOptionQuantities] = useState({}) // 옵션별 수량
   const [isLiked, setIsLiked] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
   const [userSession, setUserSession] = useState(null)
