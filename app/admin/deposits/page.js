@@ -1134,11 +1134,11 @@ export default function AdminDepositsPage() {
                             <p className="text-sm">
                               <span className="text-gray-500">닉네임:</span>
                               <button
-                                onClick={() => handleQuickSearch(orderUser?.nickname || orderUser?.user_metadata?.nickname)}
+                                onClick={() => handleQuickSearch(orderUser?.nickname || orderUser?.user_metadata?.nickname || orderUser?.email?.split('@')[0])}
                                 className="text-purple-600 ml-1 font-medium hover:text-purple-800 hover:underline transition-colors"
-                                disabled={!orderUser?.nickname && !orderUser?.user_metadata?.nickname}
+                                disabled={!orderUser?.nickname && !orderUser?.user_metadata?.nickname && !orderUser?.email}
                               >
-                                {orderUser?.nickname || orderUser?.user_metadata?.nickname || '정보없음'}
+                                {orderUser?.nickname || orderUser?.user_metadata?.nickname || orderUser?.email?.split('@')[0] || '정보없음'}
                               </button>
                             </p>
                             <p className="text-sm">
@@ -1160,7 +1160,7 @@ export default function AdminDepositsPage() {
                       )
                     })()}
                     <p className="text-sm text-gray-500">
-                      주문번호: {order.customerOrderNumber || order.id.slice(-8)} • ₩{order.payment?.amount.toLocaleString()}
+                      주문번호: {order.customer_order_number || order.customerOrderNumber || order.id.slice(-8)} • ₩{order.payment?.amount.toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-400">
                       {new Date(order.created_at).toLocaleString('ko-KR')}
