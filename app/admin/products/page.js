@@ -407,8 +407,7 @@ export default function AdminProductsPage() {
       </div>
 
         {/* Products Grid */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-6">
           {filteredProducts.map((product, index) => (
             <motion.div
               key={product.id}
@@ -505,7 +504,7 @@ export default function AdminProductsPage() {
                       }`}
                     >
                       <div className={`w-2 h-2 rounded-full ${product.tags?.includes('LIVE') ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
-                      {product.tags?.includes('LIVE') ? 'LIVE' : 'LIVE 설정'}
+                      {product.tags?.includes('LIVE') ? '🔴 LIVE' : 'LIVE 설정'}
                     </button>
                   </div>
 
@@ -545,13 +544,11 @@ export default function AdminProductsPage() {
           ))}
         </div>
 
-          {filteredProducts.length === 0 && (
-            <div className="col-span-2 p-12 text-center">
-              <p className="text-gray-500">조건에 맞는 상품이 없습니다.</p>
-            </div>
-          )}
+        {filteredProducts.length === 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <p className="text-gray-500">조건에 맞는 상품이 없습니다.</p>
           </div>
-        </div>
+        )}
 
         {/* Edit Product Modal */}
       <AnimatePresence>
@@ -745,7 +742,7 @@ export default function AdminProductsPage() {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>
       </div>
     </div>
   )
