@@ -408,24 +408,30 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                     <div key={index} className="space-y-2">
                       <label className="block text-sm font-medium text-gray-700">{option.name}</label>
                       <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
-                        {option.values.map((value) => (
-                          <button
-                            key={value}
-                            onClick={() => {
-                              setSelectedOptions(prev => ({
-                                ...prev,
-                                [option.name]: value
-                              }))
-                            }}
-                            className={`p-2 text-sm border rounded-lg transition-colors ${
-                              selectedOptions[option.name] === value
-                                ? 'border-red-500 bg-red-50 text-red-700'
-                                : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                            }`}
-                          >
-                            {value}
-                          </button>
-                        ))}
+                        {option.values.map((value, valueIndex) => {
+                          // Handle both string and object values
+                          const displayValue = typeof value === 'string' ? value : value?.name || value?.value || String(value)
+                          const keyValue = typeof value === 'string' ? value : value?.name || value?.value || valueIndex
+
+                          return (
+                            <button
+                              key={keyValue}
+                              onClick={() => {
+                                setSelectedOptions(prev => ({
+                                  ...prev,
+                                  [option.name]: displayValue
+                                }))
+                              }}
+                              className={`p-2 text-sm border rounded-lg transition-colors ${
+                                selectedOptions[option.name] === displayValue
+                                  ? 'border-red-500 bg-red-50 text-red-700'
+                                  : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                              }`}
+                            >
+                              {displayValue}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
