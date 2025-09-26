@@ -67,6 +67,18 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     }
   }, [])
 
+  // Auto-add combination when all options are selected
+  useEffect(() => {
+    if (Object.keys(selectedOptions).length === options.length && Object.keys(selectedOptions).length > 0) {
+      // Small delay to allow user to see the selection
+      const timer = setTimeout(() => {
+        addCombination()
+      }, 500)
+
+      return () => clearTimeout(timer)
+    }
+  }, [selectedOptions])
+
   if (!product) return null
 
   const {
@@ -581,66 +593,15 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                   </div>
                 )}
 
-                {/* Current selection and add button */}
-                {Object.keys(selectedOptions).length === options.length && (
-                  <div className="border border-dashed border-gray-300 rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-900">
-                        {Object.values(selectedOptions).join(' / ')}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        ₩{(price * quantity).toLocaleString()}
-                      </span>
+                {/* Auto-selection feedback */}
+                {Object.keys(selectedOptions).length === options.length && selectedCombinations.length === 0 && (
+                  <div className="border border-dashed border-blue-200 bg-blue-50 rounded-lg p-4 text-center">
+                    <div className="text-blue-700 font-medium mb-1">
+                      {Object.values(selectedOptions).join(' / ')} 선택됨
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center border border-gray-300 rounded-lg">
-                        <button
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          disabled={quantity <= 1}
-                          className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg transition-colors"
-                        >
-                          <MinusIcon className="h-4 w-4" />
-                        </button>
-                        <span className="px-4 py-2 font-medium min-w-[60px] text-center">
-                          {quantity}
-                        </span>
-                        <button
-                          onClick={() => {
-                            const maxInventory = getSelectedOptionInventory()
-                            setQuantity(Math.min(maxInventory, quantity + 1))
-                          }}
-                          disabled={(() => {
-                            const maxInventory = getSelectedOptionInventory()
-                            return quantity >= maxInventory
-                          })()}
-                          className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg transition-colors"
-                        >
-                          <PlusIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <div className="text-sm">
-                        {(() => {
-                          const inventory = getSelectedOptionInventory()
-
-                          if (inventory === 0) {
-                            return <span className="text-red-500 font-medium">품절</span>
-                          } else if (inventory <= 5) {
-                            return <span className="text-yellow-600 font-medium">재고 {inventory}개</span>
-                          } else {
-                            return <span className="text-gray-500">최대 {inventory}개</span>
-                          }
-                        })()}
-                      </div>
+                    <div className="text-sm text-blue-600">
+                      잠시 후 자동으로 추가됩니다...
                     </div>
-
-                    <button
-                      onClick={addCombination}
-                      className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
-                    >
-                      + 이 조합 추가
-                    </button>
                   </div>
                 )}
 
