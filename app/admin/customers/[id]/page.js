@@ -128,6 +128,7 @@ export default function AdminCustomerDetailPage() {
         phone: profile.phone || '정보없음',
         address: profile.address || '정보없음',
         detailAddress: profile.detail_address || '',
+        avatarUrl: profile.avatar_url || '',
         tiktokId: profile.tiktok_id || '',
         youtubeId: profile.youtube_id || '',
         kakaoLink: profile.kakao_link || profile.kakao_id || '',
@@ -257,8 +258,16 @@ export default function AdminCustomerDetailPage() {
             >
               {/* 프로필 헤더 */}
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <UserIcon className="w-10 h-10 text-red-600" />
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                  {customer.avatarUrl ? (
+                    <img
+                      src={customer.avatarUrl}
+                      alt={customer.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <UserIcon className="w-10 h-10 text-red-600" />
+                  )}
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">{customer.name}</h2>
                 <div className="flex items-center justify-center gap-2 mt-2">
