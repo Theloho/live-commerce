@@ -184,14 +184,6 @@ function AdminLayoutContent({ children }) {
               <span className="text-sm text-gray-600 hidden sm:inline">
                 {adminEmail}
               </span>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-              >
-                <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">로그아웃</span>
-                <span className="sm:hidden">나가기</span>
-              </button>
             </div>
           </div>
         </header>
