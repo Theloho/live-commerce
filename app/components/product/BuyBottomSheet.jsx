@@ -16,6 +16,7 @@ import toast from 'react-hot-toast'
 export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const [quantity, setQuantity] = useState(1)
   const [selectedOptions, setSelectedOptions] = useState({})
+  const [selectedCombinations, setSelectedCombinations] = useState([]) // 선택된 조합들
   const [isLiked, setIsLiked] = useState(false)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
   const [userSession, setUserSession] = useState(null)
@@ -154,11 +155,61 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   }
 
   // 총 수량과 총 가격 계산
-  // Calculate totals based on new option selection method
-  const totalQuantity = options.length > 0
-    ? (Object.keys(selectedOptions).length === options.length ? quantity : 0)
-    : quantity
-  const totalPrice = price * totalQuantity
+  // Add current selection to combinations
+  const addCombination = () => {
+    if (Object.keys(selectedOptions).length === options.length) {
+      const combinationKey = Object.values(selectedOptions).join(' / ')
+      const existingIndex = selectedCombinations.findIndex(combo => combo.key === combinationKey)
+
+      if (existingIndex >= 0) {
+        // Update existing combination
+        const updated = [...selectedCombinations]
+        updated[existingIndex].quantity += quantity
+        setSelectedCombinations(updated)
+      } else {
+        // Add new combination
+        setSelectedCombinations(prev => [...prev, {
+          key: combinationKey,
+          options: { ...selectedOptions },
+          quantity: quantity,
+          price: price
+        }])
+      }
+
+      // Reset for next selection
+      setSelectedOptions({})
+      setQuantity(1)
+    }
+  }
+
+  // Remove combination
+  const removeCombination = (index) => {
+    setSelectedCombinations(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Update combination quantity
+  const updateCombinationQuantity = (index, newQuantity) => {
+    if (newQuantity <= 0) {
+      removeCombination(index)
+      return
+    }
+
+    setSelectedCombinations(prev => {
+      const updated = [...prev]
+      updated[index].quantity = newQuantity
+      return updated
+    })
+  }
+
+  // Calculate totals based on combinations or single selection
+  const totalQuantity = selectedCombinations.length > 0
+    ? selectedCombinations.reduce((sum, combo) => sum + combo.quantity, 0)
+    : (options.length > 0
+        ? (Object.keys(selectedOptions).length === options.length ? quantity : 0)
+        : quantity)
+  const totalPrice = selectedCombinations.length > 0
+    ? selectedCombinations.reduce((sum, combo) => sum + (combo.price * combo.quantity), 0)
+    : (price * totalQuantity)
   const discount = originalPrice ? originalPrice - price : 0
 
   // TODO: Connect to real wishlist API
@@ -221,11 +272,22 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       detail_address: currentUser?.detail_address || ''
     }
 
-    // 새로운 옵션 선택 방식에 따른 처리
+    // Handle multiple combinations or single selection
     let cartItems = []
 
-    if (options.length > 0 && Object.keys(selectedOptions).length === options.length) {
-      // 옵션이 있고 모든 옵션이 선택된 경우
+    if (selectedCombinations.length > 0) {
+      // Multiple combinations selected
+      selectedCombinations.forEach(combo => {
+        cartItems.push({
+          ...product,
+          quantity: combo.quantity,
+          selectedOptions: combo.options,
+          totalPrice: combo.price * combo.quantity,
+          optionLabel: combo.key
+        })
+      })
+    } else if (options.length > 0 && Object.keys(selectedOptions).length === options.length) {
+      // Single option combination
       const optionLabel = Object.values(selectedOptions).join(' / ')
       cartItems.push({
         ...product,
@@ -235,7 +297,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
         optionLabel
       })
     } else if (options.length === 0) {
-      // 옵션이 없는 경우
+      // No options
       cartItems.push({
         ...product,
         quantity,
@@ -477,9 +539,51 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                   })}
                 </div>
 
-                {/* Selected option combination and quantity */}
+                {/* Selected combinations list */}
+                {selectedCombinations.length > 0 && (
+                  <div className="space-y-3">
+                    <h5 className="font-medium text-gray-900">선택된 옵션들</h5>
+                    {selectedCombinations.map((combo, index) => (
+                      <div key={combo.key} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-700">{combo.key}</span>
+                          <span className="text-sm text-gray-500">
+                            ₩{(combo.price * combo.quantity).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center border border-gray-300 rounded-lg">
+                            <button
+                              onClick={() => updateCombinationQuantity(index, combo.quantity - 1)}
+                              className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
+                            >
+                              <MinusIcon className="h-4 w-4" />
+                            </button>
+                            <span className="px-4 py-2 font-medium min-w-[60px] text-center">
+                              {combo.quantity}
+                            </span>
+                            <button
+                              onClick={() => updateCombinationQuantity(index, combo.quantity + 1)}
+                              className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors"
+                            >
+                              <PlusIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => removeCombination(index)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            제거
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Current selection and add button */}
                 {Object.keys(selectedOptions).length === options.length && (
-                  <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div className="border border-dashed border-gray-300 rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-gray-900">
                         {Object.values(selectedOptions).join(' / ')}
@@ -530,6 +634,13 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                         })()}
                       </div>
                     </div>
+
+                    <button
+                      onClick={addCombination}
+                      className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                    >
+                      + 이 조합 추가
+                    </button>
                   </div>
                 )}
 
