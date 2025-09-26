@@ -858,15 +858,16 @@ export default function AdminDepositsPage() {
                           if (item.order.userId) {
                             router.push(`/admin/customers/${item.order.userId}`)
                           } else {
-                            alert('이 주문은 회원 정보가 없어 상세보기를 할 수 없습니다.')
+                            // userId가 없으면 주문 상세보기로 이동
+                            // 그룹 주문인 경우 첫 번째 개별 주문 ID 사용
+                            const orderIdToUse = item.order.isGroup && item.order.originalOrders?.[0]?.id
+                              ? item.order.originalOrders[0].id
+                              : item.order.id
+                            router.push(`/admin/orders/${orderIdToUse}`)
                           }
                         }}
-                        className={`p-2 rounded-lg transition-colors ${
-                          item.order.userId
-                            ? 'text-gray-600 hover:bg-gray-100'
-                            : 'text-gray-300 cursor-not-allowed'
-                        }`}
-                        title={item.order.userId ? "고객 상세보기" : "회원 정보 없음"}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        title={item.order.userId ? "고객 상세보기" : "주문 상세보기"}
                       >
                         <EyeIcon className="w-4 h-4" />
                       </button>
@@ -1212,15 +1213,16 @@ export default function AdminDepositsPage() {
                         if (order.userId) {
                           router.push(`/admin/customers/${order.userId}`)
                         } else {
-                          alert('이 주문은 회원 정보가 없어 상세보기를 할 수 없습니다.')
+                          // userId가 없으면 주문 상세보기로 이동
+                          // 그룹 주문인 경우 첫 번째 개별 주문 ID 사용
+                          const orderIdToUse = order.isGroup && order.originalOrders?.[0]?.id
+                            ? order.originalOrders[0].id
+                            : order.id
+                          router.push(`/admin/orders/${orderIdToUse}`)
                         }
                       }}
-                      className={`p-2 rounded-lg transition-colors ${
-                        order.userId
-                          ? 'text-gray-600 hover:bg-gray-100'
-                          : 'text-gray-300 cursor-not-allowed'
-                      }`}
-                      title={order.userId ? "고객 상세보기" : "회원 정보 없음"}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      title={order.userId ? "고객 상세보기" : "주문 상세보기"}
                     >
                       <EyeIcon className="w-4 h-4" />
                     </button>
