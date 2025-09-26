@@ -183,7 +183,7 @@ export default function AdminOrdersPage() {
       }
     }
     return methodMap[method] || {
-      text: method,
+      text: method || '결제방법 미정',
       icon: BanknotesIcon,
       color: 'text-slate-600'
     }
@@ -382,6 +382,18 @@ export default function AdminOrdersPage() {
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {(() => {
+                          // 결제대기 상태에서는 아직 결제방법이 정해지지 않았음을 명시
+                          if (order.status === 'pending') {
+                            return (
+                              <>
+                                <BanknotesIcon className="w-3 h-3 text-orange-600" />
+                                <span className="text-xs font-medium text-orange-600">
+                                  결제 대기중
+                                </span>
+                              </>
+                            )
+                          }
+
                           const paymentInfo = getPaymentMethodDisplay(order.payment?.method)
                           const Icon = paymentInfo.icon
                           return (
