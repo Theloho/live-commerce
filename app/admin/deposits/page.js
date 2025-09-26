@@ -881,7 +881,7 @@ export default function AdminDepositsPage() {
                           const orderNames = [
                             { label: '입금자명', value: item.order.depositName || '', key: 'depositName' },
                             { label: '주문자', value: item.order.shipping?.name || '', key: 'orderName' },
-                            { label: '닉네임', value: orderUser?.nickname || orderUser?.user_metadata?.nickname || '', key: 'nickname' }
+                            { label: '닉네임', value: orderUser?.profile?.nickname || orderUser?.nickname || '', key: 'nickname' }
                           ].filter(name => name.value)
 
                           // 매칭되는 이름 찾기
@@ -1015,7 +1015,7 @@ export default function AdminDepositsPage() {
                           const orderNames = [
                             { label: '입금자명', value: item.order.depositName || '', key: 'depositName' },
                             { label: '주문자', value: item.order.shipping?.name || '', key: 'orderName' },
-                            { label: '닉네임', value: orderUser?.nickname || orderUser?.user_metadata?.nickname || '', key: 'nickname' }
+                            { label: '닉네임', value: orderUser?.profile?.nickname || orderUser?.nickname || '', key: 'nickname' }
                           ].filter(name => name.value)
 
                           const matchedName = orderNames.find(name =>
