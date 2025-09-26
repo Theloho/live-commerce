@@ -24,10 +24,47 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [enableCardPayment, setEnableCardPayment] = useState(false) // 카드결제 활성화 여부
 
   useEffect(() => {
     loadOrders()
   }, [])
+
+  // 관리자 설정 로드
+  useEffect(() => {
+    const loadSettings = () => {
+      try {
+        const savedSettings = localStorage.getItem('admin_site_settings')
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings)
+          setEnableCardPayment(settings.enable_card_payment || false)
+          console.log('주문관리 설정 로드:', { enable_card_payment: settings.enable_card_payment })
+        }
+      } catch (error) {
+        console.error('설정 로드 오류:', error)
+      }
+    }
+
+    loadSettings()
+
+    // 설정 변경 감지 (다른 탭에서 변경된 경우)
+    const handleStorageChange = (e) => {
+      if (e.key === 'admin_site_settings') {
+        loadSettings()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  // 카드결제 비활성화 시 필터 자동 변경
+  useEffect(() => {
+    if (!enableCardPayment && paymentFilter === 'card') {
+      setPaymentFilter('all')
+      console.log('카드결제 비활성화로 인해 필터를 전체로 변경')
+    }
+  }, [enableCardPayment, paymentFilter])
 
   useEffect(() => {
     filterOrders()
@@ -196,7 +233,10 @@ export default function AdminOrdersPage() {
             },
             { id: 'paid', label: '결제완료', count: orders.filter(o => o.status === 'paid').length },
             { id: 'delivered', label: '발송완료', count: orders.filter(o => o.status === 'delivered').length }
-          ].map((tab) => (
+          ]
+          // 카드결제 비활성화 시 카드결제 탭 제거
+          .filter(tab => tab.id !== 'card' || enableCardPayment)
+          .map((tab) => (
             <button
               key={tab.id}
               onClick={() => setPaymentFilter(tab.id)}
