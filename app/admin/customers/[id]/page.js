@@ -466,7 +466,7 @@ export default function AdminCustomerDetailPage() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-medium text-gray-900">
-                              {order.customerOrderNumber || order.id.slice(-8)}
+                              {order.customer_order_number || order.id.slice(-8)}
                             </span>
                             <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
                               {statusInfo.text}
