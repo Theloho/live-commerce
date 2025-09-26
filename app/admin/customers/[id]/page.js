@@ -54,7 +54,7 @@ export default function AdminCustomerDetailPage() {
         return
       }
 
-      // 해당 고객의 주문 정보 가져오기
+      // 해당 고객의 주문 정보 가져오기 (고객명으로 매칭)
       const { data: orders, error: orderError } = await supabase
         .from('orders')
         .select(`
@@ -66,7 +66,7 @@ export default function AdminCustomerDetailPage() {
               thumbnail_url
             )
           ),
-          order_shipping (
+          order_shipping!inner (
             name,
             phone,
             address,
@@ -78,7 +78,7 @@ export default function AdminCustomerDetailPage() {
             status
           )
         `)
-        .eq('user_id', params.id)
+        .eq('order_shipping.name', profile.name)
         .order('created_at', { ascending: false })
 
       if (orderError) {
