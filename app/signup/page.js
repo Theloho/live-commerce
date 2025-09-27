@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { validateSignupForm } from '@/lib/validation'
 import toast from 'react-hot-toast'
 import useAuth from '@/app/hooks/useAuth'
 
@@ -62,26 +63,18 @@ export default function SignupPage() {
   }
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
-      toast.error('이름을 입력해주세요')
+    // 새로운 검증 시스템 사용
+    const validationResult = validateSignupForm(formData)
+
+    if (!validationResult.isValid) {
+      // 첫 번째 에러만 표시
+      const firstError = Object.values(validationResult.errors)[0]
+      toast.error(firstError)
+      console.log('전체 검증 에러:', validationResult.errors)
       return false
     }
 
-    if (!formData.phone || formData.phone.replace(/[^\d]/g, '').length !== 11) {
-      toast.error('올바른 휴대폰 번호를 입력해주세요')
-      return false
-    }
-
-    if (formData.password.length < 6) {
-      toast.error('비밀번호는 6자 이상 입력해주세요')
-      return false
-    }
-
-    if (!formData.address.trim()) {
-      toast.error('주소를 입력해주세요')
-      return false
-    }
-
+    console.log('검증 성공 - 정리된 데이터:', validationResult.sanitizedData)
     return true
   }
 

@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import useAuth from '@/app/hooks/useAuth'
+import { validatePhoneNumber, validatePassword } from '@/lib/validation'
 import { motion } from 'framer-motion'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
@@ -44,13 +45,16 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.phone || formData.phone.replace(/[^\d]/g, '').length !== 11) {
-      toast.error('올바른 휴대폰 번호를 입력해주세요')
+    // 휴대폰 번호 검증
+    const phoneValidation = validatePhoneNumber(formData.phone)
+    if (!phoneValidation.isValid) {
+      toast.error(phoneValidation.error)
       return
     }
 
-    if (formData.password.length < 6) {
-      toast.error('비밀번호를 입력해주세요')
+    // 비밀번호 기본 검증 (로그인시는 간단하게)
+    if (!formData.password || formData.password.length < 6) {
+      toast.error('비밀번호를 6자 이상 입력해주세요')
       return
     }
 
