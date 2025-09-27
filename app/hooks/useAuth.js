@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import useAuthStore from '@/app/stores/authStore'
+import bcrypt from 'bcryptjs'
 import toast from 'react-hot-toast'
 
 export default function useAuth() {
@@ -97,7 +98,7 @@ export default function useAuth() {
           name: name,
           phone: phone,
           nickname: nickname || name,
-          password_hash: password, // 실제로는 해시해야 하지만 임시로 평문 저장
+          password_hash: await bcrypt.hash(password, 12), // bcrypt로 암호화
           provider: 'email',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -147,12 +148,17 @@ export default function useAuth() {
         .from('profiles')
         .select('*')
         .eq('email', email)
-        .eq('password_hash', password) // 실제로는 해시 비교해야 함
         .single()
 
-      if (fetchError || !userProfile) {
+      // 패스워드 해시 비교
+      const isPasswordValid = userProfile && await bcrypt.compare(password, userProfile.password_hash)
+
+      if (fetchError || !userProfile || !isPasswordValid) {
+        console.error('로그인 실패:', fetchError || '잘못된 사용자 정보')
         throw new Error('이메일 또는 비밀번호가 올바르지 않습니다')
       }
+
+      // 로그인 성공
 
       console.log('로그인 성공:', userProfile)
 
@@ -229,8 +235,8 @@ export default function useAuth() {
       console.log('카카오 로그인 시작')
 
       // 카카오 REST API 키와 리디렉트 URL
-      const kakaoClientId = '25369ebb145320aed6a888a721f088a9'
-      const redirectUrl = 'https://live-commerce-git-main-jts-projects-5e8e712a.vercel.app/auth/callback'
+      const kakaoClientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID
+      const redirectUrl = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI || process.env.NEXT_PUBLIC_SITE_URL + '/auth/callback'
 
       // 직접 카카오 OAuth URL로 리디렉션
       const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoClientId}&redirect_uri=${encodeURIComponent(redirectUrl)}&response_type=code&scope=profile_nickname,profile_image,account_email`

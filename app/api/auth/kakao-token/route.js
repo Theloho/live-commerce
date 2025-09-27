@@ -18,9 +18,9 @@ export async function POST(request) {
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: '25369ebb145320aed6a888a721f088a9',
+        client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID,
         client_secret: process.env.KAKAO_CLIENT_SECRET || '', // 환경변수에서 가져오기
-        redirect_uri: 'https://live-commerce-git-main-jts-projects-5e8e712a.vercel.app/auth/callback',
+        redirect_uri: process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI,
         code: code,
       }),
     })
