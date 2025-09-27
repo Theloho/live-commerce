@@ -21,9 +21,9 @@ export async function POST(request) {
   try {
     console.log('🔄 카드결제 주문 API 호출됨')
 
-    const { orderData, userProfile, userId } = await request.json()
+    const { orderData, userProfile, userId, depositName } = await request.json()
 
-    console.log('🔄 카드결제 주문 생성:', { userId, orderData })
+    console.log('🔄 카드결제 주문 생성:', { userId, orderData, depositName })
     console.log('🔄 재고 차감 대상 상품:', { productId: orderData.id, quantity: orderData.quantity })
 
     // 0. 사용자 존재 여부 확인 및 생성
@@ -167,7 +167,8 @@ export async function POST(request) {
         order_id: orderId,
         method: 'card', // 카드결제
         amount: totalAmount,
-        status: 'pending'
+        status: 'pending',
+        depositor_name: depositName || userProfile.name || '' // 입금자명 저장
       }])
 
     if (paymentError) throw paymentError

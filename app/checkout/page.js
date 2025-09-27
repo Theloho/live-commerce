@@ -271,7 +271,8 @@ export default function CheckoutPage() {
       } else {
         // 단일 주문 생성
         console.log('새 주문 생성 중...')
-        const newOrder = await createOrder(orderItem, userProfile)
+        console.log('입금자명 전달:', depositName)
+        const newOrder = await createOrder(orderItem, userProfile, depositName)
         orderId = newOrder.id
       }
 
