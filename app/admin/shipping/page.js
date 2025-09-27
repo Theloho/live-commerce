@@ -14,6 +14,7 @@ import {
   ChatBubbleLeftRightIcon,
   DocumentArrowDownIcon
 } from '@heroicons/react/24/outline'
+import { ShippingDataManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
 
 export default function AdminShippingPage() {
@@ -47,13 +48,18 @@ export default function AdminShippingPage() {
       )
 
       const ordersWithUserInfo = paidOrders.map(order => {
-        const shipping = order.order_shipping?.[0] || order.order_shipping || {}
+        // ShippingDataManager를 사용하여 일관된 배송 정보 추출
+        const shippingInfo = ShippingDataManager.extractShippingInfo(order)
+
         return {
           ...order,
           user: {
-            name: shipping?.name || order.userName || '정보없음',
-            phone: shipping?.phone || '정보없음'
-          }
+            name: shippingInfo?.name || '배송 정보 없음',
+            phone: shippingInfo?.phone || '연락처 없음',
+            address: shippingInfo?.address || '',
+            detail_address: shippingInfo?.detail_address || ''
+          },
+          hasValidShipping: ShippingDataManager.validateShippingInfo(shippingInfo)
         }
       })
 

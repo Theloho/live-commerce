@@ -279,8 +279,8 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     // 사용자 정보 확인
     const userProfile = {
       name: currentUser?.name || '사용자',
-      phone: currentUser?.phone || '010-0000-0000',
-      address: currentUser?.address || '기본주소',
+      phone: currentUser?.phone || '',
+      address: currentUser?.address || '',
       detail_address: currentUser?.detail_address || ''
     }
 

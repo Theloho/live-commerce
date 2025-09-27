@@ -14,6 +14,7 @@ import {
 import useAuth from '@/hooks/useAuth'
 import CardPaymentModal from '@/app/components/common/CardPaymentModal'
 import { createOrder, updateMultipleOrderStatus } from '@/lib/supabaseApi'
+import { UserProfileManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
 
 export default function CheckoutPage() {
@@ -21,11 +22,12 @@ export default function CheckoutPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth()
   const [orderItem, setOrderItem] = useState(null)
   const [userProfile, setUserProfile] = useState({
-    name: '로딩 중...',
-    phone: '로딩 중...',
-    address: '로딩 중...',
+    name: '',
+    phone: '',
+    address: '',
     detail_address: ''
   })
+  const [profileErrors, setProfileErrors] = useState({})
   const [pageLoading, setPageLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [showCardModal, setShowCardModal] = useState(false)
@@ -145,29 +147,42 @@ export default function CheckoutPage() {
         return
       }
 
-      // 사용자 정보 가져오기
+      // 사용자 정보 가져오기 - UserProfileManager 사용
       if (currentUser) {
-        // 카카오 사용자인 경우 프로필 정보가 직접 저장되어 있음
-        const profile = {
-          name: currentUser.name || currentUser.user_metadata?.name || '사용자',
-          phone: currentUser.phone || currentUser.user_metadata?.phone || '010-0000-0000',
-          address: currentUser.address || currentUser.user_metadata?.address || '기본주소',
-          detail_address: currentUser.detail_address || currentUser.user_metadata?.detail_address || ''
-        }
-        console.log('User profile (카카오/일반 통합):', profile)
-        console.log('Current user data:', currentUser)
+        const profile = UserProfileManager.normalizeProfile(currentUser)
+        console.log('정규화된 사용자 프로필:', profile)
+        console.log('프로필 유효성:', profile.isValid)
+
         setUserProfile(profile)
+
+        // 프로필 완성도 체크
+        const completeness = UserProfileManager.checkCompleteness(currentUser)
+        if (!completeness.isComplete) {
+          console.log('미완성 프로필 필드:', completeness.missingFields)
+          // 미완성 필드에 대한 에러 표시
+          const errors = {}
+          completeness.missingFields.forEach(field => {
+            if (field === '이름') errors.name = true
+            if (field === '연락처') errors.phone = true
+            if (field === '배송지 주소') errors.address = true
+          })
+          setProfileErrors(errors)
+        }
+
         // 기본 입금자명을 사용자 이름으로 설정
-        setDepositName(profile.name)
+        if (profile.name) {
+          setDepositName(profile.name)
+        }
       } else {
         console.log('currentUser가 없음')
-        // 기본값 설정
+        // 빈 프로필 설정
         setUserProfile({
-          name: '사용자 정보 없음',
-          phone: '전화번호를 입력해주세요',
-          address: '주소를 입력해주세요',
+          name: '',
+          phone: '',
+          address: '',
           detail_address: ''
         })
+        setProfileErrors({ name: true, phone: true, address: true })
       }
 
       setPageLoading(false)
@@ -213,6 +228,13 @@ export default function CheckoutPage() {
 
     if (!depositName) {
       toast.error('입금자명을 선택해주세요')
+      return
+    }
+
+    // 필수 고객 정보 검증
+    const profileCompleteness = UserProfileManager.checkCompleteness(userProfile)
+    if (!profileCompleteness.isComplete) {
+      toast.error(`다음 정보를 입력해주세요: ${profileCompleteness.missingFields.join(', ')}`)
       return
     }
 
@@ -398,13 +420,84 @@ export default function CheckoutPage() {
                 변경
               </button>
             </div>
-            <div className="space-y-1 text-sm">
-              <p className="font-medium text-gray-900">{userProfile?.name || '이름 없음'}</p>
-              <p className="text-gray-600">{userProfile?.phone || '전화번호 없음'}</p>
-              <p className="text-gray-600">
-                {userProfile?.address || '주소를 입력해주세요'}
-                {userProfile?.detail_address && ` ${userProfile.detail_address}`}
-              </p>
+            <div className="space-y-3 text-sm">
+              {/* 이름 */}
+              {!userProfile?.name || profileErrors.name ? (
+                <div>
+                  <label className="block text-xs text-red-600 mb-1">이름을 입력해주세요 *</label>
+                  <input
+                    type="text"
+                    placeholder="홍길동"
+                    value={userProfile?.name || ''}
+                    onChange={(e) => {
+                      setUserProfile(prev => ({ ...prev, name: e.target.value }))
+                      if (e.target.value.trim()) {
+                        setProfileErrors(prev => ({ ...prev, name: false }))
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              ) : (
+                <p className="font-medium text-gray-900">{userProfile.name}</p>
+              )}
+
+              {/* 전화번호 */}
+              {!userProfile?.phone || profileErrors.phone ? (
+                <div>
+                  <label className="block text-xs text-red-600 mb-1">전화번호를 입력해주세요 *</label>
+                  <input
+                    type="tel"
+                    placeholder="010-1234-5678"
+                    value={userProfile?.phone || ''}
+                    onChange={(e) => {
+                      setUserProfile(prev => ({ ...prev, phone: e.target.value }))
+                      if (e.target.value.trim().length >= 10) {
+                        setProfileErrors(prev => ({ ...prev, phone: false }))
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              ) : (
+                <p className="text-gray-600">{userProfile.phone}</p>
+              )}
+
+              {/* 주소 */}
+              {!userProfile?.address || profileErrors.address ? (
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs text-red-600 mb-1">주소를 입력해주세요 *</label>
+                    <input
+                      type="text"
+                      placeholder="서울시 강남구 테헤란로 123"
+                      value={userProfile?.address || ''}
+                      onChange={(e) => {
+                        setUserProfile(prev => ({ ...prev, address: e.target.value }))
+                        if (e.target.value.trim()) {
+                          setProfileErrors(prev => ({ ...prev, address: false }))
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">상세주소 (선택)</label>
+                    <input
+                      type="text"
+                      placeholder="○○아파트 ○○○동 ○○○호"
+                      value={userProfile?.detail_address || ''}
+                      onChange={(e) => setUserProfile(prev => ({ ...prev, detail_address: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-600">
+                  {userProfile.address}
+                  {userProfile?.detail_address && ` ${userProfile.detail_address}`}
+                </p>
+              )}
             </div>
           </motion.div>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { UserProfileManager } from '@/lib/userProfileManager'
 
 // Supabase 클라이언트 생성
 const supabase = createClient(
@@ -129,15 +130,28 @@ export async function POST(request) {
 
     if (itemError) throw itemError
 
-    // 3. 배송 정보 생성
+    // 3. 배송 정보 생성 - 검증 강화
+    let shippingData
+    try {
+      // UserProfileManager를 사용하여 배송 정보 준비
+      shippingData = UserProfileManager.prepareShippingData(userProfile)
+    } catch (error) {
+      console.error('❌ 배송 정보 검증 실패:', error.message)
+      // 배송 정보가 불충분한 경우라도 최소한의 정보를 저장
+      shippingData = {
+        name: userProfile.name || '미입력',
+        phone: userProfile.phone || '미입력',
+        address: userProfile.address || '배송지 미입력',
+        detail_address: userProfile.detail_address || ''
+      }
+      console.log('⚠️ 기본 배송 정보로 대체:', shippingData)
+    }
+
     const { error: shippingError } = await supabase
       .from('order_shipping')
       .insert([{
         order_id: orderId,
-        name: userProfile.name,
-        phone: userProfile.phone || '010-0000-0000',
-        address: userProfile.address || '기본주소',
-        detail_address: userProfile.detail_address || ''
+        ...shippingData
       }])
 
     if (shippingError) throw shippingError
