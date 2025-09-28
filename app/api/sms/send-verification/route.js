@@ -26,10 +26,22 @@ export async function POST(request) {
     const secretKey = process.env.NAVER_CLOUD_SECRET_KEY
     const serviceId = process.env.NAVER_CLOUD_SENS_SERVICE_ID
 
+    console.log('환경변수 확인:', {
+      accessKeyId: accessKeyId ? '✅ 설정됨' : '❌ 미설정',
+      secretKey: secretKey ? '✅ 설정됨' : '❌ 미설정',
+      serviceId: serviceId ? '✅ 설정됨' : '❌ 미설정'
+    })
+
     if (!accessKeyId || !secretKey || !serviceId) {
+      console.error('환경변수 누락:', { accessKeyId: !!accessKeyId, secretKey: !!secretKey, serviceId: !!serviceId })
       return NextResponse.json({
         error: 'SENS 서비스 설정이 필요합니다',
-        message: '환경변수를 확인해주세요'
+        message: '환경변수를 확인해주세요',
+        details: {
+          accessKeyId: !!accessKeyId,
+          secretKey: !!secretKey,
+          serviceId: !!serviceId
+        }
       }, { status: 500 })
     }
 
@@ -72,10 +84,18 @@ export async function POST(request) {
     const result = await response.json()
 
     if (!response.ok) {
-      console.error('SENS API 오류:', result)
+      console.error('SENS API 오류:', {
+        status: response.status,
+        statusText: response.statusText,
+        result: result
+      })
       return NextResponse.json({
         error: 'SMS 발송에 실패했습니다',
-        details: result
+        details: {
+          status: response.status,
+          statusText: response.statusText,
+          result: result
+        }
       }, { status: 500 })
     }
 
