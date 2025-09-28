@@ -14,12 +14,14 @@ export async function POST(request) {
 
     // 환경변수 설정
     const clientId = '25369ebb145320aed6a888a721f088a9'
+    const clientSecret = 'i07Uam9nawUxEglylpaycYim67rYi5B6'
     const redirectUri = 'https://allok.shop/auth/callback'
 
     // 카카오 토큰 교환 요청 파라미터
     const params = new URLSearchParams()
     params.append('grant_type', 'authorization_code')
     params.append('client_id', clientId)
+    params.append('client_secret', clientSecret)
     params.append('redirect_uri', redirectUri)
     params.append('code', code)
 
