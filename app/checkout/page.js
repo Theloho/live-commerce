@@ -160,6 +160,30 @@ export default function CheckoutPage() {
 
       // 사용자 정보 가져오기
       if (currentUser) {
+        // addresses 테이블에서 주소 목록 불러오기
+        try {
+          console.log('addresses 테이블에서 주소 목록 조회 중...')
+          const addressResponse = await fetch(`/api/addresses?user_id=${currentUser.id}`)
+          const addressData = await addressResponse.json()
+
+          if (addressResponse.ok && addressData.addresses) {
+            console.log('주소 목록 로드 성공:', addressData.addresses)
+
+            // 기본 배송지 자동 선택
+            const defaultAddress = addressData.addresses.find(addr => addr.is_default)
+            if (defaultAddress) {
+              setSelectedAddress(defaultAddress)
+              console.log('기본 배송지 자동 선택:', defaultAddress)
+            } else if (addressData.addresses.length > 0) {
+              // 기본 배송지가 없으면 첫 번째 주소 선택
+              setSelectedAddress(addressData.addresses[0])
+              console.log('첫 번째 주소 자동 선택:', addressData.addresses[0])
+            }
+          }
+        } catch (error) {
+          console.error('주소 목록 로드 오류:', error)
+        }
+
         // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기
         if (currentUser.provider === 'kakao') {
           try {
@@ -215,17 +239,10 @@ export default function CheckoutPage() {
     initCheckout()
   }, [isAuthenticated, user, authLoading, userSession, router])
 
-  // userProfile이 설정되면 주소 선택 및 프로필 완성도 체크
+  // userProfile이 설정되면 프로필 완성도 체크
   useEffect(() => {
     if (userProfile) {
-      console.log('userProfile 설정됨, 주소 및 프로필 체크 실행')
-
-      // 주소 목록이 있으면 기본 주소 선택
-      if (userProfile.addresses && userProfile.addresses.length > 0) {
-        const defaultAddr = userProfile.addresses.find(a => a.is_default) || userProfile.addresses[0]
-        setSelectedAddress(defaultAddr)
-        console.log('기본 주소 선택:', defaultAddr)
-      }
+      console.log('userProfile 설정됨, 프로필 체크 실행')
 
       // 프로필 완성도 체크
       const completeness = UserProfileManager.checkCompleteness(userProfile)

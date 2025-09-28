@@ -130,22 +130,14 @@ export async function POST(request) {
 
     if (itemError) throw itemError
 
-    // 3. 배송 정보 생성 - 검증 강화
-    let shippingData
-    try {
-      // UserProfileManager를 사용하여 배송 정보 준비
-      shippingData = UserProfileManager.prepareShippingData(userProfile)
-    } catch (error) {
-      console.error('❌ 배송 정보 검증 실패:', error.message)
-      // 배송 정보가 불충분한 경우라도 최소한의 정보를 저장
-      shippingData = {
-        name: userProfile.name || '미입력',
-        phone: userProfile.phone || '미입력',
-        address: userProfile.address || '배송지 미입력',
-        detail_address: userProfile.detail_address || ''
-      }
-      console.log('⚠️ 기본 배송 정보로 대체:', shippingData)
+    // 3. 배송 정보 생성 - selectedAddress가 이미 반영된 userProfile 사용
+    const shippingData = {
+      name: userProfile.name || '미입력',
+      phone: userProfile.phone || '미입력',
+      address: userProfile.address || '배송지 미입력', // 이미 selectedAddress가 반영됨
+      detail_address: userProfile.detail_address || ''
     }
+    console.log('📦 배송 정보 생성:', shippingData)
 
     const { error: shippingError } = await supabase
       .from('order_shipping')

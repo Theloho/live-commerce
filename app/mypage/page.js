@@ -6,7 +6,6 @@ import { motion } from 'framer-motion'
 import {
   UserIcon,
   PhoneIcon,
-  MapPinIcon,
   TagIcon,
   PencilIcon,
   ShoppingBagIcon,
@@ -18,6 +17,7 @@ import {
 import useAuth from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
+import AddressManager from '@/components/AddressManager'
 
 export default function MyPage() {
   const router = useRouter()
@@ -95,8 +95,6 @@ export default function MyPage() {
               const profile = {
                 name: dbProfile.name || currentUser.name || '',
                 phone: dbProfile.phone || currentUser.phone || '',
-                address: dbProfile.address || currentUser.address || '',
-                detail_address: dbProfile.detail_address || currentUser.detail_address || '',
                 nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || ''
               }
               console.log('마이페이지 프로필 로드:', { dbProfile, currentUser, profile })
@@ -114,8 +112,6 @@ export default function MyPage() {
               const profile = {
                 name: currentUser.name || '',
                 phone: currentUser.phone || '',
-                address: currentUser.address || '',
-                detail_address: currentUser.detail_address || '',
                 nickname: currentUser.nickname || currentUser.name || ''
               }
               setUserProfile(profile)
@@ -126,8 +122,6 @@ export default function MyPage() {
             const profile = {
               name: currentUser.name || '',
               phone: currentUser.phone || '',
-              address: currentUser.address || '',
-              detail_address: currentUser.detail_address || '',
               nickname: currentUser.nickname || currentUser.name || ''
             }
             setUserProfile(profile)
@@ -138,8 +132,6 @@ export default function MyPage() {
           const profile = {
             name: currentUser.name || '',
             phone: currentUser.phone || '',
-            address: currentUser.address || '',
-            detail_address: currentUser.detail_address || '',
             nickname: currentUser.nickname || currentUser.name || ''
           }
           setUserProfile(profile)
@@ -150,8 +142,6 @@ export default function MyPage() {
         const profile = {
           name: currentUser.name || currentUser.user_metadata?.name || '',
           phone: currentUser.phone || currentUser.user_metadata?.phone || '',
-          address: currentUser.address || currentUser.user_metadata?.address || '',
-          detail_address: currentUser.detail_address || currentUser.user_metadata?.detail_address || '',
           nickname: currentUser.nickname || currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || ''
         }
         setUserProfile(profile)
@@ -176,13 +166,11 @@ export default function MyPage() {
             id: currentUser.id,
             name: currentUser.user_metadata?.name || '',
             phone: currentUser.user_metadata?.phone || '',
-            address: currentUser.user_metadata?.address || '',
-            detail_address: currentUser.user_metadata?.detail_address || '',
             nickname: currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || ''
           }
 
           // 프로필이 없는 경우 추가 정보 입력 페이지로 리다이렉트
-          if (!defaultProfile.phone || !defaultProfile.address) {
+          if (!defaultProfile.phone) {
             toast.error('프로필 정보를 완성해주세요')
             router.push('/auth/complete-profile')
             return
@@ -216,19 +204,9 @@ export default function MyPage() {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
-        let updateData = {}
-
-        if (field === 'address') {
-          updateData = {
-            address: editValues.address,
-            detail_address: editValues.detail_address,
-            updated_at: new Date().toISOString()
-          }
-        } else {
-          updateData = {
-            [field]: editValues[field],
-            updated_at: new Date().toISOString()
-          }
+        const updateData = {
+          [field]: editValues[field],
+          updated_at: new Date().toISOString()
         }
 
         console.log('카카오 사용자 프로필 업데이트:', { field, updateData })
@@ -255,12 +233,7 @@ export default function MyPage() {
         // sessionStorage 업데이트
         const updatedUser = {
           ...currentUser,
-          ...(field === 'address' ? {
-            address: editValues.address,
-            detail_address: editValues.detail_address
-          } : {
-            [field]: editValues[field]
-          })
+          [field]: editValues[field]
         }
         sessionStorage.setItem('user', JSON.stringify(updatedUser))
         setUserSession(updatedUser)
@@ -270,16 +243,7 @@ export default function MyPage() {
         // Mock 모드에서는 localStorage의 사용자 정보 업데이트
         const mockUser = JSON.parse(localStorage.getItem('mock_current_user'))
         if (mockUser) {
-          // combined_address 타입인 경우 주소와 상세주소 모두 업데이트
-          if (field === 'address') {
-            mockUser.address = editValues.address
-            mockUser.detail_address = editValues.detail_address
-          } else {
-            // tiktok_id, youtube_id는 camelCase로 변환
-            const fieldName = field === 'tiktok_id' ? 'tiktokId' :
-                           field === 'youtube_id' ? 'youtubeId' : field
-            mockUser[fieldName] = editValues[field]
-          }
+          mockUser[field] = editValues[field]
 
           // localStorage에 저장
           localStorage.setItem('mock_current_user', JSON.stringify(mockUser))
@@ -310,15 +274,7 @@ export default function MyPage() {
       }
 
       // 로컬 상태 업데이트
-      if (field === 'address') {
-        setUserProfile(prev => ({
-          ...prev,
-          [field]: editValues[field],
-          detail_address: editValues.detail_address
-        }))
-      } else {
-        setUserProfile(prev => ({ ...prev, [field]: editValues[field] }))
-      }
+      setUserProfile(prev => ({ ...prev, [field]: editValues[field] }))
       setEditingField(null)
     } catch (error) {
       console.error('정보 수정 실패:', error)
@@ -362,21 +318,6 @@ export default function MyPage() {
     }
   }
 
-  const handleAddressSearch = () => {
-    if (typeof window !== 'undefined' && window.daum && window.daum.Postcode) {
-      new window.daum.Postcode({
-        oncomplete: function(data) {
-          setEditValues(prev => ({
-            ...prev,
-            address: data.address
-          }))
-        }
-      }).open()
-    } else {
-      toast.error('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
-    }
-  }
-
   if (loading || sessionLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -415,13 +356,6 @@ export default function MyPage() {
       readonly: true
     },
     {
-      key: 'address',
-      label: '배송지 주소',
-      icon: MapPinIcon,
-      type: 'combined_address',
-      required: true
-    },
-    {
       key: 'nickname',
       label: '닉네임',
       icon: TagIcon,
@@ -429,6 +363,8 @@ export default function MyPage() {
       required: false
     }
   ]
+
+  const currentUserId = userSession?.id || user?.id
 
   return (
     <>
@@ -455,7 +391,7 @@ export default function MyPage() {
             </div>
           </div>
 
-          {/* 프로필 정보 */}
+          {/* 기본 프로필 정보 */}
           <div className="bg-white mt-2 divide-y divide-gray-200">
             {profileFields.map((field) => {
               const IconComponent = field.icon
@@ -480,72 +416,16 @@ export default function MyPage() {
 
                         {isEditing ? (
                           <div className="space-y-2">
-                            {field.type === 'combined_address' ? (
-                              <div className="space-y-2">
-                                <div className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    value={editValues[field.key] || ''}
-                                    onChange={(e) => setEditValues(prev => ({
-                                      ...prev,
-                                      [field.key]: e.target.value
-                                    }))}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-                                    placeholder="주소 검색을 눌러주세요"
-                                    readOnly
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={handleAddressSearch}
-                                    className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm whitespace-nowrap"
-                                  >
-                                    주소검색
-                                  </button>
-                                </div>
-                                <input
-                                  type="text"
-                                  value={editValues.detail_address || ''}
-                                  onChange={(e) => setEditValues(prev => ({
-                                    ...prev,
-                                    detail_address: e.target.value
-                                  }))}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-                                  placeholder="상세주소 (동, 호수 등)"
-                                />
-                              </div>
-                            ) : field.type === 'address' ? (
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  value={editValues[field.key] || ''}
-                                  onChange={(e) => setEditValues(prev => ({
-                                    ...prev,
-                                    [field.key]: e.target.value
-                                  }))}
-                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-                                  placeholder="주소 검색을 눌러주세요"
-                                  readOnly
-                                />
-                                <button
-                                  type="button"
-                                  onClick={handleAddressSearch}
-                                  className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm whitespace-nowrap"
-                                >
-                                  주소검색
-                                </button>
-                              </div>
-                            ) : (
-                              <input
-                                type={field.type}
-                                value={editValues[field.key] || ''}
-                                onChange={(e) => setEditValues(prev => ({
-                                  ...prev,
-                                  [field.key]: e.target.value
-                                }))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-                                placeholder={field.label}
-                              />
-                            )}
+                            <input
+                              type={field.type}
+                              value={editValues[field.key] || ''}
+                              onChange={(e) => setEditValues(prev => ({
+                                ...prev,
+                                [field.key]: e.target.value
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                              placeholder={field.label}
+                            />
 
                             <div className="flex gap-2">
                               <button
@@ -567,15 +447,7 @@ export default function MyPage() {
                         ) : (
                           <div className="flex items-center justify-between">
                             <p className="text-gray-900 text-sm">
-                              {field.key === 'address'
-                                ? (() => {
-                                    const address = userProfile.address || ''
-                                    const detailAddress = userProfile.detail_address || ''
-                                    const fullAddress = address + (detailAddress ? ` ${detailAddress}` : '')
-                                    return fullAddress || '설정되지 않음'
-                                  })()
-                                : (value || '설정되지 않음')
-                              }
+                              {value || '설정되지 않음'}
                             </p>
                             {!field.readonly && (
                               <button
@@ -597,6 +469,16 @@ export default function MyPage() {
                 </motion.div>
               )
             })}
+          </div>
+
+          {/* 배송지 관리 섹션 */}
+          <div className="bg-white mt-2 p-4">
+            <AddressManager
+              userId={currentUserId}
+              onAddressChange={() => {
+                // 주소 변경 시 필요한 콜백 처리
+              }}
+            />
           </div>
 
           {/* 액션 버튼들 */}

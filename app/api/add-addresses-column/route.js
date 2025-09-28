@@ -8,29 +8,34 @@ export async function GET() {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // addresses JSONB 컬럼 추가
-    const { error } = await supabase.rpc('exec_sql', {
-      sql: `
-        ALTER TABLE profiles
-        ADD COLUMN IF NOT EXISTS addresses JSONB DEFAULT '[]'::jsonb;
-      `
-    })
+    // addresses 컬럼이 존재하는지 먼저 확인
+    const { data: testData, error: testError } = await supabase
+      .from('profiles')
+      .select('addresses')
+      .limit(1)
 
-    if (error) {
-      console.error('SQL 실행 오류:', error)
+    if (testError && testError.message.includes('column "addresses" does not exist')) {
+      // 컬럼이 존재하지 않으면 사용자에게 수동 추가 요청
+      return NextResponse.json({
+        error: 'addresses 컬럼이 존재하지 않습니다.',
+        instruction: 'Supabase 대시보드에서 다음 SQL을 실행해주세요:',
+        sql: `
+ALTER TABLE profiles
+ADD COLUMN addresses JSONB DEFAULT '[]'::jsonb;
 
-      // RPC가 없는 경우 직접 시도
-      const { error: alterError } = await supabase
-        .from('profiles')
-        .select('addresses')
-        .limit(1)
+-- 인덱스 추가 (옵션)
+CREATE INDEX idx_profiles_addresses ON profiles USING GIN (addresses);
+        `,
+        dashboardUrl: 'https://supabase.com/dashboard/project/' + supabaseUrl.split('//')[1].split('.')[0] + '/sql'
+      }, { status: 400 })
+    }
 
-      if (alterError && alterError.message.includes('column')) {
-        return NextResponse.json({
-          error: 'addresses 컬럼 추가 실패. Supabase 대시보드에서 직접 추가해주세요.',
-          details: alterError.message
-        }, { status: 500 })
-      }
+    if (testError) {
+      console.error('테스트 쿼리 오류:', testError)
+      return NextResponse.json({
+        error: '데이터베이스 연결 오류',
+        details: testError.message
+      }, { status: 500 })
     }
 
     // 기존 데이터를 addresses 형식으로 마이그레이션
