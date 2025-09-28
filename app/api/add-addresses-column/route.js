@@ -46,23 +46,34 @@ export async function GET() {
     // addresses가 빈 프로필들 업데이트
     const updates = []
     for (const profile of profiles || []) {
-      if ((!profile.addresses || profile.addresses.length === 0) && profile.address) {
-        // 기존 주소를 기본 주소로 변환
-        const defaultAddress = {
-          id: 1,
-          label: '기본 배송지',
-          address: profile.address || '',
-          detail_address: profile.detail_address || '',
-          is_default: true,
-          created_at: new Date().toISOString()
-        }
+      // addresses가 비어있거나 없는 경우 기존 주소를 변환
+      if (!profile.addresses || profile.addresses.length === 0) {
+        if (profile.address) {
+          // 기존 주소가 있으면 기본 주소로 변환
+          const defaultAddress = {
+            id: 1,
+            label: '기본 배송지',
+            address: profile.address || '',
+            detail_address: profile.detail_address || '',
+            is_default: true,
+            created_at: new Date().toISOString()
+          }
 
-        updates.push(
-          supabase
-            .from('profiles')
-            .update({ addresses: [defaultAddress] })
-            .eq('id', profile.id)
-        )
+          updates.push(
+            supabase
+              .from('profiles')
+              .update({ addresses: [defaultAddress] })
+              .eq('id', profile.id)
+          )
+        } else {
+          // 주소가 아예 없으면 빈 배열로 초기화
+          updates.push(
+            supabase
+              .from('profiles')
+              .update({ addresses: [] })
+              .eq('id', profile.id)
+          )
+        }
       }
     }
 
