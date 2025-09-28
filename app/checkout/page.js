@@ -534,6 +534,32 @@ export default function CheckoutPage() {
                 <AddressManager
                   userProfile={userProfile}
                   selectMode={true}
+                  onUpdate={async (updatedData) => {
+                    // 카카오 사용자 프로필 업데이트
+                    const currentUser = userSession || user
+                    if (currentUser?.provider === 'kakao') {
+                      try {
+                        const { data, error } = await supabase
+                          .from('profiles')
+                          .update({ addresses: updatedData.addresses })
+                          .eq('kakao_id', currentUser.kakao_id)
+                          .select()
+                          .single()
+
+                        if (error) {
+                          console.error('주소 업데이트 오류:', error)
+                          toast.error('주소 저장에 실패했습니다')
+                        } else {
+                          console.log('주소 업데이트 성공:', data)
+                          // 로컬 상태도 업데이트
+                          setUserProfile(prev => ({ ...prev, addresses: updatedData.addresses }))
+                        }
+                      } catch (error) {
+                        console.error('주소 업데이트 실패:', error)
+                        toast.error('주소 저장 중 오류가 발생했습니다')
+                      }
+                    }
+                  }}
                   onSelect={(address) => {
                     setSelectedAddress(address)
                     setShowAddressModal(false)

@@ -24,6 +24,7 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
     address: '',
     detail_address: ''
   })
+  const [showAddressSearch, setShowAddressSearch] = useState(false)
 
   // 초기 주소 데이터 로드
   useEffect(() => {
@@ -174,6 +175,46 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
     }
   }
 
+  // 주소 검색 함수
+  const openAddressSearch = () => {
+    if (typeof window !== 'undefined' && window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: function(data) {
+          // 선택한 주소를 폼에 설정
+          setFormData(prev => ({
+            ...prev,
+            address: `${data.sido} ${data.sigungu} ${data.roadname || data.jibunAddress}`
+          }))
+          setShowAddressSearch(false)
+        },
+        onclose: function() {
+          setShowAddressSearch(false)
+        },
+        width: '100%',
+        height: '100%'
+      }).open()
+    } else {
+      // 카카오맵 API가 로드되지 않은 경우
+      toast.error('주소 검색 서비스를 불러올 수 없습니다')
+    }
+  }
+
+  // 컴포넌트 마운트 시 카카오맵 API 로드
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.daum) {
+      const script = document.createElement('script')
+      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+      script.async = true
+      document.head.appendChild(script)
+
+      return () => {
+        if (document.head.contains(script)) {
+          document.head.removeChild(script)
+        }
+      }
+    }
+  }, [])
+
   return (
     <div className="space-y-4">
       {/* 헤더 */}
@@ -234,13 +275,23 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
                     onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   />
-                  <input
-                    type="text"
-                    placeholder="주소"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="주소를 검색해주세요"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className="w-full px-3 py-2 pr-20 border rounded-lg text-sm"
+                      readOnly
+                    />
+                    <button
+                      type="button"
+                      onClick={openAddressSearch}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                    >
+                      검색
+                    </button>
+                  </div>
                   <input
                     type="text"
                     placeholder="상세주소 (선택)"
@@ -336,13 +387,23 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
             onChange={(e) => setFormData({ ...formData, label: e.target.value })}
             className="w-full px-3 py-2 border rounded-lg text-sm"
           />
-          <input
-            type="text"
-            placeholder="주소"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            className="w-full px-3 py-2 border rounded-lg text-sm"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="주소를 검색해주세요"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="w-full px-3 py-2 pr-20 border rounded-lg text-sm"
+              readOnly
+            />
+            <button
+              type="button"
+              onClick={openAddressSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+            >
+              검색
+            </button>
+          </div>
           <input
             type="text"
             placeholder="상세주소 (선택)"
