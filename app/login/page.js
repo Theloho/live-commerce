@@ -214,6 +214,19 @@ export default function LoginPage() {
         </button>
 
         {/* 회원가입 링크 */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            아직 계정이 없으신가요?{' '}
+            <button
+              onClick={() => router.push('/signup')}
+              className="text-red-500 font-medium hover:text-red-600"
+            >
+              회원가입
+            </button>
+          </p>
+        </div>
+
+        {/* 휴대폰 인증 회원가입 - 임시 비활성화 (2025-09-28)
         <div className="mt-6 text-center space-y-2">
           <p className="text-sm text-gray-600">
             아직 계정이 없으신가요?
@@ -234,6 +247,7 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+        */}
 
         {/* 비밀번호 찾기 */}
         <div className="mt-4 text-center">
