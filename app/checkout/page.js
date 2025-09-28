@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
 import CardPaymentModal from '@/app/components/common/CardPaymentModal'
+import AddressManager from '@/app/components/address/AddressManager'
 import { createOrder, updateMultipleOrderStatus } from '@/lib/supabaseApi'
 import { UserProfileManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
@@ -25,8 +26,11 @@ export default function CheckoutPage() {
     name: '',
     phone: '',
     address: '',
-    detail_address: ''
+    detail_address: '',
+    addresses: []
   })
+  const [selectedAddress, setSelectedAddress] = useState(null)
+  const [showAddressModal, setShowAddressModal] = useState(false)
   const [profileErrors, setProfileErrors] = useState({})
   const [pageLoading, setPageLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
@@ -155,6 +159,12 @@ export default function CheckoutPage() {
 
         setUserProfile(profile)
 
+        // 주소 목록이 있으면 기본 주소 선택
+        if (profile.addresses && profile.addresses.length > 0) {
+          const defaultAddr = profile.addresses.find(a => a.is_default) || profile.addresses[0]
+          setSelectedAddress(defaultAddr)
+        }
+
         // 프로필 완성도 체크
         const completeness = UserProfileManager.checkCompleteness(currentUser)
         if (!completeness.isComplete) {
@@ -231,6 +241,12 @@ export default function CheckoutPage() {
       return
     }
 
+    // 배송지 선택 검증
+    if (!selectedAddress) {
+      toast.error('배송지를 선택해주세요')
+      return
+    }
+
     // 필수 고객 정보 검증
     const profileCompleteness = UserProfileManager.checkCompleteness(userProfile)
     if (!profileCompleteness.isComplete) {
@@ -272,7 +288,16 @@ export default function CheckoutPage() {
         // 단일 주문 생성
         console.log('새 주문 생성 중...')
         console.log('입금자명 전달:', depositName)
-        const newOrder = await createOrder(orderItem, userProfile, depositName)
+        console.log('선택된 주소:', selectedAddress)
+
+        // 선택된 주소를 userProfile에 병합
+        const orderProfile = {
+          ...userProfile,
+          address: selectedAddress?.address || userProfile.address,
+          detail_address: selectedAddress?.detail_address || userProfile.detail_address
+        }
+
+        const newOrder = await createOrder(orderItem, orderProfile, depositName)
         orderId = newOrder.id
       }
 
@@ -415,92 +440,65 @@ export default function CheckoutPage() {
                 <h2 className="font-semibold text-gray-900">배송지</h2>
               </div>
               <button
-                onClick={() => router.push('/mypage')}
+                onClick={() => setShowAddressModal(true)}
                 className="text-sm text-red-500 hover:text-red-600"
               >
                 변경
               </button>
             </div>
-            <div className="space-y-3 text-sm">
-              {/* 이름 */}
-              {!userProfile?.name || profileErrors.name ? (
-                <div>
-                  <label className="block text-xs text-red-600 mb-1">이름을 입력해주세요 *</label>
-                  <input
-                    type="text"
-                    placeholder="홍길동"
-                    value={userProfile?.name || ''}
-                    onChange={(e) => {
-                      setUserProfile(prev => ({ ...prev, name: e.target.value }))
-                      if (e.target.value.trim()) {
-                        setProfileErrors(prev => ({ ...prev, name: false }))
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
-              ) : (
+
+            {/* 선택된 주소 표시 */}
+            {selectedAddress ? (
+              <div className="space-y-2 text-sm">
                 <p className="font-medium text-gray-900">{userProfile.name}</p>
-              )}
-
-              {/* 전화번호 */}
-              {!userProfile?.phone || profileErrors.phone ? (
-                <div>
-                  <label className="block text-xs text-red-600 mb-1">전화번호를 입력해주세요 *</label>
-                  <input
-                    type="tel"
-                    placeholder="010-1234-5678"
-                    value={userProfile?.phone || ''}
-                    onChange={(e) => {
-                      setUserProfile(prev => ({ ...prev, phone: e.target.value }))
-                      if (e.target.value.trim().length >= 10) {
-                        setProfileErrors(prev => ({ ...prev, phone: false }))
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
-              ) : (
                 <p className="text-gray-600">{userProfile.phone}</p>
-              )}
-
-              {/* 주소 */}
-              {!userProfile?.address || profileErrors.address ? (
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs text-red-600 mb-1">주소를 입력해주세요 *</label>
-                    <input
-                      type="text"
-                      placeholder="서울시 강남구 테헤란로 123"
-                      value={userProfile?.address || ''}
-                      onChange={(e) => {
-                        setUserProfile(prev => ({ ...prev, address: e.target.value }))
-                        if (e.target.value.trim()) {
-                          setProfileErrors(prev => ({ ...prev, address: false }))
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">상세주소 (선택)</label>
-                    <input
-                      type="text"
-                      placeholder="○○아파트 ○○○동 ○○○호"
-                      value={userProfile?.detail_address || ''}
-                      onChange={(e) => setUserProfile(prev => ({ ...prev, detail_address: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    />
-                  </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="font-medium text-gray-900 mb-1">{selectedAddress.label}</p>
+                  <p className="text-gray-600">
+                    {selectedAddress.address}
+                    {selectedAddress.detail_address && <><br/>{selectedAddress.detail_address}</>}
+                  </p>
                 </div>
-              ) : (
-                <p className="text-gray-600">
-                  {userProfile.address}
-                  {userProfile?.detail_address && ` ${userProfile.detail_address}`}
-                </p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-500 text-sm mb-2">배송지가 선택되지 않았습니다</p>
+                <button
+                  onClick={() => setShowAddressModal(true)}
+                  className="text-red-500 hover:text-red-600 text-sm font-medium"
+                >
+                  배송지 선택하기
+                </button>
+              </div>
+            )}
           </motion.div>
+
+          {/* 주소 선택 모달 */}
+          {showAddressModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">배송지 선택</h2>
+                  <button
+                    onClick={() => setShowAddressModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <AddressManager
+                  userProfile={userProfile}
+                  selectMode={true}
+                  onSelect={(address) => {
+                    setSelectedAddress(address)
+                    setShowAddressModal(false)
+                    toast.success(`'${address.label}' 배송지가 선택되었습니다`)
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* 배송 옵션 */}
           <motion.div
