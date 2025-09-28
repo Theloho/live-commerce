@@ -2,69 +2,55 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request) {
   try {
-    const { code } = await request.json()
+    const body = await request.json()
+    const { code } = body
 
     if (!code) {
-      return NextResponse.json({ error: 'Authorization code is required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Authorization code is required' },
+        { status: 400 }
+      )
     }
 
-    // 카카오 토큰 교환 시작
+    // 환경변수 설정
+    const clientId = '25369ebb145320aed6a888a721f088a9'
+    const redirectUri = 'https://allok.shop/auth/callback'
 
-    // 환경변수 디버깅
-    const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '25369ebb145320aed6a888a721f088a9'
-    const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI || 'https://allok.shop/auth/callback'
-    const clientSecret = process.env.KAKAO_CLIENT_SECRET || ''
+    // 카카오 토큰 교환 요청 파라미터
+    const params = new URLSearchParams()
+    params.append('grant_type', 'authorization_code')
+    params.append('client_id', clientId)
+    params.append('redirect_uri', redirectUri)
+    params.append('code', code)
 
-    // 환경변수 확인 완료
-
-    // 카카오 토큰 교환 요청
+    // 카카오 토큰 요청
     const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        code: code,
-      }),
+      body: params.toString(),
     })
 
     const tokenData = await tokenResponse.json()
 
     if (!tokenResponse.ok) {
-      console.error('카카오 토큰 교환 실패:', {
-        status: tokenResponse.status,
-        statusText: tokenResponse.statusText,
-        error: tokenData,
-        params: {
-          clientId: clientId ? '설정됨' : '미설정',
-          clientSecret: clientSecret ? '설정됨' : '미설정',
-          redirectUri,
-          codeLength: code.length
-        }
-      })
-
-      // 더 자세한 에러 메시지 반환
-      const errorMessage = tokenData.error_description || tokenData.error || 'Token exchange failed'
-      return NextResponse.json({
-        error: errorMessage,
-        details: tokenData.error_code || null,
-        debug: {
-          hasClientId: !!clientId,
-          hasClientSecret: !!clientSecret,
-          redirectUri
-        }
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: tokenData.error_description || tokenData.error || 'Token exchange failed',
+          error_code: tokenData.error_code,
+        },
+        { status: 400 }
+      )
     }
 
-    // 카카오 토큰 교환 성공
     return NextResponse.json(tokenData)
 
   } catch (error) {
-    console.error('카카오 토큰 교환 오류:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Kakao token exchange error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', message: error.message },
+      { status: 500 }
+    )
   }
 }
