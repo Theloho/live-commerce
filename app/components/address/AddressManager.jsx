@@ -83,6 +83,11 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
       await onUpdate({ addresses: updatedAddresses })
     }
 
+    // 선택 모드에서는 새로 추가된 주소를 자동으로 선택
+    if (selectMode && onSelect) {
+      onSelect(newAddress)
+    }
+
     setFormData({ label: '', address: '', detail_address: '' })
     setShowAddForm(false)
     toast.success('배송지가 추가되었습니다')
@@ -172,11 +177,24 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
   return (
     <div className="space-y-4">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {selectMode ? '배송지 선택' : '내 배송지 관리'}
-        </h3>
-        {!selectMode && addresses.length < 5 && (
+      {!selectMode && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">내 배송지 관리</h3>
+          {addresses.length < 5 && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600"
+            >
+              <PlusIcon className="w-4 h-4" />
+              새 배송지 추가 ({addresses.length}/5)
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 선택 모드에서도 주소 추가 버튼 */}
+      {selectMode && addresses.length < 5 && (
+        <div className="flex justify-end mb-4">
           <button
             onClick={() => setShowAddForm(true)}
             className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600"
@@ -184,8 +202,8 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
             <PlusIcon className="w-4 h-4" />
             새 배송지 추가 ({addresses.length}/5)
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 주소 목록 */}
       <div className="space-y-3">
