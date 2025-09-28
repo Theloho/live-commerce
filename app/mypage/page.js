@@ -17,7 +17,7 @@ import {
 import useAuth from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
-import AddressManager from '@/components/AddressManager'
+import AddressManager from '@/app/components/AddressManager'
 
 export default function MyPage() {
   const router = useRouter()
