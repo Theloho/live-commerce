@@ -213,16 +213,10 @@ export default function LoginPage() {
           {loading ? '로그인 중...' : '카카오 로그인'}
         </button>
 
-        {/* 회원가입 링크 */}
+        {/* 회원가입 안내 - 카카오 로그인만 지원 */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            아직 계정이 없으신가요?{' '}
-            <button
-              onClick={() => router.push('/signup')}
-              className="text-red-500 font-medium hover:text-red-600"
-            >
-              회원가입
-            </button>
+            아직 계정이 없으신가요? 위의 카카오 로그인을 이용해주세요
           </p>
         </div>
 
