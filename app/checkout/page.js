@@ -190,12 +190,6 @@ export default function CheckoutPage() {
           console.log('정규화된 사용자 프로필:', profile)
           setUserProfile(profile)
         }
-      }
-
-        // 기본 입금자명을 사용자 이름으로 설정
-        if (userProfile?.name) {
-          setDepositName(userProfile.name)
-        }
       } else {
         console.log('currentUser가 없음')
         // 빈 프로필 설정
