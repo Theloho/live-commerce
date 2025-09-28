@@ -214,16 +214,25 @@ export default function LoginPage() {
         </button>
 
         {/* 회원가입 링크 */}
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-2">
           <p className="text-sm text-gray-600">
-            아직 계정이 없으신가요?{' '}
+            아직 계정이 없으신가요?
+          </p>
+          <div className="flex gap-2 justify-center">
             <button
               onClick={() => router.push('/signup')}
-              className="text-red-500 font-medium hover:text-red-600"
+              className="text-red-500 font-medium hover:text-red-600 text-sm"
             >
-              회원가입
+              이메일 회원가입
             </button>
-          </p>
+            <span className="text-gray-400">|</span>
+            <button
+              onClick={() => router.push('/phone-signup')}
+              className="text-blue-600 font-medium hover:text-blue-700 text-sm"
+            >
+              휴대폰 인증 회원가입
+            </button>
+          </div>
         </div>
 
         {/* 비밀번호 찾기 */}
