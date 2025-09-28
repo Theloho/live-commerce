@@ -151,37 +151,50 @@ export default function CheckoutPage() {
         return
       }
 
-      // 사용자 정보 가져오기 - UserProfileManager 사용
+      // 사용자 정보 가져오기
       if (currentUser) {
-        const profile = UserProfileManager.normalizeProfile(currentUser)
-        console.log('정규화된 사용자 프로필:', profile)
-        console.log('프로필 유효성:', profile.isValid)
+        // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기
+        if (currentUser.provider === 'kakao') {
+          try {
+            console.log('카카오 사용자 - 데이터베이스에서 프로필 조회 중...')
+            const { data: dbProfile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('kakao_id', currentUser.kakao_id)
+              .single()
 
-        setUserProfile(profile)
-
-        // 주소 목록이 있으면 기본 주소 선택
-        if (profile.addresses && profile.addresses.length > 0) {
-          const defaultAddr = profile.addresses.find(a => a.is_default) || profile.addresses[0]
-          setSelectedAddress(defaultAddr)
+            if (error) {
+              console.error('데이터베이스 프로필 조회 오류:', error)
+              // 오류 시 기본 프로필 사용
+              const profile = UserProfileManager.normalizeProfile(currentUser)
+              setUserProfile(profile)
+            } else if (dbProfile) {
+              console.log('데이터베이스에서 카카오 사용자 프로필 로드:', dbProfile)
+              const profile = UserProfileManager.normalizeProfile(dbProfile)
+              console.log('정규화된 사용자 프로필:', profile)
+              setUserProfile(profile)
+            } else {
+              console.log('데이터베이스에서 프로필을 찾을 수 없음, 기본 프로필 사용')
+              const profile = UserProfileManager.normalizeProfile(currentUser)
+              setUserProfile(profile)
+            }
+          } catch (error) {
+            console.error('카카오 사용자 프로필 로드 오류:', error)
+            // 오류 시 기본 프로필 사용
+            const profile = UserProfileManager.normalizeProfile(currentUser)
+            setUserProfile(profile)
+          }
+        } else {
+          // 일반 사용자는 기존 로직 사용
+          const profile = UserProfileManager.normalizeProfile(currentUser)
+          console.log('정규화된 사용자 프로필:', profile)
+          setUserProfile(profile)
         }
-
-        // 프로필 완성도 체크
-        const completeness = UserProfileManager.checkCompleteness(currentUser)
-        if (!completeness.isComplete) {
-          console.log('미완성 프로필 필드:', completeness.missingFields)
-          // 미완성 필드에 대한 에러 표시
-          const errors = {}
-          completeness.missingFields.forEach(field => {
-            if (field === '이름') errors.name = true
-            if (field === '연락처') errors.phone = true
-            if (field === '배송지 주소') errors.address = true
-          })
-          setProfileErrors(errors)
-        }
+      }
 
         // 기본 입금자명을 사용자 이름으로 설정
-        if (profile.name) {
-          setDepositName(profile.name)
+        if (userProfile?.name) {
+          setDepositName(userProfile.name)
         }
       } else {
         console.log('currentUser가 없음')
@@ -200,6 +213,36 @@ export default function CheckoutPage() {
 
     initCheckout()
   }, [isAuthenticated, user, authLoading, userSession, router])
+
+  // userProfile이 설정되면 주소 선택 및 프로필 완성도 체크
+  useEffect(() => {
+    if (userProfile) {
+      console.log('userProfile 설정됨, 주소 및 프로필 체크 실행')
+
+      // 주소 목록이 있으면 기본 주소 선택
+      if (userProfile.addresses && userProfile.addresses.length > 0) {
+        const defaultAddr = userProfile.addresses.find(a => a.is_default) || userProfile.addresses[0]
+        setSelectedAddress(defaultAddr)
+        console.log('기본 주소 선택:', defaultAddr)
+      }
+
+      // 프로필 완성도 체크
+      const completeness = UserProfileManager.checkCompleteness(userProfile)
+      if (!completeness.isComplete) {
+        console.log('미완성 프로필 필드:', completeness.missingFields)
+        // 미완성 필드에 대한 에러 표시
+        const errors = {}
+        completeness.missingFields.forEach(field => {
+          if (field === '이름') errors.name = true
+          if (field === '연락처') errors.phone = true
+          if (field === '배송지 주소') errors.address = true
+        })
+        setProfileErrors(errors)
+      } else {
+        setProfileErrors({})
+      }
+    }
+  }, [userProfile])
 
   if ((authLoading && !userSession) || pageLoading) {
     return (
