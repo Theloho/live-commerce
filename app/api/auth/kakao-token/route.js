@@ -39,8 +39,29 @@ export async function POST(request) {
     const tokenData = await tokenResponse.json()
 
     if (!tokenResponse.ok) {
-      console.error('카카오 토큰 교환 실패:', tokenData)
-      return NextResponse.json({ error: tokenData.error_description || 'Token exchange failed' }, { status: 400 })
+      console.error('카카오 토큰 교환 실패:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        error: tokenData,
+        params: {
+          clientId: clientId ? '설정됨' : '미설정',
+          clientSecret: clientSecret ? '설정됨' : '미설정',
+          redirectUri,
+          codeLength: code.length
+        }
+      })
+
+      // 더 자세한 에러 메시지 반환
+      const errorMessage = tokenData.error_description || tokenData.error || 'Token exchange failed'
+      return NextResponse.json({
+        error: errorMessage,
+        details: tokenData.error_code || null,
+        debug: {
+          hasClientId: !!clientId,
+          hasClientSecret: !!clientSecret,
+          redirectUri
+        }
+      }, { status: 400 })
     }
 
     console.log('카카오 토큰 교환 성공')
