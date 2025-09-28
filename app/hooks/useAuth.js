@@ -235,8 +235,8 @@ export default function useAuth() {
       console.log('카카오 로그인 시작')
 
       // 카카오 REST API 키와 리디렉트 URL
-      const kakaoClientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID
-      const redirectUrl = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI || process.env.NEXT_PUBLIC_SITE_URL + '/auth/callback'
+      const kakaoClientId = '25369ebb145320aed6a888a721f088a9'
+      const redirectUrl = 'https://allok.shop/auth/callback'
 
       // 직접 카카오 OAuth URL로 리디렉션
       const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoClientId}&redirect_uri=${encodeURIComponent(redirectUrl)}&response_type=code&scope=profile_nickname,profile_image,account_email`
