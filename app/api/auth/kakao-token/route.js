@@ -10,6 +10,17 @@ export async function POST(request) {
 
     console.log('카카오 토큰 교환 시작:', code)
 
+    // 환경변수 디버깅
+    const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '25369ebb145320aed6a888a721f088a9'
+    const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI || 'https://allok.shop/auth/callback'
+    const clientSecret = process.env.KAKAO_CLIENT_SECRET || ''
+
+    console.log('환경변수 확인:', {
+      clientId: clientId ? '설정됨' : '미설정',
+      redirectUri: redirectUri ? '설정됨' : '미설정',
+      clientSecret: clientSecret ? '설정됨' : '미설정'
+    })
+
     // 카카오 토큰 교환 요청
     const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
       method: 'POST',
@@ -18,9 +29,9 @@ export async function POST(request) {
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID,
-        client_secret: process.env.KAKAO_CLIENT_SECRET || '', // 환경변수에서 가져오기
-        redirect_uri: process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
         code: code,
       }),
     })
