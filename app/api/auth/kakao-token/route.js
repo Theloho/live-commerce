@@ -12,10 +12,10 @@ export async function POST(request) {
       )
     }
 
-    // 환경변수 설정
-    const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || '25369ebb145320aed6a888a721f088a9'
-    const clientSecret = process.env.KAKAO_CLIENT_SECRET || 'i07Uam9nawUxEglylpaycYim67rYi5B6'
-    const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI || 'https://allok.shop/auth/callback'
+    // 환경변수 설정 (임시로 하드코딩 우선 사용)
+    const clientId = '25369ebb145320aed6a888a721f088a9'
+    const clientSecret = 'i07Uam9nawUxEglylpaycYim67rYi5B6'
+    const redirectUri = 'https://allok.shop/auth/callback'
 
     // 카카오 토큰 교환 요청 파라미터
     const params = new URLSearchParams()
