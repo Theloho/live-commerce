@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { validateSignupForm } from '@/lib/validation'
 import toast from 'react-hot-toast'
 import useAuth from '@/app/hooks/useAuth'
@@ -13,14 +12,10 @@ export default function SignupPage() {
   const router = useRouter()
   const { signUp, signInWithPassword, signInWithKakao } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    password: '',
     nickname: '',
-    tiktokId: '',
-    youtubeId: '',
     address: '',
     detailAddress: ''
   })
@@ -197,12 +192,34 @@ export default function SignupPage() {
             <p className="text-gray-600">allok에 오신 것을 환영합니다</p>
           </div>
 
-          {/* 안내 문구 */}
-          <div className="mb-6 p-3 bg-red-50 rounded-lg">
-            <p className="text-red-600 text-sm font-medium text-center">
-              * 입금자명은 닉네임 또는 이름으로 입금해주세요
+          {/* 카카오 로그인으로 간편가입 안내 */}
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-yellow-800 text-sm font-medium text-center mb-2">
+              🚀 간편하게 카카오로 가입하세요!
+            </p>
+            <p className="text-yellow-700 text-xs text-center">
+              카카오 계정으로 3초 만에 회원가입이 완료됩니다
             </p>
           </div>
+
+          {/* 카카오 로그인 버튼 */}
+          <button
+            onClick={handleKakaoLogin}
+            disabled={loading}
+            className="w-full bg-yellow-400 text-gray-900 py-4 rounded-lg font-semibold hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 mb-6"
+          >
+            {loading ? '로그인 중...' : '카카오로 3초 만에 가입하기'}
+          </button>
+
+          {/* 일반 회원가입 폼 (현재 비활성화) */}
+          <details className="border border-gray-200 rounded-lg">
+            <summary className="p-4 cursor-pointer text-sm text-gray-600 hover:bg-gray-50">
+              일반 회원가입 (개발 중)
+            </summary>
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <p className="text-xs text-gray-500 text-center mb-4">
+                현재 카카오 로그인만 지원됩니다
+              </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* 이름 */}
@@ -240,35 +257,6 @@ export default function SignupPage() {
               />
             </div>
 
-            {/* 비밀번호 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                비밀번호 <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="6자 이상 입력해주세요"
-                  autoComplete="new-password"
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
 
             {/* 주소 */}
             <div>
@@ -330,38 +318,17 @@ export default function SignupPage() {
               />
             </div>
 
-            {/* 가입 버튼 */}
+            {/* 가입 버튼 (비활성화) */}
             <button
               type="submit"
-              disabled={loading}
-              onClick={(e) => {
-                console.log('Button clicked!')
-                // handleSubmit은 onSubmit에서 자동으로 처리됨
-              }}
-              className="w-full mt-6 bg-red-500 text-white py-4 rounded-lg font-semibold hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={true}
+              className="w-full mt-6 bg-gray-300 text-gray-500 py-4 rounded-lg font-semibold cursor-not-allowed"
             >
-              {loading ? '가입 중...' : '회원가입'}
+              현재 지원하지 않음
             </button>
           </form>
-
-          {/* 소셜 로그인 구분선 */}
-          <div className="mt-6 mb-4 flex items-center">
-            <div className="flex-1 border-t border-gray-300"></div>
-            <span className="px-4 text-sm text-gray-500">또는</span>
-            <div className="flex-1 border-t border-gray-300"></div>
-          </div>
-
-          {/* 카카오 로그인 버튼 */}
-          <button
-            onClick={handleKakaoLogin}
-            disabled={loading}
-            className="w-full bg-yellow-400 text-gray-900 py-4 rounded-lg font-semibold hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 3C7.03 3 3 6.28 3 10.32c0 2.74 1.89 5.13 4.62 6.37l-1.24 4.56c-.11.4.36.7.67.49l5.24-3.63c.23.02.46.03.71.03 4.97 0 9-3.28 9-7.32S16.97 3 12 3z"/>
-            </svg>
-            {loading ? '처리 중...' : '카카오로 간편 가입'}
-          </button>
+            </div>
+          </details>
 
           {/* 로그인 링크 */}
           <div className="mt-6 text-center">
@@ -369,9 +336,9 @@ export default function SignupPage() {
               이미 계정이 있으신가요?{' '}
               <button
                 onClick={() => router.push('/login')}
-                className="text-red-500 font-medium hover:text-red-600"
+                className="text-red-600 hover:text-red-700 font-medium"
               >
-                로그인
+                로그인하기
               </button>
             </p>
           </div>
