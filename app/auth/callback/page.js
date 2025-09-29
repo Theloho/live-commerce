@@ -144,41 +144,87 @@ export default function AuthCallback() {
 
       let userProfile
       if (!checkResult.exists) {
-        // 새 사용자 생성
-        console.log('🆕 새 카카오 사용자 생성')
-        const createResponse = await fetch('/api/auth/create-kakao-user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(profileData)
+        // 🚀 통합 인증 시스템: 새 사용자 생성
+        console.log('🆕 통합 시스템으로 카카오 사용자 생성')
+
+        // 1. Supabase Auth에 사용자 생성 (임시 패스워드 사용)
+        const tempPassword = `kakao_temp_${kakaoUserId}_${Date.now()}`
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email,
+          password: tempPassword,
+          options: {
+            data: {
+              name: profileData.name,
+              nickname: profileData.nickname,
+              kakao_id: kakaoUserId,
+              provider: 'kakao'
+            }
+          }
         })
 
-        if (!createResponse.ok) throw new Error('사용자 생성 실패')
-        userProfile = await createResponse.json()
-      } else {
-        // 기존 사용자 업데이트
-        console.log('🔄 기존 카카오 사용자 업데이트')
-        const updateResponse = await fetch('/api/auth/update-kakao-user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        if (authError) {
+          console.error('Auth 사용자 생성 실패:', authError)
+          throw new Error(`카카오 사용자 생성 실패: ${authError.message}`)
+        }
+
+        console.log('✅ auth.users 생성 성공:', authData.user.id)
+
+        // 2. profiles 테이블에 추가 정보 저장
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id, // auth.users의 ID 사용
             kakao_id: kakaoUserId,
-            avatar_url: userData.kakao_account.profile.profile_image_url
+            email: email,
+            name: profileData.name,
+            nickname: profileData.nickname,
+            avatar_url: profileData.avatar_url,
+            provider: 'kakao',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           })
-        })
+          .select()
+          .single()
 
-        if (!updateResponse.ok) throw new Error('사용자 업데이트 실패')
-        userProfile = await updateResponse.json()
+        if (profileError) {
+          console.error('프로필 생성 실패:', profileError)
+          throw new Error('카카오 프로필 생성 실패')
+        }
+
+        console.log('✅ 통합 카카오 사용자 생성 완료')
+        userProfile = newProfile
+      } else {
+        // 기존 사용자 업데이트 (통합 시스템)
+        console.log('🔄 기존 카카오 사용자 정보 업데이트')
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            avatar_url: userData.kakao_account.profile.profile_image_url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('kakao_id', kakaoUserId)
+          .select()
+          .single()
+
+        if (updateError) {
+          console.error('프로필 업데이트 실패:', updateError)
+          throw new Error('카카오 프로필 업데이트 실패')
+        }
+
+        userProfile = updatedProfile
       }
 
       console.log('✅ 카카오 로그인 고속 처리 완료')
       return userProfile
     }
 
-    // ⚡ 최종 로그인 처리 (세션 저장 + 리다이렉트)
+    // ⚡ 최종 로그인 처리 (세션 저장 + 리다이렉트) - 통합 시스템
     const finalizeLoginFast = async (userProfile) => {
-      // 세션 스토리지에 사용자 정보 저장
+      console.log('🔐 통합 시스템 세션 저장:', userProfile.id)
+
+      // 세션 스토리지에 사용자 정보 저장 (auth.users ID 우선)
       const sessionUser = {
-        id: userProfile.id,
+        id: userProfile.id, // auth.users ID (통합 시스템)
         email: userProfile.email,
         name: userProfile.name,
         nickname: userProfile.nickname,
@@ -188,6 +234,7 @@ export default function AuthCallback() {
       }
 
       sessionStorage.setItem('user', JSON.stringify(sessionUser))
+      console.log('✅ 통합 세션 저장 완료')
 
       // 커스텀 로그인 이벤트 발생
       window.dispatchEvent(new CustomEvent('kakaoLoginSuccess', {
