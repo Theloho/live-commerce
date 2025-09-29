@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import useAuth from '@/app/hooks/useAuth'
 import { validatePhoneNumber, validatePassword } from '@/lib/validation'
 import { motion } from 'framer-motion'
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import SignupPromptModal from '@/app/components/common/SignupPromptModal'
 
@@ -13,13 +12,8 @@ export default function LoginPage() {
   const router = useRouter()
   const { signInWithPassword, signInWithKakao } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
   const [showSignupPrompt, setShowSignupPrompt] = useState(false)
   const modalTimerRef = useRef(null)
-  const [formData, setFormData] = useState({
-    phone: '',
-    password: ''
-  })
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -157,76 +151,6 @@ export default function LoginPage() {
           {loading ? '로그인 중...' : '카카오 로그인'}
         </button>
 
-        {/* 일반 로그인 폼 (현재 비활성화) */}
-        <details className="border border-gray-200 rounded-lg mb-6">
-          <summary className="p-4 cursor-pointer text-sm text-gray-600 hover:bg-gray-50">
-            일반 로그인 (개발 중)
-          </summary>
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
-            <p className="text-xs text-gray-500 text-center mb-4">
-              현재 카카오 로그인만 지원됩니다
-            </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 휴대폰번호 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              휴대폰번호
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              placeholder="010-0000-0000"
-              maxLength={13}
-              autoComplete="tel"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-              required
-            />
-          </div>
-
-          {/* 비밀번호 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              비밀번호
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="비밀번호를 입력해주세요"
-                autoComplete="current-password"
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5" />
-                ) : (
-                  <EyeIcon className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* 로그인 버튼 (비활성화) */}
-          <button
-            type="submit"
-            disabled={true}
-            className="w-full mt-6 bg-gray-300 text-gray-500 py-4 rounded-lg font-semibold cursor-not-allowed"
-          >
-            현재 지원하지 않음
-          </button>
-        </form>
-          </div>
-        </details>
 
         {/* 안내 메시지 */}
         <div className="text-center">
