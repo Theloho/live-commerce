@@ -77,9 +77,9 @@ export default function useAuth() {
     try {
       setAuthLoading(true)
 
-      console.log('회원가입 요청:', { email, password: '***', name, phone, nickname })
+      console.log('🔄 통합 회원가입 시작:', { email, password: '***', name, phone, nickname })
 
-      // profiles 테이블에 직접 사용자 생성
+      // 1. 기존 사용자 확인
       const { data: existingUser } = await supabase
         .from('profiles')
         .select('*')
@@ -90,15 +90,38 @@ export default function useAuth() {
         throw new Error('이미 가입된 이메일입니다')
       }
 
-      // 새 사용자 프로필 생성
+      // 2. Supabase Auth에 사용자 생성 (통합 인증 시스템)
+      console.log('🔐 auth.users에 사용자 생성 중...')
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            name: name,
+            phone: phone,
+            nickname: nickname || name
+          }
+        }
+      })
+
+      if (authError) {
+        console.error('Auth 사용자 생성 실패:', authError)
+        throw new Error(`회원가입 실패: ${authError.message}`)
+      }
+
+      console.log('✅ auth.users 생성 성공:', authData.user?.id)
+
+      // 3. profiles 테이블에 추가 정보 저장
+      console.log('📝 profiles 테이블에 추가 정보 저장 중...')
       const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
         .insert({
+          id: authData.user.id, // auth.users의 ID 사용
           email: email,
           name: name,
           phone: phone,
           nickname: nickname || name,
-          password_hash: await bcrypt.hash(password, 12), // bcrypt로 암호화
           provider: 'email',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -108,18 +131,20 @@ export default function useAuth() {
 
       if (insertError) {
         console.error('프로필 생성 오류:', insertError)
+        // auth.users에서 생성된 사용자 정리
+        await supabase.auth.signOut()
         throw new Error('회원가입에 실패했습니다')
       }
 
-      console.log('회원가입 성공:', newProfile)
+      console.log('✅ 통합 회원가입 성공:', newProfile)
 
-      // 자동 로그인
+      // 4. 자동 로그인 (세션 기반)
       const userData = {
-        id: newProfile.id,
-        email: newProfile.email,
-        name: newProfile.name,
-        nickname: newProfile.nickname,
-        phone: newProfile.phone,
+        id: authData.user.id, // auth.users ID 사용
+        email: email,
+        name: name,
+        nickname: nickname || name,
+        phone: phone,
         provider: 'email'
       }
 
@@ -141,31 +166,58 @@ export default function useAuth() {
     try {
       setAuthLoading(true)
 
-      console.log('로그인 요청:', { email, password: '***' })
+      console.log('🔄 통합 로그인 시작:', { email, password: '***' })
 
-      // profiles 테이블에서 사용자 확인
-      const { data: userProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', email)
-        .single()
+      // 1. Supabase Auth로 로그인 (통합 인증 시스템)
+      console.log('🔐 auth.users 로그인 중...')
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      })
 
-      // 패스워드 해시 비교
-      const isPasswordValid = userProfile && await bcrypt.compare(password, userProfile.password_hash)
-
-      if (fetchError || !userProfile || !isPasswordValid) {
-        console.error('로그인 실패:', fetchError || '잘못된 사용자 정보')
+      if (authError) {
+        console.error('Auth 로그인 실패:', authError)
         throw new Error('이메일 또는 비밀번호가 올바르지 않습니다')
       }
 
-      // 로그인 성공
+      console.log('✅ auth.users 로그인 성공:', authData.user?.id)
 
-      console.log('로그인 성공:', userProfile)
+      // 2. profiles 테이블에서 추가 정보 조회
+      console.log('📝 profiles 정보 조회 중...')
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single()
 
-      // 세션 저장
+      if (profileError || !userProfile) {
+        console.error('프로필 조회 실패:', profileError)
+        // profiles 테이블에 정보가 없다면 기본 정보로 생성
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: authData.user.email,
+            name: authData.user.user_metadata?.name || '사용자',
+            phone: authData.user.user_metadata?.phone || '',
+            nickname: authData.user.user_metadata?.nickname || authData.user.user_metadata?.name || '사용자',
+            provider: 'email',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        console.log('📝 프로필 자동 생성:', newProfile)
+        userProfile = newProfile
+      }
+
+      console.log('✅ 통합 로그인 성공:', userProfile)
+
+      // 3. 세션 저장 (auth.users ID 사용)
       const userData = {
-        id: userProfile.id,
-        email: userProfile.email,
+        id: authData.user.id, // auth.users ID 사용
+        email: authData.user.email,
         name: userProfile.name,
         nickname: userProfile.nickname,
         phone: userProfile.phone,
@@ -190,19 +242,28 @@ export default function useAuth() {
     try {
       setAuthLoading(true)
 
-      console.log('로그아웃 시작')
+      console.log('🔄 통합 로그아웃 시작')
 
-      // 세션 스토리지에서 사용자 정보 삭제
+      // 1. Supabase Auth 로그아웃 (통합 인증 시스템)
+      console.log('🔐 auth.users 로그아웃 중...')
+      const { error: authError } = await supabase.auth.signOut()
+
+      if (authError) {
+        console.warn('Auth 로그아웃 경고:', authError)
+        // 경고만 하고 계속 진행
+      }
+
+      // 2. 세션 스토리지에서 사용자 정보 삭제
       sessionStorage.removeItem('user')
-      console.log('sessionStorage 사용자 정보 삭제 완료')
+      console.log('✅ sessionStorage 사용자 정보 삭제 완료')
 
-      // 사용자 상태 초기화
+      // 3. 사용자 상태 초기화
       clearUser()
-      console.log('사용자 상태 초기화 완료')
+      console.log('✅ 사용자 상태 초기화 완료')
 
-      // 로그아웃 이벤트 발생 (다른 컴포넌트들이 감지할 수 있도록)
+      // 4. 로그아웃 이벤트 발생 (다른 컴포넌트들이 감지할 수 있도록)
       window.dispatchEvent(new CustomEvent('userLoggedOut'))
-      console.log('로그아웃 이벤트 발생 완료')
+      console.log('✅ 로그아웃 이벤트 발생 완료')
 
       toast.success('로그아웃되었습니다')
       return { success: true }
