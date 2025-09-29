@@ -534,13 +534,16 @@ export default function OrderCompletePage() {
           >
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-gray-900">배송지 정보</h2>
-              <button
-                onClick={() => setIsEditingAddress(!isEditingAddress)}
-                className="text-red-500 hover:text-red-600 transition-colors flex items-center gap-1 text-sm"
-              >
-                <PencilIcon className="w-4 h-4" />
-                변경
-              </button>
+              {/* 결제 확인중(verifying) 이상부터는 주소 변경 불가 */}
+              {orderData.status === 'pending' && (
+                <button
+                  onClick={() => setIsEditingAddress(!isEditingAddress)}
+                  className="text-red-500 hover:text-red-600 transition-colors flex items-center gap-1 text-sm"
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  변경
+                </button>
+              )}
             </div>
 
             {isEditingAddress ? (
