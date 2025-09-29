@@ -3,103 +3,18 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import useAuth from '@/app/hooks/useAuth'
-import { validatePhoneNumber, validatePassword } from '@/lib/validation'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import SignupPromptModal from '@/app/components/common/SignupPromptModal'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { signInWithPassword, signInWithKakao } = useAuth()
+  const { signInWithKakao } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showSignupPrompt, setShowSignupPrompt] = useState(false)
   const modalTimerRef = useRef(null)
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
 
-    // 휴대폰 번호 자동 포맷팅
-    if (name === 'phone') {
-      const numbers = value.replace(/[^\d]/g, '')
-      let formatted = numbers
-
-      if (numbers.length >= 3) {
-        formatted = numbers.slice(0, 3) + '-' + numbers.slice(3)
-      }
-      if (numbers.length >= 7) {
-        formatted = numbers.slice(0, 3) + '-' + numbers.slice(3, 7) + '-' + numbers.slice(7, 11)
-      }
-
-      setFormData(prev => ({ ...prev, [name]: formatted }))
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }))
-    }
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    // 휴대폰 번호 검증
-    const phoneValidation = validatePhoneNumber(formData.phone)
-    if (!phoneValidation.isValid) {
-      toast.error(phoneValidation.error)
-      return
-    }
-
-    // 비밀번호 기본 검증 (로그인시는 간단하게)
-    if (!formData.password || formData.password.length < 6) {
-      toast.error('비밀번호를 6자 이상 입력해주세요')
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      // 휴대폰 번호를 이메일 형식으로 변환
-      const phone = formData.phone.replace(/[^\d]/g, '')
-      const email = `user${phone}@allok.app`
-
-      const { data, error } = await signInWithPassword({
-        email: email,
-        password: formData.password
-      })
-
-      if (error) {
-        // error가 문자열인 경우와 객체인 경우 모두 처리
-        const errorMessage = typeof error === 'string' ? error : (error.message || error.toString())
-        console.log('로그인 에러 상세:', error)
-        console.log('errorMessage:', errorMessage)
-
-        if (errorMessage && (errorMessage.includes('Invalid login credentials') || errorMessage.includes('Phone logins are disabled') || errorMessage.includes('disabled'))) {
-          // 미가입 사용자일 가능성이 높으므로 회원가입 유도 모달 표시
-          console.log('로그인 실패 - 회원가입 모달 표시')
-          console.log('현재 showSignupPrompt 상태:', showSignupPrompt)
-          setShowSignupPrompt(true)
-          console.log('setShowSignupPrompt(true) 호출 완료')
-
-          // 모달이 의도치 않게 닫히는 것을 방지하기 위한 타이머
-          if (modalTimerRef.current) {
-            clearTimeout(modalTimerRef.current)
-          }
-          modalTimerRef.current = setTimeout(() => {
-            console.log('모달 자동 닫힘 방지 타이머 완료')
-          }, 5000)
-        } else {
-          toast.error('로그인 중 오류가 발생했습니다')
-        }
-        return
-      }
-
-      toast.success('로그인되었습니다!')
-      router.push('/')
-
-    } catch (error) {
-      console.error('로그인 오류:', error)
-      toast.error('로그인 중 오류가 발생했습니다')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleKakaoLogin = async () => {
     try {
@@ -191,7 +106,7 @@ export default function LoginPage() {
           console.log('모달 닫기 요청됨')
           setShowSignupPrompt(false)
         }}
-        phone={formData.phone}
+        phone=""
       />
     </div>
   )
