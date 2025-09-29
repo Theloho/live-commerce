@@ -117,6 +117,9 @@ export async function POST(request) {
       throw new Error(`잘못된 제품 ID 형식: ${productId}. UUID 형식이어야 합니다.`)
     }
 
+    // total_price 계산 (null 방지)
+    const totalPrice = orderData.totalPrice || (orderData.price * orderData.quantity)
+
     const { error: itemError } = await supabase
       .from('order_items')
       .insert([{
@@ -124,11 +127,18 @@ export async function POST(request) {
         product_id: productId,
         quantity: orderData.quantity,
         unit_price: orderData.price,
-        total_price: orderData.totalPrice,
+        total_price: totalPrice,
         selected_options: orderData.selectedOptions || {}
       }])
 
-    if (itemError) throw itemError
+    if (itemError) {
+      console.error('카카오 주문 생성 오류:', itemError)
+      // Foreign key 제약 조건 오류의 경우 더 구체적인 에러 메시지 제공
+      if (itemError.code === '23503') {
+        throw new Error(`존재하지 않는 상품입니다: ${productId}`)
+      }
+      throw itemError
+    }
 
     // 3. 배송 정보 생성 - selectedAddress가 이미 반영된 userProfile 사용
     const shippingData = {
@@ -150,7 +160,7 @@ export async function POST(request) {
 
     // 4. 결제 정보 생성
     const shippingFee = 4000
-    const totalAmount = orderData.totalPrice + shippingFee
+    const totalAmount = totalPrice + shippingFee
 
     const { error: paymentError } = await supabase
       .from('order_payments')
