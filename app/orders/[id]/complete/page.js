@@ -679,24 +679,58 @@ export default function OrderCompletePage() {
                     {/* 총 결제 금액 표시 */}
                     <div className="border-t pt-3 mt-3">
                       <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">총 상품금액</span>
-                          <span className="font-medium text-gray-900">
-                            ₩{orderData.items.reduce((sum, item) => sum + item.totalPrice, 0).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">배송비</span>
-                          <span className="font-medium text-gray-900">
-                            ₩{Math.max(0, orderData.payment.amount - orderData.items.reduce((sum, item) => sum + item.totalPrice, 0)).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center border-t pt-2">
-                          <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
-                          <span className="font-bold text-lg text-gray-900">
-                            ₩{orderData.payment.amount.toLocaleString()}
-                          </span>
-                        </div>
+                        {(() => {
+                          // 디버깅을 위한 로그
+                          console.log('💰 주문 상세 금액 디버깅:', {
+                            items: orderData.items,
+                            itemPrices: orderData.items.map(item => ({
+                              title: item.title,
+                              price: item.price,
+                              totalPrice: item.totalPrice,
+                              quantity: item.quantity
+                            })),
+                            paymentAmount: orderData.payment.amount
+                          })
+
+                          // 올바른 총 상품금액 계산
+                          const correctTotalProductAmount = orderData.items.reduce((sum, item) => {
+                            // totalPrice가 있으면 사용, 없으면 price * quantity 사용
+                            const itemTotal = item.totalPrice || (item.price * item.quantity)
+                            console.log(`💰 상품 ${item.title}: ${itemTotal}원 (price: ${item.price}, quantity: ${item.quantity}, totalPrice: ${item.totalPrice})`)
+                            return sum + itemTotal
+                          }, 0)
+
+                          const shippingFee = Math.max(0, orderData.payment.amount - correctTotalProductAmount)
+
+                          console.log('💰 최종 계산:', {
+                            correctTotalProductAmount,
+                            shippingFee,
+                            finalAmount: orderData.payment.amount
+                          })
+
+                          return (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">총 상품금액</span>
+                                <span className="font-medium text-gray-900">
+                                  ₩{correctTotalProductAmount.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">배송비</span>
+                                <span className="font-medium text-gray-900">
+                                  ₩{shippingFee.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center border-t pt-2">
+                                <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
+                                <span className="font-bold text-lg text-gray-900">
+                                  ₩{orderData.payment.amount.toLocaleString()}
+                                </span>
+                              </div>
+                            </>
+                          )
+                        })()}
                       </div>
                     </div>
                   </div>
