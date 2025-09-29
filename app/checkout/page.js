@@ -948,7 +948,7 @@ export default function CheckoutPage() {
               <div className="flex items-start gap-2">
                 <InformationCircleIcon className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 space-y-1">
-                  <p className="font-semibold text-yellow-800">무통장입금</p>
+                  <p className="font-semibold text-yellow-800">계좌이체</p>
                   <p className="text-sm text-yellow-700">카카오뱅크 79421940478</p>
                   <p className="text-sm text-yellow-700">예금주: 하상윤</p>
                   <p className="text-xs text-yellow-600 mt-2">
