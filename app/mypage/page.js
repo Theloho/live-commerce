@@ -91,6 +91,13 @@ export default function MyPage() {
             if (profiles && profiles.length > 0) {
               const dbProfile = profiles[0]
               console.log('데이터베이스에서 카카오 사용자 프로필 로드:', dbProfile)
+              console.log('🏠 주소 정보 상세:', {
+                address: dbProfile.address,
+                detail_address: dbProfile.detail_address,
+                addresses: dbProfile.addresses,
+                hasAddress: !!dbProfile.address,
+                hasAddresses: !!(dbProfile.addresses && dbProfile.addresses.length > 0)
+              })
 
               const profile = {
                 name: dbProfile.name || currentUser.name || '',
