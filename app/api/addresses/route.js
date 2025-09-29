@@ -16,10 +16,10 @@ export async function GET(request) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // profiles 테이블에서 addresses 컬럼 조회
+    // profiles 테이블에서 addresses 컬럼과 기본 주소 정보 조회
     const { data, error } = await supabase
       .from('profiles')
-      .select('addresses')
+      .select('addresses, address, detail_address')
       .eq('id', userId)
       .single()
 
@@ -29,8 +29,28 @@ export async function GET(request) {
       return NextResponse.json({ addresses: [] })
     }
 
-    // addresses가 없거나 null이면 빈 배열 반환
-    const addresses = data?.addresses || []
+    let addresses = data?.addresses || []
+
+    // addresses가 비어있지만 기본 주소 정보가 있으면 마이그레이션
+    if ((!addresses || addresses.length === 0) && data?.address) {
+      console.log('기본 주소를 addresses 배열로 마이그레이션:', data.address)
+      const defaultAddress = {
+        id: Date.now(),
+        label: '기본 배송지',
+        address: data.address,
+        detail_address: data.detail_address || '',
+        is_default: true,
+        created_at: new Date().toISOString()
+      }
+
+      addresses = [defaultAddress]
+
+      // addresses 컬럼에 마이그레이션된 데이터 저장
+      await supabase
+        .from('profiles')
+        .update({ addresses })
+        .eq('id', userId)
+    }
 
     // is_default 기준으로 정렬 (기본 주소가 먼저 오도록)
     const sortedAddresses = Array.isArray(addresses)
