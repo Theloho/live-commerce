@@ -9,7 +9,7 @@ import { createOrder, updateMultipleOrderStatus } from '@/lib/supabaseApi'
 import InventoryErrorModal from './InventoryErrorModal'
 import toast from 'react-hot-toast'
 
-export default function CardPaymentModal({ isOpen, onClose, totalAmount, productPrice, shippingFee, orderItem, userProfile }) {
+export default function CardPaymentModal({ isOpen, onClose, totalAmount, productPrice, shippingFee, orderItem, userProfile, selectedAddress }) {
   const router = useRouter()
   const { user } = useAuth()
   const [isProcessing, setIsProcessing] = useState(false)

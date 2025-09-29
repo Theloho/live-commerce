@@ -160,29 +160,8 @@ export default function CheckoutPage() {
 
       // 사용자 정보 가져오기
       if (currentUser) {
-        // addresses 테이블에서 주소 목록 불러오기
-        try {
-          console.log('addresses 테이블에서 주소 목록 조회 중...')
-          const addressResponse = await fetch(`/api/addresses?user_id=${currentUser.id}`)
-          const addressData = await addressResponse.json()
-
-          if (addressResponse.ok && addressData.addresses) {
-            console.log('주소 목록 로드 성공:', addressData.addresses)
-
-            // 기본 배송지 자동 선택
-            const defaultAddress = addressData.addresses.find(addr => addr.is_default)
-            if (defaultAddress) {
-              setSelectedAddress(defaultAddress)
-              console.log('기본 배송지 자동 선택:', defaultAddress)
-            } else if (addressData.addresses.length > 0) {
-              // 기본 배송지가 없으면 첫 번째 주소 선택
-              setSelectedAddress(addressData.addresses[0])
-              console.log('첫 번째 주소 자동 선택:', addressData.addresses[0])
-            }
-          }
-        } catch (error) {
-          console.error('주소 목록 로드 오류:', error)
-        }
+        // 먼저 사용자 프로필 로드
+        let loadedProfile = null
 
         // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기
         if (currentUser.provider === 'kakao') {
@@ -197,29 +176,64 @@ export default function CheckoutPage() {
             if (error) {
               console.error('데이터베이스 프로필 조회 오류:', error)
               // 오류 시 기본 프로필 사용
-              const profile = UserProfileManager.normalizeProfile(currentUser)
-              setUserProfile(profile)
+              loadedProfile = UserProfileManager.normalizeProfile(currentUser)
             } else if (dbProfile) {
               console.log('데이터베이스에서 카카오 사용자 프로필 로드:', dbProfile)
-              const profile = UserProfileManager.normalizeProfile(dbProfile)
-              console.log('정규화된 사용자 프로필:', profile)
-              setUserProfile(profile)
+              loadedProfile = UserProfileManager.normalizeProfile(dbProfile)
+              console.log('정규화된 사용자 프로필:', loadedProfile)
             } else {
               console.log('데이터베이스에서 프로필을 찾을 수 없음, 기본 프로필 사용')
-              const profile = UserProfileManager.normalizeProfile(currentUser)
-              setUserProfile(profile)
+              loadedProfile = UserProfileManager.normalizeProfile(currentUser)
             }
           } catch (error) {
             console.error('카카오 사용자 프로필 로드 오류:', error)
             // 오류 시 기본 프로필 사용
-            const profile = UserProfileManager.normalizeProfile(currentUser)
-            setUserProfile(profile)
+            loadedProfile = UserProfileManager.normalizeProfile(currentUser)
           }
         } else {
           // 일반 사용자는 기존 로직 사용
-          const profile = UserProfileManager.normalizeProfile(currentUser)
-          console.log('정규화된 사용자 프로필:', profile)
-          setUserProfile(profile)
+          loadedProfile = UserProfileManager.normalizeProfile(currentUser)
+          console.log('정규화된 사용자 프로필:', loadedProfile)
+        }
+
+        // 프로필 설정
+        setUserProfile(loadedProfile)
+
+        // addresses 테이블에서 주소 목록 불러오기
+        try {
+          console.log('addresses 테이블에서 주소 목록 조회 중...')
+          const addressResponse = await fetch(`/api/addresses?user_id=${currentUser.id}`)
+          const addressData = await addressResponse.json()
+
+          if (addressResponse.ok && addressData.addresses) {
+            console.log('주소 목록 로드 성공:', addressData.addresses)
+
+            // 기본 배송지 자동 선택
+            const defaultAddress = addressData.addresses.find(addr => addr.is_default)
+            if (defaultAddress) {
+              setSelectedAddress(defaultAddress)
+              // userProfile에도 주소 정보 반영
+              setUserProfile(prev => ({
+                ...prev,
+                address: defaultAddress.address,
+                detail_address: defaultAddress.detail_address || ''
+              }))
+              console.log('기본 배송지 자동 선택:', defaultAddress)
+            } else if (addressData.addresses.length > 0) {
+              // 기본 배송지가 없으면 첫 번째 주소 선택
+              const firstAddress = addressData.addresses[0]
+              setSelectedAddress(firstAddress)
+              // userProfile에도 주소 정보 반영
+              setUserProfile(prev => ({
+                ...prev,
+                address: firstAddress.address,
+                detail_address: firstAddress.detail_address || ''
+              }))
+              console.log('첫 번째 주소 자동 선택:', firstAddress)
+            }
+          }
+        } catch (error) {
+          console.error('주소 목록 로드 오류:', error)
         }
       } else {
         console.log('currentUser가 없음')
@@ -579,6 +593,12 @@ export default function CheckoutPage() {
                   }}
                   onSelect={(address) => {
                     setSelectedAddress(address)
+                    // userProfile에도 주소 정보 반영
+                    setUserProfile(prev => ({
+                      ...prev,
+                      address: address.address,
+                      detail_address: address.detail_address || ''
+                    }))
                     setShowAddressModal(false)
                     toast.success(`'${address.label}' 배송지가 선택되었습니다`)
                   }}
@@ -728,6 +748,7 @@ export default function CheckoutPage() {
         shippingFee={shippingFee}
         orderItem={orderItem}
         userProfile={userProfile}
+        selectedAddress={selectedAddress}
       />
 
       {/* 입금자명 선택 모달 */}
