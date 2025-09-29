@@ -36,7 +36,21 @@ export async function POST(request) {
 
     console.log('카카오 사용자 주문 조회:', userId)
 
-    // 카카오 사용자 주문 조회 - 배송 정보의 이름으로 조회
+    // 1. 해당 사용자의 프로필 정보 조회 (보안 검증용)
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('name, nickname')
+      .eq('id', userId)
+      .single()
+
+    if (profileError || !userProfile) {
+      console.error('사용자 프로필 조회 실패:', profileError)
+      return NextResponse.json({ error: '사용자 정보를 찾을 수 없습니다' }, { status: 404 })
+    }
+
+    console.log('🔍 카카오 사용자 정보 확인:', userProfile)
+
+    // 2. 보안 강화된 주문 조회
     const { data, error } = await supabaseAdmin
       .from('orders')
       .select(`
@@ -53,13 +67,39 @@ export async function POST(request) {
         order_shipping (*),
         order_payments (*)
       `)
-      .is('user_id', null) // user_id가 null인 주문만
+      .or(`user_id.eq.${userId},user_id.is.null`) // user_id가 해당 사용자이거나 null인 경우
       .order('created_at', { ascending: false })
 
     if (error) {
       console.error('주문 조회 오류:', error)
       throw error
     }
+
+    console.log('📊 1차 필터링된 주문 수:', data?.length || 0)
+
+    // 3. 보안 필터링: 배송지 이름과 사용자 이름이 일치하는 주문만 허용
+    const secureFilteredData = data.filter(order => {
+      if (order.user_id === userId) {
+        return true // user_id가 일치하면 허용
+      }
+
+      // user_id가 null인 경우, 배송지 이름으로 추가 검증
+      if (order.order_shipping && order.order_shipping.length > 0) {
+        const shippingName = order.order_shipping[0].name
+        const isOwner = shippingName === userProfile.name
+
+        if (!isOwner) {
+          console.log(`🚫 보안 필터링: 주문 ${order.id} 차단 (배송명: ${shippingName} ≠ 사용자명: ${userProfile.name})`)
+        }
+
+        return isOwner
+      }
+
+      console.log(`🚫 보안 필터링: 주문 ${order.id} 차단 (배송 정보 없음)`)
+      return false
+    })
+
+    console.log('📊 2차 보안 필터링된 주문 수:', secureFilteredData?.length || 0)
 
     // 최적 결제 방법 선택 함수 (0원이 아닌 금액 우선, 카드 > 기타 > bank_transfer 순서)
     const getBestPayment = (payments) => {
@@ -93,8 +133,8 @@ export async function POST(request) {
       return sortedPayments[0] || {}
     }
 
-    // 주문 데이터 형태 변환
-    const ordersWithItems = data.map(order => ({
+    // 주문 데이터 형태 변환 (보안 필터링된 데이터 사용)
+    const ordersWithItems = secureFilteredData.map(order => ({
       ...order,
       items: order.order_items.map(item => ({
         id: item.id, // order_items 테이블의 실제 id
