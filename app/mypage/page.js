@@ -367,14 +367,7 @@ export default function MyPage() {
   const currentUserId = userSession?.id || user?.id
 
   return (
-    <>
-      {/* 다음 주소 검색 API 스크립트 */}
-      <script
-        src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
-        async
-      />
-
-      <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20">
         <div className="max-w-md mx-auto">
           {/* 헤더 */}
           <div className="bg-white px-4 py-6 border-b border-gray-200">
@@ -391,8 +384,32 @@ export default function MyPage() {
             </div>
           </div>
 
+          {/* 사용자 정보 카드 */}
+          <div className="bg-white mt-2 p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <UserIcon className="w-8 h-8 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {userProfile?.name || '사용자'}
+                </h2>
+                <p className="text-gray-600">
+                  {userProfile?.nickname || userProfile?.name || '닉네임 없음'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {userProfile?.phone || '전화번호 없음'}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* 기본 프로필 정보 */}
-          <div className="bg-white mt-2 divide-y divide-gray-200">
+          <div className="bg-white mt-2">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">기본 정보</h2>
+            </div>
+            <div className="divide-y divide-gray-200">
             {profileFields.map((field) => {
               const IconComponent = field.icon
               const isEditing = editingField === field.key
@@ -469,20 +486,31 @@ export default function MyPage() {
                 </motion.div>
               )
             })}
+            </div>
           </div>
 
           {/* 배송지 관리 섹션 */}
-          <div className="bg-white mt-2 p-4">
-            <AddressManager
-              userId={currentUserId}
-              onAddressChange={() => {
-                // 주소 변경 시 필요한 콜백 처리
-              }}
-            />
+          <div className="bg-white mt-4">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">배송지 관리</h2>
+              <p className="text-sm text-gray-500 mt-1">최대 5개까지 배송지를 저장할 수 있습니다</p>
+            </div>
+            <div className="p-4">
+              <AddressManager
+                userId={currentUserId}
+                onAddressChange={() => {
+                  // 주소 변경 시 필요한 콜백 처리
+                }}
+              />
+            </div>
           </div>
 
-          {/* 액션 버튼들 */}
-          <div className="bg-white mt-2 p-4 space-y-3">
+          {/* 메뉴 */}
+          <div className="bg-white mt-4">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">메뉴</h2>
+            </div>
+            <div className="p-4 space-y-3">
             {/* 주문 내역 */}
             <button
               onClick={() => router.push('/orders')}
@@ -505,9 +533,10 @@ export default function MyPage() {
               <ArrowRightOnRectangleIcon className="h-5 w-5" />
               <span className="font-medium">로그아웃</span>
             </button>
+            </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
