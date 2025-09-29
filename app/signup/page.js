@@ -333,12 +333,12 @@ export default function SignupPage() {
           {/* 로그인 링크 */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              이미 계정이 있으신가요?{' '}
+              기존 사용자이시라면{' '}
               <button
                 onClick={() => router.push('/login')}
                 className="text-red-600 hover:text-red-700 font-medium"
               >
-                로그인하기
+                카카오 로그인하기
               </button>
             </p>
           </div>
