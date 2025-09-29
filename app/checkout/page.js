@@ -513,7 +513,7 @@ export default function CheckoutPage() {
 
     // 🚀 새로운 고성능 초기화 함수 호출
     initCheckoutOptimized()
-  }, [isAuthenticated, user, authLoading, userSession, router])
+  }, [isAuthenticated, user, authLoading, router])
 
   // userProfile이 설정되면 프로필 완성도 체크
   useEffect(() => {
