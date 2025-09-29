@@ -292,15 +292,84 @@ const depositorName = orderData.payment?.depositor_name ||
 **예상 구현 시간**: 3-4시간
 **우선순위**: 중간 (기본 기능 안정화 후 구현)
 
-### 🔍 기타 나중에 검토할 기능들
-**(사용자가 언급했지만 구체적으로 기억나지 않는 기능들)**
-- 추가 결제 옵션 확장?
-- 주문 상태 관리 고도화?
-- 고객 관리 시스템 확장?
-- 재고 관리 시스템?
-- 배송 추적 시스템?
+### 🚚 도서산간 배송비 차등 자동적용 기능
+**사용자 요청**: 도서산간 지역 배송비 차등 자동적용
 
-**메모**: 사용자가 구체적으로 어떤 기능을 문의했는지 다음에 확인 필요
+**구현 계획**:
+1. **도서산간 지역 데이터베이스 구축**:
+   ```sql
+   CREATE TABLE shipping_zones (
+     id UUID PRIMARY KEY,
+     zone_name TEXT NOT NULL,
+     zone_type TEXT CHECK (zone_type IN ('normal', 'remote', 'island')),
+     shipping_fee INTEGER NOT NULL,
+     keywords TEXT[], -- 주소 키워드 배열
+     created_at TIMESTAMP DEFAULT NOW()
+   );
+
+   -- 기본 배송비 데이터 예시
+   INSERT INTO shipping_zones (zone_name, zone_type, shipping_fee, keywords) VALUES
+   ('일반지역', 'normal', 4000, ARRAY['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '충북', '충남', '전북', '전남', '경북', '경남']),
+   ('도서산간', 'remote', 6000, ARRAY['제주', '울릉', '백령', '연평', '소청', '대청']),
+   ('특수지역', 'island', 8000, ARRAY['독도', '마라도']);
+   ```
+
+2. **주소 기반 배송비 자동 계산 API**:
+   ```javascript
+   // /api/calculate-shipping
+   export async function POST(request) {
+     const { address } = await request.json()
+
+     // 주소에서 배송지역 판별
+     const shippingZone = await determineShippingZone(address)
+
+     return NextResponse.json({
+       zone: shippingZone.zone_type,
+       fee: shippingZone.shipping_fee,
+       description: shippingZone.zone_name
+     })
+   }
+   ```
+
+3. **체크아웃 페이지 실시간 배송비 계산**:
+   ```javascript
+   // 주소 입력 시 자동 배송비 계산
+   const calculateShippingFee = async (address) => {
+     const response = await fetch('/api/calculate-shipping', {
+       method: 'POST',
+       body: JSON.stringify({ address })
+     })
+     const { fee, description } = await response.json()
+
+     setShippingFee(fee)
+     setShippingDescription(description)
+   }
+   ```
+
+4. **관리자 배송지역 관리**:
+   - 배송지역별 요금 설정
+   - 키워드 기반 지역 분류 관리
+   - 배송비 정책 업데이트
+
+5. **사용자 안내 UI**:
+   - 주소 입력 시 실시간 배송비 표시
+   - 도서산간 추가비용 안내 팝업
+   - 주문완료 페이지에서 배송비 구분 표시
+
+**기술적 구현 방법**:
+- **주소 파싱**: 다음 주소 API 연동하여 시/도 정보 추출
+- **지역 매칭**: 키워드 배열 검색으로 배송지역 자동 분류
+- **실시간 계산**: 주소 변경 시 debounce 적용하여 API 호출 최적화
+
+**예상 구현 시간**: 4-5시간
+**우선순위**: 높음 (실제 배송 서비스에 필수)
+
+### 🔍 기타 나중에 검토할 기능들
+- 추가 결제 옵션 확장
+- 주문 상태 관리 고도화
+- 고객 관리 시스템 확장
+- 재고 관리 시스템
+- 배송 추적 시스템
 
 ---
 
