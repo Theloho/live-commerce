@@ -94,8 +94,7 @@ export async function POST(request) {
         customer_order_number: customerOrderNumber,
         user_id: null, // 카카오 사용자는 auth.users에 없으므로 null로 저장
         status: 'pending',
-        order_type: orderData.orderType || 'direct',
-        notes: `KAKAO_USER:${userId}`, // 카카오 사용자 ID를 notes 필드에 저장 (보안 검증용)
+        order_type: `${orderData.orderType || 'direct'}:KAKAO:${userId}`, // 카카오 사용자 ID를 order_type에 저장
         created_at: new Date().toISOString()
       })
     })

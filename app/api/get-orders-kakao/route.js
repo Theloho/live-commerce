@@ -77,14 +77,14 @@ export async function POST(request) {
 
     console.log('📊 1차 필터링된 주문 수:', data?.length || 0)
 
-    // 3. 보안 필터링: notes 필드 또는 배송지 이름으로 사용자 검증
+    // 3. 보안 필터링: order_type 필드 또는 배송지 이름으로 사용자 검증
     const secureFilteredData = data.filter(order => {
       if (order.user_id === userId) {
         return true // user_id가 일치하면 허용
       }
 
-      // notes 필드에 카카오 사용자 ID가 있는지 확인
-      if (order.notes && order.notes.includes(`KAKAO_USER:${userId}`)) {
+      // order_type 필드에 카카오 사용자 ID가 있는지 확인
+      if (order.order_type && order.order_type.includes(`:KAKAO:${userId}`)) {
         return true // 카카오 사용자 ID가 일치하면 허용
       }
 
@@ -94,13 +94,13 @@ export async function POST(request) {
         const isOwner = shippingName === userProfile.name
 
         if (!isOwner) {
-          console.log(`🚫 보안 필터링: 주문 ${order.id} 차단 (배송명: ${shippingName} ≠ 사용자명: ${userProfile.name}, notes: ${order.notes})`)
+          console.log(`🚫 보안 필터링: 주문 ${order.id} 차단 (배송명: ${shippingName} ≠ 사용자명: ${userProfile.name}, order_type: ${order.order_type})`)
         }
 
         return isOwner
       }
 
-      console.log(`🚫 보안 필터링: 주문 ${order.id} 차단 (배송 정보 없음, notes: ${order.notes})`)
+      console.log(`🚫 보안 필터링: 주문 ${order.id} 차단 (배송 정보 없음, order_type: ${order.order_type})`)
       return false
     })
 
