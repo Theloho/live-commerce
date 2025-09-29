@@ -76,7 +76,18 @@ export async function GET(request) {
         })
       : []
 
-    return NextResponse.json({ addresses: sortedAddresses })
+    return NextResponse.json({
+      addresses: sortedAddresses,
+      debug: {
+        userId,
+        hasData: !!data,
+        hasAddress: !!data?.address,
+        address: data?.address,
+        hasAddresses: !!data?.addresses,
+        addressesLength: data?.addresses?.length,
+        rawAddresses: data?.addresses
+      }
+    })
 
   } catch (error) {
     console.error('주소 조회 중 오류:', error)
