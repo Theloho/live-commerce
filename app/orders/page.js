@@ -274,17 +274,27 @@ function OrdersContent() {
 
     // 세션에 주문 정보 저장하고 체크아웃으로 이동
     const firstItem = order.items[0]
+    const itemPrice = firstItem.price || firstItem.totalPrice / (firstItem.quantity || 1)
+    const itemQuantity = firstItem.quantity || 1
+    const calculatedTotalPrice = itemPrice * itemQuantity // 올바른 총 상품가격 계산
+
     const orderItem = {
       id: firstItem.id || order.id,
       title: firstItem.title,
-      price: firstItem.price || firstItem.totalPrice / (firstItem.quantity || 1),
+      price: itemPrice,
       thumbnail_url: firstItem?.thumbnail_url || '/placeholder.png',
-      quantity: firstItem.quantity || 1,
-      totalPrice: firstItem.totalPrice,
+      quantity: itemQuantity,
+      totalPrice: calculatedTotalPrice, // 수정된 계산
       selectedOptions: firstItem.selectedOptions || {}
     }
 
+    console.log('💰 가격 계산 디버깅:')
+    console.log(`   상품 단가: ₩${itemPrice.toLocaleString()}`)
+    console.log(`   수량: ${itemQuantity}개`)
+    console.log(`   계산된 총액: ₩${calculatedTotalPrice.toLocaleString()}`)
+    console.log(`   기존 totalPrice: ₩${firstItem.totalPrice?.toLocaleString()}`)
     console.log('체크아웃용 주문 아이템:', orderItem)
+
     sessionStorage.setItem('checkoutItem', JSON.stringify(orderItem))
     router.push('/checkout')
   }
@@ -376,11 +386,15 @@ function OrdersContent() {
 
     // 모든 결제대기 주문들을 하나의 주문으로 합침
     const totalPrice = pendingOrders.reduce((sum, order) => {
-      return sum + order.items.reduce((itemSum, item) => itemSum + item.totalPrice, 0)
+      return sum + order.items.reduce((itemSum, item) => {
+        // 올바른 totalPrice 계산: price × quantity
+        const correctItemTotal = (item.price || (item.totalPrice / (item.quantity || 1))) * (item.quantity || 1)
+        return itemSum + correctItemTotal
+      }, 0)
     }, 0)
 
     const totalQuantity = pendingOrders.reduce((sum, order) => {
-      return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0)
+      return sum + order.items.reduce((itemSum, item) => itemSum + (item.quantity || 1), 0)
     }, 0)
 
     // 합산된 주문 정보 생성 (간소화 - sessionStorage 용량 문제 해결)
@@ -400,6 +414,12 @@ function OrdersContent() {
       // allItems 제거 - 용량 문제 해결
       itemCount: pendingOrders.length
     }
+
+    console.log('💰 전체결제 가격 계산 디버깅:')
+    console.log(`   주문 개수: ${pendingOrders.length}개`)
+    console.log(`   총 상품가격: ₩${totalPrice.toLocaleString()}`)
+    console.log(`   총 수량: ${totalQuantity}개`)
+    console.log('결합된 주문 정보:', combinedOrderItem)
 
     try {
       // sessionStorage 저장 시도 (용량 초과 시 오류 처리)
