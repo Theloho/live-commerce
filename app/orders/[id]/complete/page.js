@@ -411,18 +411,51 @@ export default function OrderCompletePage() {
 
                   {/* 입금 정보 */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">입금금액</span>
-                      <span className="text-lg font-bold text-gray-900">
-                        ₩{orderData.payment.amount.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">입금자명</span>
-                      <span className="text-lg font-bold text-gray-900">
-                        {orderData.payment?.depositor_name || orderData.depositName || orderData.shipping.name}
-                      </span>
-                    </div>
+                    {(() => {
+                      // 올바른 총 상품금액 계산
+                      const correctTotalProductAmount = orderData.items.reduce((sum, item) => {
+                        const itemTotal = item.totalPrice || (item.price * item.quantity)
+                        return sum + itemTotal
+                      }, 0)
+
+                      // 일반적으로 배송비는 ₩4,000
+                      const shippingFee = 4000
+                      const correctTotalAmount = correctTotalProductAmount + shippingFee
+
+                      // 입금자명 우선순위: payment.depositor_name > depositName > shipping.name
+                      const depositorName = orderData.payment?.depositor_name ||
+                                          orderData.depositName ||
+                                          orderData.shipping?.name ||
+                                          '입금자명 확인 필요'
+
+                      console.log('🏦 입금 안내 디버깅:', {
+                        originalPaymentAmount: orderData.payment.amount,
+                        correctTotalProductAmount,
+                        shippingFee,
+                        correctTotalAmount,
+                        depositorName,
+                        paymentDepositorName: orderData.payment?.depositor_name,
+                        orderDepositName: orderData.depositName,
+                        shippingName: orderData.shipping?.name
+                      })
+
+                      return (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">입금금액</span>
+                            <span className="text-lg font-bold text-gray-900">
+                              ₩{correctTotalAmount.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">입금자명</span>
+                            <span className="text-lg font-bold text-gray-900">
+                              {depositorName}
+                            </span>
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
 
                   {/* 계좌번호 복사 버튼 */}
