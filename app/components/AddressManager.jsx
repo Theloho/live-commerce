@@ -34,18 +34,68 @@ export default function AddressManager({ userId, onAddressChange }) {
   const fetchAddresses = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/addresses?user_id=${userId}`)
-      const data = await response.json()
+
+      // 마이페이지와 동일한 방식으로 직접 Supabase API 호출
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=addresses,address,detail_address`, {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      })
 
       if (response.ok) {
-        setAddresses(data.addresses || [])
+        const profiles = await response.json()
+        if (profiles && profiles.length > 0) {
+          const profile = profiles[0]
+
+          console.log('🏠 AddressManager - 프로필 데이터:', profile)
+
+          let addresses = profile?.addresses || []
+
+          // addresses가 비어있지만 기본 주소 정보가 있으면 마이그레이션
+          if ((!addresses || addresses.length === 0) && profile?.address) {
+            console.log('🔄 AddressManager - 기본 주소 마이그레이션:', profile.address)
+            const defaultAddress = {
+              id: Date.now(),
+              label: '기본 배송지',
+              address: profile.address,
+              detail_address: profile.detail_address || '',
+              is_default: true,
+              created_at: new Date().toISOString()
+            }
+            addresses = [defaultAddress]
+
+            // 마이그레이션된 주소를 데이터베이스에 저장
+            await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+              method: 'PATCH',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ addresses })
+            })
+          }
+
+          setAddresses(addresses || [])
+          console.log('✅ AddressManager - 주소 로드 완료:', addresses)
+        } else {
+          setAddresses([])
+        }
       } else {
-        console.error('주소 조회 실패:', data.error)
+        console.error('주소 조회 실패:', response.status)
         toast.error('주소 정보를 불러올 수 없습니다')
+        setAddresses([])
       }
     } catch (error) {
       console.error('주소 조회 오류:', error)
       toast.error('주소 정보를 불러올 수 없습니다')
+      setAddresses([])
     } finally {
       setLoading(false)
     }
