@@ -108,8 +108,16 @@ export async function POST(request) {
         selectedOptions: item.selected_options || {},
         unit_price: item.unit_price
       })),
-      shipping: order.order_shipping[0] || {},
-      payment: getBestPayment(order.order_payments)
+      shipping: {
+        name: order.shipping_name || order.order_shipping[0]?.name || '',
+        phone: order.shipping_phone || order.order_shipping[0]?.phone || '',
+        address: order.shipping_address || order.order_shipping[0]?.address || '',
+        detail_address: order.shipping_detail_address || order.order_shipping[0]?.detail_address || ''
+      },
+      payment: {
+        ...getBestPayment(order.order_payments),
+        depositor_name: getBestPayment(order.order_payments).depositor_name || order.shipping_name || ''
+      }
     }))
 
     console.log(`${ordersWithItems.length}개의 주문 조회 성공`)
@@ -148,13 +156,19 @@ export async function POST(request) {
             // 모든 아이템 합치기
             items: groupOrders.flatMap(o => o.items),
 
-            // 첫 번째 주문의 배송 정보 사용
-            shipping: order.shipping,
+            // 첫 번째 주문의 배송 정보 사용 (shipping_* 컬럼 우선)
+            shipping: {
+              name: order.shipping_name || order.order_shipping[0]?.name || '',
+              phone: order.shipping_phone || order.order_shipping[0]?.phone || '',
+              address: order.shipping_address || order.order_shipping[0]?.address || '',
+              detail_address: order.shipping_detail_address || order.order_shipping[0]?.detail_address || ''
+            },
 
             // 결제 정보는 총 금액으로 재계산 (아이템 가격 합계 + 배송비)
             payment: {
               ...getBestPayment(order.order_payments),
-              amount: groupOrders.flatMap(o => o.items).reduce((sum, item) => sum + item.totalPrice, 0) + 4000
+              amount: groupOrders.flatMap(o => o.items).reduce((sum, item) => sum + item.totalPrice, 0) + 4000,
+              depositor_name: getBestPayment(order.order_payments).depositor_name || order.shipping_name || ''
             },
 
             // 그룹 정보 추가
