@@ -368,171 +368,172 @@ export default function MyPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="max-w-md mx-auto">
-        {/* 헤더 */}
-        <div className="bg-white px-4 py-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => router.back()}
-              className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors"
-              title="뒤로가기"
-            >
-              <ArrowLeftIcon className="h-6 w-6 text-gray-600" />
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900">마이페이지</h1>
-            <div className="w-10"></div> {/* 균형을 위한 빈 공간 */}
-          </div>
-        </div>
-
-        {/* 사용자 정보 카드 */}
-        <div className="bg-white mt-2 p-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <UserIcon className="w-8 h-8 text-red-600" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {userProfile?.name || '사용자'}
-              </h2>
-              <p className="text-gray-600">
-                {userProfile?.nickname || userProfile?.name || '닉네임 없음'}
-              </p>
-              <p className="text-sm text-gray-500">
-                {userProfile?.phone || '전화번호 없음'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 기본 프로필 정보 */}
-        <div className="bg-white mt-2">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900">기본 정보</h2>
-          </div>
-          <div className="divide-y divide-gray-200">
-          {profileFields.map((field) => {
-            const IconComponent = field.icon
-            const isEditing = editingField === field.key
-            const value = userProfile[field.key] || ''
-
-            return (
-              <motion.div
-                key={field.key}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4"
+        <div className="max-w-md mx-auto">
+          {/* 헤더 */}
+          <div className="bg-white px-4 py-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => router.back()}
+                className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="뒤로가기"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    <IconComponent className="h-5 w-5 text-gray-500 mt-1" />
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {field.label}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                      </label>
+                <ArrowLeftIcon className="h-6 w-6 text-gray-600" />
+              </button>
+              <h1 className="text-2xl font-bold text-gray-900">마이페이지</h1>
+              <div className="w-10"></div> {/* 균형을 위한 빈 공간 */}
+            </div>
+          </div>
 
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <input
-                            type={field.type}
-                            value={editValues[field.key] || ''}
-                            onChange={(e) => setEditValues(prev => ({
-                              ...prev,
-                              [field.key]: e.target.value
-                            }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
-                            placeholder={field.label}
-                          />
+          {/* 사용자 정보 카드 */}
+          <div className="bg-white mt-2 p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <UserIcon className="w-8 h-8 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {userProfile?.name || '사용자'}
+                </h2>
+                <p className="text-gray-600">
+                  {userProfile?.nickname || userProfile?.name || '닉네임 없음'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {userProfile?.phone || '전화번호 없음'}
+                </p>
+              </div>
+            </div>
+          </div>
 
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleSave(field.key)}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-sm"
-                            >
-                              <CheckIcon className="h-4 w-4" />
-                              저장
-                            </button>
-                            <button
-                              onClick={() => handleCancel(field.key)}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
-                            >
-                              <XMarkIcon className="h-4 w-4" />
-                              취소
-                            </button>
+          {/* 기본 프로필 정보 */}
+          <div className="bg-white mt-2">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">기본 정보</h2>
+            </div>
+            <div className="divide-y divide-gray-200">
+            {profileFields.map((field) => {
+              const IconComponent = field.icon
+              const isEditing = editingField === field.key
+              const value = userProfile[field.key] || ''
+
+              return (
+                <motion.div
+                  key={field.key}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      <IconComponent className="h-5 w-5 text-gray-500 mt-1" />
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {field.label}
+                          {field.required && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <input
+                              type={field.type}
+                              value={editValues[field.key] || ''}
+                              onChange={(e) => setEditValues(prev => ({
+                                ...prev,
+                                [field.key]: e.target.value
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                              placeholder={field.label}
+                            />
+
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleSave(field.key)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-sm"
+                              >
+                                <CheckIcon className="h-4 w-4" />
+                                저장
+                              </button>
+                              <button
+                                onClick={() => handleCancel(field.key)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
+                              >
+                                <XMarkIcon className="h-4 w-4" />
+                                취소
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <p className="text-gray-900 text-sm">
-                            {value || '설정되지 않음'}
-                          </p>
-                          {!field.readonly && (
-                            <button
-                              onClick={() => handleEdit(field.key)}
-                              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
-                              title="수정"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                          )}
-                          {field.readonly && (
-                            <p className="text-xs text-gray-500">수정불가</p>
-                          )}
-                        </div>
-                      )}
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <p className="text-gray-900 text-sm">
+                              {value || '설정되지 않음'}
+                            </p>
+                            {!field.readonly && (
+                              <button
+                                onClick={() => handleEdit(field.key)}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+                                title="수정"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                            )}
+                            {field.readonly && (
+                              <p className="text-xs text-gray-500">수정불가</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )
-          })}
-          </div>
-        </div>
-
-        {/* 배송지 관리 섹션 */}
-        <div className="bg-white mt-4">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900">배송지 관리</h2>
-            <p className="text-sm text-gray-500 mt-1">최대 5개까지 배송지를 저장할 수 있습니다</p>
-          </div>
-          <div className="p-4">
-            <AddressManager
-              userId={currentUserId}
-              onAddressChange={() => {
-                // 주소 변경 시 필요한 콜백 처리
-              }}
-            />
-          </div>
-        </div>
-
-        {/* 메뉴 */}
-        <div className="bg-white mt-4">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900">메뉴</h2>
-          </div>
-          <div className="p-4 space-y-3">
-          {/* 주문 내역 */}
-          <button
-            onClick={() => router.push('/orders')}
-            className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <ShoppingBagIcon className="h-5 w-5 text-gray-600" />
-              <span className="font-medium text-gray-900">주문 내역</span>
+                </motion.div>
+              )
+            })}
             </div>
-            <div className="text-gray-400">
-              &rarr;
-            </div>
-          </button>
+          </div>
 
-          {/* 로그아웃 */}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-          >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            <span className="font-medium">로그아웃</span>
-          </button>
+          {/* 배송지 관리 섹션 */}
+          <div className="bg-white mt-4">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">배송지 관리</h2>
+              <p className="text-sm text-gray-500 mt-1">최대 5개까지 배송지를 저장할 수 있습니다</p>
+            </div>
+            <div className="p-4">
+              <AddressManager
+                userId={currentUserId}
+                onAddressChange={() => {
+                  // 주소 변경 시 필요한 콜백 처리
+                }}
+              />
+            </div>
+          </div>
+
+          {/* 메뉴 */}
+          <div className="bg-white mt-4">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">메뉴</h2>
+            </div>
+            <div className="p-4 space-y-3">
+            {/* 주문 내역 */}
+            <button
+              onClick={() => router.push('/orders')}
+              className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <ShoppingBagIcon className="h-5 w-5 text-gray-600" />
+                <span className="font-medium text-gray-900">주문 내역</span>
+              </div>
+              <div className="text-gray-400">
+                &rarr;
+              </div>
+            </button>
+
+            {/* 로그아웃 */}
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              <span className="font-medium">로그아웃</span>
+            </button>
+            </div>
           </div>
         </div>
       </div>
