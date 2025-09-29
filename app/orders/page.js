@@ -300,7 +300,7 @@ function OrdersContent() {
       await cancelOrder(orderId)
       toast.success('주문이 취소되었습니다')
       // 주문 목록 새로고침
-      loadOrders()
+      loadOrdersDataFast(userSession || user)
     } catch (error) {
       console.error('주문 취소 중 오류:', error)
       toast.error('주문 취소 중 오류가 발생했습니다')
@@ -351,7 +351,7 @@ function OrdersContent() {
 
       // 3. 서버에서 최신 데이터 가져와서 동기화
       setTimeout(() => {
-        loadOrders()
+        loadOrdersDataFast(userSession || user)
       }, 500)
     } catch (error) {
       console.error('수량 변경 중 오류:', error)
