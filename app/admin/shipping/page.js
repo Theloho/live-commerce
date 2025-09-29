@@ -48,8 +48,13 @@ export default function AdminShippingPage() {
       )
 
       const ordersWithUserInfo = paidOrders.map(order => {
-        // ShippingDataManager를 사용하여 일관된 배송 정보 추출
-        const shippingInfo = ShippingDataManager.extractShippingInfo(order)
+        // shipping_* 컬럼을 우선으로 배송 정보 추출
+        const shippingInfo = {
+          name: order.shipping_name || order.order_shipping?.[0]?.name || order.shipping?.name || '',
+          phone: order.shipping_phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || '',
+          address: order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '',
+          detail_address: order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
+        }
 
         return {
           ...order,
@@ -59,7 +64,7 @@ export default function AdminShippingPage() {
             address: shippingInfo?.address || '',
             detail_address: shippingInfo?.detail_address || ''
           },
-          hasValidShipping: ShippingDataManager.validateShippingInfo(shippingInfo)
+          hasValidShipping: !!(shippingInfo.name && shippingInfo.phone && shippingInfo.address)
         }
       })
 
@@ -213,22 +218,16 @@ export default function AdminShippingPage() {
         }).join(';')
       }
 
-      // 배송 정보 - 다양한 구조 대응
-      const shipping = order.order_shipping?.[0] || order.order_shipping || order.shipping || {}
-      let address = '정보없음'
-      let fullAddress = '정보없음'
+      // 배송 정보 - shipping_* 컬럼 우선 사용
+      const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
+      const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
+      const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
 
-      if (shipping.address) {
-        address = shipping.address
-        const detailAddress = shipping.detail_address || shipping.detailAddress || ''
-        fullAddress = detailAddress ? `${address} ${detailAddress}` : address
-      }
+      // 고객명 - shipping_* 컬럼 우선 사용
+      const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
 
-      // 고객명 - 다양한 소스에서 확인
-      const customerName = order.user?.name || shipping?.name || order.shipping?.name || order.userName || '정보없음'
-
-      // 연락처 - 다양한 소스에서 확인
-      const phone = order.user?.phone || shipping?.phone || order.shipping?.phone || order.userPhone || '정보없음'
+      // 연락처 - shipping_* 컬럼 우선 사용
+      const phone = order.shipping_phone || order.user?.phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || order.userPhone || '정보없음'
 
       // 수량 계산
       const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
@@ -427,9 +426,8 @@ export default function AdminShippingPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900 max-w-xs">
                         {(() => {
-                          const shipping = order.order_shipping?.[0] || order.order_shipping || {}
-                          const address = shipping?.address || '정보없음'
-                          const detailAddress = shipping?.detail_address || ''
+                          const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
+                          const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
                           return detailAddress ? `${address} ${detailAddress}` : address
                         })()}
                       </div>
@@ -459,18 +457,14 @@ export default function AdminShippingPage() {
                               }).join(';')
                             }
 
-                            // 배송 정보 - 다양한 구조 대응
-                            const shipping = order.order_shipping?.[0] || order.order_shipping || order.shipping || {}
-                            let fullAddress = '정보없음'
-                            if (shipping.address) {
-                              const address = shipping.address
-                              const detailAddress = shipping.detail_address || shipping.detailAddress || ''
-                              fullAddress = detailAddress ? `${address} ${detailAddress}` : address
-                            }
+                            // 배송 정보 - shipping_* 컬럼 우선 사용
+                            const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
+                            const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
+                            const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
 
-                            // 고객명과 연락처 - 다양한 소스에서 확인
-                            const customerName = order.user?.name || shipping?.name || order.shipping?.name || order.userName || '정보없음'
-                            const phone = order.user?.phone || shipping?.phone || order.shipping?.phone || order.userPhone || '정보없음'
+                            // 고객명과 연락처 - shipping_* 컬럼 우선 사용
+                            const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
+                            const phone = order.shipping_phone || order.user?.phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || order.userPhone || '정보없음'
 
                             // 수량과 금액
                             const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
