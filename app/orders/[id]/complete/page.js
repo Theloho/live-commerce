@@ -682,13 +682,13 @@ export default function OrderCompletePage() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">총 상품금액</span>
                           <span className="font-medium text-gray-900">
-                            ₩{(orderData.payment.amount - 4000).toLocaleString()}
+                            ₩{orderData.items.reduce((sum, item) => sum + item.totalPrice, 0).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">배송비</span>
                           <span className="font-medium text-gray-900">
-                            ₩4,000
+                            ₩{Math.max(0, orderData.payment.amount - orderData.items.reduce((sum, item) => sum + item.totalPrice, 0)).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center border-t pt-2">
