@@ -339,16 +339,38 @@ export default function CheckoutPage() {
         console.log('💳 대상 주문 ID들:', orderItem.originalOrderIds)
         console.log('💳 주문 개수:', orderItem.originalOrderIds.length)
 
+        // 선택된 주소를 userProfile에 병합
+        const orderProfile = {
+          ...userProfile,
+          address: selectedAddress?.address || userProfile.address,
+          detail_address: selectedAddress?.detail_address || userProfile.detail_address
+        }
+
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
         console.log('🔍 체크아웃에서 updateMultipleOrderStatus 호출:', {
           orderIds: orderItem.originalOrderIds,
           status: 'verifying',
-          paymentData: { method: 'bank_transfer', depositorName: depositName }
+          paymentData: { method: 'bank_transfer', depositorName: depositName },
+          shippingData: {
+            shipping_name: orderProfile.name,
+            shipping_phone: orderProfile.phone,
+            shipping_address: orderProfile.address,
+            shipping_detail_address: orderProfile.detail_address
+          }
         })
         const updateResult = await updateMultipleOrderStatus(
           orderItem.originalOrderIds,
           'verifying',
-          { method: 'bank_transfer', depositorName: depositName }
+          {
+            method: 'bank_transfer',
+            depositorName: depositName,
+            shippingData: {
+              shipping_name: orderProfile.name,
+              shipping_phone: orderProfile.phone,
+              shipping_address: orderProfile.address,
+              shipping_detail_address: orderProfile.detail_address
+            }
+          }
         )
         console.log('💳 업데이트 결과:', updateResult)
 
