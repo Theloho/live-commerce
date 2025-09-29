@@ -521,7 +521,7 @@ export default function MyPage() {
                 <span className="font-medium text-gray-900">주문 내역</span>
               </div>
               <div className="text-gray-400">
-                →
+                &rarr;
               </div>
             </button>
 
