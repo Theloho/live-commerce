@@ -294,16 +294,45 @@ export default function AdminCustomerDetailPage() {
                   </div>
                 </div>
 
-                {customer.address !== '정보없음' && (
+{/* 주소 정보 - 모든 주소 표시 */}
+                {(customer.addresses?.length > 0 || customer.address !== '정보없음') && (
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                       <MapPinIcon className="w-4 h-4 text-green-600" />
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500">주소</p>
-                      <p className="font-medium text-gray-900">{customer.address}</p>
-                      {customer.detailAddress && (
-                        <p className="text-xs text-gray-600 mt-1">{customer.detailAddress}</p>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 mb-2">배송지 정보</p>
+
+                      {/* addresses 배열이 있으면 모든 주소 표시 */}
+                      {customer.addresses?.length > 0 ? (
+                        <div className="space-y-2">
+                          {customer.addresses.map((address, index) => (
+                            <div key={address.id || index} className="bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-medium text-gray-700 bg-white px-2 py-1 rounded">
+                                  {address.label || `주소 ${index + 1}`}
+                                </span>
+                                {address.is_default && (
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                    기본
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-medium text-gray-900 text-sm">{address.address}</p>
+                              {address.detail_address && (
+                                <p className="text-xs text-gray-600 mt-1">{address.detail_address}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        /* 기존 단일 주소 표시 */
+                        <div>
+                          <p className="font-medium text-gray-900">{customer.address}</p>
+                          {customer.detailAddress && (
+                            <p className="text-xs text-gray-600 mt-1">{customer.detailAddress}</p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
