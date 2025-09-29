@@ -31,9 +31,18 @@ export async function GET(request) {
 
     let addresses = data?.addresses || []
 
+    console.log('📍 프로필 데이터 확인:', {
+      userId,
+      hasAddresses: !!addresses && addresses.length > 0,
+      addressesLength: addresses?.length || 0,
+      hasAddress: !!data?.address,
+      address: data?.address,
+      detail_address: data?.detail_address
+    })
+
     // addresses가 비어있지만 기본 주소 정보가 있으면 마이그레이션
     if ((!addresses || addresses.length === 0) && data?.address) {
-      console.log('기본 주소를 addresses 배열로 마이그레이션:', data.address)
+      console.log('🔄 기본 주소를 addresses 배열로 마이그레이션:', data.address)
       const defaultAddress = {
         id: Date.now(),
         label: '기본 배송지',
@@ -46,10 +55,16 @@ export async function GET(request) {
       addresses = [defaultAddress]
 
       // addresses 컬럼에 마이그레이션된 데이터 저장
-      await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ addresses })
         .eq('id', userId)
+
+      if (updateError) {
+        console.error('❌ 주소 마이그레이션 실패:', updateError)
+      } else {
+        console.log('✅ 주소 마이그레이션 성공:', addresses)
+      }
     }
 
     // is_default 기준으로 정렬 (기본 주소가 먼저 오도록)
