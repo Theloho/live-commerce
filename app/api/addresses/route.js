@@ -25,7 +25,12 @@ export async function GET(request) {
 
     if (error) {
       console.error('주소 조회 오류:', error)
-      return NextResponse.json({ error: '주소 조회에 실패했습니다.' }, { status: 500 })
+      // 더 상세한 에러 정보 반환 (개발 중에만 사용, 프로덕션에서는 제거 필요)
+      return NextResponse.json({
+        error: '주소 조회에 실패했습니다.',
+        details: error.message,
+        code: error.code
+      }, { status: 500 })
     }
 
     return NextResponse.json({ addresses: data || [] })
