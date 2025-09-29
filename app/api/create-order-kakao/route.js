@@ -92,7 +92,7 @@ export async function POST(request) {
       body: JSON.stringify({
         id: orderId,
         customer_order_number: customerOrderNumber,
-        user_id: validUserId, // 검증된 사용자 ID 저장 (존재하지 않으면 null)
+        user_id: userId, // 카카오 사용자의 실제 ID 사용 (보안을 위해)
         status: 'pending',
         order_type: orderData.orderType || 'direct',
         created_at: new Date().toISOString()
