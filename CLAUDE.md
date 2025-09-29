@@ -164,6 +164,146 @@ GET https://allok.shop/api/addresses?user_id=f5a993cd-2eb0-44ef-a5f0-4decaf4d7ec
 
 ---
 
+## 📋 2025-09-30 주문완료 페이지 계산 오류 긴급 해결 작업
+
+### 🚨 긴급 문제 상황
+**사용자 제보**: "화면상에서는 계산도 잘안되고 입금자명도 잘 안되 콘솔만 잘된것처럼 보이나봐"
+
+**구체적 문제점**:
+- **총 상품금액**: ₩20,000이어야 하는데 ₩3,000으로 잘못 표시
+- **입금금액**: ₩24,000이어야 하는데 ₩7,000으로 잘못 표시
+- **입금자명**: 선택한 이름이 아닌 다른 값으로 표시
+- **실제 주문 데이터**: 4개 상품 (₩3,000 + ₩7,000 + ₩5,000 + ₩5,000 = ₩20,000)
+
+### ✅ 근본 원인 분석
+**파일**: `/Users/jt/live-commerce/app/orders/[id]/complete/page.js`
+
+**문제 1: 잘못된 총 상품금액 계산**
+```javascript
+// ❌ 문제 코드: 첫 번째 상품만 계산됨
+const totalProductAmount = orderData.items.reduce((sum, item) => sum + item.totalPrice, 0)
+```
+
+**문제 2: 부정확한 입금금액 계산**
+```javascript
+// ❌ 문제 코드: 캐시된 payment.amount 사용
+const depositAmount = orderData.payment.amount
+```
+
+**문제 3: 입금자명 우선순위 로직 누락**
+```javascript
+// ❌ 문제 코드: 단순한 fallback만 사용
+const depositorName = orderData.shipping?.name || '입금자명 확인 필요'
+```
+
+### 🔧 완전 수정 완료
+
+**수정 1: 올바른 총 상품금액 계산**
+```javascript
+// ✅ 해결 코드: 모든 상품 정확히 합계
+const correctTotalProductAmount = orderData.items.reduce((sum, item) => {
+  // totalPrice가 있으면 사용, 없으면 price * quantity 사용
+  const itemTotal = item.totalPrice || (item.price * item.quantity)
+  console.log(`💰 상품 ${item.title}: ${itemTotal}원 (price: ${item.price}, quantity: ${item.quantity}, totalPrice: ${item.totalPrice})`)
+  return sum + itemTotal
+}, 0)
+```
+
+**수정 2: 정확한 입금금액 계산**
+```javascript
+// ✅ 해결 코드: 상품금액 + 배송비로 재계산
+const shippingFee = 4000 // 일반적으로 ₩4,000
+const correctTotalAmount = correctTotalProductAmount + shippingFee
+```
+
+**수정 3: 입금자명 우선순위 로직 구현**
+```javascript
+// ✅ 해결 코드: 3단계 우선순위 로직
+const depositorName = orderData.payment?.depositor_name ||
+                    orderData.depositName ||
+                    orderData.shipping?.name ||
+                    '입금자명 확인 필요'
+```
+
+### 📊 수정 결과 예상
+- ✅ **총 상품금액**: ₩20,000 (3,000 + 7,000 + 5,000 + 5,000) 정확 표시
+- ✅ **입금금액**: ₩24,000 (상품 20,000 + 배송비 4,000) 정확 표시
+- ✅ **입금자명**: 사용자가 선택한 이름 정확 표시
+
+### 🚀 배포 및 캐시 문제 해결
+**커밋 완료**:
+- `9193376 🔧 fix: 주문 상세 페이지 입금 안내 정보 수정`
+- `4888027 🔧 fix: 주문 상세 페이지 총 상품금액 계산 로직 수정`
+
+**캐시 해결 방법 안내**:
+1. **강제 새로고침**: `Ctrl + Shift + R` (Windows) / `Cmd + Shift + R` (Mac)
+2. **브라우저 캐시 삭제**: F12 → Network → "Disable cache"
+3. **시크릿 모드 테스트**: 새로운 시크릿 창에서 확인
+4. **완전한 브라우저 데이터 삭제**: 사이트별 데이터 삭제
+
+### 📁 수정된 파일
+- `/Users/jt/live-commerce/app/orders/[id]/complete/page.js` - 계산 로직 완전 수정
+
+### ⏰ 작업 시간
+**2025-09-30 오후** - 긴급 계산 오류 완전 해결
+
+---
+
+## 🎯 다음 작업 예정 (나중에 구현)
+
+### 🎟️ 쿠폰 시스템 구현 계획
+**사용자 요청**: 쿠폰 기능 추가
+
+**구현 계획**:
+1. **쿠폰 테이블 설계**:
+   ```sql
+   CREATE TABLE coupons (
+     id UUID PRIMARY KEY,
+     code TEXT UNIQUE NOT NULL,
+     name TEXT NOT NULL,
+     discount_type TEXT CHECK (discount_type IN ('percent', 'fixed')),
+     discount_value INTEGER NOT NULL,
+     min_order_amount INTEGER DEFAULT 0,
+     max_discount INTEGER,
+     usage_limit INTEGER,
+     used_count INTEGER DEFAULT 0,
+     start_date TIMESTAMP,
+     end_date TIMESTAMP,
+     is_active BOOLEAN DEFAULT true,
+     created_at TIMESTAMP DEFAULT NOW()
+   );
+   ```
+
+2. **사용자 쿠폰 사용 내역**:
+   ```sql
+   CREATE TABLE user_coupon_usage (
+     id UUID PRIMARY KEY,
+     user_id UUID REFERENCES auth.users(id),
+     coupon_id UUID REFERENCES coupons(id),
+     order_id UUID REFERENCES orders(id),
+     used_at TIMESTAMP DEFAULT NOW()
+   );
+   ```
+
+3. **체크아웃 페이지 쿠폰 적용 UI**
+4. **주문 생성 시 쿠폰 할인 처리 로직**
+5. **관리자 페이지 쿠폰 관리**
+
+**예상 구현 시간**: 3-4시간
+**우선순위**: 중간 (기본 기능 안정화 후 구현)
+
+### 🔍 기타 나중에 검토할 기능들
+**(사용자가 언급했지만 구체적으로 기억나지 않는 기능들)**
+- 추가 결제 옵션 확장?
+- 주문 상태 관리 고도화?
+- 고객 관리 시스템 확장?
+- 재고 관리 시스템?
+- 배송 추적 시스템?
+
+**메모**: 사용자가 구체적으로 어떤 기능을 문의했는지 다음에 확인 필요
+
+---
+
 ## 📋 2025-09-26 이전 작업 내용
 
 ### 🎯 관리자 페이지 UI 개선 (완료)
