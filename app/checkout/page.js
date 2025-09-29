@@ -49,57 +49,60 @@ export default function CheckoutPage() {
   const [userSession, setUserSession] = useState(null)
   const [enableCardPayment, setEnableCardPayment] = useState(false) // 카드결제 활성화 여부
 
-  // 카카오 세션 확인
+  // 🚀 통합된 초기화 - 모든 useEffect를 하나로 통합하여 성능 최적화
   useEffect(() => {
-    const checkKakaoSession = () => {
+    const initCheckout = async () => {
+      console.log('🚀 체크아웃 초기화 시작...')
+      setPageLoading(true)
+
       try {
-        const storedUser = sessionStorage.getItem('user')
-        if (storedUser) {
-          const userData = JSON.parse(storedUser)
-          setUserSession(userData)
-          console.log('Checkout - 카카오 세션 복원:', userData)
-        } else {
-          setUserSession(null)
-        }
+        // ⚡ 1단계: 동기 데이터 로드 (빠른 로컬 데이터)
+        const sessionData = await loadSessionData()
+        if (!sessionData) return // 필수 데이터 없으면 조기 종료
+
+        // ⚡ 2단계: 비동기 데이터 병렬 로드 (API 호출들)
+        await loadUserDataParallel(sessionData)
+
+        console.log('✅ 체크아웃 초기화 완료')
       } catch (error) {
-        console.error('Checkout - 세션 확인 오류:', error)
-        setUserSession(null)
+        console.error('❌ 체크아웃 초기화 실패:', error)
+        toast.error('페이지 로딩 중 오류가 발생했습니다')
+        router.push('/')
+      } finally {
+        setPageLoading(false)
       }
     }
 
-    checkKakaoSession()
-  }, [])
-
-  // 관리자 설정 로드
-  useEffect(() => {
-    const loadSettings = () => {
+    // 🔒 안전한 세션 데이터 로드
+    const loadSessionData = () => {
       try {
+        // 카카오 세션 확인
+        const storedUser = sessionStorage.getItem('user')
+        let sessionUser = null
+        if (storedUser) {
+          sessionUser = JSON.parse(storedUser)
+          setUserSession(sessionUser)
+          console.log('✅ 카카오 세션 복원:', sessionUser)
+        }
+
+        // 관리자 설정 로드
         const savedSettings = localStorage.getItem('admin_site_settings')
         if (savedSettings) {
           const settings = JSON.parse(savedSettings)
           setEnableCardPayment(settings.enable_card_payment || false)
-          console.log('결제 설정 로드:', { enable_card_payment: settings.enable_card_payment })
+          console.log('✅ 결제 설정 로드:', { enable_card_payment: settings.enable_card_payment })
         }
+
+        return { sessionUser }
       } catch (error) {
-        console.error('설정 로드 오류:', error)
+        console.error('세션 데이터 로드 오류:', error)
+        setUserSession(null)
+        return null
       }
     }
 
-    loadSettings()
-
-    // 설정 변경 감지 (다른 탭에서 변경된 경우)
-    const handleStorageChange = (e) => {
-      if (e.key === 'admin_site_settings') {
-        loadSettings()
-      }
-    }
-
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
-
-  useEffect(() => {
-    const initCheckout = async () => {
+    // ⚡ 병렬 사용자 데이터 로드
+    const loadUserDataParallel = async ({ sessionUser }) => {
       const currentUser = userSession || user
       const isUserLoggedIn = userSession || isAuthenticated
 
@@ -292,7 +295,224 @@ export default function CheckoutPage() {
       setPageLoading(false)
     }
 
-    initCheckout()
+    // 🚀 고성능 체크아웃 초기화 함수 (병렬 처리)
+    const initCheckoutOptimized = async () => {
+      console.log('🚀 고성능 체크아웃 초기화 시작...')
+      setPageLoading(true)
+
+      try {
+        // ⚡ 1단계: 동기 데이터 로드 (즉시 실행)
+        const sessionResult = loadSessionDataSync()
+        if (!sessionResult.success) {
+          setPageLoading(false)
+          return
+        }
+
+        // ⚡ 2단계: 필수 검증 (순차적)
+        const validationResult = await validateEssentialData(sessionResult.data)
+        if (!validationResult.success) {
+          setPageLoading(false)
+          return
+        }
+
+        // ⚡ 3단계: 비동기 데이터 병렬 로드 (가장 느린 부분 최적화!)
+        await Promise.allSettled([
+          loadUserProfileOptimized(validationResult.currentUser),
+          loadUserAddressesOptimized(validationResult.currentUser)
+        ]).then(([profileResult, addressResult]) => {
+          // 프로필 처리
+          if (profileResult.status === 'fulfilled') {
+            setUserProfile(profileResult.value)
+            console.log('✅ 프로필 로드 성공')
+          } else {
+            console.warn('⚠️ 프로필 로드 실패, 기본값 사용')
+            setUserProfile(UserProfileManager.normalizeProfile(validationResult.currentUser))
+          }
+
+          // 주소 처리
+          if (addressResult.status === 'fulfilled' && addressResult.value?.length > 0) {
+            const addresses = addressResult.value
+            const defaultAddress = addresses.find(addr => addr.is_default) || addresses[0]
+
+            if (defaultAddress) {
+              setSelectedAddress(defaultAddress)
+              setUserProfile(prev => ({
+                ...prev,
+                address: defaultAddress.address,
+                detail_address: defaultAddress.detail_address,
+                addresses: addresses
+              }))
+              console.log('✅ 주소 로드 성공')
+            }
+          }
+        })
+
+        console.log('🎉 고성능 체크아웃 초기화 완료!')
+      } catch (error) {
+        console.error('❌ 체크아웃 초기화 실패:', error)
+        toast.error('페이지 로딩 중 오류가 발생했습니다')
+        router.push('/')
+      } finally {
+        setPageLoading(false)
+      }
+    }
+
+    // 🔧 동기 세션 데이터 로드 (즉시 실행)
+    const loadSessionDataSync = () => {
+      try {
+        // 카카오 세션 확인
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const sessionUser = JSON.parse(storedUser)
+          setUserSession(sessionUser)
+          console.log('✅ 카카오 세션 복원')
+        }
+
+        // 관리자 설정 로드
+        const savedSettings = localStorage.getItem('admin_site_settings')
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings)
+          setEnableCardPayment(settings.enable_card_payment || false)
+          console.log('✅ 결제 설정 로드')
+        }
+
+        return { success: true, data: { sessionUser: JSON.parse(storedUser || 'null') } }
+      } catch (error) {
+        console.error('세션 데이터 로드 오류:', error)
+        return { success: false }
+      }
+    }
+
+    // 🔒 필수 데이터 검증 (인증 + 주문 데이터)
+    const validateEssentialData = async (sessionData) => {
+      const currentUser = sessionData.sessionUser || user
+      const isUserLoggedIn = sessionData.sessionUser || isAuthenticated
+
+      // 인증 검증
+      if (authLoading && !sessionData.sessionUser) {
+        console.log('Still loading auth state, waiting...')
+        return { success: false }
+      }
+
+      if (!isUserLoggedIn) {
+        console.log('Not authenticated, redirecting to login')
+        toast.error('로그인이 필요합니다')
+        router.push('/login')
+        return { success: false }
+      }
+
+      // 주문 데이터 검증
+      const checkoutData = sessionStorage.getItem('checkoutItem')
+      if (!checkoutData) {
+        console.log('No checkout data found')
+        toast.error('구매 정보가 없습니다')
+        router.push('/')
+        return { success: false }
+      }
+
+      try {
+        const parsedOrderItem = JSON.parse(checkoutData)
+
+        // 필수 필드 검증
+        if (!parsedOrderItem.title || (!parsedOrderItem.price && !parsedOrderItem.totalPrice)) {
+          console.error('주문 아이템에 필수 필드가 없습니다:', parsedOrderItem)
+          toast.error('주문 정보가 올바르지 않습니다')
+          router.push('/')
+          return { success: false }
+        }
+
+        // 가격 정규화
+        if (!parsedOrderItem.price && parsedOrderItem.totalPrice) {
+          parsedOrderItem.price = parsedOrderItem.totalPrice
+        }
+
+        setOrderItem(parsedOrderItem)
+        console.log('✅ 주문 데이터 검증 완료')
+
+        return {
+          success: true,
+          currentUser,
+          orderItem: parsedOrderItem
+        }
+      } catch (error) {
+        console.error('주문 데이터 파싱 오류:', error)
+        toast.error('주문 정보를 읽을 수 없습니다')
+        router.push('/')
+        return { success: false }
+      }
+    }
+
+    // ⚡ 최적화된 사용자 프로필 로드
+    const loadUserProfileOptimized = async (currentUser) => {
+      if (currentUser?.provider === 'kakao') {
+        const { data: dbProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('kakao_id', currentUser.kakao_id)
+          .single()
+
+        return UserProfileManager.normalizeProfile(dbProfile || currentUser)
+      }
+      return UserProfileManager.normalizeProfile(currentUser)
+    }
+
+    // ⚡ 최적화된 사용자 주소 로드
+    const loadUserAddressesOptimized = async (currentUser) => {
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+
+        const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=addresses,address,detail_address`, {
+          method: 'GET',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error(`주소 조회 실패: ${response.status}`)
+        }
+
+        const profiles = await response.json()
+        if (!profiles?.length) return []
+
+        const profile = profiles[0]
+        let addresses = profile?.addresses || []
+
+        // 주소 마이그레이션 (한 번만 실행)
+        if (!addresses.length && profile?.address) {
+          const defaultAddress = {
+            id: Date.now(),
+            label: '기본 배송지',
+            address: profile.address,
+            detail_address: profile.detail_address || '',
+            is_default: true
+          }
+          addresses = [defaultAddress]
+
+          // 백그라운드에서 마이그레이션 저장 (blocking 하지 않음)
+          fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ addresses })
+          }).catch(console.warn) // 실패해도 진행
+        }
+
+        return addresses
+      } catch (error) {
+        console.warn('주소 로드 실패:', error)
+        return []
+      }
+    }
+
+    // 🚀 새로운 고성능 초기화 함수 호출
+    initCheckoutOptimized()
   }, [isAuthenticated, user, authLoading, userSession, router])
 
   // userProfile이 설정되면 프로필 완성도 체크
@@ -323,7 +543,20 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
+          <p className="text-gray-800 font-medium text-lg mb-2">결제 준비 중</p>
+          <p className="text-gray-500 text-sm">잠시만 기다려주세요...</p>
+
+          {/* 🚀 진행 단계 표시 */}
+          <div className="mt-6 max-w-xs mx-auto">
+            <div className="flex justify-between text-xs text-gray-400 mb-2">
+              <span>인증확인</span>
+              <span>주문정보</span>
+              <span>사용자정보</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-red-500 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+            </div>
+          </div>
         </div>
       </div>
     )
