@@ -135,6 +135,38 @@ export default function LoginPage() {
           <p className="text-gray-600">로그인하여 라이브 쇼핑을 즐겨보세요</p>
         </div>
 
+        {/* 카카오 로그인 안내 */}
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-yellow-800 text-sm font-medium text-center mb-2">
+            🚀 간편하게 카카오로 로그인하세요!
+          </p>
+          <p className="text-yellow-700 text-xs text-center">
+            카카오 계정으로 빠르고 안전하게 로그인할 수 있습니다
+          </p>
+        </div>
+
+        {/* 카카오 로그인 버튼 */}
+        <button
+          onClick={handleKakaoLogin}
+          disabled={loading}
+          className="w-full bg-yellow-400 text-gray-900 py-4 rounded-lg font-semibold hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 mb-6"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3C7.03 3 3 6.28 3 10.32c0 2.74 1.89 5.13 4.62 6.37l-1.24 4.56c-.11.4.36.7.67.49l5.24-3.63c.23.02.46.03.71.03 4.97 0 9-3.28 9-7.32S16.97 3 12 3z"/>
+          </svg>
+          {loading ? '로그인 중...' : '카카오 로그인'}
+        </button>
+
+        {/* 일반 로그인 폼 (현재 비활성화) */}
+        <details className="border border-gray-200 rounded-lg mb-6">
+          <summary className="p-4 cursor-pointer text-sm text-gray-600 hover:bg-gray-50">
+            일반 로그인 (개발 중)
+          </summary>
+          <div className="p-4 border-t border-gray-200 bg-gray-50">
+            <p className="text-xs text-gray-500 text-center mb-4">
+              현재 카카오 로그인만 지원됩니다
+            </p>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 휴대폰번호 */}
           <div>
@@ -184,39 +216,28 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* 로그인 버튼 */}
+          {/* 로그인 버튼 (비활성화) */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full mt-6 bg-red-500 text-white py-4 rounded-lg font-semibold hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={true}
+            className="w-full mt-6 bg-gray-300 text-gray-500 py-4 rounded-lg font-semibold cursor-not-allowed"
           >
-            {loading ? '로그인 중...' : '로그인'}
+            현재 지원하지 않음
           </button>
         </form>
+          </div>
+        </details>
 
-        {/* 소셜 로그인 구분선 */}
-        <div className="mt-6 mb-4 flex items-center">
-          <div className="flex-1 border-t border-gray-300"></div>
-          <span className="px-4 text-sm text-gray-500">또는</span>
-          <div className="flex-1 border-t border-gray-300"></div>
-        </div>
-
-        {/* 카카오 로그인 버튼 */}
-        <button
-          onClick={handleKakaoLogin}
-          disabled={loading}
-          className="w-full bg-yellow-400 text-gray-900 py-4 rounded-lg font-semibold hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 3C7.03 3 3 6.28 3 10.32c0 2.74 1.89 5.13 4.62 6.37l-1.24 4.56c-.11.4.36.7.67.49l5.24-3.63c.23.02.46.03.71.03 4.97 0 9-3.28 9-7.32S16.97 3 12 3z"/>
-          </svg>
-          {loading ? '로그인 중...' : '카카오 로그인'}
-        </button>
-
-        {/* 회원가입 안내 - 카카오 로그인만 지원 */}
-        <div className="mt-6 text-center">
+        {/* 회원가입 안내 */}
+        <div className="text-center">
           <p className="text-sm text-gray-600">
-            아직 계정이 없으신가요? 위의 카카오 로그인을 이용해주세요
+            아직 계정이 없으신가요?{' '}
+            <button
+              onClick={() => router.push('/signup')}
+              className="text-red-600 hover:text-red-700 font-medium"
+            >
+              회원가입하기
+            </button>
           </p>
         </div>
 
@@ -243,12 +264,6 @@ export default function LoginPage() {
         </div>
         */}
 
-        {/* 비밀번호 찾기 */}
-        <div className="mt-4 text-center">
-          <button className="text-sm text-gray-500 hover:text-gray-700">
-            비밀번호를 잊으셨나요?
-          </button>
-        </div>
       </motion.div>
 
       {/* 회원가입 유도 모달 */}
