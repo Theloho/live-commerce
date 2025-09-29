@@ -118,29 +118,10 @@ function OrdersContent() {
       try {
         let ordersData = []
 
-        // 🚀 API 호출 통합 (사용자 타입별 분기 최소화)
-        if (userSession && !user) {
-          // 카카오 사용자
-          console.log('카카오 API 사용')
-          const response = await fetch('/api/get-orders-kakao', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id })
-          })
-
-          const result = await response.json()
-          if (result.success) {
-            ordersData = result.orders
-            console.log('✅ 카카오 주문 로드 성공:', ordersData.length)
-          } else {
-            throw new Error(result.error)
-          }
-        } else {
-          // Supabase 사용자
-          console.log('Supabase API 사용')
-          ordersData = await getOrders(currentUser.id)
-          console.log('✅ Supabase 주문 로드 성공:', ordersData.length)
-        }
+        // 🚀 통합 API 사용 (모든 사용자 동일 처리)
+        console.log('통합 API 사용 - 사용자:', currentUser.name)
+        ordersData = await getOrders(currentUser.id)
+        console.log('✅ 통합 주문 로드 성공:', ordersData.length)
 
         setOrders(ordersData)
         return ordersData
@@ -180,20 +161,8 @@ function OrdersContent() {
         if (currentUser?.id) {
           setPageLoading(true)
 
-          let ordersData = []
-          if (userSession && !user) {
-            const response = await fetch('/api/get-orders-kakao', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: currentUser.id })
-            })
-            const result = await response.json()
-            if (result.success) {
-              ordersData = result.orders
-            }
-          } else {
-            ordersData = await getOrders(currentUser.id)
-          }
+          // 통합 API 사용 (모든 사용자 동일 처리)
+          let ordersData = await getOrders(currentUser.id)
 
           setOrders(ordersData)
           setPageLoading(false)
