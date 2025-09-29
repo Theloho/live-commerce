@@ -27,141 +27,204 @@ function OrdersContent() {
   const searchParams = useSearchParams()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
   const [userSession, setUserSession] = useState(null)
-  const [sessionLoading, setSessionLoading] = useState(true)
   const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('pending')
   const [selectedGroupOrder, setSelectedGroupOrder] = useState(null)
 
-  // 직접 세션 확인
+  // 🚀 통합된 고성능 초기화 (모든 useEffect 통합)
   useEffect(() => {
-    const checkUserSession = () => {
+    const initOrdersPageFast = async () => {
+      console.log('🚀 주문내역 고속 초기화 시작...')
+      setPageLoading(true)
+
+      try {
+        // ⚡ 1단계: 동기 데이터 로드 (즉시 실행)
+        const sessionData = loadSessionDataSync()
+        const urlData = parseUrlParameters()
+
+        // ⚡ 2단계: 인증 검증
+        const authResult = validateAuthenticationFast(sessionData)
+        if (!authResult.success) {
+          setPageLoading(false)
+          return
+        }
+
+        // ⚡ 3단계: 주문 데이터 병렬 로드
+        await loadOrdersDataFast(authResult.currentUser)
+
+        console.log('✅ 주문내역 고속 초기화 완료')
+      } catch (error) {
+        console.error('❌ 주문내역 초기화 실패:', error)
+        toast.error('주문내역을 불러오는 중 오류가 발생했습니다')
+        setOrders([])
+      } finally {
+        setPageLoading(false)
+      }
+    }
+
+    // 🔧 동기 세션 데이터 로드
+    const loadSessionDataSync = () => {
       try {
         const storedUser = sessionStorage.getItem('user')
+        let sessionUser = null
         if (storedUser) {
-          const userData = JSON.parse(storedUser)
-          console.log('주문내역에서 세션 복원:', userData)
-          setUserSession(userData)
-        } else {
-          setUserSession(null)
+          sessionUser = JSON.parse(storedUser)
+          setUserSession(sessionUser)
+          console.log('✅ 세션 복원:', sessionUser?.name)
         }
+        return { sessionUser }
       } catch (error) {
-        console.error('주문내역 세션 확인 오류:', error)
+        console.warn('세션 로드 실패:', error)
         setUserSession(null)
-      } finally {
-        setSessionLoading(false)
+        return { sessionUser: null }
       }
     }
 
-    checkUserSession()
-  }, [])
-
-  // URL 쿼리 파라미터에서 탭 정보 확인
-  useEffect(() => {
-    const tab = searchParams.get('tab')
-    if (tab && ['pending', 'verifying', 'paid', 'delivered'].includes(tab)) {
-      setFilterStatus(tab)
-    }
-  }, [searchParams])
-
-
-  const loadOrders = async () => {
-    const currentUser = userSession || user
-    const isUserLoggedIn = userSession || isAuthenticated
-
-    // 현재 로그인한 사용자 확인
-    if (!isUserLoggedIn || !currentUser?.id) {
-      console.log('사용자가 로그인되지 않음')
-      setOrders([])
-      setLoading(false)
-      return
+    // 🔧 URL 파라미터 분석
+    const parseUrlParameters = () => {
+      const tab = searchParams.get('tab')
+      if (tab && ['pending', 'verifying', 'paid', 'delivered'].includes(tab)) {
+        setFilterStatus(tab)
+        console.log('✅ URL 탭 설정:', tab)
+      }
+      return { tab }
     }
 
-    try {
-      console.log('주문 데이터 로드 중...')
+    // 🔒 인증 검증 (빠른 검사)
+    const validateAuthenticationFast = ({ sessionUser }) => {
+      if (authLoading && !sessionUser) {
+        console.log('Still loading auth, waiting...')
+        return { success: false }
+      }
 
-      // 카카오 사용자인 경우 별도 API 사용
-      if (userSession && !user) {
-        console.log('카카오 사용자 주문 조회 API 사용')
-        const response = await fetch('/api/get-orders-kakao', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: currentUser.id })
-        })
+      const currentUser = sessionUser || user
+      const isUserLoggedIn = sessionUser || isAuthenticated
 
-        const result = await response.json()
+      if (!isUserLoggedIn || !currentUser?.id) {
+        console.log('Not authenticated, redirecting to login')
+        toast.error('로그인이 필요합니다')
+        router.push('/login')
+        return { success: false }
+      }
 
-        if (result.success) {
-          console.log('카카오 주문 조회 성공:', result.orders.length)
-          setOrders(result.orders)
+      return { success: true, currentUser }
+    }
+
+    // ⚡ 주문 데이터 고속 로드
+    const loadOrdersDataFast = async (currentUser) => {
+      console.log('⚡ 주문 데이터 고속 로드:', currentUser?.name)
+
+      try {
+        let ordersData = []
+
+        // 🚀 API 호출 통합 (사용자 타입별 분기 최소화)
+        if (userSession && !user) {
+          // 카카오 사용자
+          console.log('카카오 API 사용')
+          const response = await fetch('/api/get-orders-kakao', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id })
+          })
+
+          const result = await response.json()
+          if (result.success) {
+            ordersData = result.orders
+            console.log('✅ 카카오 주문 로드 성공:', ordersData.length)
+          } else {
+            throw new Error(result.error)
+          }
         } else {
-          throw new Error(result.error)
+          // Supabase 사용자
+          console.log('Supabase API 사용')
+          ordersData = await getOrders(currentUser.id)
+          console.log('✅ Supabase 주문 로드 성공:', ordersData.length)
         }
-      } else {
-        // 일반 Supabase 사용자
-        const supabaseOrders = await getOrders(currentUser.id)
-        console.log('Loaded Supabase orders:', supabaseOrders)
-        setOrders(supabaseOrders)
+
+        setOrders(ordersData)
+        return ordersData
+      } catch (error) {
+        console.error('주문 데이터 로드 오류:', error)
+        setOrders([])
+        throw error
+      }
+    }
+
+    // 포커스 이벤트 리스너 (선택적 새로고침)
+    const setupFocusRefresh = () => {
+      const handleFocus = () => {
+        if (!pageLoading && (userSession || isAuthenticated)) {
+          console.log('🔄 페이지 포커스 - 주문 새로고침')
+          loadOrdersDataFast(userSession || user).catch(console.warn)
+        }
+      }
+
+      window.addEventListener('focus', handleFocus)
+      return () => window.removeEventListener('focus', handleFocus)
+    }
+
+    // 🚀 메인 초기화 실행
+    const cleanup = setupFocusRefresh()
+    initOrdersPageFast()
+
+    // 정리 함수 반환
+    return cleanup
+  }, [isAuthenticated, user, authLoading, router, searchParams])
+
+  // ⚡ 주문 새로고침 함수 (외부 호출용)
+  const refreshOrders = async () => {
+    try {
+      if (!pageLoading && (userSession || isAuthenticated)) {
+        const currentUser = userSession || user
+        if (currentUser?.id) {
+          setPageLoading(true)
+
+          let ordersData = []
+          if (userSession && !user) {
+            const response = await fetch('/api/get-orders-kakao', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: currentUser.id })
+            })
+            const result = await response.json()
+            if (result.success) {
+              ordersData = result.orders
+            }
+          } else {
+            ordersData = await getOrders(currentUser.id)
+          }
+
+          setOrders(ordersData)
+          setPageLoading(false)
+        }
       }
     } catch (error) {
-      console.error('주문 데이터 로드 오류:', error)
-      setOrders([])
-    } finally {
-      setLoading(false)
+      console.warn('주문 새로고침 실패:', error)
+      setPageLoading(false)
     }
   }
 
-  useEffect(() => {
-    const initOrders = async () => {
-      const currentUser = userSession || user
-      const isUserLoggedIn = userSession || isAuthenticated
-
-      if (authLoading || sessionLoading) return
-
-      if (!isUserLoggedIn) {
-        toast.error('로그인이 필요합니다')
-        router.push('/login')
-        return
-      }
-
-      loadOrders()
-    }
-
-    initOrders()
-  }, [isAuthenticated, authLoading, sessionLoading, router, user, userSession])
-
-  // 페이지 포커스 시 주문 목록 새로고침
-  useEffect(() => {
-    const handleFocus = () => {
-      const isUserLoggedIn = userSession || isAuthenticated
-      if (isUserLoggedIn && !authLoading && !sessionLoading) {
-        loadOrders()
-      }
-    }
-
-    const handleOrderUpdated = (event) => {
-      const isUserLoggedIn = userSession || isAuthenticated
-      if (isUserLoggedIn && !authLoading && !sessionLoading) {
-        console.log('주문 업데이트 이벤트 감지:', event.detail)
-        loadOrders()
-      }
-    }
-
-    window.addEventListener('focus', handleFocus)
-    window.addEventListener('orderUpdated', handleOrderUpdated)
-
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-      window.removeEventListener('orderUpdated', handleOrderUpdated)
-    }
-  }, [isAuthenticated, authLoading, userSession, sessionLoading])
-
-  if (authLoading || sessionLoading || loading) {
+  // ⚡ 로딩 상태 체크 (통합된 단일 로딩)
+  if (pageLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
+          <p className="text-gray-800 font-medium text-lg mb-2">주문내역 로딩 중</p>
+          <p className="text-gray-500 text-sm">잠시만 기다려주세요...</p>
+
+          {/* 🚀 고속 처리 진행 표시 */}
+          <div className="mt-6 max-w-xs mx-auto">
+            <div className="flex justify-between text-xs text-gray-400 mb-2">
+              <span>인증</span>
+              <span>주문조회</span>
+              <span>완료</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-red-500 h-2 rounded-full animate-pulse" style={{width: '70%'}}></div>
+            </div>
+          </div>
         </div>
       </div>
     )
