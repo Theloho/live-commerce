@@ -199,37 +199,79 @@ export default function CheckoutPage() {
         // 프로필 설정
         setUserProfile(loadedProfile)
 
-        // addresses 테이블에서 주소 목록 불러오기
+        // AddressManager와 동일한 방식으로 직접 Supabase API 호출하여 주소 목록 불러오기
         try {
-          console.log('addresses 테이블에서 주소 목록 조회 중...')
-          const addressResponse = await fetch(`/api/addresses?user_id=${currentUser.id}`)
-          const addressData = await addressResponse.json()
+          console.log('Supabase에서 주소 목록 조회 중...')
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
-          if (addressResponse.ok && addressData.addresses) {
-            console.log('주소 목록 로드 성공:', addressData.addresses)
+          const addressResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=addresses,address,detail_address`, {
+            method: 'GET',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            }
+          })
 
-            // 기본 배송지 자동 선택
-            const defaultAddress = addressData.addresses.find(addr => addr.is_default)
-            if (defaultAddress) {
-              setSelectedAddress(defaultAddress)
-              // userProfile에도 주소 정보 반영
-              setUserProfile(prev => ({
-                ...prev,
-                address: defaultAddress.address,
-                detail_address: defaultAddress.detail_address || ''
-              }))
-              console.log('기본 배송지 자동 선택:', defaultAddress)
-            } else if (addressData.addresses.length > 0) {
-              // 기본 배송지가 없으면 첫 번째 주소 선택
-              const firstAddress = addressData.addresses[0]
-              setSelectedAddress(firstAddress)
-              // userProfile에도 주소 정보 반영
-              setUserProfile(prev => ({
-                ...prev,
-                address: firstAddress.address,
-                detail_address: firstAddress.detail_address || ''
-              }))
-              console.log('첫 번째 주소 자동 선택:', firstAddress)
+          if (addressResponse.ok) {
+            const profiles = await addressResponse.json()
+            if (profiles && profiles.length > 0) {
+              const profile = profiles[0]
+              let addresses = profile?.addresses || []
+
+              // addresses가 비어있지만 기본 주소 정보가 있으면 마이그레이션
+              if ((!addresses || addresses.length === 0) && profile?.address) {
+                console.log('🔄 체크아웃 - 기본 주소 마이그레이션:', profile.address)
+                const defaultAddress = {
+                  id: Date.now(),
+                  label: '기본 배송지',
+                  address: profile.address,
+                  detail_address: profile.detail_address || '',
+                  is_default: true,
+                  created_at: new Date().toISOString()
+                }
+                addresses = [defaultAddress]
+
+                // 마이그레이션된 주소를 데이터베이스에 저장
+                await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ addresses })
+                })
+              }
+
+              if (addresses && addresses.length > 0) {
+                console.log('주소 목록 로드 성공:', addresses)
+
+                // 기본 배송지 자동 선택
+                const defaultAddress = addresses.find(addr => addr.is_default)
+                if (defaultAddress) {
+                  setSelectedAddress(defaultAddress)
+                  // userProfile에도 주소 정보 반영
+                  setUserProfile(prev => ({
+                    ...prev,
+                    address: defaultAddress.address,
+                    detail_address: defaultAddress.detail_address || ''
+                  }))
+                  console.log('기본 배송지 자동 선택:', defaultAddress)
+                } else if (addresses.length > 0) {
+                  // 기본 배송지가 없으면 첫 번째 주소 선택
+                  const firstAddress = addresses[0]
+                  setSelectedAddress(firstAddress)
+                  // userProfile에도 주소 정보 반영
+                  setUserProfile(prev => ({
+                    ...prev,
+                    address: firstAddress.address,
+                    detail_address: firstAddress.detail_address || ''
+                  }))
+                  console.log('첫 번째 주소 자동 선택:', firstAddress)
+                }
+              }
             }
           }
         } catch (error) {
