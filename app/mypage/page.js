@@ -29,6 +29,21 @@ export default function MyPage() {
   const [editingField, setEditingField] = useState(null)
   const [editValues, setEditValues] = useState({})
 
+  // 다음 주소 API 스크립트 로드
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    script.async = true
+    document.head.appendChild(script)
+
+    return () => {
+      // 컴포넌트 언마운트 시 스크립트 제거
+      if (document.head.contains(script)) {
+        document.head.removeChild(script)
+      }
+    }
+  }, [])
+
   // 직접 세션 확인
   useEffect(() => {
     const checkUserSession = () => {
