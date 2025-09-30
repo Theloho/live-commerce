@@ -38,8 +38,16 @@ export default function useAuth() {
     if (!globalSubscription) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
-          // 모든 컴포넌트에 상태 변경 전파는 브로드캐스트로 처리
-          if (event === 'SIGNED_IN' && session?.user) {
+          // INITIAL_SESSION은 페이지 로드 시 기존 세션 복원이므로 토스트 표시 안 함
+          if (event === 'INITIAL_SESSION') {
+            // 조용히 세션만 복원
+            if (session?.user) {
+              window.dispatchEvent(new CustomEvent('authStateChanged', {
+                detail: { user: session.user, event: 'INITIAL_SESSION' }
+              }))
+            }
+          } else if (event === 'SIGNED_IN' && session?.user) {
+            // 실제 로그인 시에만 토스트 표시
             window.dispatchEvent(new CustomEvent('authStateChanged', {
               detail: { user: session.user, event: 'SIGNED_IN' }
             }))
@@ -64,7 +72,7 @@ export default function useAuth() {
     // 커스텀 이벤트 리스너
     const handleAuthStateChanged = (event) => {
       const { user: newUser, event: authEvent } = event.detail
-      if (authEvent === 'SIGNED_IN' || authEvent === 'TOKEN_REFRESHED') {
+      if (authEvent === 'INITIAL_SESSION' || authEvent === 'SIGNED_IN' || authEvent === 'TOKEN_REFRESHED') {
         setUser(newUser)
       } else if (authEvent === 'SIGNED_OUT') {
         setUser(null)
