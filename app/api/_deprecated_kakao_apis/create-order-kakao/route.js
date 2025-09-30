@@ -73,7 +73,11 @@ export async function POST(request) {
       }
     }
 
-    // 1. 주문 생성
+    // 1. total_price 계산 (주문 생성 전에 미리 계산)
+    const totalPrice = orderData.totalPrice || (orderData.price * orderData.quantity)
+    console.log('💰 계산된 총 상품금액:', totalPrice)
+
+    // 2. 주문 생성
     const orderId = crypto.randomUUID()
     const customerOrderNumber = generateCustomerOrderNumber()
 
@@ -109,7 +113,7 @@ export async function POST(request) {
     const order = await orderResponse.json()
     console.log('주문 생성 성공:', order[0])
 
-    // 2. 주문 아이템 생성
+    // 3. 주문 아이템 생성
     // product_id가 문자열인 경우 UUID로 변환하거나 Mock 제품인지 확인
     let productId = orderData.id
 
@@ -117,9 +121,6 @@ export async function POST(request) {
     if (typeof productId === 'string' && !productId.includes('-')) {
       throw new Error(`잘못된 제품 ID 형식: ${productId}. UUID 형식이어야 합니다.`)
     }
-
-    // total_price 계산 (null 방지)
-    const totalPrice = orderData.totalPrice || (orderData.price * orderData.quantity)
 
     const { error: itemError } = await supabase
       .from('order_items')
