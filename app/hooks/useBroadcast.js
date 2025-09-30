@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import useAuthStore from '@/app/stores/authStore'
 import toast from 'react-hot-toast'
@@ -13,7 +13,8 @@ export default function useBroadcast(broadcastId) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const supabase = createClient()
+  // useMemo로 클라이언트를 한 번만 생성
+  const supabase = useMemo(() => createClient(), [])
   const { user } = useAuthStore()
   const messagesSubscription = useRef(null)
   const viewersSubscription = useRef(null)
