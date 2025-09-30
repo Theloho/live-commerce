@@ -282,6 +282,35 @@ if (data.length === 0 && userQuery.alternativeQueries) {
 
 ---
 
+## 📋 2025-09-30 실제 프로덕션 DB 스키마 불일치 해결 작업
+
+### 🚨 심각한 발견: 개발용과 프로덕션 스키마 완전 불일치
+**문제**: 우리가 참조하던 `/supabase/schema.sql`이 실제 프로덕션 서버와 다름
+- **개발용 스키마**: `price`, `title` 컬럼 존재
+- **실제 프로덕션**: `unit_price` 사용, `title` 컬럼 없음
+
+### ✅ 체계적 해결 완료
+1. **실제 프로덕션 스키마 분석**: `/supabase_schema.sql` 기준
+2. **SYSTEM_ARCHITECTURE_PRODUCTION.md 생성**: 실제 DB 기준 문서
+3. **모든 코드를 실제 DB에 맞춰 수정**: unit_price, total_price 사용
+
+### 📊 실제 프로덕션 order_items 스키마
+```sql
+CREATE TABLE IF NOT EXISTS order_items (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id),
+    quantity INTEGER NOT NULL DEFAULT 1,
+    unit_price DECIMAL(10, 2),           -- ❗ price가 아닌 unit_price
+    total_price DECIMAL(10, 2) NOT NULL,
+    selected_options JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+    -- ❗ title 컬럼 없음 (products 테이블에서 조인)
+);
+```
+
+---
+
 ## 📋 2025-09-30 주문완료 페이지 계산 오류 긴급 해결 작업
 
 ### 🚨 긴급 문제 상황
