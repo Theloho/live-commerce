@@ -440,7 +440,10 @@ export default function OrderCompletePage() {
                         depositorName,
                         paymentDepositorName: orderData.payment?.depositor_name,
                         orderDepositName: orderData.depositName,
-                        shippingName: orderData.shipping?.name
+                        shippingName: orderData.shipping?.name,
+                        fullPaymentData: orderData.payment,
+                        fullShippingData: orderData.shipping,
+                        fullOrderData: orderData
                       })
 
                       return (
