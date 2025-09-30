@@ -109,15 +109,16 @@ export default function OrderCompletePage() {
         } catch (error) {
           console.error('📋 supabaseApi 주문 조회 실패:', error)
 
-          // 폴백: sessionStorage에서 최근 주문 확인
-          const recentOrder = sessionStorage.getItem('recentOrder')
-          if (recentOrder) {
-            const orderInfo = JSON.parse(recentOrder)
-            if (orderInfo.id === params.id) {
-              order = orderInfo
-              console.log('📋 sessionStorage에서 주문 데이터 복원:', order)
-            }
-          }
+          // 폴백: sessionStorage에서 최근 주문 확인 (디버깅용으로 일시 비활성화)
+          console.log('📋 sessionStorage 폴백 건너뛰기 - getOrderById 우선 사용')
+          // const recentOrder = sessionStorage.getItem('recentOrder')
+          // if (recentOrder) {
+          //   const orderInfo = JSON.parse(recentOrder)
+          //   if (orderInfo.id === params.id) {
+          //     order = orderInfo
+          //     console.log('📋 sessionStorage에서 주문 데이터 복원:', order)
+          //   }
+          // }
         }
 
         if (order) {
