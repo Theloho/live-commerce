@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
+// 전역 구독 관리 (싱글톤 패턴)
+let globalSubscription = null
+let subscriberCount = 0
+
 export default function useAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -16,10 +20,8 @@ export default function useAuth() {
         if (error) throw error
 
         if (session?.user) {
-          console.log('기존 세션 복원:', session.user)
           setUser(session.user)
         } else {
-          console.log('세션 없음')
           setUser(null)
         }
       } catch (error) {
@@ -32,24 +34,54 @@ export default function useAuth() {
 
     getSession()
 
-    // 인증 상태 변화 감지
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // 로그 제거: INITIAL_SESSION 이벤트 과다 발생 방지
-        if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user)
-          toast.success('로그인되었습니다')
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null)
-          toast.success('로그아웃되었습니다')
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          setUser(session.user)
+    // 전역 구독이 없을 때만 생성 (싱글톤)
+    if (!globalSubscription) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          // 모든 컴포넌트에 상태 변경 전파는 브로드캐스트로 처리
+          if (event === 'SIGNED_IN' && session?.user) {
+            window.dispatchEvent(new CustomEvent('authStateChanged', {
+              detail: { user: session.user, event: 'SIGNED_IN' }
+            }))
+            toast.success('로그인되었습니다')
+          } else if (event === 'SIGNED_OUT') {
+            window.dispatchEvent(new CustomEvent('authStateChanged', {
+              detail: { user: null, event: 'SIGNED_OUT' }
+            }))
+            toast.success('로그아웃되었습니다')
+          } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+            window.dispatchEvent(new CustomEvent('authStateChanged', {
+              detail: { user: session.user, event: 'TOKEN_REFRESHED' }
+            }))
+          }
         }
+      )
+      globalSubscription = subscription
+    }
+
+    subscriberCount++
+
+    // 커스텀 이벤트 리스너
+    const handleAuthStateChanged = (event) => {
+      const { user: newUser, event: authEvent } = event.detail
+      if (authEvent === 'SIGNED_IN' || authEvent === 'TOKEN_REFRESHED') {
+        setUser(newUser)
+      } else if (authEvent === 'SIGNED_OUT') {
+        setUser(null)
       }
-    )
+    }
+
+    window.addEventListener('authStateChanged', handleAuthStateChanged)
 
     return () => {
-      subscription.unsubscribe()
+      subscriberCount--
+      window.removeEventListener('authStateChanged', handleAuthStateChanged)
+
+      // 모든 구독자가 없어지면 전역 구독 해제
+      if (subscriberCount === 0 && globalSubscription) {
+        globalSubscription.unsubscribe()
+        globalSubscription = null
+      }
     }
   }, [])
 
