@@ -1,8 +1,30 @@
 # Live Commerce Project
 
-> **CLAUDE CODE INSTRUCTIONS**:
-> ALWAYS check SYSTEM_ARCHITECTURE.md and DATA_ARCHITECTURE.md FIRST before any task.
-> Follow systematic analysis process. Update docs after changes. Never make isolated fixes.
+> **🤖 CLAUDE CODE - 새 세션 시작 시 필수 읽기 문서 (반드시 순서대로 읽을 것!)**
+>
+> **1단계: 최신 작업 로그 확인**
+> - ✅ `WORK_LOG_2025-10-01.md` - 가장 최근 작업 내역 및 현재 시스템 상태
+>
+> **2단계: 상세 데이터 흐름 이해 (⭐ 가장 중요!)**
+> - ✅ `DETAILED_DATA_FLOW.md` - **실제 프로덕션 코드 기반** 페이지별 데이터 흐름
+>   - 6개 주요 페이지 상세 분석
+>   - API 엔드포인트별 처리 과정
+>   - DB 테이블 정확한 컬럼 매핑
+>   - 트러블슈팅 가이드
+>
+> **3단계: 시스템 아키텍처 확인**
+> - `SYSTEM_ARCHITECTURE_PRODUCTION.md` - 실제 프로덕션 DB 스키마 기준
+> - `DATA_ARCHITECTURE.md` - 전체 데이터 구조 개요
+>
+> **4단계: 개발 가이드라인**
+> - `CLAUDE.md` - 체계적 개발 명령어 및 규칙
+>
+> **중요 원칙:**
+> - 모든 작업 전 위 문서들을 반드시 먼저 읽을 것
+> - `/system-check` 명령어로 관련 시스템 확인 후 작업
+> - `/fix-with-system`으로 체계적 수정
+> - `/update-docs`로 문서 최신화
+> - 임시방편 수정 금지, 항상 체계적 접근
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
