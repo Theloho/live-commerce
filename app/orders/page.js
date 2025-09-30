@@ -278,8 +278,15 @@ function OrdersContent() {
       // Supabase에서 주문 취소
       await cancelOrder(orderId)
       toast.success('주문이 취소되었습니다')
-      // 주문 목록 새로고침
-      loadOrdersDataFast(userSession || user)
+
+      // 주문 목록 새로고침 - 직접 getOrders 호출
+      console.log('🔄 주문 취소 후 목록 새로고침')
+      const currentUser = userSession || user
+      if (currentUser) {
+        const updatedOrders = await getOrders(currentUser.id)
+        setOrders(updatedOrders)
+        console.log('✅ 주문 목록 새로고침 완료:', updatedOrders.length)
+      }
     } catch (error) {
       console.error('주문 취소 중 오류:', error)
       toast.error('주문 취소 중 오류가 발생했습니다')
