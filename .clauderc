@@ -1,0 +1,12 @@
+# Claude Code Default Behavior
+# This file makes Claude always follow systematic approach
+
+ALWAYS_CHECK_DOCS=true
+REQUIRED_PROCESS=systematic
+AUTO_UPDATE_DOCS=true
+
+# Every task must:
+# 1. Check SYSTEM_ARCHITECTURE.md first
+# 2. Check DATA_ARCHITECTURE.md second
+# 3. Follow systematic analysis
+# 4. Update docs after changes

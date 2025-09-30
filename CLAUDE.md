@@ -1,5 +1,55 @@
 # Claude 작업 메모
 
+## 🤖 Claude 체계적 개발 명령어 시스템
+
+### `/system-check` - 문제 해결 시 필수 실행
+**실행 단계**:
+1. SYSTEM_ARCHITECTURE.md 해당 페이지 섹션 확인 (페이지 기능, 연관관계)
+2. DATA_ARCHITECTURE.md 확인 (DB 구조, API 매핑, 데이터 흐름)
+3. 연관된 페이지/컴포넌트 파악
+4. 데이터 흐름 경로 추적
+5. 영향도 분석 보고
+
+**사용법**: `/system-check [페이지명 또는 기능명]`
+
+### `/fix-with-system` - 체계적 수정 프로세스
+**실행 단계**:
+1. `/system-check` 자동 실행
+2. 문제 분석 및 근본 원인 파악
+3. 영향받는 모든 파일 식별
+4. 체계적 해결책 제시 및 적용
+5. `/update-docs` 자동 실행
+
+**사용법**: `/fix-with-system [문제 설명]`
+
+### `/update-docs` - 수정 후 필수 문서 업데이트
+**실행 단계**:
+1. SYSTEM_ARCHITECTURE.md 관련 섹션 업데이트
+2. DATA_ARCHITECTURE.md 시스템 상태 업데이트
+3. 변경사항이 다른 시스템에 미치는 영향 기록
+4. 커밋 메시지에 문서 업데이트 포함
+
+**사용법**: `/update-docs [변경사항 설명]`
+
+### 📋 사용 예시
+```
+사용자: "/fix-with-system 주문 조회가 안 됩니다"
+
+Claude 자동 실행:
+1. /system-check 주문조회 → 관련 시스템 전체 분석
+2. 문제 원인 파악 (UserProfileManager, getOrders 등)
+3. 관련 파일들 체계적 수정
+4. /update-docs → 문서 최신화
+```
+
+### ⚠️ 개발 규칙
+- **모든 수정 작업 시 `/fix-with-system` 사용 필수**
+- **문제 해결 전 반드시 `/system-check` 실행**
+- **수정 완료 후 `/update-docs` 실행 필수**
+- **임시방편 수정 금지, 체계적 접근만 허용**
+
+---
+
 ## 📋 2025-09-28 보안 시스템 강화 완료
 
 ### 🛡️ 핵심 보안 개선 작업 완료

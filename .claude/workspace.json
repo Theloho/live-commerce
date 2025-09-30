@@ -1,0 +1,19 @@
+{
+  "name": "Live Commerce",
+  "version": "1.0.0",
+  "claude": {
+    "defaultBehavior": "systematic",
+    "alwaysCheck": [
+      "SYSTEM_ARCHITECTURE.md",
+      "DATA_ARCHITECTURE.md"
+    ],
+    "autoUpdate": true,
+    "rules": [
+      "Never make isolated changes",
+      "Always check architecture docs first",
+      "Always update docs after changes",
+      "Follow systematic analysis process"
+    ],
+    "triggerAutomatically": true
+  }
+}

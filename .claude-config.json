@@ -1,0 +1,33 @@
+{
+  "systemBehavior": {
+    "alwaysCheckDocs": true,
+    "requiredChecks": [
+      "SYSTEM_ARCHITECTURE.md",
+      "DATA_ARCHITECTURE.md"
+    ],
+    "triggerWords": [
+      "체계적으로",
+      "시스템 체크",
+      "근본적으로",
+      "전체적으로"
+    ],
+    "mandatoryProcess": {
+      "analyze": [
+        "Check SYSTEM_ARCHITECTURE.md for page functionality",
+        "Check DATA_ARCHITECTURE.md for data flow",
+        "Identify related components",
+        "Assess impact"
+      ],
+      "fix": [
+        "Apply systematic solution",
+        "Update all related files",
+        "Maintain consistency"
+      ],
+      "update": [
+        "Update SYSTEM_ARCHITECTURE.md",
+        "Update DATA_ARCHITECTURE.md",
+        "Record changes and impacts"
+      ]
+    }
+  }
+}
