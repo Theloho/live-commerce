@@ -719,7 +719,7 @@ function OrdersContent() {
                                   return isCard ? '카드결제 대기중' : '입금대기'
                               }
                             })()}
-                            {order.orderType === 'cart' && ' (장바구니에서)'}
+                            {order.order_type?.includes('cart:') && ' (장바구니에서)'}
                           </span>
                           <span>{order.isGroup ? '상세목록 보기 →' : '상세보기 →'}</span>
                         </div>
