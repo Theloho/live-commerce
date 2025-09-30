@@ -123,10 +123,10 @@ export async function POST(request) {
       .insert([{
         order_id: orderId,
         product_id: productId,
+        product_title: orderData.title || '상품',
         quantity: orderData.quantity,
         price: orderData.price,
-        total: orderData.totalPrice,
-        selected_options: orderData.selectedOptions || {}
+        total: orderData.totalPrice || (orderData.price * orderData.quantity)
       }])
 
     if (itemError) throw itemError
