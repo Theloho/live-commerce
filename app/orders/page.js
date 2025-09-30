@@ -913,7 +913,22 @@ function OrdersContent() {
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">입금자명</span>
                           <span className="text-lg font-bold text-gray-900">
-                            {selectedGroupOrder.shipping?.name || '김진태'}
+                            {(() => {
+                              // 입금자명 우선순위: payment.depositor_name > depositName > shipping.name
+                              const depositorName = selectedGroupOrder.payment?.depositor_name ||
+                                                   selectedGroupOrder.depositName ||
+                                                   selectedGroupOrder.shipping?.name ||
+                                                   '입금자명 확인 필요'
+
+                              console.log('🏦 모달 입금자명 정보:', {
+                                paymentDepositorName: selectedGroupOrder.payment?.depositor_name,
+                                depositName: selectedGroupOrder.depositName,
+                                shippingName: selectedGroupOrder.shipping?.name,
+                                finalDepositorName: depositorName
+                              })
+
+                              return depositorName
+                            })()}
                           </span>
                         </div>
                       </div>
