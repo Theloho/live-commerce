@@ -123,10 +123,16 @@ export async function POST(request) {
       .insert([{
         order_id: orderId,
         product_id: productId,
-        product_title: orderData.title || '상품',
+        title: orderData.title || '상품', // 개발 스키마 신규 컬럼
         quantity: orderData.quantity,
-        price: orderData.price,
-        total: orderData.totalPrice || (orderData.price * orderData.quantity)
+        price: orderData.price, // 개발 스키마 신규 컬럼
+        total: orderData.totalPrice || (orderData.price * orderData.quantity), // 개발 스키마 신규 컬럼
+        unit_price: orderData.price, // 기존 컬럼 (호환성 유지)
+        total_price: orderData.totalPrice || (orderData.price * orderData.quantity), // 기존 컬럼 (호환성 유지)
+        selected_options: orderData.selectedOptions || {},
+        variant_title: orderData.variant || null,
+        sku: orderData.sku || null,
+        product_snapshot: orderData.productSnapshot || {}
       }])
 
     if (itemError) throw itemError
