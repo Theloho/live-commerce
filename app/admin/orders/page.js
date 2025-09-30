@@ -79,7 +79,19 @@ export default function AdminOrdersPage() {
         userId: order.userId,
         userName: order.userName,
         userNickname: order.userNickname,
-        shipping: order.shipping
+        shipping: order.shipping,
+        status: order.status
+      })))
+
+      // pending 주문들만 별도 로깅
+      const pendingOrders = allOrders.filter(order => order.status === 'pending')
+      console.log('🔍 결제대기 주문들 상세 분석:', pendingOrders.map(order => ({
+        주문ID: order.id,
+        사용자ID: order.userId,
+        사용자명: order.userName || order.userNickname,
+        배송지명: order.shipping?.name,
+        주문번호: order.customer_order_number,
+        생성일: order.created_at
       })))
       setOrders(allOrders)
       setLoading(false)
