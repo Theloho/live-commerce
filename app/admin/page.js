@@ -244,13 +244,47 @@ export default function AdminDashboard() {
       </motion.div>
 
       {/* Refresh Button */}
-      <div className="text-center">
+      <div className="text-center space-y-3">
         <button
           onClick={loadStats}
           className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
         >
           통계 새로고침
         </button>
+
+        {/* 데이터베이스 초기화 버튼 */}
+        <div className="pt-4 border-t border-gray-200">
+          <button
+            onClick={async () => {
+              if (confirm('⚠️ 정말로 모든 주문/결제 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!')) {
+                try {
+                  const response = await fetch('/api/admin/reset-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirm: 'RESET_ALL_DATA' })
+                  })
+
+                  if (response.ok) {
+                    const result = await response.json()
+                    toast.success('✅ 데이터베이스가 초기화되었습니다')
+                    console.log('🎉 초기화 완료:', result)
+                    loadStats() // 통계 새로고침
+                  } else {
+                    const error = await response.json()
+                    toast.error(`❌ 초기화 실패: ${error.error}`)
+                  }
+                } catch (error) {
+                  toast.error('❌ 초기화 요청 실패')
+                  console.error('초기화 오류:', error)
+                }
+              }
+            }}
+            className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+          >
+            🗑️ 데이터베이스 초기화
+          </button>
+          <p className="text-xs text-gray-500 mt-1">모든 주문/결제 데이터 삭제</p>
+        </div>
       </div>
     </div>
   )
