@@ -101,22 +101,23 @@ export default function OrderCompletePage() {
       try {
         let order = null
 
-        if (currentUser && currentUser.provider === 'kakao') {
-          // 카카오 사용자는 API에서 조회
-          const response = await fetch('/api/get-orders-kakao', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.id })
-          })
+        // 통합된 주문 조회 방식 - supabaseApi.getOrderById 사용
+        try {
+          const { getOrderById } = await import('@/lib/supabaseApi')
+          order = await getOrderById(params.id)
+          console.log('📋 주문 상세 데이터 조회 완료:', order)
+        } catch (error) {
+          console.error('📋 supabaseApi 주문 조회 실패:', error)
 
-          if (response.ok) {
-            const result = await response.json()
-            order = result.orders?.find(o => o.id === params.id)
+          // 폴백: sessionStorage에서 최근 주문 확인
+          const recentOrder = sessionStorage.getItem('recentOrder')
+          if (recentOrder) {
+            const orderInfo = JSON.parse(recentOrder)
+            if (orderInfo.id === params.id) {
+              order = orderInfo
+              console.log('📋 sessionStorage에서 주문 데이터 복원:', order)
+            }
           }
-        } else {
-          // 일반 사용자는 localStorage에서 조회
-          const orders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-          order = orders.find(o => o.id === params.id && o.userId === currentUser?.id)
         }
 
         if (order) {
@@ -429,7 +430,10 @@ export default function OrderCompletePage() {
                       // 실제 저장된 결제 금액 사용 (이미 계산되어 저장된 값)
                       const actualPaymentAmount = orderData.payment?.amount || 0
 
-                      // 입금자명 우선순위: payment.depositor_name > depositName > shipping.name
+                      // 입금자명 우선순위 (DB 저장된 순서대로)
+                      // 1. payment.depositor_name (order_payments 테이블의 depositor_name)
+                      // 2. depositName (supabaseApi에서 추가한 최적화된 입금자명)
+                      // 3. shipping.name (배송자명)
                       const depositorName = orderData.payment?.depositor_name ||
                                           orderData.depositName ||
                                           orderData.shipping?.name ||
@@ -440,10 +444,7 @@ export default function OrderCompletePage() {
                         depositorName,
                         paymentDepositorName: orderData.payment?.depositor_name,
                         orderDepositName: orderData.depositName,
-                        shippingName: orderData.shipping?.name,
-                        fullPaymentData: orderData.payment,
-                        fullShippingData: orderData.shipping,
-                        fullOrderData: orderData
+                        shippingName: orderData.shipping?.name
                       })
 
                       return (
