@@ -126,8 +126,8 @@ export async function POST(request) {
         order_id: orderId,
         product_id: productId,
         quantity: orderData.quantity,
-        unit_price: orderData.price,
-        total_price: totalPrice,
+        price: orderData.price,
+        total: totalPrice,
         selected_options: orderData.selectedOptions || {}
       }])
 
