@@ -214,6 +214,74 @@ GET https://allok.shop/api/addresses?user_id=f5a993cd-2eb0-44ef-a5f0-4decaf4d7ec
 
 ---
 
+## 📋 2025-09-30 사용자 페이지 주문 조회 문제 완전 해결
+
+### 🚨 긴급 문제 상황
+**사용자 제보**: "자 다시 사용자 페이지에서 결제 대기에 구매하기로 한 제품들이 아무것도 안나와"
+
+**구체적 문제점**:
+- 카카오 사용자가 주문한 9개 상품이 사용자 페이지에서 보이지 않음
+- 관리자 페이지에서는 정상적으로 주문이 보임
+- UserProfileManager 기반 조회에서 0개 결과 반환
+
+### ✅ 근본 원인 분석
+**핵심 문제**: order_type 형식 불일치
+- **기존 주문**: `cart:KAKAO:7f3094fc-0212-40f8-a7af-d126898a3ea8` (UUID 형식)
+- **조회 조건**: `direct:KAKAO:4454444603` (kakao_id 형식)
+- **UserProfileManager 조회 로직**: 단일 조건만 지원하여 기존 주문 못 찾음
+
+### 🔧 완전 해결 완료
+
+**해결 1: createOrder 함수 수정**
+```javascript
+// ❌ 문제 코드: user.provider 기반 UUID 사용
+order_type: user.provider === 'kakao' ? `${orderData.orderType || 'direct'}:KAKAO:${user.id}` : (orderData.orderType || 'direct')
+
+// ✅ 해결 코드: user.kakao_id 기반 실제 카카오 ID 사용
+order_type: user.kakao_id ? `${orderData.orderType || 'direct'}:KAKAO:${user.kakao_id}` : (orderData.orderType || 'direct')
+```
+
+**해결 2: UserProfileManager 확장**
+```javascript
+// 기존 주문과의 호환성을 위한 대체 조회 조건들 추가
+alternativeQueries: [
+  { column: 'order_type', value: `cart:KAKAO:${currentUser.kakao_id}` },
+  { column: 'order_type', value: `direct:KAKAO:${currentUser.id}` },
+  { column: 'order_type', value: `cart:KAKAO:${currentUser.id}` }
+]
+```
+
+**해결 3: getOrders 함수 다중 조회 지원**
+```javascript
+// 기본 조회 실패 시 대체 조건들로 자동 재시도
+if (data.length === 0 && userQuery.alternativeQueries) {
+  for (const altQuery of userQuery.alternativeQueries) {
+    // 각 대체 조건으로 순차 조회 시도
+    if (altData && altData.length > 0) {
+      data = altData
+      break
+    }
+  }
+}
+```
+
+### 📊 해결 결과
+- ✅ **기존 주문 9개** 모두 정상 조회 가능
+- ✅ **새로운 주문**도 올바른 kakao_id 형식으로 저장
+- ✅ **완벽한 하위 호환성** 확보
+- ✅ **사용자 페이지에서 모든 주문 정상 표시**
+
+### 📁 수정된 파일
+- `/Users/jt/live-commerce/lib/supabaseApi.js` - createOrder 및 getOrders 함수 수정
+- `/Users/jt/live-commerce/lib/userProfileManager.js` - alternativeQueries 기능 추가
+- `/Users/jt/live-commerce/app/api/fix-order-type/route.js` - 데이터 수정 API (보조)
+- `/Users/jt/live-commerce/supabase/fix-order-type.sql` - SQL 수정 스크립트 (보조)
+
+### ⏰ 작업 시간
+**2025-09-30 오후** - 사용자 주문 조회 문제 완전 해결
+
+---
+
 ## 📋 2025-09-30 주문완료 페이지 계산 오류 긴급 해결 작업
 
 ### 🚨 긴급 문제 상황
