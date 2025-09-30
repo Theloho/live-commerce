@@ -1112,7 +1112,16 @@ function OrdersContent() {
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">총 상품금액</span>
                         <span className="font-medium text-gray-900">
-                          ₩{(selectedGroupOrder.payment.amount - 4000).toLocaleString()}
+                          ₩{(() => {
+                            // 모든 상품의 총 금액 계산
+                            const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
+                              const itemTotal = (item.price || 0) * (item.quantity || 1)
+                              console.log(`💰 모달 상품 ${item.title}: ${itemTotal}원 (price: ${item.price}, quantity: ${item.quantity})`)
+                              return sum + itemTotal
+                            }, 0)
+                            console.log(`💰 모달 총 상품금액: ${totalProductAmount}원`)
+                            return totalProductAmount.toLocaleString()
+                          })()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -1122,7 +1131,15 @@ function OrdersContent() {
                       <div className="flex justify-between items-center border-t pt-2">
                         <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
                         <span className="font-bold text-lg text-gray-900">
-                          ₩{selectedGroupOrder.payment.amount.toLocaleString()}
+                          ₩{(() => {
+                            // 상품금액 + 배송비로 올바른 총 결제금액 계산
+                            const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
+                              return sum + ((item.price || 0) * (item.quantity || 1))
+                            }, 0)
+                            const totalPaymentAmount = totalProductAmount + 4000
+                            console.log(`💰 모달 총 결제금액: ${totalPaymentAmount}원 (상품: ${totalProductAmount} + 배송비: 4000)`)
+                            return totalPaymentAmount.toLocaleString()
+                          })()}
                         </span>
                       </div>
                     </div>
