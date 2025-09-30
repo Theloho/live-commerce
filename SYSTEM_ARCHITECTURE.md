@@ -272,6 +272,10 @@ graph TD
 ## 📈 시스템 상태 (실시간 업데이트)
 
 ### 최근 주요 변경사항
+- **2025-09-30**: 🚨 **CRITICAL BUG FIX** - deprecated 카카오 API에서 totalPrice 변수 순서 오류 해결
+- **2025-09-30**: order_items 생성 실패 및 total_amount undefined 문제 근본 해결
+- **2025-09-30**: cart:KAKAO 주문에서 "0종 0개", "₩0" 표시 문제 해결
+- **2025-09-30**: deprecated API에서 변수 정의 전 사용으로 인한 주문 데이터 누락 수정
 - **2025-09-30**: 카카오 사용자 주문 조회 시스템 완전 해결
 - **2025-09-30**: UserProfileManager alternativeQueries 기능 추가로 호환성 확보
 - **2025-09-30**: createOrder 함수 order_type 설정 로직 수정 (kakao_id 기반)
@@ -291,7 +295,14 @@ graph TD
 - ✅ **사용자 주문 조회 문제**: 완전 해결
 
 ### 알려진 이슈
-- 없음 (현재 완전 안정 상태)
+- 없음 (2025-09-30 totalPrice 순서 오류 해결로 완전 안정 상태)
+
+### 🚨 해결된 중요 버그 (2025-09-30)
+**문제**: deprecated 카카오 API에서 totalPrice 변수 순서 오류
+- **증상**: "0종 0개", "₩0" 표시, order_items 생성 실패
+- **원인**: `total_amount: totalPrice` 사용 후 `const totalPrice` 정의
+- **해결**: 변수 정의 순서 수정으로 근본 해결
+- **파일**: `/app/api/_deprecated_kakao_apis/create-order-kakao/route.js:76-78`
 
 ---
 
