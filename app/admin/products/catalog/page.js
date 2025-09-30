@@ -482,7 +482,6 @@ export default function ProductCatalogPage() {
             </button>
           </div>
         )}
-        </div>
       </div>
     </div>
   )
