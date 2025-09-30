@@ -95,6 +95,7 @@ export async function POST(request) {
         user_id: validUserId, // 검증된 사용자 ID 저장 (존재하지 않으면 null)
         status: 'verifying', // 카드결제는 바로 확인중 상태
         order_type: orderData.orderType || 'direct',
+        total_amount: orderData.totalPrice, // 상품금액 + 배송비 총액
         created_at: new Date().toISOString()
       })
     })
