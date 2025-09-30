@@ -18,6 +18,7 @@ import useAuth from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import AddressManager from '@/app/components/AddressManager'
+import { UserProfileManager } from '@/lib/userProfileManager'
 
 export default function MyPage() {
   const router = useRouter()
@@ -221,74 +222,13 @@ export default function MyPage() {
     try {
       const currentUser = userSession || user
 
-      // 카카오 사용자인 경우 전용 처리
-      if (currentUser.provider === 'kakao') {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
-
-        const updateData = {
-          [field]: editValues[field],
-          updated_at: new Date().toISOString()
-        }
-
-        console.log('카카오 사용자 프로필 업데이트:', { field, updateData })
-
-        const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify(updateData)
-        })
-
-        if (!response.ok) {
-          const errorData = await response.text()
-          throw new Error(`프로필 업데이트 실패: ${response.status} - ${errorData}`)
-        }
-
-        const updatedProfile = await response.json()
-        console.log('카카오 사용자 프로필 업데이트 성공:', updatedProfile[0])
-
-        // ✅ auth.users의 user_metadata도 업데이트 (관리자 페이지 표시용)
-        try {
-          const { error: metadataError } = await supabase.auth.updateUser({
-            data: {
-              [field]: editValues[field],
-              updated_at: new Date().toISOString()
-            }
-          })
-
-          if (metadataError) {
-            console.warn('user_metadata 업데이트 실패:', metadataError)
-          } else {
-            console.log('✅ auth.users user_metadata 업데이트 성공:', field, editValues[field])
-          }
-        } catch (error) {
-          console.warn('user_metadata 업데이트 중 오류:', error)
-        }
-
-        // sessionStorage 업데이트
-        const updatedUser = {
-          ...currentUser,
-          [field]: editValues[field]
-        }
-        sessionStorage.setItem('user', JSON.stringify(updatedUser))
-        setUserSession(updatedUser)
-
-        toast.success('정보가 수정되었습니다')
-      } else if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
-        // Mock 모드에서는 localStorage의 사용자 정보 업데이트
+      if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+        // Mock 모드 처리
         const mockUser = JSON.parse(localStorage.getItem('mock_current_user'))
         if (mockUser) {
           mockUser[field] = editValues[field]
-
-          // localStorage에 저장
           localStorage.setItem('mock_current_user', JSON.stringify(mockUser))
 
-          // users 배열도 업데이트
           const users = JSON.parse(localStorage.getItem('mock_users') || '[]')
           const userIndex = users.findIndex(u => u.id === mockUser.id)
           if (userIndex !== -1) {
@@ -296,26 +236,37 @@ export default function MyPage() {
             localStorage.setItem('mock_users', JSON.stringify(users))
           }
         }
-        toast.success('정보가 수정되었습니다')
       } else {
-        // 실제 Supabase 업데이트
-        const { error } = await supabase
-          .from('profiles')
-          .update({ [field]: editValues[field] })
-          .eq('id', user.id)
+        // 🚀 실제 환경: 통합 프로필 업데이트 사용 (카카오/일반 사용자 공통)
+        console.log('🔄 프로필 필드 업데이트 시작:', field, editValues[field])
 
-        if (error) {
-          console.error('프로필 업데이트 오류:', error)
-          toast.error('정보 수정에 실패했습니다')
-          return
+        const isKakaoUser = currentUser?.provider === 'kakao'
+
+        await UserProfileManager.atomicProfileUpdate(
+          currentUser.id,
+          { [field]: editValues[field] },
+          isKakaoUser
+        )
+
+        // UI 상태 업데이트
+        if (isKakaoUser) {
+          // sessionStorage 업데이트 (카카오 사용자만)
+          const updatedUser = {
+            ...currentUser,
+            [field]: editValues[field]
+          }
+          sessionStorage.setItem('user', JSON.stringify(updatedUser))
+          setUserSession(updatedUser)
         }
 
-        toast.success('정보가 수정되었습니다')
+        console.log('✅ 프로필 필드 업데이트 완료:', field)
       }
 
       // 로컬 상태 업데이트
       setUserProfile(prev => ({ ...prev, [field]: editValues[field] }))
       setEditingField(null)
+      toast.success('정보가 수정되었습니다')
+
     } catch (error) {
       console.error('정보 수정 실패:', error)
       toast.error('정보 수정에 실패했습니다')
