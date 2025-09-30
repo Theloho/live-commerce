@@ -24,7 +24,6 @@ export default function Header() {
         const storedUser = sessionStorage.getItem('user')
         if (storedUser) {
           const userData = JSON.parse(storedUser)
-          console.log('헤더에서 세션 복원:', userData)
           setUserSession(userData)
         } else {
           setUserSession(null)

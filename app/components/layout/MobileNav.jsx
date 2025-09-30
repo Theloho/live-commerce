@@ -25,7 +25,6 @@ export default function MobileNav() {
         const storedUser = sessionStorage.getItem('user')
         if (storedUser) {
           const userData = JSON.parse(storedUser)
-          console.log('네비게이션에서 세션 복원:', userData)
           setUserSession(userData)
         } else {
           setUserSession(null)

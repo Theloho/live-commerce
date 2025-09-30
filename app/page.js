@@ -29,10 +29,8 @@ export default function Home() {
       const storedUser = sessionStorage.getItem('user')
       if (storedUser) {
         const userData = JSON.parse(storedUser)
-        console.log('홈페이지에서 세션 복원:', userData)
         setUserSession(userData)
       } else {
-        console.log('홈페이지에서 세션 없음')
         setUserSession(null)
       }
     } catch (error) {

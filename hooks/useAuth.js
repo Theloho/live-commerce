@@ -35,8 +35,7 @@ export default function useAuth() {
     // 인증 상태 변화 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event)
-
+        // 로그 제거: INITIAL_SESSION 이벤트 과다 발생 방지
         if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user)
           toast.success('로그인되었습니다')

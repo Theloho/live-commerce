@@ -17,10 +17,9 @@ export default function useAuth() {
         const storedUser = sessionStorage.getItem('user')
         if (storedUser) {
           const userData = JSON.parse(storedUser)
-          console.log('기존 세션 복원:', userData)
+          // 로그 제거: 과도한 콘솔 출력 방지
           setUser(userData)
         } else {
-          console.log('세션 없음')
           clearUser()
         }
       } catch (error) {
@@ -54,10 +53,8 @@ export default function useAuth() {
         if (event.newValue) {
           const userData = JSON.parse(event.newValue)
           setUser(userData)
-          console.log('스토리지 변경 감지 - 사용자 로그인:', userData)
         } else {
           clearUser()
-          console.log('스토리지 변경 감지 - 사용자 로그아웃')
         }
       }
     }
