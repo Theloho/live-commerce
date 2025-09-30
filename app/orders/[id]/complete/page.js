@@ -105,7 +105,7 @@ export default function OrderCompletePage() {
         try {
           const { getOrderById } = await import('@/lib/supabaseApi')
           order = await getOrderById(params.id)
-          console.log('📋 주문 상세 데이터 조회 완료:', order)
+          console.log('📋 NEW CODE: 주문 상세 데이터 조회 완료:', order)
         } catch (error) {
           console.error('📋 supabaseApi 주문 조회 실패:', error)
 
@@ -439,7 +439,7 @@ export default function OrderCompletePage() {
                                           orderData.shipping?.name ||
                                           '입금자명 확인 필요'
 
-                      console.log('🏦 입금 안내 정보:', {
+                      console.log('🏦 NEW CODE: 입금 안내 정보:', {
                         actualPaymentAmount,
                         depositorName,
                         paymentDepositorName: orderData.payment?.depositor_name,
