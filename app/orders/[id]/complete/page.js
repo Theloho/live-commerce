@@ -347,34 +347,48 @@ export default function OrderCompletePage() {
                 <>
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     {/* 결제 금액 상세 */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">상품금액</span>
-                        <span className="text-sm text-gray-900">
-                          ₩{(orderData.items.reduce((sum, item) => sum + item.totalPrice, 0)).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">부가세 (10%)</span>
-                        <span className="text-sm text-gray-900">
-                          ₩{Math.floor(orderData.items.reduce((sum, item) => sum + item.totalPrice, 0) * 0.1).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">배송비</span>
-                        <span className="text-sm text-gray-900">
-                          ₩{(4000).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="border-t pt-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-700">카드 결제금액</span>
-                          <span className="text-lg font-bold text-gray-900">
-                            ₩{(Math.floor(orderData.items.reduce((sum, item) => sum + item.totalPrice, 0) * 1.1) + 4000).toLocaleString()}
-                          </span>
+                    {(() => {
+                      // 올바른 총 상품금액 계산
+                      const correctTotalProductAmount = orderData.items.reduce((sum, item) => {
+                        const itemTotal = item.totalPrice || (item.price * item.quantity)
+                        return sum + itemTotal
+                      }, 0)
+
+                      const vat = Math.floor(correctTotalProductAmount * 0.1)
+                      const shippingFee = 4000
+                      const totalCardAmount = correctTotalProductAmount + vat + shippingFee
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">상품금액</span>
+                            <span className="text-sm text-gray-900">
+                              ₩{correctTotalProductAmount.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">부가세 (10%)</span>
+                            <span className="text-sm text-gray-900">
+                              ₩{vat.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">배송비</span>
+                            <span className="text-sm text-gray-900">
+                              ₩{shippingFee.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="border-t pt-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">카드 결제금액</span>
+                              <span className="text-lg font-bold text-gray-900">
+                                ₩{totalCardAmount.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      )
+                    })()}
                   </div>
 
                   {/* 안내 메시지 */}
@@ -412,15 +426,8 @@ export default function OrderCompletePage() {
                   {/* 입금 정보 */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     {(() => {
-                      // 올바른 총 상품금액 계산
-                      const correctTotalProductAmount = orderData.items.reduce((sum, item) => {
-                        const itemTotal = item.totalPrice || (item.price * item.quantity)
-                        return sum + itemTotal
-                      }, 0)
-
-                      // 일반적으로 배송비는 ₩4,000
-                      const shippingFee = 4000
-                      const correctTotalAmount = correctTotalProductAmount + shippingFee
+                      // 실제 저장된 결제 금액 사용 (이미 계산되어 저장된 값)
+                      const actualPaymentAmount = orderData.payment?.amount || 0
 
                       // 입금자명 우선순위: payment.depositor_name > depositName > shipping.name
                       const depositorName = orderData.payment?.depositor_name ||
@@ -428,11 +435,8 @@ export default function OrderCompletePage() {
                                           orderData.shipping?.name ||
                                           '입금자명 확인 필요'
 
-                      console.log('🏦 입금 안내 디버깅:', {
-                        originalPaymentAmount: orderData.payment.amount,
-                        correctTotalProductAmount,
-                        shippingFee,
-                        correctTotalAmount,
+                      console.log('🏦 입금 안내 정보:', {
+                        actualPaymentAmount,
                         depositorName,
                         paymentDepositorName: orderData.payment?.depositor_name,
                         orderDepositName: orderData.depositName,
@@ -444,7 +448,7 @@ export default function OrderCompletePage() {
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">입금금액</span>
                             <span className="text-lg font-bold text-gray-900">
-                              ₩{correctTotalAmount.toLocaleString()}
+                              ₩{actualPaymentAmount.toLocaleString()}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
@@ -713,32 +717,21 @@ export default function OrderCompletePage() {
                     <div className="border-t pt-3 mt-3">
                       <div className="space-y-2">
                         {(() => {
-                          // 디버깅을 위한 로그
-                          console.log('💰 주문 상세 금액 디버깅:', {
-                            items: orderData.items,
-                            itemPrices: orderData.items.map(item => ({
-                              title: item.title,
-                              price: item.price,
-                              totalPrice: item.totalPrice,
-                              quantity: item.quantity
-                            })),
-                            paymentAmount: orderData.payment.amount
-                          })
-
                           // 올바른 총 상품금액 계산
                           const correctTotalProductAmount = orderData.items.reduce((sum, item) => {
                             // totalPrice가 있으면 사용, 없으면 price * quantity 사용
                             const itemTotal = item.totalPrice || (item.price * item.quantity)
-                            console.log(`💰 상품 ${item.title}: ${itemTotal}원 (price: ${item.price}, quantity: ${item.quantity}, totalPrice: ${item.totalPrice})`)
                             return sum + itemTotal
                           }, 0)
 
-                          const shippingFee = Math.max(0, orderData.payment.amount - correctTotalProductAmount)
+                          // 실제 저장된 결제 금액에서 배송비 역산
+                          const actualPaymentAmount = orderData.payment?.amount || 0
+                          const shippingFee = Math.max(0, actualPaymentAmount - correctTotalProductAmount)
 
-                          console.log('💰 최종 계산:', {
+                          console.log('💰 주문 상세 금액 계산:', {
                             correctTotalProductAmount,
                             shippingFee,
-                            finalAmount: orderData.payment.amount
+                            actualPaymentAmount
                           })
 
                           return (
@@ -758,7 +751,7 @@ export default function OrderCompletePage() {
                               <div className="flex justify-between items-center border-t pt-2">
                                 <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
                                 <span className="font-bold text-lg text-gray-900">
-                                  ₩{orderData.payment.amount.toLocaleString()}
+                                  ₩{actualPaymentAmount.toLocaleString()}
                                 </span>
                               </div>
                             </>
