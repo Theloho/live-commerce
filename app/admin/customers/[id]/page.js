@@ -535,7 +535,7 @@ export default function AdminCustomerDetailPage() {
                               </div>
                               <div className="text-right">
                                 <p className="text-sm font-medium text-gray-900">
-                                  ₩{(item.price * item.quantity || 0).toLocaleString()}
+                                  ₩{((item.price || item.unit_price || 0) * item.quantity || 0).toLocaleString()}
                                 </p>
                               </div>
                             </div>
