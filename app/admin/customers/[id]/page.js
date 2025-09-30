@@ -495,22 +495,25 @@ export default function AdminCustomerDetailPage() {
                     const statusInfo = getStatusInfo(order.status)
 
                     // 🔍 주문 데이터 상세 로깅
-                    console.log(`🧾 주문 ${order.customer_order_number}:`, {
-                      order_items: order.order_items?.map(item => ({
-                        title: item.products?.title,
-                        quantity: item.quantity,
-                        price: item.price,
-                        unit_price: item.unit_price,
-                        total: item.total,
-                        total_price: item.total_price,
-                        calculated: (item.price || item.unit_price || 0) * item.quantity
-                      })),
-                      payments: order.order_payments?.map(p => ({
-                        amount: p.amount,
-                        method: p.method
-                      })),
-                      total_amount: order.total_amount
-                    })
+                    const orderItems = order.order_items?.map(item => ({
+                      title: item.products?.title,
+                      quantity: item.quantity,
+                      price: item.price,
+                      unit_price: item.unit_price,
+                      total: item.total,
+                      total_price: item.total_price,
+                      calculated: (item.price || item.unit_price || 0) * item.quantity
+                    }))
+
+                    const payments = order.order_payments?.map(p => ({
+                      amount: p.amount,
+                      method: p.method
+                    }))
+
+                    console.log(`🧾 주문 ${order.customer_order_number}:`)
+                    console.log('📦 상품들:', orderItems)
+                    console.log('💳 결제정보:', payments)
+                    console.log('💰 total_amount:', order.total_amount)
 
                     return (
                       <motion.div
