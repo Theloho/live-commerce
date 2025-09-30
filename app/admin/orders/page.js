@@ -391,6 +391,16 @@ export default function AdminOrdersPage() {
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         ₩{order.payment?.amount?.toLocaleString() || '0'}
+                        {/* 디버깅용 로그 */}
+                        {console.log(`💰 관리자 페이지 결제 금액 표시:`, {
+                          order_id: order.id,
+                          order_payment_amount: order.payment?.amount,
+                          order_payment_method: order.payment?.method,
+                          order_customer_order_number: order.customer_order_number,
+                          order_status: order.status,
+                          isGroupOrder: order.payment_group_id ? true : false,
+                          payment_group_id: order.payment_group_id
+                        })}
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {(() => {
