@@ -148,6 +148,28 @@ export default function CompleteProfilePage() {
         const updatedProfile = await response.json()
         console.log('카카오 사용자 프로필 업데이트 성공:', updatedProfile)
 
+        // ✅ auth.users의 user_metadata도 업데이트 (관리자 페이지 표시용)
+        try {
+          const { error: metadataError } = await supabase.auth.updateUser({
+            data: {
+              name: formData.name,
+              nickname: formData.nickname || formData.name,
+              phone: formData.phone,
+              address: formData.address,
+              detail_address: formData.detailAddress || '',
+              profile_completed: true
+            }
+          })
+
+          if (metadataError) {
+            console.warn('user_metadata 업데이트 실패:', metadataError)
+          } else {
+            console.log('✅ auth.users user_metadata 업데이트 성공')
+          }
+        } catch (error) {
+          console.warn('user_metadata 업데이트 중 오류:', error)
+        }
+
         // 세션 스토리지 업데이트
         const updatedUser = {
           ...sessionUser,
