@@ -907,7 +907,15 @@ function OrdersContent() {
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">입금금액</span>
                           <span className="text-lg font-bold text-gray-900">
-                            ₩{selectedGroupOrder.payment.amount.toLocaleString()}
+                            ₩{(() => {
+                              // 상품금액 + 배송비로 올바른 입금금액 계산
+                              const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
+                                return sum + ((item.price || 0) * (item.quantity || 1))
+                              }, 0)
+                              const correctDepositAmount = totalProductAmount + 4000
+                              console.log(`💰 입금 안내 금액: ${correctDepositAmount}원 (상품: ${totalProductAmount} + 배송비: 4000)`)
+                              return correctDepositAmount.toLocaleString()
+                            })()}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
