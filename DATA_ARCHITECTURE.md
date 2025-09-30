@@ -305,22 +305,42 @@ graph LR
 
 ---
 
-## 🚨 주의사항 및 이슈
+## ✅ 시스템 통합 현황 (2025-09-30 업데이트)
 
-### 현재 확인된 이슈
+### 완료된 주요 개선사항
 
-1. **addresses API 500 에러**
-   - 원인: addresses 테이블이 실제로 생성되지 않음
-   - 현재: profiles.addresses JSONB 사용 중
-   - 해결: 테이블 생성 또는 JSONB 계속 사용 결정 필요
+1. **UserProfileManager 통합 시스템 구축 ✅**
+   - 카카오/일반 사용자 통합 관리
+   - getUserOrderQuery() 메소드로 적절한 조회 조건 자동 생성
+   - 모든 페이지에서 일관된 사용자 인식
 
-2. **카카오 사용자 처리**
-   - auth.users에 없는 사용자
-   - sessionStorage 기반 세션 관리
-   - orders.user_id가 NULL일 수 있음
+2. **주문 조회 시스템 완전 개편 ✅**
+   - getOrders(): UserProfileManager 기반 사용자별 조회
+   - getAllOrders(): 관리자용, 카카오 주문 타입 인식
+   - 카카오: order_type = 'direct:KAKAO:{kakao_id}' 조회
+   - 일반: user_id 기반 조회
 
-3. **더미 데이터 문제 (해결됨)**
+3. **계산 로직 수정 완료 ✅**
+   - 주문 상세 페이지: items.reduce()로 정확한 총 상품금액 계산
+   - 주문 목록 모달: 동일한 계산 로직 적용
+   - 입금 안내: 상품금액 + 배송비로 정확한 입금금액 표시
+
+4. **더미 데이터 문제 해결 ✅**
    - 기본값으로 하드코딩된 더미 데이터 제거 완료
+
+### 해결된 이슈
+
+1. **사용자 주문 조회 불일치 문제 ✅**
+   - 원인: sessionStorage 사용자 ID와 DB 주문의 user_id 불일치
+   - 해결: UserProfileManager 기반 통합 조회 시스템
+
+2. **카카오 사용자 처리 ✅**
+   - 해결: order_type 기반 카카오 사용자 인식
+   - sessionStorage 기반 세션 관리 유지
+   - orders.user_id가 NULL인 카카오 주문 정상 처리
+
+3. **관리자-사용자 페이지 데이터 불일치 ✅**
+   - 해결: 모든 페이지에서 UserProfileManager 기반 동일한 로직 사용
 
 ### 보안 개선사항 (완료)
 
