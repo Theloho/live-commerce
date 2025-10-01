@@ -63,9 +63,23 @@ export default function ProductCatalogPage() {
         getCategories()
       ])
 
-      setProducts(productsData)
+      // 각 상품의 variant 정보도 함께 로드
+      const productsWithVariants = await Promise.all(
+        productsData.map(async (product) => {
+          try {
+            const { getProductVariants } = await import('@/lib/supabaseApi')
+            const variants = await getProductVariants(product.id)
+            return { ...product, variants: variants || [] }
+          } catch (error) {
+            console.error(`Variant 로딩 실패 for product ${product.id}:`, error)
+            return { ...product, variants: [] }
+          }
+        })
+      )
+
+      setProducts(productsWithVariants)
       setCategories(categoriesData)
-      console.log('🛍️ 전체 상품 관리 데이터 로드 완료:', productsData.length, '개 상품')
+      console.log('🛍️ 전체 상품 관리 데이터 로드 완료:', productsWithVariants.length, '개 상품')
     } catch (error) {
       console.error('데이터 로딩 오류:', error)
       toast.error('데이터를 불러오는데 실패했습니다')
@@ -144,13 +158,20 @@ export default function ProductCatalogPage() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => router.push('/admin/products')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center"
               >
                 <PlayIcon className="w-4 h-4 mr-2" />
-                  상품 추가
-                </button>
-              </div>
+                라이브 방송 관리
+              </button>
+              <button
+                onClick={() => router.push('/admin/products/catalog/new')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+              >
+                <PlusIcon className="w-4 h-4 mr-2" />
+                상세 상품 등록
+              </button>
             </div>
+          </div>
           </div>
         </div>
 
@@ -296,20 +317,37 @@ export default function ProductCatalogPage() {
                     <span>{product.categories?.name || '미분류'}</span>
                   </div>
 
+                  {/* Variant 정보 */}
+                  {product.variants && product.variants.length > 0 && (
+                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="text-xs font-medium text-blue-800 mb-1">
+                        Variant: {product.variants.length}개
+                      </div>
+                      <div className="space-y-1">
+                        {product.variants.slice(0, 3).map((variant, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs text-blue-700">
+                            <span className="truncate">
+                              {variant.options?.map(opt => opt.optionValue).join(' / ') || variant.sku}
+                            </span>
+                            <span className="font-medium">{variant.inventory}개</span>
+                          </div>
+                        ))}
+                        {product.variants.length > 3 && (
+                          <div className="text-xs text-blue-600 text-center">
+                            +{product.variants.length - 3}개 더보기
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* 액션 버튼들 */}
                   <div className="flex items-center justify-between">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => router.push(`/admin/products/${product.id}/edit`)}
+                        onClick={() => router.push(`/admin/products/catalog/${product.id}`)}
                         className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="수정"
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => router.push(`/admin/products/${product.id}`)}
-                        className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="상세보기"
+                        title="상세보기 / Variant 관리"
                       >
                         <EyeIcon className="w-4 h-4" />
                       </button>
