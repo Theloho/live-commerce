@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { createClient } from '@/utils/supabase/client'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
 import useAuthStore from '@/app/stores/authStore'
 import toast from 'react-hot-toast'
 
@@ -13,8 +13,6 @@ export default function useBroadcast(broadcastId) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // useMemo로 클라이언트를 한 번만 생성
-  const supabase = useMemo(() => createClient(), [])
   const { user } = useAuthStore()
   const messagesSubscription = useRef(null)
   const viewersSubscription = useRef(null)
@@ -41,7 +39,7 @@ export default function useBroadcast(broadcastId) {
     } catch (error) {
       console.error('Error joining broadcast:', error)
     }
-  }, [broadcastId, user?.id, supabase])
+  }, [broadcastId, user?.id])
 
   // Leave broadcast
   const leaveBroadcast = useCallback(async () => {
@@ -57,7 +55,7 @@ export default function useBroadcast(broadcastId) {
     } catch (error) {
       console.error('Error leaving broadcast:', error)
     }
-  }, [broadcastId, user?.id, supabase])
+  }, [broadcastId, user?.id])
 
   // Send chat message
   const sendMessage = useCallback(async (content, type = 'text') => {
@@ -81,7 +79,7 @@ export default function useBroadcast(broadcastId) {
       console.error('Error sending message:', error)
       toast.error('메시지 전송에 실패했습니다')
     }
-  }, [broadcastId, user, supabase])
+  }, [broadcastId, user])
 
   // Send reaction (heart, like, etc.)
   const sendReaction = useCallback(async (reactionType) => {
@@ -125,7 +123,7 @@ export default function useBroadcast(broadcastId) {
     }
 
     fetchBroadcast()
-  }, [broadcastId, supabase])
+  }, [broadcastId])
 
   // Subscribe to real-time updates
   useEffect(() => {
@@ -178,7 +176,7 @@ export default function useBroadcast(broadcastId) {
       messagesSubscription.current?.unsubscribe()
       viewersSubscription.current?.unsubscribe()
     }
-  }, [broadcastId, supabase])
+  }, [broadcastId])
 
   // Auto-join broadcast when component mounts
   useEffect(() => {
@@ -209,7 +207,7 @@ export default function useBroadcast(broadcastId) {
         clearInterval(heartbeatInterval.current)
       }
     }
-  }, [broadcastId, user, isLive, supabase])
+  }, [broadcastId, user, isLive])
 
   // Load initial messages
   useEffect(() => {
@@ -233,7 +231,7 @@ export default function useBroadcast(broadcastId) {
     }
 
     fetchMessages()
-  }, [broadcastId, supabase])
+  }, [broadcastId])
 
   return {
     broadcast,

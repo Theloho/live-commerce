@@ -13,17 +13,11 @@ import {
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
 import CardPaymentModal from '@/app/components/common/CardPaymentModal'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 import AddressManager from '@/app/components/address/AddressManager'
 import { createOrder, updateMultipleOrderStatus } from '@/lib/supabaseApi'
 import { UserProfileManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
-
-// Supabase 클라이언트 초기화
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim(),
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/[\r\n\s]+/g, '')
-)
 
 export default function CheckoutPage() {
   const router = useRouter()
