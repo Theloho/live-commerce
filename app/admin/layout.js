@@ -61,7 +61,8 @@ function AdminLayoutContent({ children }) {
 
   const menuItems = [
     { href: '/admin', label: '대시보드', icon: HomeIcon },
-    { href: '/admin/products', label: '상품관리', icon: CubeIcon },
+    { href: '/admin/products/catalog', label: '전체 상품 관리', icon: CubeIcon },
+    { href: '/admin/products', label: '라이브 상품 관리', icon: VideoCameraIcon },
     { href: '/admin/broadcasts', label: '방송관리', icon: VideoCameraIcon },
     { href: '/admin/orders', label: '주문관리', icon: ClipboardDocumentListIcon },
     { href: '/admin/customers', label: '고객관리', icon: UsersIcon },
@@ -130,7 +131,8 @@ function AdminLayoutContent({ children }) {
             <ul className="space-y-2">
               {menuItems.map((item) => {
                 const Icon = item.icon
-                const isActive = pathname === item.href
+                const isActive = pathname === item.href ||
+                  (item.href === '/admin/products/catalog' && pathname.startsWith('/admin/products/catalog'))
                 return (
                   <li key={item.href}>
                     <Link
