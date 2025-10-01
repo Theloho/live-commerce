@@ -120,22 +120,14 @@ export default function AdminShippingPage() {
     setFilteredOrders(filtered)
   }
 
-  const updateShippingStatus = (orderId, newStatus) => {
+  const updateShippingStatus = async (orderId, newStatus) => {
     try {
-      const allOrders = JSON.parse(localStorage.getItem('mock_orders') || '[]')
-      const updatedOrders = allOrders.map(order =>
-        order.id === orderId
-          ? {
-              ...order,
-              status: newStatus,
-              ...(newStatus === 'shipping' && { shipped_at: new Date().toISOString() }),
-              ...(newStatus === 'delivered' && { delivered_at: new Date().toISOString() })
-            }
-          : order
-      )
+      // Supabase API 사용
+      const { updateOrderStatus } = await import('@/lib/supabaseApi')
+      await updateOrderStatus(orderId, newStatus)
 
-      localStorage.setItem('mock_orders', JSON.stringify(updatedOrders))
-      loadPaidOrders() // 목록 새로고침
+      // 목록 새로고침
+      await loadPaidOrders()
 
       const statusText = newStatus === 'shipping' ? '발송 시작' :
                         newStatus === 'delivered' ? '발송 완료' : '상태 변경'
@@ -519,8 +511,23 @@ export default function AdminShippingPage() {
         </div>
 
         {/* 모바일 카드 뷰 */}
-        <div className="lg:hidden divide-y divide-gray-200">
-          {filteredOrders.map((order, index) => {
+        <div className="lg:hidden">
+          {/* 모바일 전체 선택 헤더 */}
+          <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
+                onChange={handleSelectAll}
+                className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+              />
+              전체 선택 ({selectedOrders.length}/{filteredOrders.length})
+            </label>
+          </div>
+
+          {/* 카드 리스트 */}
+          <div className="divide-y divide-gray-200">
+            {filteredOrders.map((order, index) => {
             const statusInfo = getStatusInfo(order.status)
             const StatusIcon = statusInfo.icon
             const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
@@ -577,7 +584,11 @@ export default function AdminShippingPage() {
                 {/* 하단: 버튼들 */}
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                   <button
-                    onClick={() => router.push(`/admin/orders/${order.id}`)}
+                    onClick={() => {
+                      // 그룹 주문인 경우 첫 번째 원본 주문으로 이동
+                      const targetId = order.isGroup ? order.originalOrders?.[0]?.id : order.id
+                      router.push(`/admin/orders/${targetId}`)
+                    }}
                     className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
                   >
                     <EyeIcon className="w-4 h-4" />
@@ -646,6 +657,7 @@ export default function AdminShippingPage() {
               </motion.div>
             )
           })}
+          </div>
         </div>
 
         {filteredOrders.length === 0 && (
