@@ -317,10 +317,12 @@ function OrdersContent() {
         if (o.id === orderId) {
           const updatedItems = o.items.map((itm, idx) => {
             if (idx === itemIndex) {
+              // 🔧 수정: price 기준으로 정확히 계산 (totalPrice 역계산 금지)
+              const unitPrice = itm.price || (itm.totalPrice / itm.quantity)
               return {
                 ...itm,
                 quantity: newQuantity,
-                totalPrice: (itm.totalPrice / itm.quantity) * newQuantity
+                totalPrice: unitPrice * newQuantity
               }
             }
             return itm
@@ -337,11 +339,19 @@ function OrdersContent() {
 
       // 3. 서버에서 최신 데이터 가져와서 동기화
       setTimeout(() => {
-        loadOrdersDataFast(userSession || user)
+        const currentUser = userSession || user
+        if (currentUser) {
+          loadOrdersDataFast(currentUser)
+        }
       }, 500)
     } catch (error) {
       console.error('수량 변경 중 오류:', error)
       toast.error('수량 변경에 실패했습니다')
+      // 오류 발생 시 서버에서 다시 가져와서 복구
+      const currentUser = userSession || user
+      if (currentUser) {
+        loadOrdersDataFast(currentUser)
+      }
     }
   }
 
@@ -602,6 +612,11 @@ function OrdersContent() {
                             ))}
                           </div>
                         )}
+
+                        {/* 단가 표시 */}
+                        <p className="text-xs text-gray-500 mb-1">
+                          단가: ₩{orderItem.price?.toLocaleString() || '0'}
+                        </p>
 
                         {/* 수량 조절 UI - 결제대기 상태에서만 표시 */}
                         {order.status === 'pending' ? (
