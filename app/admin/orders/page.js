@@ -387,7 +387,16 @@ export default function AdminOrdersPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
-                        ₩{order.payment?.amount?.toLocaleString() || '0'}
+                        {(() => {
+                          // 정확한 결제 금액 계산
+                          const itemsTotal = order.items.reduce((sum, item) => {
+                            return sum + ((item.price || 0) * (item.quantity || 1))
+                          }, 0)
+                          const shippingFee = order.status === 'pending' ? 0 : 4000
+                          const correctAmount = itemsTotal + shippingFee
+
+                          return `₩${correctAmount.toLocaleString()}`
+                        })()}
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {(() => {
