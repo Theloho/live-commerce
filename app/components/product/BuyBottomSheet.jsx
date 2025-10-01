@@ -223,14 +223,39 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     if (Object.keys(selectedOptions).length === options.length) {
       const combinationKey = Object.values(selectedOptions).join(' / ')
       const variantId = findVariantId(selectedOptions) // variant_id 찾기
+
+      // 재고 확인
+      const variant = variantId ? product.variants?.find(v => v.id === variantId) : null
+      const maxInventory = variant ? variant.inventory : stock
+
+      if (maxInventory === 0) {
+        toast.error(`"${combinationKey}" 조합은 품절되었습니다`)
+        setSelectedOptions({})
+        setQuantity(1)
+        return
+      }
+
       const existingIndex = selectedCombinations.findIndex(combo => combo.key === combinationKey)
 
       if (existingIndex >= 0) {
         // Update existing combination
         const updated = [...selectedCombinations]
-        updated[existingIndex].quantity += quantity
+        const newQuantity = updated[existingIndex].quantity + quantity
+
+        if (newQuantity > maxInventory) {
+          toast.error(`재고가 부족합니다. 현재 재고: ${maxInventory}개`)
+          return
+        }
+
+        updated[existingIndex].quantity = newQuantity
         setSelectedCombinations(updated)
       } else {
+        // 초기 수량도 재고 확인
+        if (quantity > maxInventory) {
+          toast.error(`재고가 부족합니다. 현재 재고: ${maxInventory}개`)
+          return
+        }
+
         // Add new combination
         setSelectedCombinations(prev => [...prev, {
           key: combinationKey,
