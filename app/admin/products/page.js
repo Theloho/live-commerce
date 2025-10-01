@@ -53,7 +53,6 @@ export default function AdminProductsPage() {
   const loadProducts = async () => {
     try {
       setLoading(true)
-      // Variant 시스템: product_options.values 컬럼이 없으므로 제거
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -62,7 +61,22 @@ export default function AdminProductsPage() {
       if (error) throw error
 
       console.log('📦 상품 데이터 로딩 완료:', data?.length || 0)
-      setProducts(data || [])
+
+      // 각 상품의 variants 로드
+      const { getProductVariants } = await import('@/lib/supabaseApi')
+      const productsWithVariants = await Promise.all(
+        (data || []).map(async (product) => {
+          try {
+            const variants = await getProductVariants(product.id)
+            return { ...product, variants: variants || [] }
+          } catch (error) {
+            console.error(`Variants 로딩 실패 for product ${product.id}:`, error)
+            return { ...product, variants: [] }
+          }
+        })
+      )
+
+      setProducts(productsWithVariants)
     } catch (error) {
       console.error('상품 로딩 오류:', error)
       toast.error('상품을 불러오는데 실패했습니다.')
@@ -485,70 +499,63 @@ export default function AdminProductsPage() {
                   </div>
 
                   {/* Inventory */}
-                  {product.options && product.options.length > 0 ? (
-                    // 옵션이 있는 경우: 옵션별 재고 표시
+                  {product.variants && product.variants.length > 0 ? (
+                    // Variant가 있는 경우: Variant별 재고 표시
                     <div className="space-y-2 mb-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">옵션별 재고</span>
+                        <span className="text-sm font-medium text-gray-700">Variant별 재고</span>
                         <span className="text-xs text-gray-500">
-                          총: {product.inventory ?? 0}개 {getInventoryStatus(product.inventory)}
+                          총: {product.variants.reduce((sum, v) => sum + (v.inventory || 0), 0)}개
                         </span>
                       </div>
 
-                      {product.options.map(option => {
-                        const values = Array.isArray(option.values)
-                          ? option.values
-                          : JSON.parse(option.values || '[]')
+                      <div className="border border-gray-200 rounded-lg p-2 space-y-1">
+                        {product.variants.map((variant) => {
+                          const inventory = variant.inventory ?? 0
+                          const optionLabel = variant.options?.map(opt => opt.optionValue).join(' × ') || variant.sku
 
-                        return (
-                          <div key={option.id} className="border border-gray-200 rounded-lg p-2">
-                            <div className="text-xs font-medium text-gray-600 mb-1">
-                              {option.name}
+                          return (
+                            <div key={variant.id} className="flex items-center justify-between text-xs">
+                              <span className="text-gray-700">{optionLabel}</span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const { updateVariantInventory } = await import('@/lib/supabaseApi')
+                                      await updateVariantInventory(variant.id, -1)
+                                      toast.success('재고가 업데이트되었습니다')
+                                      loadProducts()
+                                    } catch (error) {
+                                      toast.error('재고 업데이트 실패')
+                                    }
+                                  }}
+                                  className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300"
+                                >
+                                  -
+                                </button>
+                                <span className={`font-medium w-6 text-center ${inventory === 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                  {inventory}
+                                </span>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const { updateVariantInventory } = await import('@/lib/supabaseApi')
+                                      await updateVariantInventory(variant.id, 1)
+                                      toast.success('재고가 업데이트되었습니다')
+                                      loadProducts()
+                                    } catch (error) {
+                                      toast.error('재고 업데이트 실패')
+                                    }
+                                  }}
+                                  className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              {values.map((value, idx) => {
-                                const inventory = value.inventory ?? 0
-                                return (
-                                  <div key={idx} className="flex items-center justify-between text-xs">
-                                    <span className="text-gray-700">{value.name}</span>
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        onClick={() => updateOptionInventory(
-                                          product.id,
-                                          option.id,
-                                          option.name,
-                                          value.name,
-                                          inventory,
-                                          -1
-                                        )}
-                                        className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300"
-                                      >
-                                        -
-                                      </button>
-                                      <span className={`font-medium w-6 text-center ${inventory === 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                                        {inventory}
-                                      </span>
-                                      <button
-                                        onClick={() => updateOptionInventory(
-                                          product.id,
-                                          option.id,
-                                          option.name,
-                                          value.name,
-                                          inventory,
-                                          1
-                                        )}
-                                        className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
                   ) : (
                     // 옵션이 없는 경우: 기존 재고 표시
