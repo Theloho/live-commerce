@@ -137,9 +137,33 @@ export default function AdminOrderDetailPage() {
             </h1>
             {getStatusBadge(order.status)}
           </div>
-          <p className="text-gray-600 mt-1">
-            주문번호: {order.customer_order_number || order.id} • {new Date(order.created_at).toLocaleString('ko-KR')}
-          </p>
+          <div className="mt-1 space-y-1">
+            <p className="text-gray-600">
+              주문번호: {order.customer_order_number || order.id}
+            </p>
+            <p className="text-sm text-gray-500">
+              생성: {new Date(order.created_at).toLocaleString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              })}
+            </p>
+            {order.updated_at && order.updated_at !== order.created_at && (
+              <p className="text-sm text-blue-600 font-medium">
+                최근 업데이트: {new Date(order.updated_at).toLocaleString('ko-KR', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                })}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
