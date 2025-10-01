@@ -532,6 +532,16 @@ export default function AdminOrderDetailPage() {
           >
             <h2 className="text-lg font-semibold text-gray-900 mb-4">주문 상태 관리</h2>
             <div className="space-y-3">
+              {order.status === 'pending' && (
+                <button
+                  onClick={() => updateOrderStatus('verifying')}
+                  className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <CheckIcon className="w-5 h-5" />
+                  입금 확인
+                </button>
+              )}
+
               {order.status === 'verifying' && (
                 <button
                   onClick={() => updateOrderStatus('paid')}
