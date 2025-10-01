@@ -7,11 +7,13 @@ import {
   PrinterIcon,
   CalendarIcon,
   BuildingStorefrontIcon,
-  ShoppingCartIcon
+  ShoppingCartIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import { getPurchaseOrdersBySupplier } from '@/lib/supabaseApi'
 import toast from 'react-hot-toast'
+import * as XLSX from 'xlsx'
 
 export default function PurchaseOrdersPage() {
   const router = useRouter()
@@ -70,6 +72,116 @@ export default function PurchaseOrdersPage() {
   const filteredOrders = selectedSupplier === 'all'
     ? purchaseOrders
     : purchaseOrders.filter(order => order.supplier.id === selectedSupplier)
+
+  // 엑셀 다운로드
+  const handleExcelDownload = (supplierOrder) => {
+    try {
+      // 엑셀 데이터 준비
+      const excelData = supplierOrder.items.map((item, index) => ({
+        'No.': index + 1,
+        '상품명': item.product_title,
+        '모델번호': item.model_number || '-',
+        'SKU': item.sku,
+        '옵션': item.variant_options?.map(opt => `${opt.option_name}: ${opt.option_value}`).join(', ') || '-',
+        '수량': item.total_quantity,
+        '매입가': item.purchase_price || 0,
+        '소계': (item.purchase_price || 0) * item.total_quantity
+      }))
+
+      // 합계 행 추가
+      excelData.push({
+        'No.': '',
+        '상품명': '',
+        '모델번호': '',
+        'SKU': '',
+        '옵션': '합계',
+        '수량': supplierOrder.totalQuantity,
+        '매입가': '',
+        '소계': supplierOrder.totalPurchasePrice
+      })
+
+      // 워크시트 생성
+      const worksheet = XLSX.utils.json_to_sheet(excelData)
+
+      // 컬럼 너비 설정
+      worksheet['!cols'] = [
+        { wch: 5 },  // No.
+        { wch: 30 }, // 상품명
+        { wch: 15 }, // 모델번호
+        { wch: 20 }, // SKU
+        { wch: 30 }, // 옵션
+        { wch: 10 }, // 수량
+        { wch: 12 }, // 매입가
+        { wch: 12 }  // 소계
+      ]
+
+      // 워크북 생성
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, '발주서')
+
+      // 파일명 생성 (날짜 포함)
+      const today = new Date().toISOString().split('T')[0]
+      const fileName = `발주서_${supplierOrder.supplier.name}_${today}.xlsx`
+
+      // 다운로드
+      XLSX.writeFile(workbook, fileName)
+      toast.success('엑셀 파일이 다운로드되었습니다')
+    } catch (error) {
+      console.error('엑셀 다운로드 오류:', error)
+      toast.error('엑셀 파일 생성에 실패했습니다')
+    }
+  }
+
+  // 전체 엑셀 다운로드 (모든 업체 통합)
+  const handleAllExcelDownload = () => {
+    try {
+      const workbook = XLSX.utils.book_new()
+
+      // 각 업체별로 시트 생성
+      filteredOrders.forEach(supplierOrder => {
+        const excelData = supplierOrder.items.map((item, index) => ({
+          'No.': index + 1,
+          '상품명': item.product_title,
+          '모델번호': item.model_number || '-',
+          'SKU': item.sku,
+          '옵션': item.variant_options?.map(opt => `${opt.option_name}: ${opt.option_value}`).join(', ') || '-',
+          '수량': item.total_quantity,
+          '매입가': item.purchase_price || 0,
+          '소계': (item.purchase_price || 0) * item.total_quantity
+        }))
+
+        // 합계 행 추가
+        excelData.push({
+          'No.': '',
+          '상품명': '',
+          '모델번호': '',
+          'SKU': '',
+          '옵션': '합계',
+          '수량': supplierOrder.totalQuantity,
+          '매입가': '',
+          '소계': supplierOrder.totalPurchasePrice
+        })
+
+        const worksheet = XLSX.utils.json_to_sheet(excelData)
+        worksheet['!cols'] = [
+          { wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 20 },
+          { wch: 30 }, { wch: 10 }, { wch: 12 }, { wch: 12 }
+        ]
+
+        // 시트명은 업체명 (특수문자 제거)
+        const sheetName = supplierOrder.supplier.name.replace(/[:\\\/\?\*\[\]]/g, '')
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+      })
+
+      const today = new Date().toISOString().split('T')[0]
+      const fileName = `발주서_전체_${today}.xlsx`
+      XLSX.writeFile(workbook, fileName)
+      toast.success('전체 엑셀 파일이 다운로드되었습니다')
+    } catch (error) {
+      console.error('엑셀 다운로드 오류:', error)
+      toast.error('엑셀 파일 생성에 실패했습니다')
+    }
+  }
 
   // 발주서 출력
   const handlePrint = (supplierOrder) => {
@@ -333,8 +445,20 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
 
-        {/* 통계 */}
+        {/* 통계 및 전체 다운로드 */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">발주 현황</h3>
+            {filteredOrders.length > 0 && (
+              <button
+                onClick={handleAllExcelDownload}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <ArrowDownTrayIcon className="w-5 h-5" />
+                전체 엑셀 다운로드
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-1">전체 업체 수</p>
@@ -377,13 +501,22 @@ export default function PurchaseOrdersPage() {
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handlePrint(supplierOrder)}
-                      className="px-6 py-3 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 font-medium"
-                    >
-                      <PrinterIcon className="w-5 h-5" />
-                      발주서 출력
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleExcelDownload(supplierOrder)}
+                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 font-medium"
+                      >
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        엑셀 다운로드
+                      </button>
+                      <button
+                        onClick={() => handlePrint(supplierOrder)}
+                        className="px-6 py-3 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 font-medium"
+                      >
+                        <PrinterIcon className="w-5 h-5" />
+                        인쇄
+                      </button>
+                    </div>
                   </div>
                 </div>
 
