@@ -354,26 +354,52 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       const createdOrders = []
 
       for (const cartItem of cartItems) {
-        // 옵션별 재고 검증 (프론트엔드 1차 검증)
-        if (cartItem.selectedOptions && Object.keys(cartItem.selectedOptions).length > 0) {
-          const inventoryCheck = await checkOptionInventory(cartItem.id, cartItem.selectedOptions)
+        // Variant 재고 검증 및 차감
+        if (cartItem.variantId) {
+          console.log(`🔍 Variant 재고 확인: ${cartItem.variantId}`)
 
-          if (!inventoryCheck.available) {
-            toast.error(`"${cartItem.optionLabel}" 옵션이 품절되었습니다`)
+          // variant 재고 차감 시도
+          const { updateVariantInventory } = await import('@/lib/supabaseApi')
+
+          try {
+            await updateVariantInventory(cartItem.variantId, -cartItem.quantity)
+            console.log(`✅ Variant 재고 차감 완료: ${cartItem.variantId} (-${cartItem.quantity}개)`)
+          } catch (error) {
+            console.error('❌ Variant 재고 차감 실패:', error)
+
+            // 재고 부족 에러
+            if (error.message && error.message.includes('Insufficient inventory')) {
+              toast.error(`"${cartItem.optionLabel}" 옵션 재고가 부족합니다`)
+            } else {
+              toast.error(`재고 업데이트에 실패했습니다: ${error.message}`)
+            }
+
             setIsLoading(false)
             return false
           }
+        } else {
+          // Variant가 없는 경우 기존 옵션 재고 검증
+          if (cartItem.selectedOptions && Object.keys(cartItem.selectedOptions).length > 0) {
+            const inventoryCheck = await checkOptionInventory(cartItem.id, cartItem.selectedOptions)
 
-          if (inventoryCheck.inventory < cartItem.quantity) {
-            toast.error(`"${cartItem.optionLabel}" 옵션 재고가 부족합니다. (재고: ${inventoryCheck.inventory}개)`)
-            setIsLoading(false)
-            return false
+            if (!inventoryCheck.available) {
+              toast.error(`"${cartItem.optionLabel}" 옵션이 품절되었습니다`)
+              setIsLoading(false)
+              return false
+            }
+
+            if (inventoryCheck.inventory < cartItem.quantity) {
+              toast.error(`"${cartItem.optionLabel}" 옵션 재고가 부족합니다. (재고: ${inventoryCheck.inventory}개)`)
+              setIsLoading(false)
+              return false
+            }
           }
         }
 
         const orderData = {
           ...cartItem,
-          orderType: 'cart'
+          orderType: 'cart',
+          variantId: cartItem.variantId // variant_id 포함
         }
 
         console.log(`주문 생성 중: ${cartItem.optionLabel || '기본'} - ${cartItem.quantity}개`)
@@ -387,8 +413,6 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       }
 
       console.log('생성된 주문들:', createdOrders) // 디버깅
-
-      // 재고 차감은 서버에서 처리되어야 함
 
       // 주문 업데이트 이벤트 발생 (재고 업데이트용)
       console.log('주문 목록 업데이트 이벤트 발생 (BuyBottomSheet)')
