@@ -312,9 +312,10 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders - 데스크톱 테이블 + 모바일 카드 */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* 데스크톱 테이블 뷰 */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -534,6 +535,144 @@ export default function AdminOrdersPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* 모바일 카드 뷰 */}
+        <div className="lg:hidden divide-y divide-gray-200">
+          {filteredOrders.map((order, index) => {
+            const itemsTotal = order.items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0)
+            const shippingFee = order.status === 'pending' ? 0 : 4000
+            const correctAmount = itemsTotal + shippingFee
+            const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+            const uniqueProducts = order.items.length
+
+            return (
+              <motion.div
+                key={order.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: index * 0.05 }}
+                className="p-4 hover:bg-gray-50"
+              >
+                {/* 상단: 주문번호 + 상태 */}
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      {order.customer_order_number || order.id.slice(-8)}
+                      {order.isGroup && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                          그룹결제
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(order.created_at).toLocaleDateString('ko-KR')}
+                    </div>
+                  </div>
+                  {getStatusBadge(order.status)}
+                </div>
+
+                {/* 중단: 고객정보 + 금액 */}
+                <div className="mb-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900">
+                      {order.userName || order.shipping?.name || '정보없음'}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
+                      ₩{correctAmount.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || '익명')}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {order.isGroup
+                      ? `${order.groupOrderCount}개 주문 일괄결제 (총 ${uniqueProducts}종 ${totalQuantity}개)`
+                      : uniqueProducts === 1
+                        ? `${totalQuantity}개`
+                        : `${uniqueProducts}종 ${totalQuantity}개`
+                    }
+                  </div>
+                </div>
+
+                {/* 하단: 버튼들 */}
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => {
+                      const targetId = order.isGroup ? order.originalOrders[0]?.id : order.id
+                      router.push(`/admin/orders/${targetId}`)
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                    상세보기
+                  </button>
+
+                  {order.status === 'verifying' && (
+                    <button
+                      onClick={() => {
+                        if (order.isGroup) {
+                          const orderIds = order.originalOrders.map(o => o.id)
+                          Promise.all(orderIds.map(id => updateOrderStatus(id, 'paid')))
+                            .then(() => loadOrders())
+                            .catch(error => console.error('그룹 주문 상태 변경 실패:', error))
+                        } else {
+                          updateOrderStatus(order.id, 'paid')
+                        }
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
+                    >
+                      <CheckIcon className="w-4 h-4" />
+                      결제확인
+                    </button>
+                  )}
+
+                  {order.status === 'paid' && (
+                    <button
+                      onClick={() => {
+                        if (order.isGroup) {
+                          const orderIds = order.originalOrders.map(o => o.id)
+                          Promise.all(orderIds.map(id => updateOrderStatus(id, 'delivered')))
+                            .then(() => loadOrders())
+                            .catch(error => console.error('그룹 주문 발송 처리 실패:', error))
+                        } else {
+                          updateOrderStatus(order.id, 'delivered')
+                        }
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                    >
+                      <CheckIcon className="w-4 h-4" />
+                      발송처리
+                    </button>
+                  )}
+
+                  {(order.status === 'pending' || order.status === 'verifying') && (
+                    <button
+                      onClick={() => {
+                        const confirmMessage = order.isGroup
+                          ? `이 그룹 주문(${order.groupOrderCount}개)을 취소하시겠습니까?`
+                          : '이 주문을 취소하시겠습니까?'
+
+                        if (window.confirm(confirmMessage)) {
+                          if (order.isGroup) {
+                            const orderIds = order.originalOrders.map(o => o.id)
+                            Promise.all(orderIds.map(id => updateOrderStatus(id, 'cancelled')))
+                              .then(() => loadOrders())
+                              .catch(error => console.error('그룹 주문 취소 실패:', error))
+                          } else {
+                            updateOrderStatus(order.id, 'cancelled')
+                          }
+                        }
+                      }}
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
 
         {filteredOrders.length === 0 && (

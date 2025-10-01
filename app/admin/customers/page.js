@@ -213,9 +213,10 @@ export default function AdminCustomersPage() {
         </div>
       </div>
 
-      {/* Customers Table */}
+      {/* Customers - 데스크톱 테이블 + 모바일 카드 */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* 데스크톱 테이블 뷰 */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -342,6 +343,88 @@ export default function AdminCustomersPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* 모바일 카드 뷰 */}
+        <div className="lg:hidden divide-y divide-gray-200">
+          {filteredCustomers.map((customer, index) => {
+            const grade = getCustomerGrade(customer.totalSpent)
+
+            return (
+              <motion.div
+                key={`${customer.id}-${index}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: index * 0.05 }}
+                className="p-4 hover:bg-gray-50"
+              >
+                {/* 상단: 프로필 + 등급 */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {customer.avatar_url ? (
+                        <img
+                          src={customer.avatar_url}
+                          alt={customer.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <UserIcon className="w-6 h-6 text-gray-500" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">{customer.name}</div>
+                      <div className="text-xs text-gray-500">{customer.nickname}</div>
+                      <div className="text-xs text-gray-400">
+                        {new Date(customer.created_at).toLocaleDateString('ko-KR')} 가입
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${grade.color}`}>
+                    <span>{grade.icon}</span>
+                    {grade.label}
+                  </span>
+                </div>
+
+                {/* 중단: 연락처 + 주문통계 */}
+                <div className="mb-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-gray-900">
+                      <PhoneIcon className="w-3 h-3 text-gray-400" />
+                      {customer.phone}
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">
+                      ₩{customer.totalSpent.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{customer.orderCount}건 주문</span>
+                    <span>최근: {formatLastOrder(customer.lastOrderDate)}</span>
+                  </div>
+                </div>
+
+                {/* 하단: 버튼들 */}
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                    상세보기
+                  </button>
+                  {customer.kakaoLink && (
+                    <button
+                      onClick={() => window.open(customer.kakaoLink, '_blank')}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 text-sm font-medium"
+                    >
+                      <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                      카카오톡
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
 
         {filteredCustomers.length === 0 && (
