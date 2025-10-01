@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import toast from 'react-hot-toast'
-import supabase from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
 
 export default function PurchaseOrdersPage() {
   const router = useRouter()

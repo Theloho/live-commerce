@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import toast from 'react-hot-toast'
-import supabase from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 
 export default function SupplierPurchaseOrderDetailPage() {
