@@ -18,6 +18,7 @@ import AddressManager from '@/app/components/address/AddressManager'
 import { createOrder, updateMultipleOrderStatus } from '@/lib/supabaseApi'
 import { UserProfileManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
+import logger from '@/lib/logger'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -46,7 +47,6 @@ export default function CheckoutPage() {
   // 🚀 통합된 초기화 - 모든 useEffect를 하나로 통합하여 성능 최적화
   useEffect(() => {
     const initCheckout = async () => {
-      console.log('🚀 체크아웃 초기화 시작...')
       setPageLoading(true)
 
       try {
@@ -57,7 +57,7 @@ export default function CheckoutPage() {
         // ⚡ 2단계: 비동기 데이터 병렬 로드 (API 호출들)
         await loadUserDataParallel(sessionData)
 
-        console.log('✅ 체크아웃 초기화 완료')
+        logger.debug('체크아웃 초기화 완료')
       } catch (error) {
         console.error('❌ 체크아웃 초기화 실패:', error)
         toast.error('페이지 로딩 중 오류가 발생했습니다')
@@ -76,7 +76,6 @@ export default function CheckoutPage() {
         if (storedUser) {
           sessionUser = JSON.parse(storedUser)
           setUserSession(sessionUser)
-          console.log('✅ 카카오 세션 복원:', sessionUser)
         }
 
         // 관리자 설정 로드
@@ -84,7 +83,6 @@ export default function CheckoutPage() {
         if (savedSettings) {
           const settings = JSON.parse(savedSettings)
           setEnableCardPayment(settings.enable_card_payment || false)
-          console.log('✅ 결제 설정 로드:', { enable_card_payment: settings.enable_card_payment })
         }
 
         return { sessionUser }
@@ -100,20 +98,12 @@ export default function CheckoutPage() {
       const currentUser = userSession || user
       const isUserLoggedIn = userSession || isAuthenticated
 
-      console.log('Checkout page - isAuthenticated:', isAuthenticated)
-      console.log('Checkout page - authLoading:', authLoading)
-      console.log('Checkout page - user:', user)
-      console.log('Checkout page - userSession:', userSession)
-      console.log('Checkout page - isUserLoggedIn:', isUserLoggedIn)
-
       // 인증 로딩 중이면 대기
       if (authLoading && !userSession) {
-        console.log('Still loading auth state, waiting...')
         return
       }
 
       if (!isUserLoggedIn) {
-        console.log('Not authenticated, redirecting to login')
         toast.error('로그인이 필요합니다')
         router.push('/login')
         return
@@ -122,17 +112,13 @@ export default function CheckoutPage() {
       // 세션에서 구매 정보 가져오기
       const checkoutData = sessionStorage.getItem('checkoutItem')
       if (!checkoutData) {
-        console.log('No checkout data found')
         toast.error('구매 정보가 없습니다')
         router.push('/')
         return
       }
 
-      console.log('Checkout data found:', checkoutData)
-
       try {
         const parsedOrderItem = JSON.parse(checkoutData)
-        console.log('파싱된 주문 아이템:', parsedOrderItem)
 
         // 필수 필드 검증 (일괄결제의 경우 totalPrice만 있을 수 있음)
         if (!parsedOrderItem.title || (!parsedOrderItem.price && !parsedOrderItem.totalPrice)) {
@@ -163,7 +149,6 @@ export default function CheckoutPage() {
         // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기
         if (currentUser.provider === 'kakao') {
           try {
-            console.log('카카오 사용자 - 데이터베이스에서 프로필 조회 중...')
             const { data: dbProfile, error } = await supabase
               .from('profiles')
               .select('*')
@@ -175,11 +160,8 @@ export default function CheckoutPage() {
               // 오류 시 기본 프로필 사용
               loadedProfile = UserProfileManager.normalizeProfile(currentUser)
             } else if (dbProfile) {
-              console.log('데이터베이스에서 카카오 사용자 프로필 로드:', dbProfile)
               loadedProfile = UserProfileManager.normalizeProfile(dbProfile)
-              console.log('정규화된 사용자 프로필:', loadedProfile)
             } else {
-              console.log('데이터베이스에서 프로필을 찾을 수 없음, 기본 프로필 사용')
               loadedProfile = UserProfileManager.normalizeProfile(currentUser)
             }
           } catch (error) {
@@ -190,7 +172,6 @@ export default function CheckoutPage() {
         } else {
           // 일반 사용자는 기존 로직 사용
           loadedProfile = UserProfileManager.normalizeProfile(currentUser)
-          console.log('정규화된 사용자 프로필:', loadedProfile)
         }
 
         // 프로필 설정
@@ -198,7 +179,6 @@ export default function CheckoutPage() {
 
         // AddressManager와 동일한 방식으로 직접 Supabase API 호출하여 주소 목록 불러오기
         try {
-          console.log('Supabase에서 주소 목록 조회 중...')
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
           const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
@@ -219,7 +199,6 @@ export default function CheckoutPage() {
 
               // addresses가 비어있지만 기본 주소 정보가 있으면 마이그레이션
               if ((!addresses || addresses.length === 0) && profile?.address) {
-                console.log('🔄 체크아웃 - 기본 주소 마이그레이션:', profile.address)
                 const defaultAddress = {
                   id: Date.now(),
                   label: '기본 배송지',
@@ -243,8 +222,6 @@ export default function CheckoutPage() {
               }
 
               if (addresses && addresses.length > 0) {
-                console.log('주소 목록 로드 성공:', addresses)
-
                 // 기본 배송지 자동 선택
                 const defaultAddress = addresses.find(addr => addr.is_default)
                 if (defaultAddress) {
@@ -255,7 +232,6 @@ export default function CheckoutPage() {
                     address: defaultAddress.address,
                     detail_address: defaultAddress.detail_address || ''
                   }))
-                  console.log('기본 배송지 자동 선택:', defaultAddress)
                 } else if (addresses.length > 0) {
                   // 기본 배송지가 없으면 첫 번째 주소 선택
                   const firstAddress = addresses[0]
@@ -266,7 +242,6 @@ export default function CheckoutPage() {
                     address: firstAddress.address,
                     detail_address: firstAddress.detail_address || ''
                   }))
-                  console.log('첫 번째 주소 자동 선택:', firstAddress)
                 }
               }
             }
@@ -275,7 +250,6 @@ export default function CheckoutPage() {
           console.error('주소 목록 로드 오류:', error)
         }
       } else {
-        console.log('currentUser가 없음')
         // 빈 프로필 설정
         setUserProfile({
           name: '',
@@ -291,7 +265,6 @@ export default function CheckoutPage() {
 
     // 🚀 고성능 체크아웃 초기화 함수 (병렬 처리)
     const initCheckoutOptimized = async () => {
-      console.log('🚀 고성능 체크아웃 초기화 시작...')
       setPageLoading(true)
 
       try {
@@ -317,7 +290,6 @@ export default function CheckoutPage() {
           // 프로필 처리
           if (profileResult.status === 'fulfilled') {
             setUserProfile(profileResult.value)
-            console.log('✅ 프로필 로드 성공')
           } else {
             console.warn('⚠️ 프로필 로드 실패, 기본값 사용')
             setUserProfile(UserProfileManager.normalizeProfile(validationResult.currentUser))
@@ -336,12 +308,11 @@ export default function CheckoutPage() {
                 detail_address: defaultAddress.detail_address,
                 addresses: addresses
               }))
-              console.log('✅ 주소 로드 성공')
             }
           }
         })
 
-        console.log('🎉 고성능 체크아웃 초기화 완료!')
+        logger.debug('고성능 체크아웃 초기화 완료')
       } catch (error) {
         console.error('❌ 체크아웃 초기화 실패:', error)
         toast.error('페이지 로딩 중 오류가 발생했습니다')
@@ -359,7 +330,6 @@ export default function CheckoutPage() {
         if (storedUser) {
           const sessionUser = JSON.parse(storedUser)
           setUserSession(sessionUser)
-          console.log('✅ 카카오 세션 복원')
         }
 
         // 관리자 설정 로드
@@ -367,7 +337,6 @@ export default function CheckoutPage() {
         if (savedSettings) {
           const settings = JSON.parse(savedSettings)
           setEnableCardPayment(settings.enable_card_payment || false)
-          console.log('✅ 결제 설정 로드')
         }
 
         return { success: true, data: { sessionUser: JSON.parse(storedUser || 'null') } }
@@ -384,12 +353,10 @@ export default function CheckoutPage() {
 
       // 인증 검증
       if (authLoading && !sessionData.sessionUser) {
-        console.log('Still loading auth state, waiting...')
         return { success: false }
       }
 
       if (!isUserLoggedIn) {
-        console.log('Not authenticated, redirecting to login')
         toast.error('로그인이 필요합니다')
         router.push('/login')
         return { success: false }
@@ -398,7 +365,6 @@ export default function CheckoutPage() {
       // 주문 데이터 검증
       const checkoutData = sessionStorage.getItem('checkoutItem')
       if (!checkoutData) {
-        console.log('No checkout data found')
         toast.error('구매 정보가 없습니다')
         router.push('/')
         return { success: false }
@@ -421,7 +387,6 @@ export default function CheckoutPage() {
         }
 
         setOrderItem(parsedOrderItem)
-        console.log('✅ 주문 데이터 검증 완료')
 
         return {
           success: true,
@@ -512,12 +477,9 @@ export default function CheckoutPage() {
   // userProfile이 설정되면 프로필 완성도 체크
   useEffect(() => {
     if (userProfile) {
-      console.log('userProfile 설정됨, 프로필 체크 실행')
-
       // 프로필 완성도 체크
       const completeness = UserProfileManager.checkCompleteness(userProfile)
       if (!completeness.isComplete) {
-        console.log('미완성 프로필 필드:', completeness.missingFields)
         // 미완성 필드에 대한 에러 표시
         const errors = {}
         completeness.missingFields.forEach(field => {
@@ -573,11 +535,6 @@ export default function CheckoutPage() {
   }
 
   const confirmBankTransfer = async () => {
-    console.log('계좌이체 처리 시작')
-    console.log('orderItem:', orderItem)
-    console.log('userProfile:', userProfile)
-    console.log('입금자명:', depositName)
-
     if (!orderItem || !userProfile) {
       console.error('주문 정보 또는 사용자 정보가 없습니다')
       toast.error('주문 정보가 없습니다')
@@ -608,9 +565,7 @@ export default function CheckoutPage() {
 
       // 일괄결제인 경우
       if (orderItem.isBulkPayment && orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
-        console.log('💳 일괄결제 처리 시작')
-        console.log('💳 대상 주문 ID들:', orderItem.originalOrderIds)
-        console.log('💳 주문 개수:', orderItem.originalOrderIds.length)
+        logger.debug('일괄결제 처리 시작', { count: orderItem.originalOrderIds.length })
 
         // 선택된 주소를 userProfile에 병합
         const orderProfile = {
@@ -620,17 +575,6 @@ export default function CheckoutPage() {
         }
 
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
-        console.log('🔍 체크아웃에서 updateMultipleOrderStatus 호출:', {
-          orderIds: orderItem.originalOrderIds,
-          status: 'verifying',
-          paymentData: { method: 'bank_transfer', depositorName: depositName },
-          shippingData: {
-            shipping_name: orderProfile.name,
-            shipping_phone: orderProfile.phone,
-            shipping_address: orderProfile.address,
-            shipping_detail_address: orderProfile.detail_address
-          }
-        })
         const updateResult = await updateMultipleOrderStatus(
           orderItem.originalOrderIds,
           'verifying',
@@ -645,7 +589,6 @@ export default function CheckoutPage() {
             }
           }
         )
-        console.log('💳 업데이트 결과:', updateResult)
 
         // 첫 번째 주문 ID를 사용 (일괄결제의 대표 ID)
         orderId = orderItem.originalOrderIds[0]
@@ -656,10 +599,6 @@ export default function CheckoutPage() {
         }))
       } else {
         // 단일 주문 생성
-        console.log('새 주문 생성 중...')
-        console.log('입금자명 전달:', depositName)
-        console.log('선택된 주소:', selectedAddress)
-
         // 선택된 주소를 userProfile에 병합
         const orderProfile = {
           ...userProfile,
@@ -676,7 +615,6 @@ export default function CheckoutPage() {
         await navigator.clipboard.writeText('79421940478')
         toast.success('계좌번호가 복사되었습니다')
       } catch (error) {
-        console.log('클립보드 복사 실패, 대체 방법 사용')
         toast.success('계좌번호: 79421940478')
       }
 
@@ -876,7 +814,6 @@ export default function CheckoutPage() {
                           console.error('주소 업데이트 오류:', error)
                           toast.error('주소 저장에 실패했습니다')
                         } else {
-                          console.log('주소 업데이트 성공:', data)
                           // 로컬 상태도 업데이트
                           setUserProfile(prev => ({ ...prev, addresses: updatedData.addresses }))
                         }

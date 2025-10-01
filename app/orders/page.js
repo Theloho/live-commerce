@@ -21,6 +21,7 @@ import { getOrders, cancelOrder, updateOrderItemQuantity } from '@/lib/supabaseA
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import toast from 'react-hot-toast'
+import logger from '@/lib/logger'
 
 function OrdersContent() {
   const router = useRouter()
@@ -35,7 +36,6 @@ function OrdersContent() {
   // 🚀 통합된 고성능 초기화 (모든 useEffect 통합)
   useEffect(() => {
     const initOrdersPageFast = async () => {
-      console.log('🚀 주문내역 고속 초기화 시작...')
       setPageLoading(true)
 
       try {
@@ -53,7 +53,7 @@ function OrdersContent() {
         // ⚡ 3단계: 주문 데이터 병렬 로드
         await loadOrdersDataFast(authResult.currentUser)
 
-        console.log('✅ 주문내역 고속 초기화 완료')
+        logger.info('✅ 주문내역 고속 초기화 완료')
       } catch (error) {
         console.error('❌ 주문내역 초기화 실패:', error)
         toast.error('주문내역을 불러오는 중 오류가 발생했습니다')
@@ -71,7 +71,6 @@ function OrdersContent() {
         if (storedUser) {
           sessionUser = JSON.parse(storedUser)
           setUserSession(sessionUser)
-          console.log('✅ 세션 복원:', sessionUser?.name)
         }
         return { sessionUser }
       } catch (error) {
@@ -86,7 +85,6 @@ function OrdersContent() {
       const tab = searchParams.get('tab')
       if (tab && ['pending', 'verifying', 'paid', 'delivered'].includes(tab)) {
         setFilterStatus(tab)
-        console.log('✅ URL 탭 설정:', tab)
       }
       return { tab }
     }
@@ -94,7 +92,6 @@ function OrdersContent() {
     // 🔒 인증 검증 (빠른 검사)
     const validateAuthenticationFast = ({ sessionUser }) => {
       if (authLoading && !sessionUser) {
-        console.log('Still loading auth, waiting...')
         return { success: false }
       }
 
@@ -102,7 +99,6 @@ function OrdersContent() {
       const isUserLoggedIn = sessionUser || isAuthenticated
 
       if (!isUserLoggedIn || !currentUser?.id) {
-        console.log('Not authenticated, redirecting to login')
         toast.error('로그인이 필요합니다')
         router.push('/login')
         return { success: false }
@@ -113,15 +109,11 @@ function OrdersContent() {
 
     // ⚡ 주문 데이터 고속 로드
     const loadOrdersDataFast = async (currentUser) => {
-      console.log('⚡ 주문 데이터 고속 로드:', currentUser?.name)
-
       try {
         let ordersData = []
 
         // 🚀 통합 API 사용 (모든 사용자 동일 처리)
-        console.log('통합 API 사용 - 사용자:', currentUser.name)
         ordersData = await getOrders(currentUser.id)
-        console.log('✅ 통합 주문 로드 성공:', ordersData.length)
 
         setOrders(ordersData)
         return ordersData
@@ -136,7 +128,6 @@ function OrdersContent() {
     const setupFocusRefresh = () => {
       const handleFocus = () => {
         if (!pageLoading && (userSession || isAuthenticated)) {
-          console.log('🔄 페이지 포커스 - 주문 새로고침')
           loadOrdersDataFast(userSession || user).catch(console.warn)
         }
       }
@@ -233,9 +224,6 @@ function OrdersContent() {
     e.preventDefault()
     e.stopPropagation()
 
-    console.log('개별 결제 - 주문 데이터:', order)
-    console.log('주문 아이템들:', order.items)
-
     if (!order.items || order.items.length === 0) {
       toast.error('주문 정보를 찾을 수 없습니다')
       return
@@ -257,13 +245,6 @@ function OrdersContent() {
       selectedOptions: firstItem.selectedOptions || {}
     }
 
-    console.log('💰 가격 계산 디버깅:')
-    console.log(`   상품 단가: ₩${itemPrice.toLocaleString()}`)
-    console.log(`   수량: ${itemQuantity}개`)
-    console.log(`   계산된 총액: ₩${calculatedTotalPrice.toLocaleString()}`)
-    console.log(`   기존 totalPrice: ₩${firstItem.totalPrice?.toLocaleString()}`)
-    console.log('체크아웃용 주문 아이템:', orderItem)
-
     sessionStorage.setItem('checkoutItem', JSON.stringify(orderItem))
     router.push('/checkout')
   }
@@ -280,12 +261,10 @@ function OrdersContent() {
       toast.success('주문이 취소되었습니다')
 
       // 주문 목록 새로고침 - 직접 getOrders 호출
-      console.log('🔄 주문 취소 후 목록 새로고침')
       const currentUser = userSession || user
       if (currentUser) {
         const updatedOrders = await getOrders(currentUser.id)
         setOrders(updatedOrders)
-        console.log('✅ 주문 목록 새로고침 완료:', updatedOrders.length)
       }
     } catch (error) {
       console.error('주문 취소 중 오류:', error)
@@ -295,8 +274,6 @@ function OrdersContent() {
 
   // 수량 조절 (Supabase 연동)
   const handleQuantityChange = async (orderId, itemIndex, change) => {
-    console.log('수량 조절:', { orderId, itemIndex, change })
-
     const order = orders.find(o => o.id === orderId)
     if (!order) return
 
@@ -363,12 +340,8 @@ function OrdersContent() {
       return
     }
 
-    console.log('🛍️ 전체결제 시작')
-    console.log('🛍️ 결제대기 주문 수:', pendingOrders.length)
-    console.log('🛍️ 주문 ID들:', pendingOrders.map(o => o.id))
-
     // 결제대기 주문의 경우 재고가 이미 차감되어 있으므로 검증 건너뛰기
-    console.log('일괄결제: 결제대기 주문들의 재고는 이미 확보되어 있으므로 검증 생략')
+    logger.debug('일괄결제: 결제대기 주문들의 재고는 이미 확보되어 있으므로 검증 생략')
 
     // 모든 결제대기 주문들을 하나의 주문으로 합침
     const totalPrice = pendingOrders.reduce((sum, order) => {
@@ -400,12 +373,6 @@ function OrdersContent() {
       // allItems 제거 - 용량 문제 해결
       itemCount: pendingOrders.length
     }
-
-    console.log('💰 전체결제 가격 계산 디버깅:')
-    console.log(`   주문 개수: ${pendingOrders.length}개`)
-    console.log(`   총 상품가격: ₩${totalPrice.toLocaleString()}`)
-    console.log(`   총 수량: ${totalQuantity}개`)
-    console.log('결합된 주문 정보:', combinedOrderItem)
 
     try {
       // sessionStorage 저장 시도 (용량 초과 시 오류 처리)
@@ -812,7 +779,6 @@ function OrdersContent() {
                   {(() => {
                     const { status, payment } = selectedGroupOrder
                     const isCard = payment?.method === 'card'
-                    console.log('그룹 주문 모달 상태 확인:', { status, paymentMethod: payment?.method })
 
                     switch (status) {
                       case 'pending':
@@ -935,7 +901,6 @@ function OrdersContent() {
                                 return sum + ((item.price || 0) * (item.quantity || 1))
                               }, 0)
                               const correctDepositAmount = totalProductAmount + 4000
-                              console.log(`💰 입금 안내 금액: ${correctDepositAmount}원 (상품: ${totalProductAmount} + 배송비: 4000)`)
                               return correctDepositAmount.toLocaleString()
                             })()}
                           </span>
@@ -949,13 +914,6 @@ function OrdersContent() {
                                                    selectedGroupOrder.depositName ||
                                                    selectedGroupOrder.shipping?.name ||
                                                    '입금자명 확인 필요'
-
-                              console.log('🏦 모달 입금자명 정보:', {
-                                paymentDepositorName: selectedGroupOrder.payment?.depositor_name,
-                                depositName: selectedGroupOrder.depositName,
-                                shippingName: selectedGroupOrder.shipping?.name,
-                                finalDepositorName: depositorName
-                              })
 
                               return depositorName
                             })()}
@@ -1146,10 +1104,8 @@ function OrdersContent() {
                             // 모든 상품의 총 금액 계산
                             const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
                               const itemTotal = (item.price || 0) * (item.quantity || 1)
-                              console.log(`💰 모달 상품 ${item.title}: ${itemTotal}원 (price: ${item.price}, quantity: ${item.quantity})`)
                               return sum + itemTotal
                             }, 0)
-                            console.log(`💰 모달 총 상품금액: ${totalProductAmount}원`)
                             return totalProductAmount.toLocaleString()
                           })()}
                         </span>
@@ -1167,7 +1123,6 @@ function OrdersContent() {
                               return sum + ((item.price || 0) * (item.quantity || 1))
                             }, 0)
                             const totalPaymentAmount = totalProductAmount + 4000
-                            console.log(`💰 모달 총 결제금액: ${totalPaymentAmount}원 (상품: ${totalProductAmount} + 배송비: 4000)`)
                             return totalPaymentAmount.toLocaleString()
                           })()}
                         </span>
