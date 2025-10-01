@@ -227,13 +227,20 @@ export default function DetailedProductNewPage() {
       }
 
       // 2. 옵션 데이터 준비
+      console.log('🔍 [디버깅] 원본 options:', JSON.stringify(options, null, 2))
+
       const optionsData = options
-        .filter(opt => opt.values.length > 0 && opt.values.some(v => v.value.trim()))
+        .filter(opt => {
+          const hasValues = opt.values.length > 0
+          const hasValidValues = opt.values.some(v => v.value && v.value.trim())
+          console.log(`🔍 [필터] 옵션 "${opt.name}": values=${opt.values.length}, hasValidValues=${hasValidValues}`)
+          return hasValues && hasValidValues
+        })
         .map((opt, index) => ({
           name: opt.name,
           display_order: index,
           values: opt.values
-            .filter(v => v.value.trim())
+            .filter(v => v.value && v.value.trim())
             .map((v, vIndex) => ({
               value: v.value.trim(),
               display_order: vIndex,
@@ -242,8 +249,16 @@ export default function DetailedProductNewPage() {
             }))
         }))
 
+      console.log('🔍 [디버깅] 필터링된 optionsData:', JSON.stringify(optionsData, null, 2))
+      console.log('🔍 [디버깅] 전달할 옵션 개수:', optionsData.length)
+
+      if (optionsData.length === 0) {
+        console.warn('⚠️ [경고] 옵션 데이터가 비어있습니다!')
+      }
+
       // 3. 상품과 옵션 생성
       const product = await createProductWithOptions(newProductData, optionsData)
+      console.log('✅ [디버깅] 상품 생성 완료:', product.id)
 
       // 4. Variant 생성
       const createdOptions = await getProductOptions(product.id)

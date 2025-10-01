@@ -356,9 +356,9 @@ export default function NewProductPage() {
     }))
   }
 
-  // 제품 저장
+  // 제품 저장 (새 Variant 시스템)
   const handleSaveProduct = async () => {
-    // 필수값 검증 (이미 canSubmit에서 체크했지만 한번 더 확인)
+    // 필수값 검증
     if (!canSubmit) {
       showMissingFieldsAlert()
       return
@@ -367,6 +367,8 @@ export default function NewProductPage() {
     setLoading(true)
 
     try {
+      console.log('🚀 [빠른등록] 상품 저장 시작')
+
       // 표시용 제품명 생성
       const displayName = productData.title.trim()
         ? `${productNumber}/${productData.title.trim()}`
@@ -378,8 +380,8 @@ export default function NewProductPage() {
         totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
       }
 
-      // 제품 저장 (product_number 제거, title에 번호 포함)
-      const { data: product, error } = await supabase
+      // 1. 제품 생성
+      const { data: product, error: productError } = await supabase
         .from('products')
         .insert({
           title: displayName,
@@ -394,74 +396,136 @@ export default function NewProductPage() {
         .select()
         .single()
 
-      if (error) throw error
+      if (productError) throw productError
+      console.log('✅ [빠른등록] 상품 생성 완료:', product.id)
 
-      // 옵션이 있는 경우 옵션 저장
+      // 2. 옵션이 있는 경우 Variant 시스템으로 저장
       if (productData.optionType !== 'none' && combinations.length > 0) {
-        const optionInserts = []
+        console.log('📦 [빠른등록] 옵션 저장 시작')
 
-        if (productData.optionType === 'size') {
-          optionInserts.push({
-            product_id: product.id,
-            name: '사이즈',
-            values: productData.sizeOptions.map(size => ({
-              name: size,
-              inventory: productData.optionInventories[`size:${size}`] || 0
-            }))
-          })
-        } else if (productData.optionType === 'color') {
-          optionInserts.push({
-            product_id: product.id,
-            name: '색상',
-            values: productData.colorOptions.map(color => ({
-              name: color,
-              inventory: productData.optionInventories[`color:${color}`] || 0
-            }))
-          })
-        } else if (productData.optionType === 'both') {
-          // 사이즈와 색상을 개별 옵션으로 저장
-          optionInserts.push({
-            product_id: product.id,
-            name: '사이즈',
-            values: productData.sizeOptions.map(size => ({
-              name: size,
-              inventory: Math.max(...productData.colorOptions.map(color =>
-                productData.optionInventories[`size:${size}|color:${color}`] || 0
-              ))
-            }))
-          })
+        // 2-1. product_options 생성
+        const optionsToCreate = []
 
-          optionInserts.push({
-            product_id: product.id,
-            name: '색상',
-            values: productData.colorOptions.map(color => ({
-              name: color,
-              inventory: Math.max(...productData.sizeOptions.map(size =>
-                productData.optionInventories[`size:${size}|color:${color}`] || 0
-              ))
-            }))
-          })
+        if (productData.optionType === 'size' || productData.optionType === 'both') {
+          optionsToCreate.push({ name: '사이즈', values: productData.sizeOptions })
+        }
+        if (productData.optionType === 'color' || productData.optionType === 'both') {
+          optionsToCreate.push({ name: '색상', values: productData.colorOptions })
         }
 
-        if (optionInserts.length > 0) {
-          const { error: optionError } = await supabase
+        const createdOptionValues = {} // { '사이즈': { '55': 'uuid', '66': 'uuid' }, '색상': { '블랙': 'uuid' } }
+
+        for (const option of optionsToCreate) {
+          // product_options INSERT
+          const { data: createdOption, error: optionError } = await supabase
             .from('product_options')
-            .insert(optionInserts)
+            .insert({
+              product_id: product.id,
+              name: option.name,
+              display_order: 0,
+              is_required: false
+            })
+            .select()
+            .single()
 
-          if (optionError) {
-            console.error('옵션 저장 오류:', optionError)
-          }
+          if (optionError) throw optionError
+          console.log(`  ✅ 옵션 생성: ${option.name}`)
+
+          // product_option_values INSERT
+          const valuesToInsert = option.values.map((value, index) => ({
+            option_id: createdOption.id,
+            value: value,
+            display_order: index
+          }))
+
+          const { data: createdValues, error: valuesError } = await supabase
+            .from('product_option_values')
+            .insert(valuesToInsert)
+            .select()
+
+          if (valuesError) throw valuesError
+
+          // 매핑 저장
+          createdOptionValues[option.name] = {}
+          createdValues.forEach(val => {
+            createdOptionValues[option.name][val.value] = val.id
+          })
+          console.log(`  ✅ 옵션값 ${createdValues.length}개 생성`)
         }
+
+        // 2-2. product_variants 생성 (조합별로)
+        console.log('🔀 [빠른등록] Variant 생성 시작')
+
+        for (const combo of combinations) {
+          // SKU 생성
+          let sku = productNumber
+          if (combo.type === 'size') {
+            sku = `${productNumber}-${combo.size}`
+          } else if (combo.type === 'color') {
+            sku = `${productNumber}-${combo.color}`
+          } else if (combo.type === 'both') {
+            sku = `${productNumber}-${combo.size}-${combo.color}`
+          }
+
+          // 재고
+          const inventory = productData.optionInventories[combo.key] || 0
+
+          // product_variants INSERT
+          const { data: variant, error: variantError } = await supabase
+            .from('product_variants')
+            .insert({
+              product_id: product.id,
+              sku: sku,
+              inventory: inventory,
+              price_adjustment: 0,
+              is_active: true
+            })
+            .select()
+            .single()
+
+          if (variantError) throw variantError
+
+          // 2-3. variant_option_values 매핑
+          const mappings = []
+          if (combo.type === 'size') {
+            mappings.push({
+              variant_id: variant.id,
+              option_value_id: createdOptionValues['사이즈'][combo.size]
+            })
+          } else if (combo.type === 'color') {
+            mappings.push({
+              variant_id: variant.id,
+              option_value_id: createdOptionValues['색상'][combo.color]
+            })
+          } else if (combo.type === 'both') {
+            mappings.push({
+              variant_id: variant.id,
+              option_value_id: createdOptionValues['사이즈'][combo.size]
+            })
+            mappings.push({
+              variant_id: variant.id,
+              option_value_id: createdOptionValues['색상'][combo.color]
+            })
+          }
+
+          const { error: mappingError } = await supabase
+            .from('variant_option_values')
+            .insert(mappings)
+
+          if (mappingError) throw mappingError
+
+          console.log(`  ✅ Variant 생성: ${sku} (재고: ${inventory})`)
+        }
+
+        console.log(`✅ [빠른등록] 총 ${combinations.length}개 Variant 생성 완료`)
       }
 
       toast.success(`제품 ${productNumber}이 등록되었습니다!`)
-
-      // 목록 페이지로 이동
       router.push('/admin/products')
 
     } catch (error) {
-      console.error('제품 저장 오류:', error)
-      toast.error('제품 등록에 실패했습니다')
+      console.error('❌ [빠른등록] 제품 저장 오류:', error)
+      toast.error(`제품 등록 실패: ${error.message}`)
     } finally {
       setLoading(false)
     }
