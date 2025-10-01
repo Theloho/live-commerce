@@ -46,7 +46,7 @@ export default function PurchaseOrdersPage() {
         .from('orders')
         .select(`
           id,
-          order_number,
+          customer_order_number,
           created_at,
           order_items (
             id,

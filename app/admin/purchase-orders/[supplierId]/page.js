@@ -62,7 +62,7 @@ export default function SupplierPurchaseOrderDetailPage() {
         .from('orders')
         .select(`
           id,
-          order_number,
+          customer_order_number,
           created_at,
           order_items (
             id,
@@ -133,7 +133,7 @@ export default function SupplierPurchaseOrderDetailPage() {
             items.push({
               id: item.id,
               orderId: order.id,
-              orderNumber: order.order_number,
+              orderNumber: order.customer_order_number,
               orderDate: order.created_at,
               productId: item.product_id,
               productTitle: item.title || item.products?.title,
