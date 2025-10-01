@@ -26,7 +26,7 @@
 >   - 트러블슈팅 가이드
 >
 > **4단계: 시스템 아키텍처 확인**
-> - `SYSTEM_ARCHITECTURE_PRODUCTION.md` - 실제 프로덕션 DB 스키마 기준
+> - `SYSTEM_ARCHITECTURE.md` - 페이지별 구조 및 연관관계
 > - `DATA_ARCHITECTURE.md` - 전체 데이터 구조 개요
 >
 > **5단계: 개발 가이드라인**

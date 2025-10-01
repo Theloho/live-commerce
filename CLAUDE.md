@@ -172,20 +172,44 @@
 
 ## 📚 전체 문서 리스트
 
-### 필수 문서 (항상 참조)
-1. **DB_REFERENCE_GUIDE.md** - DB 작업 필수
-2. **SYSTEM_HEALTH_CHECK_2025-10-01.md** - 시스템 상태
-3. **DETAILED_DATA_FLOW.md** - 데이터 흐름
-4. **CLAUDE.md** (이 파일) - 작업 가이드
+### 🟢 핵심 문서 (루트 - 항상 참조)
+1. **CLAUDE.md** (이 파일) - 작업 가이드
+2. **README.md** - 프로젝트 소개 및 시작 가이드
+3. **DB_REFERENCE_GUIDE.md** - DB 작업 필수 (17개 테이블 스키마)
+4. **SYSTEM_HEALTH_CHECK_2025-10-01.md** - 전체 시스템 상태 (95/100)
+5. **DETAILED_DATA_FLOW.md** - 페이지별 데이터 흐름 상세
+6. **SYSTEM_ARCHITECTURE.md** - 페이지별 구조 및 연관관계
+7. **DATA_ARCHITECTURE.md** - API 매핑 및 데이터 구조
+8. **DEPLOYMENT_STRATEGY.md** - 프로덕션 배포 전략
+9. **SYSTEM_CLONE_GUIDE.md** - 시스템 복제 가이드
 
-### 참고 문서
-5. **SYSTEM_ARCHITECTURE.md** - 페이지 구조
-6. **DATA_ARCHITECTURE.md** - API 매핑
-7. **DEPLOYMENT_STRATEGY.md** - 배포 전략
-8. **WORK_LOG_2025-10-01.md** - 작업 로그
+### 📦 Archive 문서 (참고용)
+**작업 로그** (`docs/archive/work-logs/`)
+- WORK_LOG_2025-10-01.md
+- WORK_LOG_2025-01-23.md
+- WORK_SUMMARY.md
+
+**분석 문서** (`docs/archive/analysis/`)
+- SYSTEM_DATA_FLOW_ANALYSIS.md
+- SYSTEM_ARCHITECTURE_STATUS.md
+- PRODUCT_MANAGEMENT_STRUCTURE_ANALYSIS.md
+
+**마이그레이션/계획** (`docs/archive/migration/`)
+- OPTION_INVENTORY_SYSTEM_DESIGN.md
+- NEW_DB_ARCHITECTURE.md
+- OPTIMIZATION_IMPLEMENTATION_PLAN.md
+- MIGRATION_EXECUTION_PLAN.md
+
+**구버전 문서** (`docs/archive/old-docs/`)
+- SYSTEM_ARCHITECTURE_PRODUCTION.md (→ SYSTEM_ARCHITECTURE.md로 통합)
+- CLAUDE_COMMANDS.md (→ CLAUDE.md로 통합)
+- CLAUDE_CUSTOM_INSTRUCTIONS.md (→ CLAUDE.md로 통합)
+- DATABASE_SETUP.md
+- SETUP.md
+- PACKAGES.md
 
 ---
 
 **🎯 모든 작업 전에 이 문서를 다시 읽으세요!**
 
-**마지막 업데이트**: 2025-10-01
+**마지막 업데이트**: 2025-10-02 (문서 정리 및 최적화 완료)
