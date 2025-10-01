@@ -646,8 +646,32 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                             // Handle both string and object values
                             const displayValue = typeof value === 'string' ? value : value?.name || value?.value || String(value)
                             const keyValue = typeof value === 'string' ? value : value?.name || value?.value || valueIndex
-                            const inventory = typeof value === 'object' ? (value?.inventory ?? stock) : stock
-                            const isSoldOut = inventory === 0
+
+                            // 마지막 옵션이면 variant 재고 확인
+                            const isLastOption = index === options.length - 1
+                            let inventory = stock
+                            let isSoldOut = false
+
+                            if (isLastOption) {
+                              // 이전 옵션들이 모두 선택되었는지 확인
+                              const prevOptionsSelected = options.slice(0, index).every(opt => selectedOptions[opt.name])
+
+                              if (prevOptionsSelected) {
+                                // 이 값을 선택했을 때의 조합으로 variant 찾기
+                                const testOptions = { ...selectedOptions, [option.name]: displayValue }
+                                const variant = product.variants?.find(v => {
+                                  if (!v.options || v.options.length !== options.length) return false
+                                  return Object.entries(testOptions).every(([optName, optValue]) => {
+                                    return v.options.some(opt => opt.optionName === optName && opt.optionValue === optValue)
+                                  })
+                                })
+
+                                if (variant) {
+                                  inventory = variant.inventory || 0
+                                  isSoldOut = inventory === 0
+                                }
+                              }
+                            }
 
                             return (
                               <button
@@ -681,11 +705,11 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                               >
                                 <div className="flex flex-col items-center">
                                   <span className={isSoldOut ? 'line-through' : ''}>{displayValue}</span>
-                                  {typeof value === 'object' && value?.inventory !== undefined && (
+                                  {isLastOption && (
                                     <span className={`text-xs mt-0.5 ${
                                       isSoldOut
                                         ? 'text-red-500 font-medium'
-                                        : inventory < 5
+                                        : inventory < 5 && inventory > 0
                                         ? 'text-orange-500'
                                         : 'text-gray-500'
                                     }`}>
