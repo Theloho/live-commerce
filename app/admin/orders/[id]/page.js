@@ -258,7 +258,18 @@ export default function AdminOrderDetailPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">결제 금액</span>
-                <span className="font-bold text-lg">₩{order.payment?.amount?.toLocaleString() || '0'}</span>
+                {(() => {
+                  // 정확한 결제 금액 계산
+                  const itemsTotal = order.items.reduce((sum, item) => {
+                    return sum + ((item.price || 0) * (item.quantity || 1))
+                  }, 0)
+                  const shippingFee = order.status === 'pending' ? 0 : 4000
+                  const correctAmount = itemsTotal + shippingFee
+
+                  return (
+                    <span className="font-bold text-lg">₩{correctAmount.toLocaleString()}</span>
+                  )
+                })()}
               </div>
               {order.payment?.method === 'bank_transfer' && (
                 <>
@@ -384,18 +395,33 @@ export default function AdminOrderDetailPage() {
         <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="space-y-2">
             {(() => {
-              // 총 주문 금액에서 상품 금액을 빼서 배송비 계산
-              const totalAmount = order.payment?.amount || 0
-              const itemsTotal = order.items.reduce((sum, item) => sum + (item.totalPrice || (item.price * item.quantity)), 0)
-              const shippingFee = totalAmount - itemsTotal
+              // 상품 금액 정확히 계산
+              const itemsTotal = order.items.reduce((sum, item) => {
+                const itemPrice = item.price || 0
+                const itemQuantity = item.quantity || 1
+                const itemTotal = itemPrice * itemQuantity
+                return sum + itemTotal
+              }, 0)
+
+              // 배송비 계산: 결제대기는 0원, 나머지는 4000원
+              const shippingFee = order.status === 'pending' ? 0 : 4000
+
+              // 올바른 총 결제 금액 계산
+              const correctTotalAmount = itemsTotal + shippingFee
 
               // 디버깅 로그
-              console.log('💰 결제 금액 디버깅:', {
-                'order.payment?.amount': order.payment?.amount,
+              console.log('💰 관리자 주문 상세 금액 계산:', {
+                'order.status': order.status,
                 'itemsTotal': itemsTotal,
                 'shippingFee': shippingFee,
-                'order.payment': order.payment,
-                'order.items': order.items
+                'correctTotalAmount': correctTotalAmount,
+                'order.payment?.amount (DB값)': order.payment?.amount,
+                'order.items': order.items.map(item => ({
+                  title: item.title,
+                  price: item.price,
+                  quantity: item.quantity,
+                  total: item.price * item.quantity
+                }))
               })
 
               return (
@@ -410,8 +436,13 @@ export default function AdminOrderDetailPage() {
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
                     <span>총 결제 금액</span>
-                    <span className="text-red-600">₩{totalAmount.toLocaleString()}</span>
+                    <span className="text-red-600">₩{correctTotalAmount.toLocaleString()}</span>
                   </div>
+                  {order.payment?.amount !== correctTotalAmount && (
+                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                      ⚠️ DB 저장값(₩{order.payment?.amount?.toLocaleString()})과 계산값이 다릅니다
+                    </div>
+                  )}
                 </>
               )
             })()}
