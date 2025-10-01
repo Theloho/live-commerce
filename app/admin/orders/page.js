@@ -595,57 +595,9 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* 하단: 버튼들 */}
+                {/* 하단: 버튼들 (취소 버튼 최좌측 배치) */}
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                  <button
-                    onClick={() => {
-                      const targetId = order.isGroup ? order.originalOrders[0]?.id : order.id
-                      router.push(`/admin/orders/${targetId}`)
-                    }}
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
-                  >
-                    <EyeIcon className="w-4 h-4" />
-                    상세보기
-                  </button>
-
-                  {order.status === 'verifying' && (
-                    <button
-                      onClick={() => {
-                        if (order.isGroup) {
-                          const orderIds = order.originalOrders.map(o => o.id)
-                          Promise.all(orderIds.map(id => updateOrderStatus(id, 'paid')))
-                            .then(() => loadOrders())
-                            .catch(error => console.error('그룹 주문 상태 변경 실패:', error))
-                        } else {
-                          updateOrderStatus(order.id, 'paid')
-                        }
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
-                    >
-                      <CheckIcon className="w-4 h-4" />
-                      결제확인
-                    </button>
-                  )}
-
-                  {order.status === 'paid' && (
-                    <button
-                      onClick={() => {
-                        if (order.isGroup) {
-                          const orderIds = order.originalOrders.map(o => o.id)
-                          Promise.all(orderIds.map(id => updateOrderStatus(id, 'delivered')))
-                            .then(() => loadOrders())
-                            .catch(error => console.error('그룹 주문 발송 처리 실패:', error))
-                        } else {
-                          updateOrderStatus(order.id, 'delivered')
-                        }
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                    >
-                      <CheckIcon className="w-4 h-4" />
-                      발송처리
-                    </button>
-                  )}
-
+                  {/* 취소 버튼 - 맨 왼쪽 (실수 클릭 방지) */}
                   {(order.status === 'pending' || order.status === 'verifying') && (
                     <button
                       onClick={() => {
@@ -667,6 +619,59 @@ export default function AdminOrdersPage() {
                       className="flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
                     >
                       <XMarkIcon className="w-4 h-4" />
+                      취소
+                    </button>
+                  )}
+
+                  {/* 상세보기 버튼 */}
+                  <button
+                    onClick={() => {
+                      const targetId = order.isGroup ? order.originalOrders[0]?.id : order.id
+                      router.push(`/admin/orders/${targetId}`)
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                    상세보기
+                  </button>
+
+                  {/* 결제확인 버튼 */}
+                  {order.status === 'verifying' && (
+                    <button
+                      onClick={() => {
+                        if (order.isGroup) {
+                          const orderIds = order.originalOrders.map(o => o.id)
+                          Promise.all(orderIds.map(id => updateOrderStatus(id, 'paid')))
+                            .then(() => loadOrders())
+                            .catch(error => console.error('그룹 주문 상태 변경 실패:', error))
+                        } else {
+                          updateOrderStatus(order.id, 'paid')
+                        }
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
+                    >
+                      <CheckIcon className="w-4 h-4" />
+                      결제확인
+                    </button>
+                  )}
+
+                  {/* 발송처리 버튼 */}
+                  {order.status === 'paid' && (
+                    <button
+                      onClick={() => {
+                        if (order.isGroup) {
+                          const orderIds = order.originalOrders.map(o => o.id)
+                          Promise.all(orderIds.map(id => updateOrderStatus(id, 'delivered')))
+                            .then(() => loadOrders())
+                            .catch(error => console.error('그룹 주문 발송 처리 실패:', error))
+                        } else {
+                          updateOrderStatus(order.id, 'delivered')
+                        }
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                    >
+                      <CheckIcon className="w-4 h-4" />
+                      발송처리
                     </button>
                   )}
                 </div>
