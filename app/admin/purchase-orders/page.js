@@ -21,6 +21,8 @@ export default function PurchaseOrdersPage() {
   const [purchaseOrders, setPurchaseOrders] = useState([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [selectedSupplier, setSelectedSupplier] = useState('all') // 선택된 업체
+  const [allSuppliers, setAllSuppliers] = useState([]) // 전체 업체 목록
 
   // 권한 체크
   useEffect(() => {
@@ -42,6 +44,14 @@ export default function PurchaseOrdersPage() {
       setLoading(true)
       const data = await getPurchaseOrdersBySupplier(startDate || null, endDate || null)
       setPurchaseOrders(data)
+
+      // 전체 업체 목록 추출 (중복 제거)
+      const suppliers = data.map(order => ({
+        id: order.supplier.id,
+        name: order.supplier.name
+      }))
+      setAllSuppliers(suppliers)
+
       console.log('📋 발주 데이터 로드:', data.length, '개 업체')
     } catch (error) {
       console.error('발주 데이터 로딩 오류:', error)
@@ -55,6 +65,11 @@ export default function PurchaseOrdersPage() {
   const handleDateFilter = () => {
     loadData()
   }
+
+  // 업체별 필터링된 주문 목록
+  const filteredOrders = selectedSupplier === 'all'
+    ? purchaseOrders
+    : purchaseOrders.filter(order => order.supplier.id === selectedSupplier)
 
   // 발주서 출력
   const handlePrint = (supplierOrder) => {
@@ -261,8 +276,8 @@ export default function PurchaseOrdersPage() {
       {/* 필터 */}
       <div className="max-w-7xl mx-auto py-6 px-6">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <CalendarIcon className="w-4 h-4 inline mr-1" />
                 시작일
@@ -275,7 +290,7 @@ export default function PurchaseOrdersPage() {
               />
             </div>
 
-            <div className="flex-1">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <CalendarIcon className="w-4 h-4 inline mr-1" />
                 종료일
@@ -288,10 +303,29 @@ export default function PurchaseOrdersPage() {
               />
             </div>
 
-            <div className="pt-7">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <BuildingStorefrontIcon className="w-4 h-4 inline mr-1" />
+                업체 선택
+              </label>
+              <select
+                value={selectedSupplier}
+                onChange={(e) => setSelectedSupplier(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">전체 업체</option>
+                {allSuppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end">
               <button
                 onClick={handleDateFilter}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 조회
               </button>
@@ -299,16 +333,36 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
 
+        {/* 통계 */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-1">전체 업체 수</p>
+              <p className="text-3xl font-bold text-gray-900">{allSuppliers.length}개</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-1">필터링된 업체 수</p>
+              <p className="text-3xl font-bold text-blue-600">{filteredOrders.length}개</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-1">총 발주 금액</p>
+              <p className="text-3xl font-bold text-green-600">
+                ₩{filteredOrders.reduce((sum, order) => sum + order.totalPurchasePrice, 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* 업체별 발주서 목록 */}
-        {purchaseOrders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <ShoppingCartIcon className="w-16 h-16 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">발주 데이터가 없습니다</h3>
-            <p className="text-gray-600">선택한 기간에 주문이 없거나 variant가 설정되지 않은 상품입니다</p>
+            <p className="text-gray-600">선택한 조건에 맞는 주문이 없거나 variant가 설정되지 않은 상품입니다</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {purchaseOrders.map((supplierOrder, index) => (
+            {filteredOrders.map((supplierOrder, index) => (
               <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden">
                 {/* 업체 정보 헤더 */}
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
