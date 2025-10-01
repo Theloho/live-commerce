@@ -655,6 +655,330 @@ graph TD
 
 ---
 
+### 7. 📋 관리자 - 업체별 발주 관리 메인 (`/app/admin/purchase-orders/page.js`)
+
+#### 📥 데이터 로드 흐름
+```mermaid
+graph TD
+    A[페이지 로드] --> B[입금확인 완료 주문 조회]
+    B --> C[orders WHERE status='deposited']
+    C --> D[order_items + products + suppliers 조인]
+    D --> E[purchase_order_batches 조회]
+    E --> F[완료된 발주 제외]
+    F --> G[업체별 그룹핑 및 집계]
+    G --> H[테이블 렌더링]
+```
+
+#### 실제 코드 흐름
+```javascript
+// 1. 입금확인 완료 주문 조회
+const { data: depositedOrders, error: ordersError } = await supabase
+  .from('orders')
+  .select(`
+    *,
+    order_items (
+      *,
+      products (
+        *,
+        suppliers (*)
+      )
+    )
+  `)
+  .eq('status', 'deposited')
+  .order('created_at', { ascending: false })
+
+// 2. 완료된 발주 조회
+const { data: completedBatches } = await supabase
+  .from('purchase_order_batches')
+  .select('order_id, supplier_id, completed_at')
+  .not('completed_at', 'is', null)
+
+// 3. 완료된 주문 필터링
+const completedOrderIds = new Set(
+  completedBatches.map(batch => batch.order_id)
+)
+
+const pendingOrders = depositedOrders.filter(
+  order => !completedOrderIds.has(order.id)
+)
+
+// 4. 업체별 그룹핑
+const supplierOrders = {}
+pendingOrders.forEach(order => {
+  order.order_items.forEach(item => {
+    const supplier = item.products?.suppliers
+    if (supplier) {
+      if (!supplierOrders[supplier.id]) {
+        supplierOrders[supplier.id] = {
+          supplier: supplier,
+          orders: [],
+          totalItems: 0,
+          totalQuantity: 0
+        }
+      }
+      supplierOrders[supplier.id].orders.push({
+        orderId: order.id,
+        customerOrderNumber: order.customer_order_number,
+        item: item
+      })
+      supplierOrders[supplier.id].totalItems++
+      supplierOrders[supplier.id].totalQuantity += item.quantity
+    }
+  })
+})
+```
+
+#### 사용되는 DB 컬럼
+**orders:**
+- `id, customer_order_number, status, created_at`
+- 필터: `status = 'deposited'`
+
+**order_items:**
+- `id, order_id, product_id, quantity, unit_price, total_price`
+
+**products:**
+- `id, title, supplier_id`
+
+**suppliers:**
+- `id, name, contact_person, phone, email`
+
+**purchase_order_batches:**
+- `order_id, supplier_id, completed_at`
+
+#### 화면 토글 기능
+```javascript
+// "대기 중 발주" ↔ "완료된 발주" 전환
+const [showCompleted, setShowCompleted] = useState(false)
+
+// 대기 중 발주: completed_at IS NULL
+// 완료된 발주: completed_at IS NOT NULL
+```
+
+---
+
+### 8. 📄 관리자 - 업체별 발주서 상세 (`/app/admin/purchase-orders/[supplierId]/page.js`)
+
+#### 📥 데이터 로드 흐름
+```mermaid
+graph TD
+    A[페이지 로드] --> B[URL에서 supplierId 추출]
+    B --> C[suppliers 테이블 조회]
+    C --> D[입금확인 완료 주문 조회]
+    D --> E[해당 업체 상품만 필터링]
+    E --> F[product_variants 조인]
+    F --> G[재고/SKU 정보 가져오기]
+    G --> H[수량 조정 폼 렌더링]
+```
+
+#### 실제 코드 흐름
+```javascript
+// 1. 업체 정보 조회
+const { data: supplier, error: supplierError } = await supabase
+  .from('suppliers')
+  .select('*')
+  .eq('id', supplierId)
+  .single()
+
+// 2. 해당 업체 입금확인 완료 주문 조회
+const { data: orders, error: ordersError } = await supabase
+  .from('orders')
+  .select(`
+    *,
+    order_items (
+      *,
+      products (
+        *,
+        product_variants (
+          id,
+          sku,
+          inventory,
+          option_values
+        )
+      )
+    ),
+    order_shipping (*)
+  `)
+  .eq('status', 'deposited')
+
+// 3. 해당 업체 상품만 필터링
+const supplierOrders = orders.map(order => ({
+  ...order,
+  order_items: order.order_items.filter(
+    item => item.products?.supplier_id === supplierId
+  )
+})).filter(order => order.order_items.length > 0)
+
+// 4. 주문 아이템 집계
+const orderItems = []
+supplierOrders.forEach(order => {
+  order.order_items.forEach(item => {
+    orderItems.push({
+      orderId: order.id,
+      customerOrderNumber: order.customer_order_number,
+      productTitle: item.products?.title,
+      variantSku: item.product_variants?.sku,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      shipping: order.order_shipping?.[0],
+      adjustedQuantity: item.quantity  // 초기값: 원본 수량
+    })
+  })
+})
+```
+
+#### 📤 수량 조정 및 Excel 다운로드 흐름
+```mermaid
+graph TD
+    A[+/- 버튼 클릭] --> B[adjustedQuantity 상태 업데이트]
+    B --> C[화면 재렌더링]
+    C --> D[Excel 다운로드 버튼]
+    D --> E[purchase_order_batches INSERT]
+    E --> F[Excel 파일 생성]
+    F --> G[자동 다운로드]
+    G --> H[발주 완료 처리]
+```
+
+#### 실제 수량 조정 로직
+```javascript
+// 수량 조정 상태 관리
+const [adjustedQuantities, setAdjustedQuantities] = useState({})
+
+// +/- 버튼 핸들러
+const handleQuantityChange = (itemId, delta) => {
+  setAdjustedQuantities(prev => {
+    const current = prev[itemId] || orderItems.find(i => i.id === itemId).quantity
+    const newQty = Math.max(0, current + delta)  // 0 이하 방지
+    return {
+      ...prev,
+      [itemId]: newQty
+    }
+  })
+}
+
+// 최종 수량 계산
+const getFinalQuantity = (itemId, originalQty) => {
+  return adjustedQuantities[itemId] ?? originalQty
+}
+```
+
+#### Excel 다운로드 및 발주 완료 처리
+```javascript
+// Excel 다운로드 버튼 클릭
+const handleExcelDownload = async () => {
+  try {
+    // 1. purchase_order_batches 생성
+    const batchId = uuidv4()
+    const batchItems = orderItems.map(item => ({
+      batch_id: batchId,
+      order_id: item.orderId,
+      supplier_id: supplierId,
+      product_id: item.products.id,
+      variant_id: item.product_variants?.id,
+      ordered_quantity: getFinalQuantity(item.id, item.quantity),
+      unit_price: item.unit_price,
+      completed_at: new Date().toISOString()  // ⚠️ 즉시 완료 처리
+    }))
+
+    const { error: batchError } = await supabase
+      .from('purchase_order_batches')
+      .insert(batchItems)
+
+    if (batchError) throw batchError
+
+    // 2. Excel 파일 생성
+    const workbook = XLSX.utils.book_new()
+    const worksheetData = orderItems.map(item => ({
+      '주문번호': item.customerOrderNumber,
+      '상품명': item.productTitle,
+      'SKU': item.variantSku || '-',
+      '수량': getFinalQuantity(item.id, item.quantity),
+      '단가': item.unitPrice.toLocaleString(),
+      '합계': (getFinalQuantity(item.id, item.quantity) * item.unitPrice).toLocaleString(),
+      '수령인': item.shipping?.name,
+      '연락처': item.shipping?.phone,
+      '배송지': `${item.shipping?.address} ${item.shipping?.detail_address || ''}`
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData)
+    XLSX.utils.book_append_sheet(workbook, worksheet, '발주서')
+
+    // 3. 파일 다운로드
+    const fileName = `발주서_${supplier.name}_${new Date().toISOString().split('T')[0]}.xlsx`
+    XLSX.writeFile(workbook, fileName)
+
+    // 4. 성공 메시지
+    alert('발주서가 다운로드되었습니다. 해당 주문은 "완료된 발주"로 이동됩니다.')
+
+    // 5. 메인 페이지로 이동
+    router.push('/admin/purchase-orders')
+  } catch (error) {
+    console.error('Excel 다운로드 오류:', error)
+    alert('발주서 생성 중 오류가 발생했습니다.')
+  }
+}
+```
+
+#### 사용되는 DB 컬럼 (INSERT)
+**purchase_order_batches:**
+- `batch_id, order_id, supplier_id, product_id, variant_id`
+- `ordered_quantity, unit_price, completed_at`
+
+#### Excel 파일 구조
+| 주문번호 | 상품명 | SKU | 수량 | 단가 | 합계 | 수령인 | 연락처 | 배송지 |
+|---------|--------|-----|------|------|------|--------|--------|--------|
+| S250101-ABCD | 상품A | SKU-001 | 5 | 10,000 | 50,000 | 홍길동 | 010-1234-5678 | 서울시... |
+
+#### 화면 표시 정보
+```javascript
+// 업체 정보
+<div>
+  <h1>{supplier.name}</h1>
+  <p>담당자: {supplier.contact_person}</p>
+  <p>연락처: {supplier.phone}</p>
+  <p>이메일: {supplier.email}</p>
+</div>
+
+// 주문 아이템 테이블
+<table>
+  <thead>
+    <tr>
+      <th>주문번호</th>
+      <th>상품명</th>
+      <th>SKU</th>
+      <th>원본 수량</th>
+      <th>조정 수량</th>
+      <th>수량 조정</th>
+      <th>단가</th>
+      <th>합계</th>
+    </tr>
+  </thead>
+  <tbody>
+    {orderItems.map(item => (
+      <tr key={item.id}>
+        <td>{item.customerOrderNumber}</td>
+        <td>{item.productTitle}</td>
+        <td>{item.variantSku || '-'}</td>
+        <td>{item.quantity}</td>
+        <td>{getFinalQuantity(item.id, item.quantity)}</td>
+        <td>
+          <button onClick={() => handleQuantityChange(item.id, -1)}>-</button>
+          <button onClick={() => handleQuantityChange(item.id, 1)}>+</button>
+        </td>
+        <td>{item.unitPrice.toLocaleString()}원</td>
+        <td>{(getFinalQuantity(item.id, item.quantity) * item.unitPrice).toLocaleString()}원</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+// Excel 다운로드 버튼
+<button onClick={handleExcelDownload}>
+  발주서 다운로드 (Excel)
+</button>
+```
+
+---
+
 ## 🔌 주요 API 엔드포인트 상세
 
 ### 1. POST `/api/create-order-card` (카드 결제 주문)

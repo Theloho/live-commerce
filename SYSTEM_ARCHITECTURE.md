@@ -175,6 +175,62 @@ getAllOrders() → 모든 주문
 → 사용자 정보 매핑
 ```
 
+#### `/admin/purchase-orders` (업체별 발주 관리)
+**주요 기능**:
+- 입금확인 완료 주문 자동 집계
+- 업체별 요약 카드 (주문건수, 수량, 금액)
+- 완료된 발주 히스토리
+- 중복 다운로드 방지
+
+**연관 시스템**:
+- `orders` 테이블 ← 입금확인(`deposited`) 상태 주문
+- `order_items` 테이블 ← 상품별 수량/금액
+- `products` 테이블 ← 업체 정보 조인
+- `purchase_order_batches` 테이블 ← 완료 이력 관리
+
+**영향받는 페이지**:
+- `/admin/purchase-orders/[supplierId]` (업체별 발주서 상세)
+
+**데이터 흐름**:
+```
+입금확인 주문 조회 (status = 'deposited')
+→ products JOIN으로 업체 정보 가져오기
+→ 업체별 그룹핑 및 집계
+→ 완료된 발주 제외 (purchase_order_batches)
+→ 업체별 요약 카드 표시
+```
+
+#### `/admin/purchase-orders/[supplierId]` (업체별 발주서 상세)
+**주요 기능**:
+- 특정 업체의 주문 아이템 리스트
+- 수량 조정 UI (+/- 버튼)
+- Excel 다운로드 및 자동 완료 처리
+- 수량 조정 내역 JSONB 저장
+
+**연관 시스템**:
+- `orders` 테이블 ← 입금확인 상태 주문
+- `order_items` 테이블 ← 상품 정보
+- `products` 테이블 ← 업체 정보
+- `purchase_order_batches` 테이블 ← 발주 완료 기록
+
+**영향받는 페이지**:
+- `/admin/purchase-orders` (메인 페이지)
+
+**데이터 흐름**:
+```
+supplierId → 해당 업체 주문 아이템 조회
+→ 수량 조정 (quantity_adjustments JSONB)
+→ Excel 다운로드 트리거
+→ purchase_order_batches 레코드 생성
+→ 완료 처리 및 메인 페이지로 리다이렉트
+```
+
+**주요 기능 상세**:
+- **중복 방지**: 이미 발주된 주문은 자동 제외
+- **수량 조정**: order_items별 조정 값 JSONB 저장
+- **자동 완료**: Excel 다운로드 시 purchase_order_batches 자동 생성
+- **이력 관리**: 발주 시점, 주문 ID 목록, 조정 내역 모두 기록
+
 ---
 
 ## 🔄 핵심 데이터 흐름
@@ -272,6 +328,10 @@ graph TD
 ## 📈 시스템 상태 (실시간 업데이트)
 
 ### 최근 주요 변경사항
+- **2025-10-02**: ✨ **NEW FEATURE** - 업체별 발주서 출력 기능 구현 (purchase_order_batches 테이블 추가)
+- **2025-10-02**: 입금확인 완료 주문 자동 집계 및 업체별 그룹핑
+- **2025-10-02**: 수량 조정 기능 및 Excel 다운로드 기능 추가
+- **2025-10-02**: 중복 발주 방지 로직 구현 (완료된 주문 자동 제외)
 - **2025-09-30**: 🚨 **CRITICAL BUG FIX** - deprecated 카카오 API에서 totalPrice 변수 순서 오류 해결
 - **2025-09-30**: order_items 생성 실패 및 total_amount undefined 문제 근본 해결
 - **2025-09-30**: cart:KAKAO 주문에서 "0종 0개", "₩0" 표시 문제 해결
@@ -293,6 +353,7 @@ graph TD
 - ✅ **계산 로직**: 수정 완료
 - ✅ **호환성**: 기존 주문과 새 주문 모두 정상 조회
 - ✅ **사용자 주문 조회 문제**: 완전 해결
+- ✅ **업체별 발주 관리**: 입금확인 주문 자동 집계, Excel 출력, 중복 방지 기능 완료
 
 ### 알려진 이슈
 - 없음 (2025-09-30 totalPrice 순서 오류 해결로 완전 안정 상태)
@@ -318,5 +379,5 @@ graph TD
 
 ---
 
-*마지막 업데이트: 2025-09-30*
+*마지막 업데이트: 2025-10-02*
 *담당자: Claude Code*

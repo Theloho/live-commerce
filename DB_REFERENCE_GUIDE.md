@@ -1,6 +1,6 @@
 # 🗄️ DB 참조 가이드 - 완전판
 
-**최종 업데이트**: 2025-10-01
+**최종 업데이트**: 2025-10-02
 **목적**: 모든 작업 시 DB 구조를 정확히 참조하고 올바르게 사용하기 위한 필수 가이드
 
 ---
@@ -28,9 +28,20 @@ profiles (사용자 프로필)
     ├─ kakao_id: TEXT (카카오 로그인)
     └─ provider: TEXT (로그인 방식)
 
-products (상품)
+categories (카테고리)
+    └─ products (상품) [1:N]
+
+suppliers (업체)
+    └─ products (상품) [1:N]
+
+products (상품) ⭐ 핵심
+    ├─ category_id → categories.id [N:1]
+    ├─ supplier_id → suppliers.id [N:1]
     ├─ product_options (옵션) [1:N]
-    └─ categories (카테고리) [N:1]
+    │   └─ product_option_values (옵션 값) [1:N]
+    └─ product_variants (변형 상품) [1:N]
+        └─ variant_option_values (변형-옵션 매핑) [N:N]
+            └─ product_option_values.id
 
 orders (주문) ⭐ 핵심
     ├─ user_id → profiles.id (NULL 가능, 카카오 사용자)
@@ -41,9 +52,14 @@ orders (주문) ⭐ 핵심
 
 orders (1:N 관계)
     ├─ order_items (주문 상품들)
-    │   └─ product_id → products.id
+    │   ├─ product_id → products.id
+    │   └─ variant_id → product_variants.id ⭐ 신규
     ├─ order_shipping (배송 정보)
     └─ order_payments (결제 정보)
+
+purchase_order_batches (발주 이력) ⭐ 신규
+    ├─ supplier_id → suppliers.id
+    └─ order_ids: UUID[] (포함된 주문 배열)
 
 cart_items (장바구니)
     ├─ user_id → auth.users.id
@@ -110,31 +126,57 @@ CREATE TABLE profiles (
 - `kakao_id`로 카카오 로그인 사용자 식별
 - `addresses`는 JSONB 배열 형태로 여러 주소 저장
 
-**addresses JSONB 구조**:
-```json
-[
-  {
-    "id": 1234567890,
-    "label": "집",
-    "address": "서울시 강남구...",
-    "detail_address": "101동 101호",
-    "is_default": true,
-    "created_at": "2025-10-01T..."
-  },
-  {
-    "id": 1234567891,
-    "label": "회사",
-    "address": "서울시 서초구...",
-    "detail_address": "5층",
-    "is_default": false,
-    "created_at": "2025-10-01T..."
-  }
-]
+---
+
+### 2.2 categories (카테고리)
+
+```sql
+CREATE TABLE categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    slug VARCHAR(100) UNIQUE,
+    description TEXT,
+    image_url TEXT,
+    parent_id UUID REFERENCES categories(id),
+    display_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
+
+**중요 포인트**:
+- `parent_id`로 카테고리 계층 구조 지원
+- `slug`로 URL 친화적 식별자
 
 ---
 
-### 2.2 products (상품)
+### 2.3 suppliers (업체)
+
+```sql
+CREATE TABLE suppliers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    code VARCHAR(50) UNIQUE,
+    contact_person VARCHAR(100),
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    address TEXT,
+    notes TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**중요 포인트**:
+- `code`: 업체 코드 (고유 식별자)
+- `contact_person`: 담당자명
+- 발주 관리에서 활용
+
+---
+
+### 2.4 products (상품)
 
 ```sql
 CREATE TABLE products (
@@ -142,25 +184,36 @@ CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    product_number VARCHAR(20),  -- '0001' ~ '9999'
 
     -- 가격 정보
     price NUMERIC(10,2) NOT NULL,
     compare_price NUMERIC(10,2),
     discount_rate INTEGER DEFAULT 0,
+    purchase_price NUMERIC(10,2),  -- 매입가
 
     -- 이미지
     thumbnail_url TEXT,
     images JSONB DEFAULT '[]'::jsonb,
 
-    -- 분류
+    -- 분류 ⭐ FK 추가됨
     category VARCHAR(100),
     sub_category VARCHAR(100),
-    category_id UUID REFERENCES categories(id),
+    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     tags TEXT[],
 
-    -- 재고
+    -- 업체 정보 ⭐ FK 추가됨
+    supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL,
+    supplier_sku TEXT,
+    model_number TEXT,
+
+    -- 재고 (전체 재고, variant별 재고는 product_variants에)
     inventory INTEGER DEFAULT 0,
     sku TEXT,
+
+    -- Variant 시스템 ⭐ 신규
+    option_count INTEGER DEFAULT 0,    -- 옵션 개수
+    variant_count INTEGER DEFAULT 0,   -- 변형 상품 개수
 
     -- 상태
     status TEXT DEFAULT 'active',  -- 'active', 'draft', 'deleted'
@@ -189,13 +242,101 @@ CREATE TABLE products (
 ```
 
 **중요 포인트**:
-- `status`: 'active' (활성), 'draft' (임시저장), 'deleted' (삭제됨)
-- `inventory`: 전체 재고 (옵션별 재고는 product_options에)
-- `is_live_active`: 현재 라이브 방송 중인지 여부
+- `product_number`: 0001~9999 자동 생성
+- `category_id`: categories 테이블 FK
+- `supplier_id`: suppliers 테이블 FK
+- `purchase_price`: 매입가 (발주서에서 사용)
+- `option_count`, `variant_count`: Variant 시스템 통계
 
 ---
 
-### 2.3 orders (주문) ⭐⭐⭐
+### 2.5 product_options (상품 옵션) ⭐ Variant 시스템
+
+```sql
+CREATE TABLE product_options (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,  -- '색상', '사이즈' 등
+    display_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**중요 포인트**:
+- 옵션 이름만 저장 (예: "색상", "사이즈")
+- 실제 값은 `product_option_values` 테이블에
+
+---
+
+### 2.6 product_option_values (옵션 값) ⭐ Variant 시스템
+
+```sql
+CREATE TABLE product_option_values (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    option_id UUID NOT NULL REFERENCES product_options(id) ON DELETE CASCADE,
+    value VARCHAR(100) NOT NULL,  -- '블랙', 'L', '66' 등
+    display_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**중요 포인트**:
+- 옵션의 실제 값 저장
+- 예: option_id가 "색상"이면 value는 "블랙", "화이트" 등
+
+---
+
+### 2.7 product_variants (변형 상품) ⭐ Variant 시스템 핵심
+
+```sql
+CREATE TABLE product_variants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    sku VARCHAR(100) UNIQUE,  -- 예: '0005-66-블랙'
+    inventory INTEGER DEFAULT 0,  -- ⭐ 재고 관리
+    price_adjustment NUMERIC(10,2) DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**중요 포인트**:
+- **실제 재고는 여기서 관리** (products.inventory는 참고용)
+- `sku`: 자동 생성 (제품번호-옵션값1-옵션값2)
+- 각 옵션 조합마다 하나의 variant
+
+---
+
+### 2.8 variant_option_values (변형-옵션 매핑) ⭐ Variant 시스템
+
+```sql
+CREATE TABLE variant_option_values (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    variant_id UUID NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
+    option_value_id UUID NOT NULL REFERENCES product_option_values(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+    UNIQUE(variant_id, option_value_id)
+);
+```
+
+**중요 포인트**:
+- Variant와 옵션 값의 N:N 관계
+- 예: variant_id="ABC" + option_value_id="블랙", "L" 2개 레코드
+
+**Variant 시스템 데이터 흐름**:
+```
+product (상품)
+  └─ product_options (옵션: 색상, 사이즈)
+      └─ product_option_values (값: 블랙, L)
+          └─ variant_option_values (매핑)
+              └─ product_variants (변형: 블랙+L, 재고=10)
+```
+
+---
+
+### 2.9 orders (주문) ⭐⭐⭐
 
 ```sql
 CREATE TABLE orders (
@@ -210,6 +351,7 @@ CREATE TABLE orders (
     status VARCHAR(20) DEFAULT 'pending',
     -- 'pending' (결제대기)
     -- 'verifying' (결제확인중)
+    -- 'deposited' (입금확인완료) ⭐ 발주 대상
     -- 'paid' (결제완료)
     -- 'delivered' (발송완료)
     -- 'cancelled' (취소)
@@ -233,7 +375,7 @@ CREATE TABLE orders (
     shipping_address TEXT,
     shipping_detail_address TEXT,
 
-    -- 타임스탬프 ⭐ 중요 (2025-10-01 추가)
+    -- 타임스탬프 ⭐ 중요
     verifying_at TIMESTAMPTZ,   -- 결제 확인중 시간 (고객이 체크아웃 완료)
     paid_at TIMESTAMPTZ,         -- 결제 완료 시간 (관리자가 입금 확인)
     delivered_at TIMESTAMPTZ,    -- 발송 완료 시간 (관리자가 발송 처리)
@@ -246,40 +388,12 @@ CREATE TABLE orders (
 ```
 
 **중요 포인트**:
-
-1. **user_id는 NULL 가능**
-   - 카카오 로그인 사용자는 auth.users에 없을 수 있음
-   - 대신 `order_type`에 카카오 ID 포함
-
-2. **order_type 패턴**:
-   ```javascript
-   // 일반 사용자
-   order_type = 'direct'  // 직접 구매
-   order_type = 'cart'    // 장바구니 구매
-
-   // 카카오 사용자
-   order_type = 'direct:KAKAO:1234567890'  // 카카오 ID 포함
-   order_type = 'cart:KAKAO:1234567890'
-   ```
-
-3. **타임스탬프 흐름**:
-   ```
-   created_at (장바구니 담기)
-      ↓
-   verifying_at (체크아웃 완료, "전체결제" 버튼 클릭)
-      ↓
-   paid_at (관리자가 "입금 확인" 버튼 클릭)
-      ↓
-   delivered_at (관리자가 "발송 처리" 버튼 클릭)
-   ```
-
-4. **payment_group_id**:
-   - 여러 주문을 한 번에 결제할 때 사용
-   - 같은 그룹 ID를 가진 주문들은 묶어서 표시
+- `status = 'deposited'`: 입금확인 완료, **발주 대상 상태**
+- 타임스탬프 흐름: `created_at` → `verifying_at` → `paid_at` → `delivered_at`
 
 ---
 
-### 2.4 order_items (주문 상품) ⭐
+### 2.10 order_items (주문 상품) ⭐⭐⭐
 
 ```sql
 CREATE TABLE order_items (
@@ -287,6 +401,7 @@ CREATE TABLE order_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
     product_id UUID REFERENCES products(id),
+    variant_id UUID REFERENCES product_variants(id) ON DELETE SET NULL,  -- ⭐ 신규
 
     -- 상품 정보 (스냅샷)
     title TEXT NOT NULL,  -- ⭐ 주문 시점의 상품명 저장
@@ -302,8 +417,8 @@ CREATE TABLE order_items (
     total NUMERIC(10,2),        -- 신규 컬럼
     total_price NUMERIC(10,2) NOT NULL,  -- 기존 컬럼 (동일한 값)
 
-    -- 옵션
-    selected_options JSONB DEFAULT '{}'::jsonb,
+    -- 옵션 (⭐ 이중 저장 전략)
+    selected_options JSONB DEFAULT '{}'::jsonb,  -- 스냅샷 (주문 시점 옵션)
     variant_title TEXT,
 
     -- 상품 스냅샷
@@ -315,248 +430,272 @@ CREATE TABLE order_items (
 );
 ```
 
-**⚠️ 중요: 중복 컬럼 처리**
+**⭐⭐⭐ 이중 저장 전략 (2025-10-02)**:
+1. `selected_options` (JSONB): 주문 시점 옵션 스냅샷 (변경 불가)
+2. `variant_id` (FK): 실시간 variant 정보 조회용
 
-현재 프로덕션 DB에는 같은 역할의 컬럼이 2세트 존재합니다:
-- **단가**: `price` (신규) + `unit_price` (기존)
-- **총액**: `total` (신규) + `total_price` (기존)
+**왜 두 개?**
+- `selected_options`: 과거 주문 호환성, 주문 이력 보존
+- `variant_id`: 실시간 재고 관리, variant 정보 JOIN 조회
 
-**코드에서 처리 방법**:
-```javascript
-// ✅ 올바른 방법: 양쪽 모두 저장
-const itemData = {
-  order_id: orderId,
-  product_id: productId,
-  title: product.title,  // ⭐ 반드시 포함
-  quantity: quantity,
-
-  // 중복 컬럼 모두 저장 (호환성 유지)
-  price: unitPrice,
-  unit_price: unitPrice,
-  total: totalPrice,
-  total_price: totalPrice,
-
-  selected_options: selectedOptions || {}
-}
-
-await supabase.from('order_items').insert([itemData])
-```
-
-**조회 시 우선순위**:
-```javascript
-// ✅ 안전한 조회 방법
-const unitPrice = item.unit_price || item.price
-const totalPrice = item.total_price || item.total
+**조회 예시**:
+```sql
+SELECT
+  order_items.*,
+  product_variants.inventory,
+  product_variants.sku
+FROM order_items
+LEFT JOIN product_variants ON order_items.variant_id = product_variants.id
 ```
 
 ---
 
-### 2.5 order_shipping (배송 정보)
+### 2.11 purchase_order_batches (발주 이력) ⭐ 신규
 
 ```sql
-CREATE TABLE order_shipping (
-    -- 기본 정보
+CREATE TABLE purchase_order_batches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
-
-    -- 수령인 정보
-    name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) NOT NULL,
-
-    -- 주소
-    address TEXT NOT NULL,
-    detail_address TEXT,
-    postal_code VARCHAR(10),
-
-    -- 배송 요청사항
-    memo TEXT,
-
-    -- 배송비
-    shipping_fee NUMERIC(10,2) DEFAULT 4000,
-    shipping_method VARCHAR(50) DEFAULT 'standard',
-
-    -- 배송 추적
-    tracking_number VARCHAR(100),
-    shipped_at TIMESTAMPTZ,
-    delivered_at TIMESTAMPTZ,
-
-    -- 메타 정보
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    supplier_id UUID NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    download_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    order_ids UUID[] NOT NULL,  -- 포함된 주문 ID 배열
+    adjusted_quantities JSONB,  -- 수량 조정 내역 {order_item_id: adjusted_qty}
+    total_items INT NOT NULL,   -- 총 아이템 수
+    total_amount INT NOT NULL,  -- 총 발주 금액
+    status VARCHAR(20) DEFAULT 'completed',  -- 'completed', 'cancelled'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by VARCHAR(255)  -- 다운로드한 관리자 이메일
 );
-```
 
-**⚠️ 주의**: `orders` 테이블에도 `shipping_*` 컬럼이 있음 (중복 가능성)
-
----
-
-### 2.6 order_payments (결제 정보)
-
-```sql
-CREATE TABLE order_payments (
-    -- 기본 정보
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
-
-    -- 결제 방법
-    method VARCHAR(50) NOT NULL,  -- 'bank_transfer', 'card', etc.
-
-    -- 금액
-    amount NUMERIC(10,2) NOT NULL,
-
-    -- 결제 상태
-    status VARCHAR(20) DEFAULT 'pending',  -- 'pending', 'completed', 'failed', 'cancelled'
-
-    -- 결제 정보
-    transaction_id VARCHAR(100),
-    paid_at TIMESTAMPTZ,
-
-    -- 계좌이체 정보
-    bank_name VARCHAR(50),
-    account_number VARCHAR(50),
-    depositor_name VARCHAR(100),  -- ⭐ 입금자명
-
-    -- 메타 정보
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+CREATE INDEX idx_purchase_order_batches_supplier ON purchase_order_batches(supplier_id);
+CREATE INDEX idx_purchase_order_batches_date ON purchase_order_batches(download_date DESC);
+CREATE INDEX idx_purchase_order_batches_order_ids ON purchase_order_batches USING GIN(order_ids);
 ```
 
 **중요 포인트**:
-- `depositor_name`: 입금자명 (주문자와 다를 수 있음)
-- `method`: 'bank_transfer' (계좌이체), 'card' (카드결제)
+- 발주서 다운로드 시 자동 생성
+- `order_ids`: 해당 발주에 포함된 주문 ID 배열
+- `adjusted_quantities`: 관리자가 수량 조정한 내역 (JSONB)
+- GIN 인덱스로 배열 검색 최적화
+
+**사용 패턴**:
+```javascript
+// 1. 입금확인 완료(deposited) 주문 조회
+// 2. purchase_order_batches에서 이미 발주된 order_ids 조회
+// 3. 발주 안 된 주문만 필터링
+// 4. Excel 다운로드 시 batch 생성
+```
 
 ---
 
-### 2.7 product_options (상품 옵션)
+### 2.12 order_shipping (배송 정보)
 
 ```sql
-CREATE TABLE product_options (
+CREATE TABLE order_shipping (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,  -- '색상', '사이즈' 등
-    values JSONB NOT NULL,
-    required BOOLEAN DEFAULT false,
+    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    address TEXT NOT NULL,
+    detail_address TEXT,
+    postal_code VARCHAR(10),
+    memo TEXT,
+    shipping_fee NUMERIC(10,2) DEFAULT 4000,
+    shipping_method VARCHAR(50) DEFAULT 'standard',
+    tracking_number VARCHAR(100),
+    shipped_at TIMESTAMPTZ,
+    delivered_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
-**values JSONB 구조**:
-```json
-[
-  {
-    "name": "블랙",
-    "inventory": 10,
-    "price_adjustment": 0
-  },
-  {
-    "name": "화이트",
-    "inventory": 5,
-    "price_adjustment": 1000
-  }
-]
+---
+
+### 2.13 order_payments (결제 정보)
+
+```sql
+CREATE TABLE order_payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+    method VARCHAR(50) NOT NULL,
+    amount NUMERIC(10,2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
+    transaction_id VARCHAR(100),
+    paid_at TIMESTAMPTZ,
+    bank_name VARCHAR(50),
+    account_number VARCHAR(50),
+    depositor_name VARCHAR(100),  -- ⭐ 입금자명
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
 ---
 
 ## 3. 데이터 저장 패턴
 
-### 3.1 주문 생성 (createOrder)
+### 3.1 Variant 상품 등록 (2025-10-02 신규)
 
-**위치**: `/lib/supabaseApi.js:379-562`
+**위치**: `/app/admin/products/new/page.js:359-532`
 
-**전체 프로세스**:
 ```javascript
-export const createOrder = async (orderData, userProfile, depositName = null) => {
-  // 1단계: 사용자 확인
-  const user = await getCurrentUser()
+// 1. 상품 생성
+const { data: product } = await supabase
+  .from('products')
+  .insert({
+    title: '상품명',
+    price: 50000,
+    product_number: '0005',
+    option_count: 2,  // 색상, 사이즈
+    variant_count: 4  // 2x2 = 4개 조합
+  })
+  .select()
+  .single()
 
-  // 2단계: user_id 유효성 확인 (auth.users에 존재하는지)
-  let validUserId = null
-  const { data: authUser } = await supabase.auth.getUser()
-  if (authUser?.user && authUser.user.id === user.id) {
-    validUserId = user.id
+// 2. 옵션 생성
+const optionsData = [
+  { name: '색상', values: ['블랙', '화이트'] },
+  { name: '사이즈', values: ['66', '77'] }
+]
+
+for (const option of optionsData) {
+  // 2-1. product_options 생성
+  const { data: createdOption } = await supabase
+    .from('product_options')
+    .insert({
+      product_id: product.id,
+      name: option.name
+    })
+    .select()
+    .single()
+
+  // 2-2. product_option_values 생성
+  const valuesToInsert = option.values.map((value, index) => ({
+    option_id: createdOption.id,
+    value: value,
+    display_order: index
+  }))
+
+  await supabase
+    .from('product_option_values')
+    .insert(valuesToInsert)
+}
+
+// 3. Variant 생성 (모든 조합)
+const combinations = [
+  { 색상: '블랙', 사이즈: '66' },
+  { 색상: '블랙', 사이즈: '77' },
+  { 색상: '화이트', 사이즈: '66' },
+  { 색상: '화이트', 사이즈: '77' }
+]
+
+for (const combo of combinations) {
+  // 3-1. SKU 생성
+  const sku = `0005-${combo.사이즈}-${combo.색상}`
+
+  // 3-2. product_variants 생성
+  const { data: variant } = await supabase
+    .from('product_variants')
+    .insert({
+      product_id: product.id,
+      sku: sku,
+      inventory: 10  // 재고
+    })
+    .select()
+    .single()
+
+  // 3-3. variant_option_values 매핑
+  for (const [optionName, optionValue] of Object.entries(combo)) {
+    // option_value_id 조회
+    const { data: optionValue } = await supabase
+      .from('product_option_values')
+      .select('id')
+      .eq('value', optionValue)
+      .single()
+
+    await supabase
+      .from('variant_option_values')
+      .insert({
+        variant_id: variant.id,
+        option_value_id: optionValue.id
+      })
   }
-
-  // 3단계: orders 테이블 INSERT
-  const orderId = crypto.randomUUID()
-  const customerOrderNumber = generateCustomerOrderNumber() // 'S251001-1234'
-
-  const orderData_final = {
-    id: orderId,
-    customer_order_number: customerOrderNumber,
-    status: 'pending',
-
-    // ⭐ order_type 생성 규칙
-    order_type: user.kakao_id
-      ? `${orderData.orderType || 'direct'}:KAKAO:${user.kakao_id}`
-      : (orderData.orderType || 'direct'),
-
-    total_amount: orderData.totalPrice,
-    user_id: validUserId  // NULL 가능
-  }
-
-  await supabase.from('orders').insert([orderData_final])
-
-  // 4단계: order_items 테이블 INSERT
-  const itemData = {
-    order_id: orderId,
-    product_id: orderData.id,
-    title: orderData.title,  // ⭐ 필수
-    quantity: orderData.quantity,
-
-    // ⚠️ 중복 컬럼 모두 저장
-    price: orderData.price,
-    unit_price: orderData.price,
-    total: orderData.totalPrice,
-    total_price: orderData.totalPrice,
-
-    selected_options: orderData.selectedOptions || {}
-  }
-
-  await supabase.from('order_items').insert([itemData])
-
-  // 5단계: order_shipping 테이블 INSERT
-  const shippingData = {
-    order_id: orderId,
-    name: userProfile.name,
-    phone: userProfile.phone,
-    address: userProfile.address,
-    detail_address: userProfile.detail_address
-  }
-
-  await supabase.from('order_shipping').insert([shippingData])
-
-  // 6단계: order_payments 테이블 INSERT
-  const shippingFee = 4000
-  const totalAmount = orderData.totalPrice + shippingFee
-
-  const paymentData = {
-    order_id: orderId,
-    method: 'bank_transfer',
-    amount: totalAmount,
-    status: 'pending',
-    depositor_name: depositName || userProfile.name  // ⭐ 입금자명
-  }
-
-  await supabase.from('order_payments').insert([paymentData])
-
-  // 7단계: 재고 차감
-  await updateProductInventory(orderData.id, -orderData.quantity)
-
-  return order
 }
 ```
 
-**핵심 포인트**:
-1. `order_type`에 카카오 ID 포함 (조회 시 사용)
-2. `order_items.title` 반드시 저장 (상품 스냅샷)
-3. 가격 중복 컬럼 모두 저장 (호환성)
-4. `depositor_name` 저장 (입금자명)
+---
+
+### 3.2 주문 생성 (Variant 재고 차감)
+
+**위치**: `/lib/supabaseApi.js`, `/app/components/product/BuyBottomSheet.jsx`
+
+```javascript
+// 1. Variant 찾기
+const findVariantId = (product, selectedOptions) => {
+  if (!product.variants || product.variants.length === 0) {
+    return null
+  }
+
+  const variant = product.variants.find(v => {
+    return Object.entries(selectedOptions).every(([optName, optValue]) => {
+      return v.options.some(opt =>
+        opt.optionName === optName && opt.optionValue === optValue
+      )
+    })
+  })
+
+  return variant?.id || null
+}
+
+// 2. Variant 재고 즉시 차감 (장바구니 담기 시)
+const variantId = findVariantId(product, selectedOptions)
+
+if (variantId) {
+  const { error } = await supabase
+    .from('product_variants')
+    .update({
+      inventory: supabase.raw('inventory - ?', [quantity])
+    })
+    .eq('id', variantId)
+
+  if (error) {
+    toast.error('재고 차감 실패')
+    return
+  }
+}
+
+// 3. 주문 생성
+const { data: order } = await supabase
+  .from('orders')
+  .insert({
+    customer_order_number: 'S251002-0001',
+    user_id: userId,
+    status: 'pending',
+    total_amount: totalPrice
+  })
+  .select()
+  .single()
+
+// 4. order_items 생성 (⭐ variant_id 포함)
+await supabase
+  .from('order_items')
+  .insert({
+    order_id: order.id,
+    product_id: product.id,
+    variant_id: variantId,  // ⭐ 신규
+    title: product.title,
+    quantity: quantity,
+    price: unitPrice,
+    unit_price: unitPrice,
+    total: totalPrice,
+    total_price: totalPrice,
+    selected_options: selectedOptions  // 스냅샷
+  })
+
+// ⚠️ 주의: variant_id가 있으면 createOrderWithOptions에서 재고 차감 스킵
+```
 
 ---
 
-### 3.2 주문 상태 변경 (updateOrderStatus)
-
-**위치**: `/lib/supabaseApi.js:1498-1568`
+### 3.3 주문 상태 변경 (updateOrderStatus)
 
 ```javascript
 export const updateOrderStatus = async (orderId, status, paymentData = null) => {
@@ -567,213 +706,57 @@ export const updateOrderStatus = async (orderId, status, paymentData = null) => 
   }
 
   // ⭐ 상태별 타임스탬프 자동 기록
-  if (status === 'verifying') {
-    updateData.verifying_at = now
-  }
-  if (status === 'paid') {
-    updateData.paid_at = now
-  }
-  if (status === 'delivered') {
-    updateData.delivered_at = now
-  }
-  if (status === 'cancelled') {
-    updateData.cancelled_at = now
-  }
+  if (status === 'verifying') updateData.verifying_at = now
+  if (status === 'deposited') updateData.paid_at = now  // 입금확인
+  if (status === 'paid') updateData.paid_at = now
+  if (status === 'delivered') updateData.delivered_at = now
+  if (status === 'cancelled') updateData.cancelled_at = now
 
-  // orders 테이블 업데이트
   await supabase
     .from('orders')
     .update(updateData)
     .eq('id', orderId)
-
-  // order_payments 테이블도 업데이트 (필요시)
-  if (paymentData) {
-    await supabase
-      .from('order_payments')
-      .update(paymentData)
-      .eq('order_id', orderId)
-  }
 }
 ```
-
-**핵심 포인트**:
-- 상태 변경 시 해당 타임스탬프 자동 기록
-- `updateMultipleOrderStatus`도 동일한 로직 사용
 
 ---
 
-### 3.3 주소 저장 (profiles.addresses JSONB)
+### 3.4 발주서 다운로드 및 완료 처리 (2025-10-02 신규)
 
-**위치**: `/app/components/AddressManager.jsx`
+**위치**: `/app/admin/purchase-orders/[supplierId]/page.js`
 
 ```javascript
-// 주소 추가
-const addAddress = async (newAddress) => {
-  // 1. 현재 주소 목록 조회
-  const response = await fetch(
-    `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=addresses`,
-    {
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`
-      }
-    }
-  )
+const handleExcelDownload = async () => {
+  // 1. Excel 생성 (생략)
 
-  const profiles = await response.json()
-  let addresses = profiles[0]?.addresses || []
+  // 2. 발주 완료 batch 생성
+  const orderIds = [...new Set(orderItems.map(item => item.orderId))]
+  const adminEmail = localStorage.getItem('admin_email')
 
-  // 2. 새 주소 추가
-  const newAddressObj = {
-    id: Date.now(),  // 간단한 ID
-    label: '집',
-    address: '서울시...',
-    detail_address: '101동',
-    is_default: addresses.length === 0,  // 첫 주소면 기본
-    created_at: new Date().toISOString()
-  }
+  const { error } = await supabase
+    .from('purchase_order_batches')
+    .insert({
+      supplier_id: supplierId,
+      order_ids: orderIds,  // UUID 배열
+      adjusted_quantities: adjustedQuantities,  // {itemId: qty}
+      total_items: orderItems.length,
+      total_amount: totals.totalAmount,
+      status: 'completed',
+      created_by: adminEmail
+    })
 
-  addresses.push(newAddressObj)
+  if (error) throw error
 
-  // 3. JSONB 전체 업데이트
-  await fetch(
-    `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`,
-    {
-      method: 'PATCH',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ addresses })
-    }
-  )
+  toast.success('발주 완료 처리되었습니다')
+  router.push('/admin/purchase-orders')
 }
 ```
-
-**핵심 포인트**:
-- JSONB 배열 전체를 읽어서 수정 후 다시 저장
-- 직접 Supabase REST API 사용
 
 ---
 
 ## 4. 데이터 조회 패턴
 
-### 4.1 주문 조회 (getOrders)
-
-**위치**: `/lib/supabaseApi.js:564-650`
-
-```javascript
-export const getOrders = async (userId = null) => {
-  // 1. UserProfileManager로 조회 조건 생성
-  const { UserProfileManager } = await import('./userProfileManager')
-  const userQuery = UserProfileManager.getUserOrderQuery()
-
-  // 2. 기본 쿼리 구성
-  let query = supabase
-    .from('orders')
-    .select(`
-      *,
-      order_items (
-        *,
-        products (
-          title,
-          thumbnail_url,
-          price
-        )
-      ),
-      order_shipping (*),
-      order_payments (*)
-    `)
-    .neq('status', 'cancelled')
-    .order('created_at', { ascending: false })
-
-  // 3. 사용자 타입별 필터링
-  let data = []
-
-  if (userQuery.type === 'kakao') {
-    // 카카오 사용자: order_type으로 조회
-    const { data: primaryData } = await query.eq(
-      userQuery.query.column,  // 'order_type'
-      userQuery.query.value     // 'direct:KAKAO:1234567890'
-    )
-
-    data = primaryData || []
-
-    // ⭐ 대체 조회 (기존 주문 호환성)
-    if (data.length === 0 && userQuery.alternativeQueries) {
-      for (const altQuery of userQuery.alternativeQueries) {
-        const { data: altData } = await supabase
-          .from('orders')
-          .select(`...`)
-          .eq(altQuery.column, altQuery.value)
-
-        if (altData && altData.length > 0) {
-          data = altData
-          break
-        }
-      }
-    }
-  } else if (userQuery.type === 'supabase') {
-    // 일반 사용자: user_id로 조회
-    const { data: supabaseData } = await query.eq('user_id', userQuery.query.value)
-    data = supabaseData || []
-  }
-
-  // 4. 데이터 가공
-  const orders = data.map(order => ({
-    ...order,
-    items: order.order_items || [],
-    shipping: order.order_shipping?.[0] || {},
-    payment: getBestPayment(order.order_payments)  // ⭐ depositor_name 우선
-  }))
-
-  return orders
-}
-```
-
-**핵심 포인트**:
-1. 카카오 사용자: `order_type` 컬럼으로 조회
-2. 일반 사용자: `user_id` 컬럼으로 조회
-3. 대체 조회 로직 (기존 주문 호환)
-4. `getBestPayment`로 최적 결제 정보 선택
-
----
-
-### 4.2 주문 상세 조회
-
-```javascript
-// 단일 주문 조회
-const { data: order } = await supabase
-  .from('orders')
-  .select(`
-    *,
-    order_items (
-      *,
-      products (
-        title,
-        thumbnail_url,
-        price
-      )
-    ),
-    order_shipping (*),
-    order_payments (*)
-  `)
-  .eq('id', orderId)
-  .single()
-
-// 데이터 가공
-const orderDetail = {
-  ...order,
-  items: order.order_items || [],
-  shipping: order.order_shipping?.[0] || {},
-  payment: order.order_payments?.[0] || {}
-}
-```
-
----
-
-### 4.3 상품 조회 (재고 포함)
+### 4.1 Variant 포함 상품 조회 (2025-10-02)
 
 ```javascript
 const { data: products } = await supabase
@@ -783,21 +766,180 @@ const { data: products } = await supabase
     product_options (
       id,
       name,
-      values
+      display_order,
+      product_option_values (
+        id,
+        value,
+        display_order
+      )
+    ),
+    product_variants (
+      id,
+      sku,
+      inventory,
+      variant_option_values (
+        product_option_values (
+          value,
+          product_options (
+            name
+          )
+        )
+      )
     )
   `)
   .eq('status', 'active')
+
+// 데이터 가공
+products.forEach(product => {
+  product.variants = product.product_variants?.map(v => ({
+    id: v.id,
+    sku: v.sku,
+    inventory: v.inventory,
+    options: v.variant_option_values?.map(vov => ({
+      optionName: vov.product_option_values.product_options.name,
+      optionValue: vov.product_option_values.value
+    }))
+  }))
+})
+```
+
+---
+
+### 4.2 주문 조회 (Variant JOIN)
+
+```javascript
+const { data: orders } = await supabase
+  .from('orders')
+  .select(`
+    *,
+    order_items (
+      *,
+      products (
+        title,
+        thumbnail_url,
+        price
+      ),
+      product_variants (
+        id,
+        sku,
+        inventory,
+        variant_option_values (
+          product_option_values (
+            value,
+            product_options (
+              name
+            )
+          )
+        )
+      )
+    ),
+    order_shipping (*),
+    order_payments (*)
+  `)
+  .neq('status', 'cancelled')
   .order('created_at', { ascending: false })
 
-// 재고 확인
-products.forEach(product => {
-  console.log(`${product.title}: ${product.inventory}개 재고`)
+// 데이터 가공
+orders.forEach(order => {
+  order.items = order.order_items.map(item => ({
+    ...item,
+    variantInfo: item.product_variants ? {
+      sku: item.product_variants.sku,
+      inventory: item.product_variants.inventory,
+      options: item.product_variants.variant_option_values?.map(vov => ({
+        name: vov.product_option_values.product_options.name,
+        value: vov.product_option_values.value
+      }))
+    } : null
+  }))
+})
+```
 
-  // 옵션별 재고
-  product.product_options?.forEach(option => {
-    option.values.forEach(value => {
-      console.log(`  - ${value.name}: ${value.inventory}개`)
-    })
+---
+
+### 4.3 발주 대상 주문 조회 (2025-10-02)
+
+```javascript
+// 1. 입금확인 완료 주문 조회
+const { data: orders } = await supabase
+  .from('orders')
+  .select(`
+    id,
+    customer_order_number,
+    created_at,
+    order_items (
+      id,
+      product_id,
+      variant_id,
+      title,
+      quantity,
+      price,
+      selected_options,
+      products (
+        id,
+        title,
+        model_number,
+        supplier_id,
+        purchase_price,
+        suppliers (
+          id,
+          name,
+          code,
+          contact_person,
+          phone
+        )
+      ),
+      product_variants (
+        id,
+        sku,
+        variant_option_values (
+          product_option_values (
+            value,
+            product_options (
+              name
+            )
+          )
+        )
+      )
+    )
+  `)
+  .eq('status', 'deposited')  // ⭐ 입금확인 완료
+  .order('created_at', { ascending: false })
+
+// 2. 이미 발주 완료된 주문 제외
+const { data: completedBatches } = await supabase
+  .from('purchase_order_batches')
+  .select('order_ids')
+  .eq('status', 'completed')
+
+const completedOrderIds = new Set()
+completedBatches?.forEach(batch => {
+  batch.order_ids?.forEach(id => completedOrderIds.add(id))
+})
+
+// 3. 발주 안 된 주문만 필터링
+const pendingOrders = orders.filter(order => !completedOrderIds.has(order.id))
+
+// 4. 업체별 그룹핑
+const supplierMap = new Map()
+pendingOrders.forEach(order => {
+  order.order_items?.forEach(item => {
+    const supplierId = item.products?.supplier_id
+    if (!supplierId) return
+
+    if (!supplierMap.has(supplierId)) {
+      supplierMap.set(supplierId, {
+        supplier: item.products.suppliers,
+        totalQuantity: 0,
+        totalAmount: 0,
+        items: []
+      })
+    }
+
+    const summary = supplierMap.get(supplierId)
+    summary.totalQuantity += item.quantity
+    summary.totalAmount += (item.products.purchase_price || 0) * item.quantity
+    summary.items.push(item)
   })
 })
 ```
@@ -806,7 +948,84 @@ products.forEach(product => {
 
 ## 5. 주의사항 및 함정
 
-### ⚠️ 5.1 order_items 중복 컬럼
+### ⚠️ 5.1 재고 관리 - Variant vs Product
+
+**문제**: 재고를 어디서 관리하나?
+
+**답**:
+- **Variant 있는 상품**: `product_variants.inventory` ⭐ 여기서 관리
+- **Variant 없는 상품**: `products.inventory` 사용
+
+```javascript
+// ✅ 올바른 재고 확인
+const getAvailableInventory = (product, selectedOptions) => {
+  if (product.variants && product.variants.length > 0) {
+    // Variant 상품: variant 재고 확인
+    const variant = findVariant(product, selectedOptions)
+    return variant ? variant.inventory : 0
+  } else {
+    // 일반 상품: product 재고 확인
+    return product.inventory
+  }
+}
+```
+
+---
+
+### ⚠️ 5.2 order_items 이중 저장 전략
+
+**selected_options (JSONB)** vs **variant_id (FK)**
+
+| 용도 | selected_options | variant_id |
+|------|-----------------|------------|
+| 주문 이력 보존 | ✅ 주문 시점 스냅샷 | ❌ variant 삭제 시 NULL |
+| 실시간 정보 조회 | ❌ 과거 데이터 | ✅ JOIN으로 최신 정보 |
+| 재고 관리 | ❌ 사용 안 함 | ✅ variant 재고 참조 |
+
+**코드 예시**:
+```javascript
+// ✅ 저장 시: 둘 다 저장
+await supabase.from('order_items').insert({
+  variant_id: variantId,  // FK (실시간 조회용)
+  selected_options: { 색상: '블랙', 사이즈: 'L' }  // 스냅샷 (보존용)
+})
+
+// ✅ 조회 시: variant JOIN
+const { data } = await supabase
+  .from('order_items')
+  .select(`
+    *,
+    product_variants (sku, inventory)
+  `)
+```
+
+---
+
+### ⚠️ 5.3 재고 차감 타이밍 (이중 차감 방지)
+
+**문제**: BuyBottomSheet + createOrderWithOptions = 이중 차감?
+
+**해결**:
+```javascript
+// 1. BuyBottomSheet: variant 재고 즉시 차감 (장바구니 담기 시)
+if (variantId) {
+  await supabase
+    .from('product_variants')
+    .update({ inventory: raw('inventory - ?', [qty]) })
+    .eq('id', variantId)
+}
+
+// 2. createOrderWithOptions: variant_id 있으면 재고 차감 스킵
+if (orderData.variantId) {
+  logger.info('ℹ️ variantId 존재, 재고 차감 스킵 (이미 차감됨)')
+} else {
+  await checkOptionInventory(...)  // 재고 차감
+}
+```
+
+---
+
+### ⚠️ 5.4 order_items 중복 컬럼
 
 **문제**:
 ```sql
@@ -831,239 +1050,133 @@ const totalPrice = item.total_price || item.total
 
 ---
 
-### ⚠️ 5.2 orders.user_id는 NULL 가능
-
-**이유**: 카카오 로그인 사용자는 auth.users에 없을 수 있음
-
-**조회 방법**:
-```javascript
-// ❌ 잘못된 방법
-const orders = await supabase
-  .from('orders')
-  .eq('user_id', userId)  // 카카오 사용자 조회 안 됨
-
-// ✅ 올바른 방법
-const orders = await supabase
-  .from('orders')
-  .eq('order_type', `direct:KAKAO:${kakaoId}`)  // order_type으로 조회
-```
-
----
-
-### ⚠️ 5.3 order_type 패턴 주의
-
-**올바른 패턴**:
-```javascript
-// 일반 사용자
-'direct'
-'cart'
-
-// 카카오 사용자
-'direct:KAKAO:1234567890'
-'cart:KAKAO:1234567890'
-```
-
-**잘못된 패턴**:
-```javascript
-// ❌ UUID 사용 (과거 버그)
-'direct:KAKAO:f5a993cd-2eb0-44ef-a5f0-4decaf4d7ecf'
-
-// ✅ 수정됨: kakao_id 사용
-'direct:KAKAO:1234567890'
-```
-
----
-
-### ⚠️ 5.4 타임스탬프 흐름 이해
-
-**올바른 흐름**:
-```
-1. created_at      (주문 생성 - 장바구니에 담기)
-   ↓
-2. verifying_at    (결제 확인중 - 고객이 "전체결제" 클릭)
-   ↓
-3. paid_at         (결제 완료 - 관리자가 "입금 확인" 클릭)
-   ↓
-4. delivered_at    (발송 완료 - 관리자가 "발송 처리" 클릭)
-```
-
-**주의**: `verifying_at`는 고객 액션, `paid_at`은 관리자 액션
-
----
-
-### ⚠️ 5.5 재고 차감 타이밍
+### ⚠️ 5.5 발주서 중복 다운로드 방지
 
 ```javascript
-// ✅ 주문 생성 시 즉시 차감
-await createOrder(orderData, userProfile)
-  └─ updateProductInventory(productId, -quantity)
+// 1. 이미 발주된 주문 조회
+const { data: completedBatches } = await supabase
+  .from('purchase_order_batches')
+  .select('order_ids')
+  .eq('supplier_id', supplierId)
+  .eq('status', 'completed')
 
-// ⚠️ 주의: 결제 취소 시 재고 복구 로직 필요
+// 2. 완료된 주문 ID Set 생성
+const completedOrderIds = new Set()
+completedBatches?.forEach(batch => {
+  batch.order_ids?.forEach(id => completedOrderIds.add(id))
+})
+
+// 3. 발주 안 된 주문만 표시
+const pendingOrders = orders.filter(order => !completedOrderIds.has(order.id))
 ```
 
 ---
 
 ## 6. 코드 예제
 
-### 6.1 완전한 주문 생성 예제
+### 6.1 Variant 상품 재고 확인
 
 ```javascript
-// 1. 사용자 정보 가져오기
-const user = await getCurrentUser()
+// 상품 + variants 조회
+const { data: product } = await supabase
+  .from('products')
+  .select(`
+    *,
+    product_variants (
+      id,
+      sku,
+      inventory,
+      variant_option_values (
+        product_option_values (
+          value,
+          product_options (name)
+        )
+      )
+    )
+  `)
+  .eq('id', productId)
+  .single()
 
-// 2. 주소 선택 (profiles.addresses에서)
-const addresses = await fetchAddresses(user.id)
-const selectedAddress = addresses.find(a => a.is_default)
-
-// 3. 주문 데이터 준비
-const orderData = {
-  id: productId,
-  title: '상품명',
-  price: 10000,
-  totalPrice: 10000,
-  quantity: 1,
-  orderType: 'direct',
-  selectedOptions: {
-    '색상': '블랙',
-    '사이즈': 'L'
-  }
+// Variant 찾기
+const findVariant = (selectedOptions) => {
+  return product.product_variants.find(v => {
+    return Object.entries(selectedOptions).every(([optName, optValue]) => {
+      return v.variant_option_values.some(vov =>
+        vov.product_option_values.product_options.name === optName &&
+        vov.product_option_values.value === optValue
+      )
+    })
+  })
 }
 
-const userProfile = {
-  name: user.name,
-  phone: user.phone,
-  address: selectedAddress.address,
-  detail_address: selectedAddress.detail_address
-}
-
-const depositName = '입금자명'  // 사용자가 입력한 입금자명
-
-// 4. 주문 생성
-const order = await createOrder(orderData, userProfile, depositName)
-
-console.log('주문 완료:', order.customer_order_number)
+const variant = findVariant({ 색상: '블랙', 사이즈: 'L' })
+console.log('재고:', variant.inventory)
 ```
 
 ---
 
-### 6.2 주문 조회 및 표시 예제
+### 6.2 업체별 발주서 생성
 
 ```javascript
-// 1. 주문 목록 조회
-const orders = await getOrders()
+// 1. 입금확인 완료 주문 조회 (발주 안 된 것만)
+const { data: orders } = await supabase
+  .from('orders')
+  .select(`
+    id,
+    order_items (
+      quantity,
+      products (
+        title,
+        purchase_price,
+        supplier_id,
+        suppliers (name, code)
+      ),
+      product_variants (sku)
+    )
+  `)
+  .eq('status', 'deposited')
 
-// 2. 각 주문 표시
-orders.forEach(order => {
-  console.log('주문번호:', order.customer_order_number)
-  console.log('상태:', order.status)
-  console.log('주문시간:', order.created_at)
+// 2. 발주 완료된 주문 제외
+const { data: batches } = await supabase
+  .from('purchase_order_batches')
+  .select('order_ids')
+  .eq('status', 'completed')
 
-  // 타임스탬프 표시
-  if (order.verifying_at) {
-    console.log('결제확인:', order.verifying_at)
-  }
-  if (order.paid_at) {
-    console.log('결제완료:', order.paid_at)
-  }
-  if (order.delivered_at) {
-    console.log('발송완료:', order.delivered_at)
-  }
+const completedIds = new Set()
+batches?.forEach(b => b.order_ids.forEach(id => completedIds.add(id)))
 
-  // 상품 목록
-  order.items.forEach(item => {
-    console.log(`- ${item.title} x ${item.quantity}개`)
-    console.log(`  가격: ${item.unit_price || item.price}원`)
+const pendingOrders = orders.filter(o => !completedIds.has(o.id))
+
+// 3. 업체별 그룹핑
+const supplierOrders = {}
+pendingOrders.forEach(order => {
+  order.order_items.forEach(item => {
+    const supplierId = item.products.supplier_id
+    if (!supplierOrders[supplierId]) {
+      supplierOrders[supplierId] = {
+        supplier: item.products.suppliers,
+        items: [],
+        totalAmount: 0
+      }
+    }
+    supplierOrders[supplierId].items.push(item)
+    supplierOrders[supplierId].totalAmount +=
+      item.products.purchase_price * item.quantity
   })
-
-  // 배송 정보
-  console.log('배송지:', order.shipping?.address)
-
-  // 결제 정보
-  console.log('입금자명:', order.payment?.depositor_name)
-  console.log('결제금액:', order.payment?.amount)
 })
-```
 
----
+// 4. Excel 생성 및 발주 완료 처리
+for (const [supplierId, data] of Object.entries(supplierOrders)) {
+  // Excel 생성 (생략)
 
-### 6.3 주문 상태 변경 예제
-
-```javascript
-// 관리자가 "입금 확인" 버튼 클릭
-const confirmPayment = async (orderId) => {
-  await updateOrderStatus(orderId, 'paid', {
-    status: 'completed',
-    paid_at: new Date().toISOString()
+  // 발주 완료 기록
+  await supabase.from('purchase_order_batches').insert({
+    supplier_id: supplierId,
+    order_ids: data.items.map(i => i.order_id),
+    total_items: data.items.length,
+    total_amount: data.totalAmount,
+    status: 'completed'
   })
-
-  console.log('✅ 결제 확인 완료, paid_at 자동 기록됨')
-}
-
-// 관리자가 "발송 처리" 버튼 클릭
-const markAsDelivered = async (orderId) => {
-  await updateOrderStatus(orderId, 'delivered', {
-    tracking_number: 'CJ12345678'
-  })
-
-  console.log('✅ 발송 완료, delivered_at 자동 기록됨')
-}
-```
-
----
-
-### 6.4 주소 관리 예제
-
-```javascript
-// 주소 목록 조회
-const fetchAddresses = async (userId) => {
-  const response = await fetch(
-    `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=addresses`,
-    { headers: { ... } }
-  )
-  const profiles = await response.json()
-  return profiles[0]?.addresses || []
-}
-
-// 주소 추가
-const addAddress = async (userId, newAddress) => {
-  const addresses = await fetchAddresses(userId)
-
-  addresses.push({
-    id: Date.now(),
-    label: newAddress.label,
-    address: newAddress.address,
-    detail_address: newAddress.detail_address,
-    is_default: addresses.length === 0,
-    created_at: new Date().toISOString()
-  })
-
-  await fetch(
-    `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`,
-    {
-      method: 'PATCH',
-      headers: { ... },
-      body: JSON.stringify({ addresses })
-    }
-  )
-}
-
-// 기본 배송지 변경
-const setDefaultAddress = async (userId, addressId) => {
-  const addresses = await fetchAddresses(userId)
-
-  const updated = addresses.map(addr => ({
-    ...addr,
-    is_default: addr.id === addressId
-  }))
-
-  await fetch(
-    `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`,
-    {
-      method: 'PATCH',
-      headers: { ... },
-      body: JSON.stringify({ addresses: updated })
-    }
-  )
 }
 ```
 
@@ -1071,30 +1184,35 @@ const setDefaultAddress = async (userId, addressId) => {
 
 ## 📌 빠른 참조 체크리스트
 
-### 주문 생성 시 체크리스트
+### Variant 상품 등록 체크리스트
 
+- [ ] `product_options` 생성했는가?
+- [ ] `product_option_values` 생성했는가?
+- [ ] 모든 조합의 `product_variants` 생성했는가?
+- [ ] `variant_option_values` 매핑했는가?
+- [ ] SKU 자동 생성했는가?
+- [ ] `option_count`, `variant_count` 업데이트했는가?
+
+### 주문 생성 체크리스트
+
+- [ ] `order_items.variant_id` 포함했는가?
+- [ ] `order_items.selected_options` 저장했는가? (이중 저장)
+- [ ] Variant 재고 차감했는가?
+- [ ] 이중 차감 방지 로직 있는가?
 - [ ] `order_items.title` 포함했는가?
 - [ ] `price`, `unit_price` 양쪽 모두 저장했는가?
 - [ ] `total`, `total_price` 양쪽 모두 저장했는가?
-- [ ] `order_type`에 카카오 ID 포함했는가? (카카오 사용자인 경우)
-- [ ] `depositor_name` 저장했는가?
-- [ ] 재고 차감했는가?
 
-### 주문 조회 시 체크리스트
+### 발주서 생성 체크리스트
 
-- [ ] UserProfileManager 사용했는가?
-- [ ] 카카오 사용자의 경우 `order_type`으로 조회하는가?
-- [ ] 대체 조회 로직 포함했는가?
-- [ ] `getBestPayment`로 결제 정보 선택했는가?
-
-### 주문 상태 변경 시 체크리스트
-
-- [ ] 타임스탬프 자동 기록되는가?
-- [ ] `order_payments` 테이블도 업데이트하는가? (필요시)
-- [ ] 로그 확인 가능한가? (🕐, 💰, 🚚 이모지)
+- [ ] `status = 'deposited'` 주문만 조회하는가?
+- [ ] `purchase_order_batches`에서 완료된 주문 제외하는가?
+- [ ] 업체별로 정확히 그룹핑되는가?
+- [ ] Excel 다운로드 시 batch 생성하는가?
+- [ ] `order_ids` 배열에 모든 주문 포함했는가?
 
 ---
 
 **이 문서를 항상 참고하여 DB 작업을 수행하세요!**
 
-**최종 업데이트**: 2025-10-01
+**최종 업데이트**: 2025-10-02
