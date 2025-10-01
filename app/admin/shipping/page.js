@@ -338,9 +338,10 @@ export default function AdminShippingPage() {
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders - 모바일 최적화 카드 뷰 */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* 데스크톱 테이블 뷰 */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -394,7 +395,6 @@ export default function AdminShippingPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="space-y-1">
                         <div className="text-sm font-medium text-gray-900">
-                          {/* 주문 상세보기 */}
                           <button
                             onClick={() => router.push(`/admin/orders/${order.id}`)}
                             className="text-indigo-600 hover:text-indigo-900"
@@ -516,6 +516,136 @@ export default function AdminShippingPage() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* 모바일 카드 뷰 */}
+        <div className="lg:hidden divide-y divide-gray-200">
+          {filteredOrders.map((order, index) => {
+            const statusInfo = getStatusInfo(order.status)
+            const StatusIcon = statusInfo.icon
+            const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
+            const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
+            const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+
+            return (
+              <motion.div
+                key={order.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: index * 0.05 }}
+                className="p-4 hover:bg-gray-50"
+              >
+                {/* 상단: 체크박스 + 주문번호 + 상태 */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedOrders.includes(order.id)}
+                      onChange={() => handleSelectOrder(order.id)}
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    />
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {order.customer_order_number || order.id?.slice(-8)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(order.created_at).toLocaleDateString('ko-KR')}
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
+                    <StatusIcon className="w-3 h-3" />
+                    {statusInfo.label}
+                  </span>
+                </div>
+
+                {/* 중단: 고객 정보 */}
+                <div className="mb-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900">
+                      {order.user?.name}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      ₩{order.payment?.amount.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {order.user?.phone}
+                  </div>
+                </div>
+
+                {/* 하단: 버튼들 */}
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => router.push(`/admin/orders/${order.id}`)}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                    상세보기
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      // 개별 송장 다운로드
+                      const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
+
+                      let items = '정보없음'
+                      if (order.order_items && order.order_items.length > 0) {
+                        items = order.order_items.map(item => {
+                          const title = item.products?.title || item.product?.title || item.title || '상품'
+                          const quantity = item.quantity || 1
+                          return `${title}(${quantity}개)`
+                        }).join(';')
+                      }
+
+                      const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
+                      const phone = order.shipping_phone || order.user?.phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || order.userPhone || '정보없음'
+                      const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+                      const amount = order.order_payments?.[0]?.amount || order.payment?.amount || order.total_amount || order.amount || 0
+
+                      const csvData = [
+                        order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
+                        customerName,
+                        phone,
+                        `"${fullAddress}"`,
+                        `"${items}"`,
+                        totalQuantity,
+                        amount,
+                        getStatusInfo(order.status).label
+                      ].join(',')
+
+                      const csvContent = csvHeader + csvData
+                      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+                      const link = document.createElement('a')
+                      const url = URL.createObjectURL(blob)
+                      link.setAttribute('href', url)
+                      link.setAttribute('download', `송장_${order.customer_order_number || order.id.slice(-8)}.csv`)
+                      link.style.visibility = 'hidden'
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
+
+                      toast.success('송장 파일을 다운로드했습니다')
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium"
+                  >
+                    <DocumentArrowDownIcon className="w-4 h-4" />
+                    송장
+                  </button>
+
+                  {order.status === 'shipping' && (
+                    <button
+                      onClick={() => updateShippingStatus(order.id, 'delivered')}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
+                    >
+                      <CheckCircleIcon className="w-4 h-4" />
+                      발송완료
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
 
         {filteredOrders.length === 0 && (
