@@ -141,20 +141,9 @@ export default function AdminOrderDetailPage() {
             <p className="text-gray-600">
               주문번호: {order.customer_order_number || order.id}
             </p>
-            <p className="text-sm text-gray-500">
-              생성: {new Date(order.created_at).toLocaleString('ko-KR', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-              })}
-            </p>
-            {order.updated_at && order.updated_at !== order.created_at && (
-              <p className="text-sm text-blue-600 font-medium">
-                최근 업데이트: {new Date(order.updated_at).toLocaleString('ko-KR', {
-                  year: 'numeric',
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              <p className="text-gray-500">
+                생성: {new Date(order.created_at).toLocaleString('ko-KR', {
                   month: '2-digit',
                   day: '2-digit',
                   hour: '2-digit',
@@ -162,7 +151,51 @@ export default function AdminOrderDetailPage() {
                   hour12: false
                 })}
               </p>
-            )}
+              {order.verifying_at && (
+                <p className="text-purple-600 font-medium">
+                  결제확인: {new Date(order.verifying_at).toLocaleString('ko-KR', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  })}
+                </p>
+              )}
+              {order.paid_at && (
+                <p className="text-green-600 font-medium">
+                  결제완료: {new Date(order.paid_at).toLocaleString('ko-KR', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  })}
+                </p>
+              )}
+              {order.delivered_at && (
+                <p className="text-blue-600 font-medium">
+                  발송완료: {new Date(order.delivered_at).toLocaleString('ko-KR', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  })}
+                </p>
+              )}
+              {order.cancelled_at && (
+                <p className="text-red-600 font-medium">
+                  취소: {new Date(order.cancelled_at).toLocaleString('ko-KR', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  })}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
