@@ -10,7 +10,7 @@ import Button from '@/app/components/common/Button'
 import PurchaseChoiceModal from '@/app/components/common/PurchaseChoiceModal'
 import { motion } from 'framer-motion'
 import useAuth from '@/hooks/useAuth'
-import { createOrder } from '@/lib/supabaseApi'
+import { createOrder, createOrderWithOptions, checkOptionInventory } from '@/lib/supabaseApi'
 import toast from 'react-hot-toast'
 
 export default function BuyBottomSheet({ isOpen, onClose, product }) {
@@ -324,16 +324,39 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     setIsLoading(true) // 로딩 시작
 
     try {
-      // 각 아이템에 대해 주문 생성
+      // 각 아이템에 대해 재고 검증 및 주문 생성
       const createdOrders = []
 
       for (const cartItem of cartItems) {
+        // 옵션별 재고 검증 (프론트엔드 1차 검증)
+        if (cartItem.selectedOptions && Object.keys(cartItem.selectedOptions).length > 0) {
+          const inventoryCheck = await checkOptionInventory(cartItem.id, cartItem.selectedOptions)
+
+          if (!inventoryCheck.available) {
+            toast.error(`"${cartItem.optionLabel}" 옵션이 품절되었습니다`)
+            setIsLoading(false)
+            return false
+          }
+
+          if (inventoryCheck.inventory < cartItem.quantity) {
+            toast.error(`"${cartItem.optionLabel}" 옵션 재고가 부족합니다. (재고: ${inventoryCheck.inventory}개)`)
+            setIsLoading(false)
+            return false
+          }
+        }
+
         const orderData = {
           ...cartItem,
           orderType: 'cart'
         }
+
         console.log(`주문 생성 중: ${cartItem.optionLabel || '기본'} - ${cartItem.quantity}개`)
-        const newOrder = await createOrder(orderData, userProfile)
+
+        // 옵션이 있으면 createOrderWithOptions 사용, 없으면 createOrder 사용
+        const newOrder = cartItem.selectedOptions && Object.keys(cartItem.selectedOptions).length > 0
+          ? await createOrderWithOptions(orderData, userProfile)
+          : await createOrder(orderData, userProfile)
+
         createdOrders.push(newOrder)
       }
 
@@ -508,11 +531,15 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                             // Handle both string and object values
                             const displayValue = typeof value === 'string' ? value : value?.name || value?.value || String(value)
                             const keyValue = typeof value === 'string' ? value : value?.name || value?.value || valueIndex
+                            const inventory = typeof value === 'object' ? (value?.inventory ?? stock) : stock
+                            const isSoldOut = inventory === 0
 
                             return (
                               <button
                                 key={keyValue}
                                 onClick={() => {
+                                  if (isSoldOut) return // 품절된 옵션은 선택 불가
+
                                   setSelectedOptions(prev => {
                                     const newSelected = { ...prev }
 
@@ -528,13 +555,29 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                                     return newSelected
                                   })
                                 }}
-                                className={`p-2 text-sm border rounded-lg transition-colors ${
-                                  selectedOptions[option.name] === displayValue
+                                disabled={isSoldOut}
+                                className={`p-2 text-sm border rounded-lg transition-colors relative ${
+                                  isSoldOut
+                                    ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : selectedOptions[option.name] === displayValue
                                     ? 'border-red-500 bg-red-50 text-red-700'
                                     : 'border-gray-200 hover:border-gray-300 text-gray-700'
                                 }`}
                               >
-                                {displayValue}
+                                <div className="flex flex-col items-center">
+                                  <span className={isSoldOut ? 'line-through' : ''}>{displayValue}</span>
+                                  {typeof value === 'object' && value?.inventory !== undefined && (
+                                    <span className={`text-xs mt-0.5 ${
+                                      isSoldOut
+                                        ? 'text-red-500 font-medium'
+                                        : inventory < 5
+                                        ? 'text-orange-500'
+                                        : 'text-gray-500'
+                                    }`}>
+                                      {isSoldOut ? '품절' : `${inventory}개`}
+                                    </span>
+                                  )}
+                                </div>
                               </button>
                             )
                           })}

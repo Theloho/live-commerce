@@ -122,6 +122,48 @@ export default function AdminProductsPage() {
     }
   }
 
+  // 옵션별 재고 업데이트 함수
+  const updateOptionInventory = async (productId, optionId, optionName, optionValueName, currentInventory, change) => {
+    const newInventory = Math.max(0, currentInventory + change)
+
+    try {
+      // 1. 현재 옵션 데이터 조회
+      const { data: currentOption, error: fetchError } = await supabase
+        .from('product_options')
+        .select('values')
+        .eq('id', optionId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      // 2. values 배열 업데이트
+      const values = Array.isArray(currentOption.values)
+        ? currentOption.values
+        : JSON.parse(currentOption.values || '[]')
+
+      const updatedValues = values.map(v => {
+        if (v.name === optionValueName) {
+          return { ...v, inventory: newInventory }
+        }
+        return v
+      })
+
+      // 3. 업데이트 실행
+      const { error: updateError } = await supabase
+        .from('product_options')
+        .update({ values: updatedValues })
+        .eq('id', optionId)
+
+      if (updateError) throw updateError
+
+      loadProducts()
+      toast.success(`"${optionName}: ${optionValueName}" 재고가 ${newInventory}개로 업데이트되었습니다`)
+    } catch (error) {
+      console.error('옵션 재고 업데이트 오류:', error)
+      toast.error('옵션 재고 업데이트에 실패했습니다')
+    }
+  }
+
   const updateLiveStatus = async (productId, isLive) => {
     try {
       const { error } = await supabase
@@ -454,29 +496,97 @@ export default function AdminProductsPage() {
                   </div>
 
                   {/* Inventory */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm text-gray-600">재고</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateInventory(product.id, (product.inventory ?? 0) - 1)}
-                        className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
-                      >
-                        -
-                      </button>
-                      <span className="text-sm font-medium w-8 text-center">
-                        {product.inventory ?? 0}
-                      </span>
-                      <button
-                        onClick={() => updateInventory(product.id, (product.inventory ?? 0) + 1)}
-                        className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
-                      >
-                        +
-                      </button>
-                      <span className="text-xs ml-2">
-                        {getInventoryStatus(product.inventory)}
-                      </span>
+                  {product.options && product.options.length > 0 ? (
+                    // 옵션이 있는 경우: 옵션별 재고 표시
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">옵션별 재고</span>
+                        <span className="text-xs text-gray-500">
+                          총: {product.inventory ?? 0}개 {getInventoryStatus(product.inventory)}
+                        </span>
+                      </div>
+
+                      {product.options.map(option => {
+                        const values = Array.isArray(option.values)
+                          ? option.values
+                          : JSON.parse(option.values || '[]')
+
+                        return (
+                          <div key={option.id} className="border border-gray-200 rounded-lg p-2">
+                            <div className="text-xs font-medium text-gray-600 mb-1">
+                              {option.name}
+                            </div>
+                            <div className="space-y-1">
+                              {values.map((value, idx) => {
+                                const inventory = value.inventory ?? 0
+                                return (
+                                  <div key={idx} className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-700">{value.name}</span>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={() => updateOptionInventory(
+                                          product.id,
+                                          option.id,
+                                          option.name,
+                                          value.name,
+                                          inventory,
+                                          -1
+                                        )}
+                                        className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300"
+                                      >
+                                        -
+                                      </button>
+                                      <span className={`font-medium w-6 text-center ${inventory === 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                        {inventory}
+                                      </span>
+                                      <button
+                                        onClick={() => updateOptionInventory(
+                                          product.id,
+                                          option.id,
+                                          option.name,
+                                          value.name,
+                                          inventory,
+                                          1
+                                        )}
+                                        className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                  </div>
+                  ) : (
+                    // 옵션이 없는 경우: 기존 재고 표시
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-gray-600">재고</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateInventory(product.id, (product.inventory ?? 0) - 1)}
+                          className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
+                        >
+                          -
+                        </button>
+                        <span className="text-sm font-medium w-8 text-center">
+                          {product.inventory ?? 0}
+                        </span>
+                        <button
+                          onClick={() => updateInventory(product.id, (product.inventory ?? 0) + 1)}
+                          className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
+                        >
+                          +
+                        </button>
+                        <span className="text-xs ml-2">
+                          {getInventoryStatus(product.inventory)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div className="space-y-2">
