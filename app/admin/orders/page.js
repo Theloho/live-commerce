@@ -352,7 +352,27 @@ export default function AdminOrdersPage() {
                         )}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {new Date(order.created_at).toLocaleString('ko-KR')}
+                        {order.updated_at && order.updated_at !== order.created_at ? (
+                          <span className="text-blue-600 font-medium">
+                            {new Date(order.updated_at).toLocaleString('ko-KR', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: false
+                            })}
+                          </span>
+                        ) : (
+                          new Date(order.created_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        )}
                       </div>
                       <div className="text-sm text-gray-500">
                         {(() => {

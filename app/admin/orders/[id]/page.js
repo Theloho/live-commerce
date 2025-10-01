@@ -316,6 +316,144 @@ export default function AdminOrderDetailPage() {
             </div>
           </motion.div>
 
+          {/* Order Status Timeline */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="bg-white rounded-lg border border-gray-200 p-6"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <ClockIcon className="w-5 h-5 text-gray-600" />
+              <h2 className="text-lg font-semibold text-gray-900">주문 진행 상황</h2>
+            </div>
+            <div className="space-y-3">
+              {/* 주문 생성 */}
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-blue-500"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">주문 생성</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(order.created_at).toLocaleString('ko-KR', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              {/* 결제 확인중 */}
+              {['verifying', 'paid', 'delivered'].includes(order.status) && (
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-purple-500"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">결제 확인중</p>
+                    <p className="text-xs text-gray-500">
+                      {order.status === 'verifying' && order.updated_at && order.updated_at !== order.created_at
+                        ? new Date(order.updated_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : '처리 대기중'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 결제 완료 */}
+              {['paid', 'delivered'].includes(order.status) && (
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-green-500"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">결제 완료</p>
+                    <p className="text-xs text-gray-500">
+                      {order.payment?.paid_at
+                        ? new Date(order.payment.paid_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : order.status === 'paid' && order.updated_at
+                        ? new Date(order.updated_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : '처리 대기중'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 발송 완료 */}
+              {order.status === 'delivered' && (
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-blue-600"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">발송 완료</p>
+                    <p className="text-xs text-gray-500">
+                      {order.shipping?.delivered_at
+                        ? new Date(order.shipping.delivered_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : order.updated_at
+                        ? new Date(order.updated_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : '배송 대기중'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 취소됨 */}
+              {order.status === 'cancelled' && (
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-red-500"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-600">주문 취소</p>
+                    <p className="text-xs text-gray-500">
+                      {order.updated_at
+                        ? new Date(order.updated_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : '-'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
           {/* Order Status Actions */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
