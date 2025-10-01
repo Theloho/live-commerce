@@ -166,11 +166,33 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     return minInventory === Infinity ? stock : minInventory
   }
 
+  // variant_id 찾기 함수
+  const findVariantId = (selectedOptions) => {
+    if (!product.variants || product.variants.length === 0) {
+      return null
+    }
+
+    // 선택된 옵션과 일치하는 variant 찾기
+    const matchedVariant = product.variants.find(variant => {
+      if (!variant.options || variant.options.length === 0) return false
+
+      // 모든 옵션이 일치하는지 확인
+      return Object.entries(selectedOptions).every(([optionName, optionValue]) => {
+        return variant.options.some(
+          opt => opt.optionName === optionName && opt.optionValue === optionValue
+        )
+      })
+    })
+
+    return matchedVariant ? matchedVariant.id : null
+  }
+
   // 총 수량과 총 가격 계산
   // Add current selection to combinations
   const addCombination = () => {
     if (Object.keys(selectedOptions).length === options.length) {
       const combinationKey = Object.values(selectedOptions).join(' / ')
+      const variantId = findVariantId(selectedOptions) // variant_id 찾기
       const existingIndex = selectedCombinations.findIndex(combo => combo.key === combinationKey)
 
       if (existingIndex >= 0) {
@@ -184,7 +206,8 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
           key: combinationKey,
           options: { ...selectedOptions },
           quantity: quantity,
-          price: price
+          price: price,
+          variantId: variantId // variant_id 저장
         }])
       }
 
@@ -295,18 +318,21 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
           quantity: combo.quantity,
           selectedOptions: combo.options,
           totalPrice: combo.price * combo.quantity,
-          optionLabel: combo.key
+          optionLabel: combo.key,
+          variantId: combo.variantId // variant_id 전달
         })
       })
     } else if (options.length > 0 && Object.keys(selectedOptions).length === options.length) {
       // Single option combination
       const optionLabel = Object.values(selectedOptions).join(' / ')
+      const variantId = findVariantId(selectedOptions) // variant_id 찾기
       cartItems.push({
         ...product,
         quantity,
         selectedOptions,
         totalPrice,
-        optionLabel
+        optionLabel,
+        variantId // variant_id 전달
       })
     } else if (options.length === 0) {
       // No options
