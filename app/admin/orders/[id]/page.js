@@ -353,7 +353,16 @@ export default function AdminOrderDetailPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">결제 확인중</p>
                     <p className="text-xs text-gray-500">
-                      {order.status === 'verifying' && order.updated_at && order.updated_at !== order.created_at
+                      {order.verifying_at
+                        ? new Date(order.verifying_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : order.status === 'verifying' && order.updated_at && order.updated_at !== order.created_at
                         ? new Date(order.updated_at).toLocaleString('ko-KR', {
                             year: 'numeric',
                             month: '2-digit',
@@ -375,7 +384,16 @@ export default function AdminOrderDetailPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">결제 완료</p>
                     <p className="text-xs text-gray-500">
-                      {order.payment?.paid_at
+                      {order.paid_at
+                        ? new Date(order.paid_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : order.payment?.paid_at
                         ? new Date(order.payment.paid_at).toLocaleString('ko-KR', {
                             year: 'numeric',
                             month: '2-digit',
@@ -406,7 +424,16 @@ export default function AdminOrderDetailPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">발송 완료</p>
                     <p className="text-xs text-gray-500">
-                      {order.shipping?.delivered_at
+                      {order.delivered_at
+                        ? new Date(order.delivered_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : order.shipping?.delivered_at
                         ? new Date(order.shipping.delivered_at).toLocaleString('ko-KR', {
                             year: 'numeric',
                             month: '2-digit',
@@ -437,7 +464,16 @@ export default function AdminOrderDetailPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-red-600">주문 취소</p>
                     <p className="text-xs text-gray-500">
-                      {order.updated_at
+                      {order.cancelled_at
+                        ? new Date(order.cancelled_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : order.updated_at
                         ? new Date(order.updated_at).toLocaleString('ko-KR', {
                             year: 'numeric',
                             month: '2-digit',
