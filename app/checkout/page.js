@@ -565,6 +565,10 @@ export default function CheckoutPage() {
   const finalTotal = orderItem.totalPrice + shippingFee
 
   const handleBankTransfer = () => {
+    // ✨ 모달 열릴 때 기본값으로 고객 이름 설정 (확인 버튼 즉시 활성화)
+    setDepositOption('name')
+    setDepositName(userProfile.name)
+    setCustomDepositName('')
     setShowDepositModal(true)
   }
 
@@ -1109,10 +1113,17 @@ export default function CheckoutPage() {
                     placeholder="입금자명 입력"
                     value={customDepositName}
                     onChange={(e) => {
-                      setCustomDepositName(e.target.value)
-                      if (depositOption === 'custom') {
-                        setDepositName(e.target.value)
+                      const value = e.target.value
+                      setCustomDepositName(value)
+                      // ✨ 입력 시 자동으로 custom 옵션 선택 및 depositName 설정
+                      if (value.trim()) {
+                        setDepositOption('custom')
+                        setDepositName(value)
                       }
+                    }}
+                    onFocus={() => {
+                      // 포커스 시에도 custom 옵션 선택
+                      setDepositOption('custom')
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
