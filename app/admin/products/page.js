@@ -53,27 +53,16 @@ export default function AdminProductsPage() {
   const loadProducts = async () => {
     try {
       setLoading(true)
+      // Variant 시스템: product_options.values 컬럼이 없으므로 제거
       const { data, error } = await supabase
         .from('products')
-        .select(`
-          *,
-          product_options (
-            id,
-            name,
-            values
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      const productsWithOptions = data.map(product => ({
-        ...product,
-        options: product.product_options || []
-      }))
-
-      console.log('📦 상품 데이터 로딩 완료:', productsWithOptions.length)
-      setProducts(productsWithOptions)
+      console.log('📦 상품 데이터 로딩 완료:', data?.length || 0)
+      setProducts(data || [])
     } catch (error) {
       console.error('상품 로딩 오류:', error)
       toast.error('상품을 불러오는데 실패했습니다.')
