@@ -531,11 +531,29 @@ export default function AdminOrderDetailPage() {
             className="bg-white rounded-lg border border-gray-200 p-6"
           >
             <h2 className="text-lg font-semibold text-gray-900 mb-4">주문 상태 관리</h2>
-            <div className="space-y-3">
+
+            {/* 버튼 그룹 - 좌우 배치 (취소 버튼 최좌측) */}
+            <div className="flex items-center gap-3">
+              {/* 취소 버튼 - 최좌측 (실수 클릭 방지) */}
+              {(order.status === 'pending' || order.status === 'verifying') && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('이 주문을 취소하시겠습니까?')) {
+                      updateOrderStatus('cancelled')
+                    }
+                  }}
+                  className="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                  주문 취소
+                </button>
+              )}
+
+              {/* 주문 상태별 액션 버튼 */}
               {order.status === 'pending' && (
                 <button
                   onClick={() => updateOrderStatus('verifying')}
-                  className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 font-medium"
                 >
                   <CheckIcon className="w-5 h-5" />
                   입금 확인
@@ -545,7 +563,7 @@ export default function AdminOrderDetailPage() {
               {order.status === 'verifying' && (
                 <button
                   onClick={() => updateOrderStatus('paid')}
-                  className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
                 >
                   <CheckIcon className="w-5 h-5" />
                   결제 확인 완료
@@ -555,38 +573,25 @@ export default function AdminOrderDetailPage() {
               {order.status === 'paid' && (
                 <button
                   onClick={() => updateOrderStatus('delivered')}
-                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium"
                 >
                   <TruckIcon className="w-5 h-5" />
                   발송 처리
                 </button>
               )}
 
-              {(order.status === 'pending' || order.status === 'verifying') && (
-                <button
-                  onClick={() => {
-                    if (window.confirm('이 주문을 취소하시겠습니까?')) {
-                      updateOrderStatus('cancelled')
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                  주문 취소
-                </button>
-              )}
-
+              {/* 완료/취소 상태 표시 */}
               {order.status === 'delivered' && (
-                <div className="text-center py-4 text-green-600">
-                  <TruckIcon className="w-8 h-8 mx-auto mb-2" />
-                  <p className="font-medium">배송 완료된 주문입니다</p>
+                <div className="flex-1 text-center py-4 bg-green-50 rounded-lg border-2 border-green-200">
+                  <TruckIcon className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                  <p className="font-medium text-green-600">배송 완료된 주문입니다</p>
                 </div>
               )}
 
               {order.status === 'cancelled' && (
-                <div className="text-center py-4 text-red-600">
-                  <XMarkIcon className="w-8 h-8 mx-auto mb-2" />
-                  <p className="font-medium">취소된 주문입니다</p>
+                <div className="flex-1 text-center py-4 bg-red-50 rounded-lg border-2 border-red-200">
+                  <XMarkIcon className="w-8 h-8 mx-auto mb-2 text-red-600" />
+                  <p className="font-medium text-red-600">취소된 주문입니다</p>
                 </div>
               )}
             </div>
