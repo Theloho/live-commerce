@@ -2,13 +2,35 @@
 
 ## 🤖 Claude 체계적 개발 명령어 시스템
 
+### 📚 **필수 참조 문서 (모든 작업 전 읽기)**
+
+#### 🗄️ DB 작업 시 필수: `DB_REFERENCE_GUIDE.md`
+**언제 읽어야 하는가**:
+- ✅ 주문 생성/조회/수정 작업 시
+- ✅ DB 테이블에 데이터 저장 시
+- ✅ DB에서 데이터 조회 시
+- ✅ 새로운 기능 추가 시
+
+**포함 내용**:
+- 전체 DB 스키마 (17개 테이블)
+- 테이블별 상세 컬럼 설명
+- 데이터 저장/조회 패턴
+- 주의사항 및 함정 (중복 컬럼 등)
+- 완전한 코드 예제
+- 빠른 참조 체크리스트
+
+**⚠️ 중요**: DB 작업 전 반드시 이 문서를 읽고 올바른 컬럼명과 패턴 확인!
+
+---
+
 ### `/system-check` - 문제 해결 시 필수 실행
 **실행 단계**:
-1. SYSTEM_ARCHITECTURE.md 해당 페이지 섹션 확인 (페이지 기능, 연관관계)
-2. DATA_ARCHITECTURE.md 확인 (DB 구조, API 매핑, 데이터 흐름)
-3. 연관된 페이지/컴포넌트 파악
-4. 데이터 흐름 경로 추적
-5. 영향도 분석 보고
+1. **DB_REFERENCE_GUIDE.md** 확인 (DB 구조 및 데이터 흐름)
+2. SYSTEM_ARCHITECTURE.md 해당 페이지 섹션 확인 (페이지 기능, 연관관계)
+3. DATA_ARCHITECTURE.md 확인 (API 매핑, 시스템 상태)
+4. 연관된 페이지/컴포넌트 파악
+5. 데이터 흐름 경로 추적
+6. 영향도 분석 보고
 
 **사용법**: `/system-check [페이지명 또는 기능명]`
 
@@ -43,10 +65,25 @@ Claude 자동 실행:
 ```
 
 ### ⚠️ 개발 규칙
+- **DB 작업 전 `DB_REFERENCE_GUIDE.md` 필수 읽기**
 - **모든 수정 작업 시 `/fix-with-system` 사용 필수**
 - **문제 해결 전 반드시 `/system-check` 실행**
 - **수정 완료 후 `/update-docs` 실행 필수**
 - **임시방편 수정 금지, 체계적 접근만 허용**
+
+### 📖 문서 우선순위
+
+**작업 시작 전**:
+1. 🗄️ `DB_REFERENCE_GUIDE.md` (DB 작업 시)
+2. 📊 `SYSTEM_HEALTH_CHECK_2025-10-01.md` (전체 상태 확인)
+3. 🏗️ `DETAILED_DATA_FLOW.md` (데이터 흐름 상세)
+
+**개발 중**:
+4. 📋 `SYSTEM_ARCHITECTURE.md` (페이지별 구조)
+5. 🔗 `DATA_ARCHITECTURE.md` (API 매핑)
+
+**배포 시**:
+6. 🚀 `DEPLOYMENT_STRATEGY.md` (배포 전략)
 
 ---
 
