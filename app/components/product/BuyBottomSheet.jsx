@@ -259,6 +259,16 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       return
     }
 
+    // 해당 조합의 variant 재고 확인
+    const combo = selectedCombinations[index]
+    if (combo.variantId) {
+      const variant = product.variants?.find(v => v.id === combo.variantId)
+      if (variant && newQuantity > variant.inventory) {
+        toast.error(`재고가 부족합니다. 현재 재고: ${variant.inventory}개`)
+        return
+      }
+    }
+
     setSelectedCombinations(prev => {
       const updated = [...prev]
       updated[index].quantity = newQuantity
@@ -678,41 +688,51 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                 {selectedCombinations.length > 0 && (
                   <div className="space-y-3">
                     <h5 className="font-medium text-gray-900">선택된 옵션들</h5>
-                    {selectedCombinations.map((combo, index) => (
-                      <div key={combo.key} className="border border-gray-200 rounded-lg p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-700">{combo.key}</span>
-                          <span className="text-sm text-gray-500">
-                            ₩{(combo.price * combo.quantity).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center border border-gray-300 rounded-lg">
-                            <button
-                              onClick={() => updateCombinationQuantity(index, combo.quantity - 1)}
-                              className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
-                            >
-                              <MinusIcon className="h-4 w-4" />
-                            </button>
-                            <span className="px-4 py-2 font-medium min-w-[60px] text-center">
-                              {combo.quantity}
+                    {selectedCombinations.map((combo, index) => {
+                      // 해당 조합의 재고 확인
+                      const variant = combo.variantId ? product.variants?.find(v => v.id === combo.variantId) : null
+                      const maxInventory = variant ? variant.inventory : stock
+
+                      return (
+                        <div key={combo.key} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700">{combo.key}</span>
+                            <span className="text-sm text-gray-500">
+                              ₩{(combo.price * combo.quantity).toLocaleString()}
                             </span>
-                            <button
-                              onClick={() => updateCombinationQuantity(index, combo.quantity + 1)}
-                              className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors"
-                            >
-                              <PlusIcon className="h-4 w-4" />
-                            </button>
                           </div>
-                          <button
-                            onClick={() => removeCombination(index)}
-                            className="text-red-500 hover:text-red-700 text-sm"
-                          >
-                            제거
-                          </button>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center border border-gray-300 rounded-lg">
+                              <button
+                                onClick={() => updateCombinationQuantity(index, combo.quantity - 1)}
+                                className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
+                              >
+                                <MinusIcon className="h-4 w-4" />
+                              </button>
+                              <span className="px-4 py-2 font-medium min-w-[60px] text-center">
+                                {combo.quantity}
+                              </span>
+                              <button
+                                onClick={() => updateCombinationQuantity(index, combo.quantity + 1)}
+                                disabled={combo.quantity >= maxInventory}
+                                className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg transition-colors"
+                              >
+                                <PlusIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-xs text-gray-500">재고: {maxInventory}개</span>
+                              <button
+                                onClick={() => removeCombination(index)}
+                                className="text-red-500 hover:text-red-700 text-sm"
+                              >
+                                제거
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
 
