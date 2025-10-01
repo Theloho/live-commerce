@@ -168,7 +168,10 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
   // variant_id 찾기 함수
   const findVariantId = (selectedOptions) => {
+    console.log('🔍 findVariantId 호출:', { selectedOptions, variantsCount: product.variants?.length })
+
     if (!product.variants || product.variants.length === 0) {
+      console.log('⚠️ product.variants가 없음')
       return null
     }
 
@@ -176,13 +179,40 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     const matchedVariant = product.variants.find(variant => {
       if (!variant.options || variant.options.length === 0) return false
 
+      console.log('🔍 Variant 검사:', {
+        variantId: variant.id,
+        sku: variant.sku,
+        variantOptions: variant.options,
+        selectedOptions
+      })
+
+      // 선택된 옵션의 개수와 variant의 옵션 개수가 같아야 함
+      if (variant.options.length !== Object.keys(selectedOptions).length) {
+        console.log('❌ 옵션 개수 불일치')
+        return false
+      }
+
       // 모든 옵션이 일치하는지 확인
-      return Object.entries(selectedOptions).every(([optionName, optionValue]) => {
-        return variant.options.some(
+      const allMatch = Object.entries(selectedOptions).every(([optionName, optionValue]) => {
+        const match = variant.options.some(
           opt => opt.optionName === optionName && opt.optionValue === optionValue
         )
+        if (!match) {
+          console.log(`❌ 매칭 실패: ${optionName}=${optionValue}`)
+        }
+        return match
       })
+
+      if (allMatch) {
+        console.log('✅ Variant 찾음:', variant.id)
+      }
+
+      return allMatch
     })
+
+    if (!matchedVariant) {
+      console.log('❌ 매칭되는 variant를 찾지 못함')
+    }
 
     return matchedVariant ? matchedVariant.id : null
   }
