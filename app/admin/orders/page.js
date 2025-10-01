@@ -328,9 +328,6 @@ export default function AdminOrdersPage() {
                   결제정보
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  상태
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   액션
                 </th>
               </tr>
@@ -391,16 +388,6 @@ export default function AdminOrdersPage() {
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         ₩{order.payment?.amount?.toLocaleString() || '0'}
-                        {/* 디버깅용 로그 */}
-                        {console.log(`💰 관리자 페이지 결제 금액 표시:`, {
-                          order_id: order.id,
-                          order_payment_amount: order.payment?.amount,
-                          order_payment_method: order.payment?.method,
-                          order_customer_order_number: order.customer_order_number,
-                          order_status: order.status,
-                          isGroupOrder: order.payment_group_id ? true : false,
-                          payment_group_id: order.payment_group_id
-                        })}
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {(() => {
@@ -428,10 +415,10 @@ export default function AdminOrdersPage() {
                           )
                         })()}
                       </div>
+                      <div className="mt-1">
+                        {getStatusBadge(order.status)}
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(order.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
