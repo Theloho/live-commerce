@@ -228,28 +228,27 @@ export default function PurchaseOrdersPage() {
         </div>
 
         {/* 통계 */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">발주 현황</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">업체 수</p>
-              <p className="text-3xl font-bold text-gray-900">{supplierSummaries.length}개</p>
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center py-2">
+              <p className="text-xs text-gray-500 mb-1">업체 수</p>
+              <p className="text-xl font-bold text-gray-900">{supplierSummaries.length}개</p>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">총 주문 건수</p>
-              <p className="text-3xl font-bold text-blue-600">
+            <div className="text-center py-2">
+              <p className="text-xs text-gray-500 mb-1">총 주문 건수</p>
+              <p className="text-xl font-bold text-blue-600">
                 {supplierSummaries.reduce((sum, s) => sum + s.orderCount, 0)}건
               </p>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">총 수량</p>
-              <p className="text-3xl font-bold text-purple-600">
+            <div className="text-center py-2">
+              <p className="text-xs text-gray-500 mb-1">총 수량</p>
+              <p className="text-xl font-bold text-purple-600">
                 {supplierSummaries.reduce((sum, s) => sum + s.totalQuantity, 0)}개
               </p>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">총 발주 금액</p>
-              <p className="text-3xl font-bold text-green-600">
+            <div className="text-center py-2">
+              <p className="text-xs text-gray-500 mb-1">총 발주 금액</p>
+              <p className="text-xl font-bold text-green-600">
                 ₩{supplierSummaries.reduce((sum, s) => sum + s.totalAmount, 0).toLocaleString()}
               </p>
             </div>
