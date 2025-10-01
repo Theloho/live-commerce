@@ -897,7 +897,7 @@ export default function CheckoutPage() {
                       detail_address: address.detail_address || ''
                     }))
                     setShowAddressModal(false)
-                    toast.success(`'${address.label}' 배송지가 선택되었습니다`)
+                    // ✨ 토스트 제거: 배송지 선택은 시각적으로 이미 확인 가능
                   }}
                 />
               </div>

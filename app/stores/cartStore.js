@@ -70,7 +70,7 @@ const useCartStore = create(
           const updatedItems = [...items]
           updatedItems[existingItemIndex].quantity += quantity
           set({ items: updatedItems })
-          toast.success('상품 수량이 업데이트되었습니다')
+          // ✨ 토스트 제거: 장바구니 수량 변경은 시각적으로 이미 확인 가능
         } else {
           // Add new item
           const newItem = {
@@ -82,7 +82,7 @@ const useCartStore = create(
             addedAt: new Date().toISOString()
           }
           set({ items: [...items, newItem] })
-          toast.success('장바구니에 추가되었습니다')
+          // ✨ 토스트 제거: 장바구니 추가는 시각적으로 이미 확인 가능
         }
       },
 
@@ -90,7 +90,7 @@ const useCartStore = create(
         set((state) => ({
           items: state.items.filter(item => item.itemKey !== itemKey)
         }))
-        toast.success('상품이 삭제되었습니다')
+        // ✨ 토스트 제거: 상품 삭제는 시각적으로 이미 확인 가능
       },
 
       updateQuantity: (itemKey, quantity) => {
@@ -110,7 +110,7 @@ const useCartStore = create(
 
       clearCart: () => {
         set({ items: [], appliedCoupon: null, discountAmount: 0 })
-        toast.success('장바구니가 비워졌습니다')
+        // ✨ 토스트 제거: 장바구니 비우기는 시각적으로 이미 확인 가능
       },
 
       // Cart drawer/modal
@@ -135,7 +135,7 @@ const useCartStore = create(
         set((state) => ({
           items: state.items.filter(item => !item.selected)
         }))
-        toast.success('선택한 상품이 삭제되었습니다')
+        // ✨ 토스트 제거: 선택 상품 삭제는 시각적으로 이미 확인 가능
       },
 
       toggleItemSelection: (itemKey) => {
@@ -176,7 +176,7 @@ const useCartStore = create(
           discountAmount
         })
 
-        toast.success(`쿠폰이 적용되었습니다 (-₩${discountAmount.toLocaleString()})`)
+        // ✨ 토스트 제거: 쿠폰 적용은 할인 금액 변경으로 이미 확인 가능
       },
 
       removeCoupon: () => {
@@ -184,7 +184,7 @@ const useCartStore = create(
           appliedCoupon: null,
           discountAmount: 0
         })
-        toast.success('쿠폰이 제거되었습니다')
+        // ✨ 토스트 제거: 쿠폰 제거는 할인 금액 변경으로 이미 확인 가능
       },
 
       // Shipping
@@ -252,7 +252,7 @@ const useCartStore = create(
         if (item) {
           // TODO: Implement save for later functionality
           get().removeItem(itemKey)
-          toast.success('나중에 구매할 상품으로 이동되었습니다')
+          // ✨ 토스트 제거: 상품 이동은 시각적으로 이미 확인 가능
         }
       },
 

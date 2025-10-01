@@ -335,7 +335,7 @@ function OrdersContent() {
 
       // 2. 서버 업데이트
       await updateOrderItemQuantity(item.id, newQuantity)
-      toast.success('수량이 변경되었습니다')
+      // ✨ 토스트 제거: 수량 변경은 시각적으로 이미 확인 가능
 
       // 3. 서버에서 최신 데이터 가져와서 동기화
       setTimeout(() => {

@@ -170,7 +170,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
         }
       }))
 
-      toast.success('장바구니에 추가되었습니다')
+      // ✨ 토스트 제거: 장바구니 추가는 시각적으로 이미 확인 가능
     } catch (error) {
       console.error('주문 생성 실패:', error)
       toast.error('장바구니 추가에 실패했습니다')

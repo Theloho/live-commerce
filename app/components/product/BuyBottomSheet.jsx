@@ -413,7 +413,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
   const handleLike = () => {
     setIsLiked(!isLiked)
-    toast.success(isLiked ? '찜 목록에서 삭제되었습니다' : '찜 목록에 추가되었습니다')
+    // ✨ 토스트 제거: 찜 상태 변경은 하트 아이콘 색상 변경으로 이미 확인 가능
   }
 
   // 더 주문하기 - 홈으로 이동
