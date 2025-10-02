@@ -651,6 +651,7 @@ export default function OrderCompletePage() {
                 <p className="font-medium text-gray-900">{orderData.shipping.name}</p>
                 <p className="text-gray-600">{orderData.shipping.phone}</p>
                 <p className="text-gray-600">
+                  {orderData.shipping.postal_code && `[${orderData.shipping.postal_code}] `}
                   {orderData.shipping.address}
                   {orderData.shipping.detail_address && ` ${orderData.shipping.detail_address}`}
                 </p>
