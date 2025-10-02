@@ -283,11 +283,12 @@ export default function ProductCatalogPage() {
               >
                 {/* 상품 이미지 */}
                 <div className="relative aspect-square">
-                  {product.image_url ? (
+                  {product.thumbnail_url ? (
                     <Image
-                      src={product.image_url}
+                      src={product.thumbnail_url}
                       alt={product.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       className="object-cover rounded-t-lg"
                     />
                   ) : (
@@ -435,9 +436,9 @@ export default function ProductCatalogPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-12 w-12">
-                          {product.image_url ? (
+                          {product.thumbnail_url ? (
                             <Image
-                              src={product.image_url}
+                              src={product.thumbnail_url}
                               alt={product.title}
                               width={48}
                               height={48}
