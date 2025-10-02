@@ -183,7 +183,7 @@ export default function CheckoutPage() {
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
           const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
-          const addressResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=addresses,address,detail_address`, {
+          const addressResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=addresses,address,detail_address,postal_code`, {
             method: 'GET',
             headers: {
               'apikey': supabaseKey,
@@ -205,6 +205,7 @@ export default function CheckoutPage() {
                   label: '기본 배송지',
                   address: profile.address,
                   detail_address: profile.detail_address || '',
+                  postal_code: profile.postal_code || '',
                   is_default: true,
                   created_at: new Date().toISOString()
                 }
@@ -227,21 +228,23 @@ export default function CheckoutPage() {
                 const defaultAddress = addresses.find(addr => addr.is_default)
                 if (defaultAddress) {
                   setSelectedAddress(defaultAddress)
-                  // userProfile에도 주소 정보 반영
+                  // userProfile에도 주소 정보 반영 (우편번호 포함)
                   setUserProfile(prev => ({
                     ...prev,
                     address: defaultAddress.address,
-                    detail_address: defaultAddress.detail_address || ''
+                    detail_address: defaultAddress.detail_address || '',
+                    postal_code: defaultAddress.postal_code || ''
                   }))
                 } else if (addresses.length > 0) {
                   // 기본 배송지가 없으면 첫 번째 주소 선택
                   const firstAddress = addresses[0]
                   setSelectedAddress(firstAddress)
-                  // userProfile에도 주소 정보 반영
+                  // userProfile에도 주소 정보 반영 (우편번호 포함)
                   setUserProfile(prev => ({
                     ...prev,
                     address: firstAddress.address,
-                    detail_address: firstAddress.detail_address || ''
+                    detail_address: firstAddress.detail_address || '',
+                    postal_code: firstAddress.postal_code || ''
                   }))
                 }
               }
@@ -524,9 +527,18 @@ export default function CheckoutPage() {
   }
 
   // 배송비 계산 (기본 4000원 + 도서산간 추가 배송비)
-  const shippingInfo = formatShippingInfo(4000, selectedAddress?.postal_code)
+  // selectedAddress 우편번호 우선, 없으면 userProfile 우편번호 사용
+  const postalCode = selectedAddress?.postal_code || userProfile.postal_code
+  const shippingInfo = formatShippingInfo(4000, postalCode)
   const shippingFee = shippingInfo.totalShipping
   const finalTotal = orderItem.totalPrice + shippingFee
+
+  console.log('💰 체크아웃 배송비 계산:', {
+    selectedAddressPostalCode: selectedAddress?.postal_code,
+    userProfilePostalCode: userProfile.postal_code,
+    usedPostalCode: postalCode,
+    shippingInfo
+  })
 
   const handleBankTransfer = () => {
     // ✨ 모달 열릴 때 기본값으로 고객 이름 설정 (확인 버튼 즉시 활성화)
