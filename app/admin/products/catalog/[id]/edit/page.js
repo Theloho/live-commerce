@@ -108,10 +108,14 @@ export default function ProductEditPage() {
     }
 
     try {
+      // 자동 코드 생성 (SUP + 타임스탬프)
+      const autoCode = `SUP${Date.now().toString().slice(-8)}`
+
       const { data, error } = await supabase
         .from('suppliers')
         .insert({
           name: newSupplierName.trim(),
+          code: autoCode,
           is_active: true
         })
         .select()

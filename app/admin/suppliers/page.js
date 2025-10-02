@@ -134,13 +134,16 @@ export default function SuppliersPage() {
         if (error) throw error
         toast.success('업체 정보가 수정되었습니다')
       } else {
-        // 추가
+        // 추가 - code가 비어있으면 자동 생성
+        const supplierData = {
+          ...formData,
+          code: formData.code || `SUP${Date.now().toString().slice(-8)}`,
+          is_active: true
+        }
+
         const { error } = await supabase
           .from('suppliers')
-          .insert({
-            ...formData,
-            is_active: true
-          })
+          .insert(supplierData)
 
         if (error) throw error
         toast.success('업체가 추가되었습니다')
@@ -404,7 +407,7 @@ export default function SuppliersPage() {
                       value={formData.code}
                       onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="AB001"
+                      placeholder="비어있으면 자동 생성"
                     />
                   </div>
                 </div>
