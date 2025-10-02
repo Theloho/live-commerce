@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeftIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, PlusIcon, MinusIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import {
   getProductVariants,
@@ -86,23 +86,6 @@ export default function ProductDetailPage() {
     }
   }
 
-  // 상품 기본 정보 수정
-  const handleUpdateProduct = async (updatedData) => {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .update(updatedData)
-        .eq('id', productId)
-
-      if (error) throw error
-
-      toast.success('상품 정보가 수정되었습니다')
-      loadData()
-    } catch (error) {
-      console.error('상품 수정 오류:', error)
-      toast.error('상품 수정에 실패했습니다')
-    }
-  }
 
   if (authLoading || loading) {
     return (
@@ -150,6 +133,17 @@ export default function ProductDetailPage() {
                 SKU: {variants.length}개
               </p>
             </div>
+          </div>
+
+          {/* 편집 버튼 */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push(`/admin/products/catalog/${productId}/edit`)}
+              className="px-4 py-2 text-white bg-gray-800 rounded-lg hover:bg-gray-900 flex items-center gap-2"
+            >
+              <PencilIcon className="w-4 h-4" />
+              편집
+            </button>
           </div>
         </div>
       </div>
