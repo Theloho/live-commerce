@@ -311,12 +311,9 @@ export default function ProductEditPage() {
                   {!formData.product_number && (
                     <button
                       type="button"
-                      onClick={async () => {
-                        const { count } = await supabase
-                          .from('products')
-                          .select('id', { count: 'exact', head: true })
-                        const nextNumber = String((count || 0) + 1).padStart(4, '0')
-                        handleChange('product_number', `P-${nextNumber}`)
+                      onClick={() => {
+                        const timestamp = Date.now().toString().slice(-10)
+                        handleChange('product_number', `P-${timestamp}`)
                       }}
                       className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm whitespace-nowrap"
                     >
