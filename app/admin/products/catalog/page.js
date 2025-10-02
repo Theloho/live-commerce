@@ -259,125 +259,69 @@ export default function ProductCatalogPage() {
 
         {/* 상품 목록 */}
         {viewMode === 'grid' ? (
-          // 그리드 뷰
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          // 그리드 뷰 - 컴팩트한 카드 디자인
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
             {products.map((product) => (
               <motion.div
                 key={product.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow overflow-hidden"
+                onClick={() => router.push(`/admin/products/catalog/${product.id}`)}
+                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-all cursor-pointer overflow-hidden group"
               >
                 {/* 상품 이미지 */}
-                <div className="relative aspect-square overflow-hidden">
+                <div className="relative aspect-square overflow-hidden bg-gray-100">
                   {product.thumbnail_url ? (
                     <Image
                       src={product.thumbnail_url}
                       alt={product.title}
                       fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover"
+                      sizes="200px"
+                      className="object-cover group-hover:scale-105 transition-transform"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                      <span className="text-gray-400">이미지 없음</span>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-gray-400 text-xs">NO IMAGE</span>
                     </div>
                   )}
 
                   {/* 라이브 배지 */}
                   {product.is_live_active && (
-                    <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center">
-                      <div className="w-2 h-2 bg-white rounded-full mr-1 animate-pulse"></div>
+                    <div className="absolute top-1 left-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded flex items-center">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full mr-1 animate-pulse"></div>
                       LIVE
                     </div>
                   )}
 
-                  {/* 상태 배지 */}
-                  <div className={`absolute top-2 right-2 text-xs px-2 py-1 rounded-full ${getStatusColor(product.status)}`}>
-                    {getStatusText(product.status)}
-                  </div>
+                  {/* 재고 배지 */}
+                  {product.variants && product.variants.length > 0 ? (
+                    <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                      {product.variants.length}옵션
+                    </div>
+                  ) : (
+                    <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                      {product.inventory}개
+                    </div>
+                  )}
                 </div>
 
                 {/* 상품 정보 */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                <div className="p-2">
+                  <h3 className="text-xs font-medium text-gray-900 mb-1 line-clamp-2 min-h-[2rem]">
                     {product.title}
                   </h3>
 
                   {/* 가격 */}
-                  <div className="flex items-center space-x-2 mb-3">
-                    <span className="text-lg font-bold text-gray-900">
-                      ₩{product.price?.toLocaleString()}
+                  <div className="text-sm font-bold text-gray-900 mb-1">
+                    ₩{(product.price || 0).toLocaleString()}
+                  </div>
+
+                  {/* 카테고리 & 상태 */}
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span className="truncate">{product.category || '미분류'}</span>
+                    <span className={`px-1 py-0.5 rounded text-xs ${getStatusColor(product.status)}`}>
+                      {getStatusText(product.status)}
                     </span>
-                    {product.compare_price && product.compare_price > product.price && (
-                      <span className="text-sm text-gray-500 line-through">
-                        ₩{product.compare_price.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 재고 및 카테고리 */}
-                  <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                    <span>재고: {product.inventory}개</span>
-                    <span>{product.categories?.name || '미분류'}</span>
-                  </div>
-
-                  {/* Variant 정보 */}
-                  {product.variants && product.variants.length > 0 && (
-                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="text-xs font-medium text-blue-800 mb-1">
-                        Variant: {product.variants.length}개
-                      </div>
-                      <div className="space-y-1">
-                        {product.variants.slice(0, 3).map((variant, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-xs text-blue-700">
-                            <span className="truncate">
-                              {variant.options?.map(opt => opt.optionValue).join(' / ') || variant.sku}
-                            </span>
-                            <span className="font-medium">{variant.inventory}개</span>
-                          </div>
-                        ))}
-                        {product.variants.length > 3 && (
-                          <div className="text-xs text-blue-600 text-center">
-                            +{product.variants.length - 3}개 더보기
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 액션 버튼들 */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => router.push(`/admin/products/catalog/${product.id}`)}
-                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="상세보기 / Variant 관리"
-                      >
-                        <EyeIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={() => handleToggleLive(product)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        product.is_live_active
-                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                      }`}
-                    >
-                      {product.is_live_active ? (
-                        <>
-                          <StopIcon className="w-3 h-3 inline mr-1" />
-                          라이브 중단
-                        </>
-                      ) : (
-                        <>
-                          <PlayIcon className="w-3 h-3 inline mr-1" />
-                          라이브 추가
-                        </>
-                      )}
-                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -480,29 +424,21 @@ export default function ProductCatalogPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => router.push(`/admin/products/${product.id}`)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        상세
-                      </button>
-                      <button
-                        onClick={() => router.push(`/admin/products/${product.id}/edit`)}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        수정
-                      </button>
-                      <button
-                        onClick={() => handleToggleLive(product)}
-                        className={`${
-                          product.is_live_active
-                            ? 'text-red-600 hover:text-red-900'
-                            : 'text-purple-600 hover:text-purple-900'
-                        }`}
-                      >
-                        {product.is_live_active ? '라이브 중단' : '라이브 추가'}
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => router.push(`/admin/products/catalog/${product.id}`)}
+                          className="px-3 py-1 text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-600 rounded transition-colors"
+                        >
+                          상세
+                        </button>
+                        <button
+                          onClick={() => router.push(`/admin/products/catalog/${product.id}/edit`)}
+                          className="px-3 py-1 text-gray-600 hover:text-white hover:bg-gray-600 border border-gray-600 rounded transition-colors"
+                        >
+                          편집
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
