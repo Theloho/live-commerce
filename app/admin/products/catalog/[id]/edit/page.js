@@ -18,8 +18,12 @@ export default function ProductEditPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [suppliers, setSuppliers] = useState([])
+  const [categories, setCategories] = useState([])
+  const [subCategories, setSubCategories] = useState([])
   const [showSupplierModal, setShowSupplierModal] = useState(false)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newSupplierName, setNewSupplierName] = useState('')
+  const [newCategoryData, setNewCategoryData] = useState({ name: '', parent_id: '' })
   const [formData, setFormData] = useState({
     title: '',
     product_number: '',
@@ -55,16 +59,22 @@ export default function ProductEditPage() {
     try {
       setLoading(true)
 
-      const [productData, suppliersData] = await Promise.all([
+      const [productData, suppliersData, categoriesData] = await Promise.all([
         supabase
           .from('products')
           .select('*')
           .eq('id', productId)
           .single(),
-        getSuppliers()
+        getSuppliers(),
+        supabase
+          .from('categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('name')
       ])
 
       if (productData.error) throw productData.error
+      if (categoriesData.error) throw categoriesData.error
 
       setFormData({
         title: productData.data.title || '',
@@ -82,6 +92,12 @@ export default function ProductEditPage() {
         inventory: productData.data.inventory || 0
       })
       setSuppliers(suppliersData)
+      setCategories(categoriesData.data)
+
+      // 현재 카테고리가 설정되어 있으면 서브 카테고리 로드
+      if (productData.data.category) {
+        loadSubCategories(productData.data.category)
+      }
 
       console.log('📦 상품 정보 로드 완료')
     } catch (error) {
@@ -92,12 +108,44 @@ export default function ProductEditPage() {
     }
   }
 
+  // 서브 카테고리 로드
+  const loadSubCategories = async (categoryName) => {
+    try {
+      // 선택된 대분류의 ID 찾기
+      const mainCategory = categories.find(c => c.name === categoryName && c.parent_id === null)
+      if (!mainCategory) return
+
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('parent_id', mainCategory.id)
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+      setSubCategories(data || [])
+    } catch (error) {
+      console.error('서브 카테고리 로딩 오류:', error)
+    }
+  }
+
   // 입력 변경 핸들러
   const handleChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
+
+    // 대분류 카테고리 변경 시 서브 카테고리 로드
+    if (field === 'category') {
+      loadSubCategories(value)
+      // 서브 카테고리 초기화
+      setFormData(prev => ({
+        ...prev,
+        category: value,
+        sub_category: ''
+      }))
+    }
   }
 
   // 공급업체 빠른 추가
@@ -140,6 +188,71 @@ export default function ProductEditPage() {
     } catch (error) {
       console.error('업체 추가 오류:', error)
       toast.error('업체 추가에 실패했습니다')
+    }
+  }
+
+  // 카테고리 빠른 추가
+  const handleQuickAddCategory = async () => {
+    if (!newCategoryData.name.trim()) {
+      toast.error('카테고리명을 입력해주세요')
+      return
+    }
+
+    try {
+      const slug = newCategoryData.name.toLowerCase().replace(/\s+/g, '-')
+      const parentId = newCategoryData.parent_id || null
+
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          name: newCategoryData.name.trim(),
+          slug: slug,
+          parent_id: parentId,
+          is_active: true
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      toast.success('카테고리가 추가되었습니다')
+
+      // 카테고리 목록 새로고침
+      const { data: updatedCategories } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+
+      setCategories(updatedCategories || [])
+
+      // 추가된 카테고리 선택
+      if (parentId) {
+        // 서브 카테고리 추가한 경우
+        const parent = categories.find(c => c.id === parentId)
+        if (parent) {
+          setFormData(prev => ({
+            ...prev,
+            category: parent.name,
+            sub_category: data.name
+          }))
+          loadSubCategories(parent.name)
+        }
+      } else {
+        // 대분류 추가한 경우
+        setFormData(prev => ({
+          ...prev,
+          category: data.name,
+          sub_category: ''
+        }))
+        setSubCategories([])
+      }
+
+      setShowCategoryModal(false)
+      setNewCategoryData({ name: '', parent_id: '' })
+    } catch (error) {
+      console.error('카테고리 추가 오류:', error)
+      toast.error('카테고리 추가에 실패했습니다')
     }
   }
 
@@ -331,26 +444,69 @@ export default function ProductEditPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 대분류
               </label>
-              <input
-                type="text"
-                value={formData.category}
-                onChange={(e) => handleChange('category', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="예: 아동화"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={formData.category}
+                  onChange={(e) => handleChange('category', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">선택하세요</option>
+                  {categories.filter(c => c.parent_id === null).map(category => (
+                    <option key={category.id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewCategoryData({ name: '', parent_id: '' })
+                    setShowCategoryModal(true)
+                  }}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 flex items-center gap-1"
+                  title="카테고리 추가"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 소분류
               </label>
-              <input
-                type="text"
-                value={formData.sub_category}
-                onChange={(e) => handleChange('sub_category', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="예: 운동화"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={formData.sub_category}
+                  onChange={(e) => handleChange('sub_category', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!formData.category}
+                >
+                  <option value="">선택하세요</option>
+                  {subCategories.map(category => (
+                    <option key={category.id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!formData.category) {
+                      toast.error('먼저 대분류를 선택해주세요')
+                      return
+                    }
+                    const mainCategory = categories.find(c => c.name === formData.category && c.parent_id === null)
+                    setNewCategoryData({ name: '', parent_id: mainCategory?.id || '' })
+                    setShowCategoryModal(true)
+                  }}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!formData.category}
+                  title="서브 카테고리 추가"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -490,6 +646,62 @@ export default function ProductEditPage() {
               </button>
               <button
                 onClick={handleQuickAddSupplier}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 카테고리 빠른 추가 모달 */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              {newCategoryData.parent_id ? '서브 카테고리 추가' : '대분류 카테고리 추가'}
+            </h3>
+            <div className="mb-4">
+              {newCategoryData.parent_id && (
+                <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">대분류:</span> {formData.category}
+                  </p>
+                </div>
+              )}
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                카테고리명 *
+              </label>
+              <input
+                type="text"
+                value={newCategoryData.name}
+                onChange={(e) => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleQuickAddCategory()
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="카테고리명을 입력하세요"
+                autoFocus
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                상세 정보는 나중에 &quot;카테고리 관리&quot; 메뉴에서 추가할 수 있습니다
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowCategoryModal(false)
+                  setNewCategoryData({ name: '', parent_id: '' })
+                }}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleQuickAddCategory}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 추가
