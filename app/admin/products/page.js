@@ -77,7 +77,22 @@ export default function AdminProductsPage() {
       if (error) throw error
 
       console.log('📋 라이브 상품 로드:', data?.length || 0)
-      setLiveProducts(data || [])
+
+      // 각 상품의 variants 로드
+      const { getProductVariants } = await import('@/lib/supabaseApi')
+      const productsWithVariants = await Promise.all(
+        (data || []).map(async (product) => {
+          try {
+            const variants = await getProductVariants(product.id)
+            return { ...product, variants: variants || [] }
+          } catch (error) {
+            console.error(`Variants 로딩 실패 for product ${product.id}:`, error)
+            return { ...product, variants: [] }
+          }
+        })
+      )
+
+      setLiveProducts(productsWithVariants)
     } catch (error) {
       console.error('라이브 상품 로딩 오류:', error)
       toast.error('라이브 상품을 불러오는데 실패했습니다.')
@@ -462,6 +477,73 @@ export default function AdminProductsPage() {
                           ₩{product.price.toLocaleString()}
                         </span>
                       </div>
+
+                      {/* Variant 재고 정보 */}
+                      {product.variants && product.variants.length > 0 ? (
+                        <div className="mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="text-xs font-medium text-gray-700 mb-1">
+                            Variant: {product.variants.length}개
+                          </div>
+                          <div className="space-y-1 max-h-24 overflow-y-auto">
+                            {product.variants.slice(0, 3).map((variant) => {
+                              const inventory = variant.inventory ?? 0
+                              const optionLabel = variant.options?.map(opt => opt.optionValue).join(' × ') || variant.sku
+
+                              return (
+                                <div key={variant.id} className="flex items-center justify-between text-xs">
+                                  <span className="text-gray-700 truncate flex-1">{optionLabel}</span>
+                                  <div className="flex items-center gap-1 ml-2">
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation()
+                                        try {
+                                          const { updateVariantInventory } = await import('@/lib/supabaseApi')
+                                          await updateVariantInventory(variant.id, -1)
+                                          toast.success('재고 -1')
+                                          loadLiveProducts()
+                                        } catch (error) {
+                                          toast.error('재고 업데이트 실패')
+                                        }
+                                      }}
+                                      className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 flex items-center justify-center"
+                                    >
+                                      -
+                                    </button>
+                                    <span className={`font-medium w-6 text-center ${inventory === 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                      {inventory}
+                                    </span>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation()
+                                        try {
+                                          const { updateVariantInventory } = await import('@/lib/supabaseApi')
+                                          await updateVariantInventory(variant.id, 1)
+                                          toast.success('재고 +1')
+                                          loadLiveProducts()
+                                        } catch (error) {
+                                          toast.error('재고 업데이트 실패')
+                                        }
+                                      }}
+                                      className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 flex items-center justify-center"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            {product.variants.length > 3 && (
+                              <div className="text-xs text-gray-500 text-center">
+                                +{product.variants.length - 3}개 더보기
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mb-2 text-xs text-gray-600">
+                          재고: {product.inventory ?? 0}개
+                        </div>
+                      )}
 
                       {/* 노출 토글 버튼 */}
                       <button
