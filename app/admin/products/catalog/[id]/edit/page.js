@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeftIcon, CheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, CheckIcon, XMarkIcon, PlusIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import { getSuppliers } from '@/lib/supabaseApi'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
+import SupplierManageSheet from '@/app/components/SupplierManageSheet'
+import CategoryManageSheet from '@/app/components/CategoryManageSheet'
 
 export default function ProductEditPage() {
   const router = useRouter()
@@ -20,10 +22,9 @@ export default function ProductEditPage() {
   const [suppliers, setSuppliers] = useState([])
   const [categories, setCategories] = useState([])
   const [subCategories, setSubCategories] = useState([])
-  const [showSupplierModal, setShowSupplierModal] = useState(false)
-  const [showCategoryModal, setShowCategoryModal] = useState(false)
-  const [newSupplierName, setNewSupplierName] = useState('')
-  const [newCategoryData, setNewCategoryData] = useState({ name: '', parent_id: '' })
+  const [showSupplierSheet, setShowSupplierSheet] = useState(false)
+  const [showMainCategorySheet, setShowMainCategorySheet] = useState(false)
+  const [showSubCategorySheet, setShowSubCategorySheet] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     product_number: '',
@@ -148,111 +149,38 @@ export default function ProductEditPage() {
     }
   }
 
-  // 공급업체 빠른 추가
-  const handleQuickAddSupplier = async () => {
-    if (!newSupplierName.trim()) {
-      toast.error('업체명을 입력해주세요')
-      return
-    }
+  // 공급업체 선택 핸들러
+  const handleSupplierSelect = async (supplierId, supplierName) => {
+    setFormData(prev => ({
+      ...prev,
+      supplier_id: supplierId
+    }))
 
-    try {
-      // 자동 코드 생성 (SUP + 타임스탬프)
-      const autoCode = `SUP${Date.now().toString().slice(-8)}`
-
-      const { data, error } = await supabase
-        .from('suppliers')
-        .insert({
-          name: newSupplierName.trim(),
-          code: autoCode,
-          is_active: true
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      toast.success('업체가 추가되었습니다')
-
-      // 목록 새로고침
-      const updatedSuppliers = await getSuppliers()
-      setSuppliers(updatedSuppliers)
-
-      // 새로 추가된 업체를 선택
-      setFormData(prev => ({
-        ...prev,
-        supplier_id: data.id
-      }))
-
-      setShowSupplierModal(false)
-      setNewSupplierName('')
-    } catch (error) {
-      console.error('업체 추가 오류:', error)
-      toast.error('업체 추가에 실패했습니다')
-    }
+    // 목록 새로고침
+    const updatedSuppliers = await getSuppliers()
+    setSuppliers(updatedSuppliers)
   }
 
-  // 카테고리 빠른 추가
-  const handleQuickAddCategory = async () => {
-    if (!newCategoryData.name.trim()) {
-      toast.error('카테고리명을 입력해주세요')
-      return
-    }
+  // 카테고리 선택 핸들러
+  const handleCategorySelect = async (mainCategory, subCategory) => {
+    setFormData(prev => ({
+      ...prev,
+      category: mainCategory,
+      sub_category: subCategory
+    }))
 
-    try {
-      const slug = newCategoryData.name.toLowerCase().replace(/\s+/g, '-')
-      const parentId = newCategoryData.parent_id || null
+    // 카테고리 목록 새로고침
+    const { data: updatedCategories } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
 
-      const { data, error } = await supabase
-        .from('categories')
-        .insert({
-          name: newCategoryData.name.trim(),
-          slug: slug,
-          parent_id: parentId,
-          is_active: true
-        })
-        .select()
-        .single()
+    setCategories(updatedCategories || [])
 
-      if (error) throw error
-
-      toast.success('카테고리가 추가되었습니다')
-
-      // 카테고리 목록 새로고침
-      const { data: updatedCategories } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name')
-
-      setCategories(updatedCategories || [])
-
-      // 추가된 카테고리 선택
-      if (parentId) {
-        // 서브 카테고리 추가한 경우
-        const parent = categories.find(c => c.id === parentId)
-        if (parent) {
-          setFormData(prev => ({
-            ...prev,
-            category: parent.name,
-            sub_category: data.name
-          }))
-          loadSubCategories(parent.name)
-        }
-      } else {
-        // 대분류 추가한 경우
-        setFormData(prev => ({
-          ...prev,
-          category: data.name,
-          sub_category: ''
-        }))
-        setSubCategories([])
-      }
-
-      setShowCategoryModal(false)
-      setNewCategoryData({ name: '', parent_id: '' })
-    } catch (error) {
-      console.error('카테고리 추가 오류:', error)
-      toast.error('카테고리 추가에 실패했습니다')
+    // 서브 카테고리 로드
+    if (mainCategory) {
+      loadSubCategories(mainCategory)
     }
   }
 
@@ -459,14 +387,11 @@ export default function ProductEditPage() {
                 </select>
                 <button
                   type="button"
-                  onClick={() => {
-                    setNewCategoryData({ name: '', parent_id: '' })
-                    setShowCategoryModal(true)
-                  }}
+                  onClick={() => setShowMainCategorySheet(true)}
                   className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 flex items-center gap-1"
-                  title="카테고리 추가"
+                  title="카테고리 관리"
                 >
-                  <PlusIcon className="w-4 h-4" />
+                  <Cog6ToothIcon className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -496,15 +421,13 @@ export default function ProductEditPage() {
                       toast.error('먼저 대분류를 선택해주세요')
                       return
                     }
-                    const mainCategory = categories.find(c => c.name === formData.category && c.parent_id === null)
-                    setNewCategoryData({ name: '', parent_id: mainCategory?.id || '' })
-                    setShowCategoryModal(true)
+                    setShowSubCategorySheet(true)
                   }}
                   className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={!formData.category}
-                  title="서브 카테고리 추가"
+                  title="소분류 관리"
                 >
-                  <PlusIcon className="w-4 h-4" />
+                  <Cog6ToothIcon className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -534,11 +457,11 @@ export default function ProductEditPage() {
                 </select>
                 <button
                   type="button"
-                  onClick={() => setShowSupplierModal(true)}
+                  onClick={() => setShowSupplierSheet(true)}
                   className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 flex items-center gap-1"
-                  title="업체 추가"
+                  title="업체 관리"
                 >
-                  <PlusIcon className="w-4 h-4" />
+                  <Cog6ToothIcon className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -608,108 +531,33 @@ export default function ProductEditPage() {
 
       </div>
 
-      {/* 업체 빠른 추가 모달 */}
-      {showSupplierModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold mb-4">업체 빠른 추가</h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                업체명 *
-              </label>
-              <input
-                type="text"
-                value={newSupplierName}
-                onChange={(e) => setNewSupplierName(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleQuickAddSupplier()
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="업체명을 입력하세요"
-                autoFocus
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                상세 정보는 나중에 &quot;공급업체 관리&quot; 메뉴에서 추가할 수 있습니다
-              </p>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowSupplierModal(false)
-                  setNewSupplierName('')
-                }}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleQuickAddSupplier}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                추가
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 공급업체 관리 버텀시트 */}
+      <SupplierManageSheet
+        isOpen={showSupplierSheet}
+        onClose={() => setShowSupplierSheet(false)}
+        onSelect={handleSupplierSelect}
+        currentSupplierId={formData.supplier_id}
+      />
 
-      {/* 카테고리 빠른 추가 모달 */}
-      {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              {newCategoryData.parent_id ? '서브 카테고리 추가' : '대분류 카테고리 추가'}
-            </h3>
-            <div className="mb-4">
-              {newCategoryData.parent_id && (
-                <div className="mb-3 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <span className="font-medium">대분류:</span> {formData.category}
-                  </p>
-                </div>
-              )}
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                카테고리명 *
-              </label>
-              <input
-                type="text"
-                value={newCategoryData.name}
-                onChange={(e) => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleQuickAddCategory()
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="카테고리명을 입력하세요"
-                autoFocus
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                상세 정보는 나중에 &quot;카테고리 관리&quot; 메뉴에서 추가할 수 있습니다
-              </p>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowCategoryModal(false)
-                  setNewCategoryData({ name: '', parent_id: '' })
-                }}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleQuickAddCategory}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                추가
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 대분류 카테고리 관리 버텀시트 */}
+      <CategoryManageSheet
+        isOpen={showMainCategorySheet}
+        onClose={() => setShowMainCategorySheet(false)}
+        onSelect={handleCategorySelect}
+        currentCategory={formData.category}
+        currentSubCategory=""
+        mode="main"
+      />
+
+      {/* 소분류 카테고리 관리 버텀시트 */}
+      <CategoryManageSheet
+        isOpen={showSubCategorySheet}
+        onClose={() => setShowSubCategorySheet(false)}
+        onSelect={handleCategorySelect}
+        currentCategory={formData.category}
+        currentSubCategory={formData.sub_category}
+        mode="sub"
+      />
     </div>
   )
 }
