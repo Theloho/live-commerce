@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { RadioIcon } from '@heroicons/react/24/solid'
 import toast from 'react-hot-toast'
+import VariantBottomSheet from '@/app/components/VariantBottomSheet'
 
 export default function AdminProductsPage() {
   const router = useRouter()
@@ -28,6 +29,10 @@ export default function AdminProductsPage() {
   const [liveProducts, setLiveProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState([])
+
+  // 버텀시트
+  const [showVariantSheet, setShowVariantSheet] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState(null)
 
   // 검색 모달
   const [showSearchModal, setShowSearchModal] = useState(false)
@@ -478,67 +483,40 @@ export default function AdminProductsPage() {
                         </span>
                       </div>
 
-                      {/* Variant 재고 정보 */}
+                      {/* Variant 재고 정보 (클릭 시 버텀시트) */}
                       {product.variants && product.variants.length > 0 ? (
-                        <div className="mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedProduct(product)
+                            setShowVariantSheet(true)
+                          }}
+                          className="w-full mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-left"
+                        >
                           <div className="text-xs font-medium text-gray-700 mb-1">
-                            Variant: {product.variants.length}개
+                            옵션: {product.variants.length}개
                           </div>
-                          <div className="space-y-1 max-h-24 overflow-y-auto">
-                            {product.variants.slice(0, 3).map((variant) => {
+                          <div className="space-y-1">
+                            {product.variants.slice(0, 2).map((variant) => {
                               const inventory = variant.inventory ?? 0
                               const optionLabel = variant.options?.map(opt => opt.optionValue).join(' × ') || variant.sku
 
                               return (
                                 <div key={variant.id} className="flex items-center justify-between text-xs">
                                   <span className="text-gray-700 truncate flex-1">{optionLabel}</span>
-                                  <div className="flex items-center gap-1 ml-2">
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation()
-                                        try {
-                                          const { updateVariantInventory } = await import('@/lib/supabaseApi')
-                                          await updateVariantInventory(variant.id, -1)
-                                          toast.success('재고 -1')
-                                          loadLiveProducts()
-                                        } catch (error) {
-                                          toast.error('재고 업데이트 실패')
-                                        }
-                                      }}
-                                      className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 flex items-center justify-center"
-                                    >
-                                      -
-                                    </button>
-                                    <span className={`font-medium w-6 text-center ${inventory === 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                                      {inventory}
-                                    </span>
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation()
-                                        try {
-                                          const { updateVariantInventory } = await import('@/lib/supabaseApi')
-                                          await updateVariantInventory(variant.id, 1)
-                                          toast.success('재고 +1')
-                                          loadLiveProducts()
-                                        } catch (error) {
-                                          toast.error('재고 업데이트 실패')
-                                        }
-                                      }}
-                                      className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 flex items-center justify-center"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
+                                  <span className={`font-medium ml-2 ${inventory === 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                    {inventory}개
+                                  </span>
                                 </div>
                               )
                             })}
-                            {product.variants.length > 3 && (
-                              <div className="text-xs text-gray-500 text-center">
-                                +{product.variants.length - 3}개 더보기
+                            {product.variants.length > 2 && (
+                              <div className="text-xs text-blue-600 text-center font-medium">
+                                +{product.variants.length - 2}개 더보기 →
                               </div>
                             )}
                           </div>
-                        </div>
+                        </button>
                       ) : (
                         <div className="mb-2 text-xs text-gray-600">
                           재고: {product.inventory ?? 0}개
@@ -795,6 +773,17 @@ export default function AdminProductsPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Variant 재고 관리 버텀시트 */}
+      <VariantBottomSheet
+        isOpen={showVariantSheet}
+        onClose={() => {
+          setShowVariantSheet(false)
+          setSelectedProduct(null)
+        }}
+        product={selectedProduct}
+        onUpdate={loadLiveProducts}
+      />
     </div>
   )
 }
