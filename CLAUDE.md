@@ -203,13 +203,14 @@
 ### 🟢 핵심 문서 (루트 - 항상 참조)
 1. **CLAUDE.md** (이 파일) - 작업 가이드
 2. **README.md** - 프로젝트 소개 및 시작 가이드
-3. **DB_REFERENCE_GUIDE.md** - DB 작업 필수 (17개 테이블 스키마)
-4. **SYSTEM_HEALTH_CHECK_2025-10-01.md** - 전체 시스템 상태 (95/100)
-5. **DETAILED_DATA_FLOW.md** - 페이지별 데이터 흐름 상세
-6. **SYSTEM_ARCHITECTURE.md** - 페이지별 구조 및 연관관계
-7. **DATA_ARCHITECTURE.md** - API 매핑 및 데이터 구조
-8. **DEPLOYMENT_STRATEGY.md** - 프로덕션 배포 전략
-9. **SYSTEM_CLONE_GUIDE.md** - 시스템 복제 가이드
+3. **ROADMAP_2025-10-04.md** - 🗺️ 개발 로드맵 (쿠폰, 송장, 최적화, 보안)
+4. **DB_REFERENCE_GUIDE.md** - DB 작업 필수 (17개 테이블 스키마)
+5. **SYSTEM_HEALTH_CHECK_2025-10-01.md** - 전체 시스템 상태 (95/100)
+6. **DETAILED_DATA_FLOW.md** - 페이지별 데이터 흐름 상세
+7. **SYSTEM_ARCHITECTURE.md** - 페이지별 구조 및 연관관계
+8. **DATA_ARCHITECTURE.md** - API 매핑 및 데이터 구조
+9. **DEPLOYMENT_STRATEGY.md** - 프로덕션 배포 전략
+10. **SYSTEM_CLONE_GUIDE.md** - 시스템 복제 가이드
 
 ### 📦 Archive 문서 (참고용)
 **작업 로그** (`docs/archive/work-logs/`)
