@@ -112,14 +112,20 @@ export default function ProductEditPage() {
   // 서브 카테고리 로드
   const loadSubCategories = async (categoryName) => {
     try {
-      // 선택된 대분류의 ID 찾기
-      const mainCategory = categories.find(c => c.name === categoryName && c.parent_id === null)
-      if (!mainCategory) return
+      // DB에서 직접 대분류 찾기 (state 의존 제거)
+      const { data: mainCategoryData } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', categoryName)
+        .is('parent_id', null)
+        .single()
+
+      if (!mainCategoryData) return
 
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .eq('parent_id', mainCategory.id)
+        .eq('parent_id', mainCategoryData.id)
         .eq('is_active', true)
         .order('name')
 
