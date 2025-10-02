@@ -26,7 +26,7 @@ body {
 }
 
 /* Fix input text visibility on all mobile browsers */
-input,
+input:not([type="radio"]):not([type="checkbox"]),
 textarea,
 select {
   -webkit-text-fill-color: #000000 !important;
@@ -34,6 +34,13 @@ select {
   opacity: 1 !important;
   -webkit-appearance: none;
   appearance: none;
+}
+
+/* Ensure radio and checkbox buttons are visible */
+input[type="radio"],
+input[type="checkbox"] {
+  -webkit-appearance: auto;
+  appearance: auto;
 }
 
 input::placeholder,
