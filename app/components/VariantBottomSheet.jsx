@@ -16,6 +16,14 @@ import toast from 'react-hot-toast'
  */
 export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate }) {
   const [updating, setUpdating] = useState(false)
+  const [localProduct, setLocalProduct] = useState(null)
+
+  // product가 변경되면 로컬 상태 업데이트
+  useEffect(() => {
+    if (product) {
+      setLocalProduct(product)
+    }
+  }, [product])
 
   // ESC 키로 닫기
   useEffect(() => {
@@ -45,13 +53,30 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
 
     setUpdating(true)
     try {
+      // 즉시 로컬 상태 업데이트 (Optimistic UI)
+      setLocalProduct(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          variants: prev.variants.map(v =>
+            v.id === variantId
+              ? { ...v, inventory: Math.max(0, (v.inventory ?? 0) + delta) }
+              : v
+          )
+        }
+      })
+
       const { updateVariantInventory } = await import('@/lib/supabaseApi')
       await updateVariantInventory(variantId, delta)
       toast.success(`재고 ${delta > 0 ? '+' : ''}${delta}`)
+
+      // 백그라운드에서 업데이트 (즉시 새로고침 안 함)
       onUpdate?.()
     } catch (error) {
       console.error('재고 업데이트 실패:', error)
       toast.error('재고 업데이트 실패')
+      // 실패 시 원래 상태로 복구
+      setLocalProduct(product)
     } finally {
       setUpdating(false)
     }
@@ -62,21 +87,34 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
 
     setUpdating(true)
     try {
+      // 즉시 로컬 상태 업데이트 (Optimistic UI)
+      setLocalProduct(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          inventory: Math.max(0, (prev.inventory ?? 0) + delta)
+        }
+      })
+
       const { updateProductInventory } = await import('@/lib/supabaseApi')
       await updateProductInventory(productId, delta)
       toast.success(`재고 ${delta > 0 ? '+' : ''}${delta}`)
+
+      // 백그라운드에서 업데이트 (즉시 새로고침 안 함)
       onUpdate?.()
     } catch (error) {
       console.error('재고 업데이트 실패:', error)
       toast.error('재고 업데이트 실패')
+      // 실패 시 원래 상태로 복구
+      setLocalProduct(product)
     } finally {
       setUpdating(false)
     }
   }
 
-  if (!product) return null
+  if (!localProduct) return null
 
-  const variants = product.variants || []
+  const variants = localProduct.variants || []
   const hasVariants = variants.length > 0
 
   return (
@@ -117,10 +155,10 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
             {/* 헤더 */}
             <div className="flex items-center gap-3 px-4 pb-4 border-b border-gray-200">
               <div className="relative w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                {product.thumbnail_url ? (
+                {localProduct.thumbnail_url ? (
                   <Image
-                    src={product.thumbnail_url}
-                    alt={product.title}
+                    src={localProduct.thumbnail_url}
+                    alt={localProduct.title}
                     fill
                     sizes="56px"
                     className="object-cover"
@@ -132,7 +170,7 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 truncate">{product.title}</h3>
+                <h3 className="font-semibold text-gray-900 truncate">{localProduct.title}</h3>
                 <p className="text-sm text-gray-600">
                   {hasVariants ? `${variants.length}개 옵션` : '단일 상품'}
                 </p>
@@ -201,19 +239,19 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
                   <div className="font-medium text-gray-900">기본 재고</div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                      onClick={() => handleUpdateProductInventory(product.id, -1)}
-                      disabled={updating || (product.inventory ?? 0) === 0}
+                      onClick={() => handleUpdateProductInventory(localProduct.id, -1)}
+                      disabled={updating || (localProduct.inventory ?? 0) === 0}
                       className="w-8 h-8 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium transition-colors"
                     >
                       -
                     </button>
                     <div className={`min-w-[3rem] text-center font-semibold ${
-                      (product.inventory ?? 0) === 0 ? 'text-red-600' : 'text-gray-900'
+                      (localProduct.inventory ?? 0) === 0 ? 'text-red-600' : 'text-gray-900'
                     }`}>
-                      {product.inventory ?? 0}
+                      {localProduct.inventory ?? 0}
                     </div>
                     <button
-                      onClick={() => handleUpdateProductInventory(product.id, 1)}
+                      onClick={() => handleUpdateProductInventory(localProduct.id, 1)}
                       disabled={updating}
                       className="w-8 h-8 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium transition-colors"
                     >
