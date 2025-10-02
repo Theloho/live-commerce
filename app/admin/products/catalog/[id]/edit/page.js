@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeftIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, CheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import { getSuppliers } from '@/lib/supabaseApi'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +18,8 @@ export default function ProductEditPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [suppliers, setSuppliers] = useState([])
+  const [showSupplierModal, setShowSupplierModal] = useState(false)
+  const [newSupplierName, setNewSupplierName] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     product_number: '',
@@ -96,6 +98,45 @@ export default function ProductEditPage() {
       ...prev,
       [field]: value
     }))
+  }
+
+  // 공급업체 빠른 추가
+  const handleQuickAddSupplier = async () => {
+    if (!newSupplierName.trim()) {
+      toast.error('업체명을 입력해주세요')
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .insert({
+          name: newSupplierName.trim(),
+          is_active: true
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      toast.success('업체가 추가되었습니다')
+
+      // 목록 새로고침
+      const updatedSuppliers = await getSuppliers()
+      setSuppliers(updatedSuppliers)
+
+      // 새로 추가된 업체를 선택
+      setFormData(prev => ({
+        ...prev,
+        supplier_id: data.id
+      }))
+
+      setShowSupplierModal(false)
+      setNewSupplierName('')
+    } catch (error) {
+      console.error('업체 추가 오류:', error)
+      toast.error('업체 추가에 실패했습니다')
+    }
   }
 
   // 저장
@@ -318,18 +359,28 @@ export default function ProductEditPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 공급업체
               </label>
-              <select
-                value={formData.supplier_id}
-                onChange={(e) => handleChange('supplier_id', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">선택하세요</option>
-                {suppliers.map(supplier => (
-                  <option key={supplier.id} value={supplier.id}>
-                    {supplier.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <select
+                  value={formData.supplier_id}
+                  onChange={(e) => handleChange('supplier_id', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">선택하세요</option>
+                  {suppliers.filter(s => s.is_active).map(supplier => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowSupplierModal(true)}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 flex items-center gap-1"
+                  title="업체 추가"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div>
@@ -396,6 +447,53 @@ export default function ProductEditPage() {
         </div>
 
       </div>
+
+      {/* 업체 빠른 추가 모달 */}
+      {showSupplierModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-4">업체 빠른 추가</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                업체명 *
+              </label>
+              <input
+                type="text"
+                value={newSupplierName}
+                onChange={(e) => setNewSupplierName(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleQuickAddSupplier()
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="업체명을 입력하세요"
+                autoFocus
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                상세 정보는 나중에 "공급업체 관리" 메뉴에서 추가할 수 있습니다
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowSupplierModal(false)
+                  setNewSupplierName('')
+                }}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleQuickAddSupplier}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
