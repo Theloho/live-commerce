@@ -329,7 +329,7 @@ export default function ProductCatalogPage() {
           </div>
         ) : (
           // 리스트 뷰
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -407,34 +407,38 @@ export default function ProductCatalogPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {product.inventory}개
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.status)}`}>
                         {getStatusText(product.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       {product.is_live_active ? (
                         <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
                           <div className="w-2 h-2 bg-red-500 rounded-full mr-1 animate-pulse"></div>
-                          라이브 중
+                          LIVE
                         </span>
                       ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">
-                          대기
-                        </span>
+                        <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => router.push(`/admin/products/catalog/${product.id}`)}
-                          className="px-3 py-1 text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-600 rounded transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/admin/products/catalog/${product.id}`)
+                          }}
+                          className="px-2.5 py-1 text-xs text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-600 rounded transition-colors whitespace-nowrap"
                         >
                           상세
                         </button>
                         <button
-                          onClick={() => router.push(`/admin/products/catalog/${product.id}/edit`)}
-                          className="px-3 py-1 text-gray-600 hover:text-white hover:bg-gray-600 border border-gray-600 rounded transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/admin/products/catalog/${product.id}/edit`)
+                          }}
+                          className="px-2.5 py-1 text-xs text-gray-600 hover:text-white hover:bg-gray-600 border border-gray-600 rounded transition-colors whitespace-nowrap"
                         >
                           편집
                         </button>
