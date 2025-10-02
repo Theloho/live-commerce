@@ -830,11 +830,12 @@ export default function CheckoutPage() {
                   }}
                   onSelect={(address) => {
                     setSelectedAddress(address)
-                    // userProfile에도 주소 정보 반영
+                    // userProfile에도 주소 정보 반영 (우편번호 포함)
                     setUserProfile(prev => ({
                       ...prev,
                       address: address.address,
-                      detail_address: address.detail_address || ''
+                      detail_address: address.detail_address || '',
+                      postal_code: address.postal_code || ''
                     }))
                     setShowAddressModal(false)
                     // ✨ 토스트 제거: 배송지 선택은 시각적으로 이미 확인 가능

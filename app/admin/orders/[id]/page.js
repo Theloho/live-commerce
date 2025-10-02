@@ -267,7 +267,7 @@ export default function AdminOrderDetailPage() {
               <div>
                 <p className="text-sm text-gray-500 mb-1">배송지</p>
                 <p className="font-medium text-gray-900">
-                  [{order.shipping?.zipcode || '00000'}] {order.shipping?.address || '주소 정보 없음'}
+                  [{order.shipping?.postal_code || order.shipping?.zipcode || '우편번호 미입력'}] {order.shipping?.address || '주소 정보 없음'}
                 </p>
                 {order.shipping?.detail_address && (
                   <p className="text-gray-700 mt-1">{order.shipping.detail_address}</p>
