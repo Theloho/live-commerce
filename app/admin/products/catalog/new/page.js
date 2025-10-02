@@ -229,7 +229,8 @@ export default function DetailedProductNewPage() {
     try {
       // 1. 상품 생성
       const newProductData = {
-        title: productData.title.trim(),
+        title: productData.title.trim() || productData.product_number, // 이름 없으면 번호를 이름으로
+        product_number: productData.product_number,
         description: productData.description.trim(),
         detailed_description: productData.detailed_description.trim(),
         price: parseInt(productData.price),

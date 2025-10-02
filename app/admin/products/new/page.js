@@ -344,23 +344,18 @@ export default function NewProductPage() {
     try {
       console.log('🚀 [빠른등록] 상품 저장 시작')
 
-      // 표시용 제품명 생성
-      const displayName = productData.title.trim()
-        ? `${productNumber}/${productData.title.trim()}`
-        : productNumber
-
       // 총 재고 계산
       let totalInventory = productData.inventory
       if (productData.optionType !== 'none') {
         totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
       }
 
-      // 1. 제품 생성
+      // 1. 제품 생성 (번호와 이름 분리)
       const { data: product, error: productError } = await supabase
         .from('products')
         .insert({
-          title: displayName,
-          product_number: productNumber, // product_number 컬럼 추가
+          title: productData.title.trim() || productNumber, // 이름 없으면 번호를 이름으로
+          product_number: productNumber,
           price: parseInt(productData.price),
           inventory: totalInventory,
           thumbnail_url: imagePreview,
