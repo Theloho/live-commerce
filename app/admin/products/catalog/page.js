@@ -279,20 +279,20 @@ export default function ProductCatalogPage() {
                 key={product.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow overflow-hidden"
               >
                 {/* 상품 이미지 */}
-                <div className="relative aspect-square">
+                <div className="relative aspect-square overflow-hidden">
                   {product.thumbnail_url ? (
                     <Image
                       src={product.thumbnail_url}
                       alt={product.title}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover rounded-t-lg"
+                      className="object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gray-100 rounded-t-lg flex items-center justify-center">
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                       <span className="text-gray-400">이미지 없음</span>
                     </div>
                   )}
@@ -435,17 +435,17 @@ export default function ProductCatalogPage() {
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-12 w-12">
+                        <div className="flex-shrink-0 h-12 w-12 overflow-hidden rounded-lg">
                           {product.thumbnail_url ? (
                             <Image
                               src={product.thumbnail_url}
                               alt={product.title}
                               width={48}
                               height={48}
-                              className="rounded-lg object-cover"
+                              className="object-cover w-full h-full"
                             />
                           ) : (
-                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <div className="w-12 h-12 bg-gray-100 flex items-center justify-center">
                               <span className="text-gray-400 text-xs">이미지</span>
                             </div>
                           )}
