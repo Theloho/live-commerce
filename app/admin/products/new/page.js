@@ -192,19 +192,20 @@ export default function NewProductPage() {
   // 제품번호 자동 생성 (가장 낮은 빈 번호 찾기)
   const generateProductNumber = async () => {
     try {
-      // 기존 제품들의 title에서 번호 패턴 추출
+      // product_number 컬럼에서 사용 중인 번호 조회
       const { data: products, error } = await supabase
         .from('products')
-        .select('title')
-        .not('title', 'is', null)
+        .select('product_number')
+        .not('product_number', 'is', null)
 
       if (error) throw error
 
-      // title에서 숫자 패턴 추출 (0001, 0042/제품명 등)
+      // 0001~9999 형식의 번호만 추출
       const usedNumbers = products
         .map(p => {
-          const match = p.title.match(/^(\d{4})/)
-          return match ? parseInt(match[1]) : null
+          if (!p.product_number) return null
+          const num = parseInt(p.product_number)
+          return (num >= 1 && num <= 9999) ? num : null
         })
         .filter(num => num !== null)
 
@@ -384,6 +385,7 @@ export default function NewProductPage() {
         .from('products')
         .insert({
           title: displayName,
+          product_number: productNumber, // product_number 컬럼 추가
           price: parseInt(productData.price),
           inventory: totalInventory,
           thumbnail_url: imagePreview,
