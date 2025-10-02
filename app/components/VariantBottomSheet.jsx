@@ -69,9 +69,6 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
       const { updateVariantInventory } = await import('@/lib/supabaseApi')
       await updateVariantInventory(variantId, delta)
       toast.success(`재고 ${delta > 0 ? '+' : ''}${delta}`)
-
-      // 백그라운드에서 업데이트 (즉시 새로고침 안 함)
-      onUpdate?.()
     } catch (error) {
       console.error('재고 업데이트 실패:', error)
       toast.error('재고 업데이트 실패')
@@ -99,9 +96,6 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
       const { updateProductInventory } = await import('@/lib/supabaseApi')
       await updateProductInventory(productId, delta)
       toast.success(`재고 ${delta > 0 ? '+' : ''}${delta}`)
-
-      // 백그라운드에서 업데이트 (즉시 새로고침 안 함)
-      onUpdate?.()
     } catch (error) {
       console.error('재고 업데이트 실패:', error)
       toast.error('재고 업데이트 실패')
@@ -110,6 +104,12 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
     } finally {
       setUpdating(false)
     }
+  }
+
+  const handleClose = () => {
+    // 닫을 때 백그라운드에서 목록 업데이트
+    onUpdate?.()
+    onClose()
   }
 
   if (!localProduct) return null
@@ -128,7 +128,7 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-black/50 z-40"
-            onClick={onClose}
+            onClick={handleClose}
           />
 
           {/* 버텀시트 */}
@@ -142,7 +142,7 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={(e, { offset, velocity }) => {
               if (offset.y > 100 || velocity.y > 500) {
-                onClose()
+                handleClose()
               }
             }}
             className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 max-h-[85vh] flex flex-col"
@@ -176,7 +176,7 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
                 </p>
               </div>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <XMarkIcon className="w-5 h-5 text-gray-500" />
