@@ -328,6 +328,14 @@ export default function AdminOrderDetailPage() {
                   const shippingFee = shippingInfo.totalShipping
                   const correctAmount = itemsTotal + shippingFee
 
+                  console.log('💰 관리자 주문 상세 금액 계산:', {
+                    itemsTotal,
+                    shippingFee,
+                    correctAmount,
+                    postalCode: order.shipping?.postal_code,
+                    shippingInfo
+                  })
+
                   return (
                     <span className="font-bold text-lg">₩{correctAmount.toLocaleString()}</span>
                   )

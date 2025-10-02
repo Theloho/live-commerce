@@ -742,7 +742,9 @@ export default function OrderCompletePage() {
                           console.log('💰 주문 상세 금액 계산:', {
                             correctTotalProductAmount,
                             shippingFee,
-                            actualPaymentAmount
+                            actualPaymentAmount,
+                            postalCode: orderData.shipping?.postal_code,
+                            shippingInfo
                           })
 
                           return (
