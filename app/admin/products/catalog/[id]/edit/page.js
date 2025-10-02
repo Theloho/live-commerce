@@ -471,7 +471,7 @@ export default function ProductEditPage() {
                 autoFocus
               />
               <p className="mt-1 text-xs text-gray-500">
-                상세 정보는 나중에 "공급업체 관리" 메뉴에서 추가할 수 있습니다
+                상세 정보는 나중에 &quot;공급업체 관리&quot; 메뉴에서 추가할 수 있습니다
               </p>
             </div>
             <div className="flex justify-end gap-2">
