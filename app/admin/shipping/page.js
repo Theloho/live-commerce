@@ -211,9 +211,11 @@ export default function AdminShippingPage() {
       }
 
       // 배송 정보 - shipping_* 컬럼 우선 사용
+      const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
       const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
       const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
       const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+      const fullAddressWithPostal = postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
 
       // 고객명 - shipping_* 컬럼 우선 사용
       const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
@@ -231,7 +233,7 @@ export default function AdminShippingPage() {
         order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
         customerName,
         phone,
-        `"${fullAddress}"`,
+        `"${fullAddressWithPostal}"`,
         `"${items}"`,
         totalQuantity,
         amount,
@@ -418,7 +420,7 @@ export default function AdminShippingPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900 max-w-xs">
                         {(() => {
-                          const postalCode = order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
+                          const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
                           const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
                           const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
                           const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
@@ -452,9 +454,11 @@ export default function AdminShippingPage() {
                             }
 
                             // 배송 정보 - shipping_* 컬럼 우선 사용
+                            const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
                             const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
                             const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
                             const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+                            const fullAddressWithPostal = postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
 
                             // 고객명과 연락처 - shipping_* 컬럼 우선 사용
                             const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
@@ -468,7 +472,7 @@ export default function AdminShippingPage() {
                               order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
                               customerName,
                               phone,
-                              `"${fullAddress}"`,
+                              `"${fullAddressWithPostal}"`,
                               `"${items}"`,
                               totalQuantity,
                               amount,
@@ -581,6 +585,15 @@ export default function AdminShippingPage() {
                   <div className="text-sm text-gray-600">
                     {order.user?.phone}
                   </div>
+                  <div className="text-sm text-gray-600">
+                    {(() => {
+                      const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
+                      const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
+                      const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
+                      const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+                      return postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
+                    })()}
+                  </div>
                 </div>
 
                 {/* 하단: 버튼들 */}
@@ -611,6 +624,8 @@ export default function AdminShippingPage() {
                         }).join(';')
                       }
 
+                      const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
+                      const fullAddressWithPostal = postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
                       const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
                       const phone = order.shipping_phone || order.user?.phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || order.userPhone || '정보없음'
                       const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
@@ -620,7 +635,7 @@ export default function AdminShippingPage() {
                         order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
                         customerName,
                         phone,
-                        `"${fullAddress}"`,
+                        `"${fullAddressWithPostal}"`,
                         `"${items}"`,
                         totalQuantity,
                         amount,
