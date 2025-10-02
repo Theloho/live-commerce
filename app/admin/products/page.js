@@ -518,9 +518,18 @@ export default function AdminProductsPage() {
                           </div>
                         </button>
                       ) : (
-                        <div className="mb-2 text-xs text-gray-600">
-                          재고: {product.inventory ?? 0}개
-                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedProduct(product)
+                            setShowVariantSheet(true)
+                          }}
+                          className="w-full mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-left"
+                        >
+                          <div className="text-xs text-gray-600">
+                            재고: {product.inventory ?? 0}개
+                          </div>
+                        </button>
                       )}
 
                       {/* 노출 토글 버튼 */}

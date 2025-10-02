@@ -57,6 +57,23 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
     }
   }
 
+  const handleUpdateProductInventory = async (productId, delta) => {
+    if (updating) return
+
+    setUpdating(true)
+    try {
+      const { updateProductInventory } = await import('@/lib/supabaseApi')
+      await updateProductInventory(productId, delta)
+      toast.success(`재고 ${delta > 0 ? '+' : ''}${delta}`)
+      onUpdate?.()
+    } catch (error) {
+      console.error('재고 업데이트 실패:', error)
+      toast.error('재고 업데이트 실패')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   if (!product) return null
 
   const variants = product.variants || []
@@ -182,8 +199,26 @@ export default function VariantBottomSheet({ isOpen, onClose, product, onUpdate 
               ) : (
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="font-medium text-gray-900">기본 재고</div>
-                  <div className="text-lg font-semibold text-gray-900">
-                    {product.inventory ?? 0}개
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleUpdateProductInventory(product.id, -1)}
+                      disabled={updating || (product.inventory ?? 0) === 0}
+                      className="w-8 h-8 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium transition-colors"
+                    >
+                      -
+                    </button>
+                    <div className={`min-w-[3rem] text-center font-semibold ${
+                      (product.inventory ?? 0) === 0 ? 'text-red-600' : 'text-gray-900'
+                    }`}>
+                      {product.inventory ?? 0}
+                    </div>
+                    <button
+                      onClick={() => handleUpdateProductInventory(product.id, 1)}
+                      disabled={updating}
+                      className="w-8 h-8 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium transition-colors"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               )}
