@@ -493,29 +493,25 @@ export default function AdminProductsPage() {
                           }}
                           className="w-full mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-left"
                         >
-                          <div className="text-xs font-medium text-gray-700 mb-1">
-                            옵션: {product.variants.length}개
-                          </div>
-                          <div className="space-y-1">
-                            {product.variants.slice(0, 2).map((variant) => {
-                              const inventory = variant.inventory ?? 0
-                              const optionLabel = variant.options?.map(opt => opt.optionValue).join(' × ') || variant.sku
+                          {(() => {
+                            const soldOutCount = product.variants.filter(v => (v.inventory ?? 0) === 0).length
+                            const totalCount = product.variants.length
 
+                            if (soldOutCount > 0) {
                               return (
-                                <div key={variant.id} className="flex items-center justify-between text-xs">
-                                  <span className="text-gray-700 truncate flex-1">{optionLabel}</span>
-                                  <span className={`font-medium ml-2 ${inventory === 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                                    {inventory}개
-                                  </span>
+                                <div className="text-xs">
+                                  <span className="text-red-600 font-bold">품절 {soldOutCount}건</span>
+                                  <span className="text-gray-500"> / 총 {totalCount}개 옵션</span>
                                 </div>
                               )
-                            })}
-                            {product.variants.length > 2 && (
-                              <div className="text-xs text-blue-600 text-center font-medium">
-                                +{product.variants.length - 2}개 더보기 →
-                              </div>
-                            )}
-                          </div>
+                            } else {
+                              return (
+                                <div className="text-xs text-gray-700">
+                                  옵션: {totalCount}개 (재고 있음)
+                                </div>
+                              )
+                            }
+                          })()}
                         </button>
                       ) : (
                         <button
