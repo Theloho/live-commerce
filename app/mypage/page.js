@@ -17,7 +17,7 @@ import {
 import useAuth from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
-import AddressManager from '@/app/components/AddressManager'
+import AddressManager from '@/app/components/address/AddressManager'
 import { UserProfileManager } from '@/lib/userProfileManager'
 
 export default function MyPage() {
@@ -488,9 +488,39 @@ export default function MyPage() {
           </div>
           <div className="p-4">
             <AddressManager
-              userId={currentUserId}
-              onAddressChange={() => {
-                // 주소 변경 시 필요한 콜백 처리
+              userProfile={userProfile}
+              onUpdate={async (updatedData) => {
+                // 주소 업데이트를 profiles 테이블에 저장
+                try {
+                  const currentUser = userSession || user
+                  if (!currentUser?.id) return
+
+                  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+                  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+
+                  const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'apikey': supabaseKey,
+                      'Authorization': `Bearer ${supabaseKey}`,
+                      'Content-Type': 'application/json',
+                      'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(updatedData)
+                  })
+
+                  if (response.ok) {
+                    const updated = await response.json()
+                    setUserProfile(prev => ({ ...prev, ...updatedData }))
+                    console.log('✅ 주소 업데이트 성공:', updatedData)
+                  } else {
+                    console.error('주소 업데이트 실패:', response.status)
+                    toast.error('주소 저장에 실패했습니다')
+                  }
+                } catch (error) {
+                  console.error('주소 업데이트 오류:', error)
+                  toast.error('주소 저장에 실패했습니다')
+                }
               }}
             />
           </div>
