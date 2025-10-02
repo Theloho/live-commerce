@@ -198,10 +198,15 @@ export default function NewProductPage() {
         .select('product_number')
         .not('product_number', 'is', null)
 
-      if (error) throw error
+      if (error) {
+        console.error('상품번호 조회 오류:', error)
+        toast.error('상품번호 조회 실패')
+        setProductNumber('0001')
+        return
+      }
 
       // 0001~9999 형식의 번호만 추출
-      const usedNumbers = products
+      const usedNumbers = (products || [])
         .map(p => {
           if (!p.product_number) return null
           const num = parseInt(p.product_number)
@@ -221,6 +226,7 @@ export default function NewProductPage() {
       setProductNumber(String(Math.max(...usedNumbers, 0) + 1).padStart(4, '0'))
     } catch (error) {
       console.error('제품번호 생성 오류:', error)
+      toast.error('상품번호 생성 실패')
       setProductNumber('0001')
     }
   }

@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase'
 import AddressManager from '@/app/components/address/AddressManager'
 import { createOrder, updateMultipleOrderStatus } from '@/lib/supabaseApi'
 import { UserProfileManager } from '@/lib/userProfileManager'
+import { formatShippingInfo } from '@/lib/shippingUtils'
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
 
@@ -522,8 +523,9 @@ export default function CheckoutPage() {
     return null
   }
 
-  // 배송비 계산 (기본 4000원)
-  const shippingFee = 4000
+  // 배송비 계산 (기본 4000원 + 도서산간 추가 배송비)
+  const shippingInfo = formatShippingInfo(4000, selectedAddress?.postal_code)
+  const shippingFee = shippingInfo.totalShipping
   const finalTotal = orderItem.totalPrice + shippingFee
 
   const handleBankTransfer = () => {
@@ -861,11 +863,19 @@ export default function CheckoutPage() {
                 </p>
               </div>
             </div>
-            <div className="mt-2 p-2 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700">
-                💡 배송비 4,000원이 추가됩니다
-              </p>
-            </div>
+            {shippingInfo.isRemote ? (
+              <div className="mt-2 p-2 bg-orange-50 rounded-lg">
+                <p className="text-xs text-orange-700">
+                  🏝️ {shippingInfo.region} 지역은 추가 배송비 ₩{shippingInfo.surcharge.toLocaleString()}이 포함됩니다
+                </p>
+              </div>
+            ) : (
+              <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  💡 배송비 ₩{shippingInfo.baseShipping.toLocaleString()}이 추가됩니다
+                </p>
+              </div>
+            )}
           </motion.div>
 
           {/* 결제 방법 */}
@@ -908,9 +918,15 @@ export default function CheckoutPage() {
                 <span className="text-gray-900">₩{orderItem.totalPrice.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">배송비</span>
-                <span className="text-gray-900">₩{shippingFee.toLocaleString()}</span>
+                <span className="text-gray-600">기본 배송비</span>
+                <span className="text-gray-900">₩{shippingInfo.baseShipping.toLocaleString()}</span>
               </div>
+              {shippingInfo.isRemote && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-orange-600">도서산간 추가비 ({shippingInfo.region})</span>
+                  <span className="text-orange-600">+₩{shippingInfo.surcharge.toLocaleString()}</span>
+                </div>
+              )}
               <div className="pt-2 border-t border-gray-200">
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900">총 결제금액</span>

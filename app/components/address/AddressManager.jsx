@@ -22,7 +22,8 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
   const [formData, setFormData] = useState({
     label: '',
     address: '',
-    detail_address: ''
+    detail_address: '',
+    postal_code: '' // 우편번호 추가
   })
   const [showAddressSearch, setShowAddressSearch] = useState(false)
 
@@ -89,7 +90,7 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
       onSelect(newAddress)
     }
 
-    setFormData({ label: '', address: '', detail_address: '' })
+    setFormData({ label: '', address: '', detail_address: '', postal_code: '' })
     setShowAddForm(false)
     toast.success('배송지가 추가되었습니다')
   }
@@ -114,7 +115,7 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
     }
 
     setEditingId(null)
-    setFormData({ label: '', address: '', detail_address: '' })
+    setFormData({ label: '', address: '', detail_address: '', postal_code: '' })
     toast.success('배송지가 수정되었습니다')
   }
 
@@ -163,7 +164,8 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
     setFormData({
       label: address.label,
       address: address.address,
-      detail_address: address.detail_address || ''
+      detail_address: address.detail_address || '',
+      postal_code: address.postal_code || ''
     })
   }
 
@@ -180,10 +182,11 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
     if (typeof window !== 'undefined' && window.daum && window.daum.Postcode) {
       new window.daum.Postcode({
         oncomplete: function(data) {
-          // 선택한 주소를 폼에 설정
+          // 선택한 주소와 우편번호를 폼에 설정
           setFormData(prev => ({
             ...prev,
-            address: `${data.sido} ${data.sigungu} ${data.roadname || data.jibunAddress}`
+            address: `${data.sido} ${data.sigungu} ${data.roadname || data.jibunAddress}`,
+            postal_code: data.zonecode // 우편번호 저장
           }))
           setShowAddressSearch(false)
         },
@@ -309,7 +312,7 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
                     <button
                       onClick={() => {
                         setEditingId(null)
-                        setFormData({ label: '', address: '', detail_address: '' })
+                        setFormData({ label: '', address: '', detail_address: '', postal_code: '' })
                       }}
                       className="px-3 py-1 bg-gray-300 text-gray-700 rounded-lg text-sm"
                     >
@@ -332,7 +335,10 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">{address.address}</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {address.postal_code && <span className="text-gray-500">({address.postal_code}) </span>}
+                          {address.address}
+                        </p>
                         {address.detail_address && (
                           <p className="text-sm text-gray-500">{address.detail_address}</p>
                         )}
@@ -421,7 +427,7 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
             <button
               onClick={() => {
                 setShowAddForm(false)
-                setFormData({ label: '', address: '', detail_address: '' })
+                setFormData({ label: '', address: '', detail_address: '', postal_code: '' })
               }}
               className="px-3 py-1 bg-gray-300 text-gray-700 rounded-lg text-sm"
             >

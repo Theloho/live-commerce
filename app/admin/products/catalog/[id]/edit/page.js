@@ -312,25 +312,38 @@ export default function ProductEditPage() {
                     <button
                       type="button"
                       onClick={async () => {
-                        const { data: products } = await supabase
-                          .from('products')
-                          .select('product_number')
-                          .not('product_number', 'is', null)
+                        try {
+                          const { data: products, error } = await supabase
+                            .from('products')
+                            .select('product_number')
+                            .not('product_number', 'is', null)
 
-                        const usedNumbers = products
-                          .map(p => {
-                            const match = p.product_number?.match(/^P-(\d{4})$/)
-                            return match ? parseInt(match[1]) : null
-                          })
-                          .filter(num => num !== null)
-
-                        for (let i = 1; i <= 9999; i++) {
-                          if (!usedNumbers.includes(i)) {
-                            handleChange('product_number', `P-${String(i).padStart(4, '0')}`)
+                          if (error) {
+                            console.error('상품번호 조회 오류:', error)
+                            toast.error('상품번호 조회 실패')
                             return
                           }
+
+                          const usedNumbers = (products || [])
+                            .map(p => {
+                              const match = p.product_number?.match(/^P-(\d{4})$/)
+                              return match ? parseInt(match[1]) : null
+                            })
+                            .filter(num => num !== null)
+
+                          for (let i = 1; i <= 9999; i++) {
+                            if (!usedNumbers.includes(i)) {
+                              handleChange('product_number', `P-${String(i).padStart(4, '0')}`)
+                              toast.success(`상품번호 P-${String(i).padStart(4, '0')} 생성됨`)
+                              return
+                            }
+                          }
+                          handleChange('product_number', `P-${String(Math.max(...usedNumbers, 0) + 1).padStart(4, '0')}`)
+                          toast.success('상품번호 생성됨')
+                        } catch (err) {
+                          console.error('상품번호 생성 오류:', err)
+                          toast.error('상품번호 생성 실패')
                         }
-                        handleChange('product_number', `P-${String(Math.max(...usedNumbers, 0) + 1).padStart(4, '0')}`)
                       }}
                       className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm whitespace-nowrap"
                     >

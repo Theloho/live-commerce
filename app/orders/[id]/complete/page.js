@@ -18,6 +18,7 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
+import { formatShippingInfo } from '@/lib/shippingUtils'
 import toast from 'react-hot-toast'
 
 export default function OrderCompletePage() {
@@ -357,7 +358,8 @@ export default function OrderCompletePage() {
                       }, 0)
 
                       const vat = Math.floor(correctTotalProductAmount * 0.1)
-                      const shippingFee = 4000
+                      const shippingInfo = formatShippingInfo(4000, orderData.shipping?.postal_code)
+                      const shippingFee = shippingInfo.totalShipping
                       const totalCardAmount = correctTotalProductAmount + vat + shippingFee
 
                       return (
@@ -375,7 +377,10 @@ export default function OrderCompletePage() {
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">배송비</span>
+                            <span className="text-sm text-gray-600">
+                              배송비
+                              {shippingInfo.isRemote && <span className="text-orange-600"> (+{shippingInfo.region})</span>}
+                            </span>
                             <span className="text-sm text-gray-900">
                               ₩{shippingFee.toLocaleString()}
                             </span>
@@ -731,7 +736,8 @@ export default function OrderCompletePage() {
 
                           // 실제 저장된 결제 금액에서 배송비 역산
                           const actualPaymentAmount = orderData.payment?.amount || 0
-                          const shippingFee = Math.max(0, actualPaymentAmount - correctTotalProductAmount)
+                          const shippingInfo = formatShippingInfo(4000, orderData.shipping?.postal_code)
+                          const shippingFee = shippingInfo.totalShipping
 
                           console.log('💰 주문 상세 금액 계산:', {
                             correctTotalProductAmount,
@@ -748,7 +754,10 @@ export default function OrderCompletePage() {
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">배송비</span>
+                                <span className="text-sm text-gray-600">
+                                  배송비
+                                  {shippingInfo.isRemote && <span className="text-orange-600"> (+{shippingInfo.region})</span>}
+                                </span>
                                 <span className="font-medium text-gray-900">
                                   ₩{shippingFee.toLocaleString()}
                                 </span>

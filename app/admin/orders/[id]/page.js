@@ -17,6 +17,7 @@ import {
   BanknotesIcon,
   PhotoIcon
 } from '@heroicons/react/24/outline'
+import { formatShippingInfo } from '@/lib/shippingUtils'
 import toast from 'react-hot-toast'
 
 export default function AdminOrderDetailPage() {
@@ -316,11 +317,15 @@ export default function AdminOrderDetailPage() {
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">결제 금액</span>
                 {(() => {
-                  // 정확한 결제 금액 계산
+                  // 정확한 결제 금액 계산 (도서산간 추가 배송비 포함)
                   const itemsTotal = order.items.reduce((sum, item) => {
                     return sum + ((item.price || 0) * (item.quantity || 1))
                   }, 0)
-                  const shippingFee = order.status === 'pending' ? 0 : 4000
+                  const shippingInfo = formatShippingInfo(
+                    order.status === 'pending' ? 0 : 4000,
+                    order.shipping?.postal_code
+                  )
+                  const shippingFee = shippingInfo.totalShipping
                   const correctAmount = itemsTotal + shippingFee
 
                   return (
@@ -649,8 +654,12 @@ export default function AdminOrderDetailPage() {
                 return sum + itemTotal
               }, 0)
 
-              // 배송비 계산: 결제대기는 0원, 나머지는 4000원
-              const shippingFee = order.status === 'pending' ? 0 : 4000
+              // 배송비 계산: 결제대기는 0원, 나머지는 기본 4000원 + 도서산간 추가비
+              const shippingInfo = formatShippingInfo(
+                order.status === 'pending' ? 0 : 4000,
+                order.shipping?.postal_code
+              )
+              const shippingFee = shippingInfo.totalShipping
 
               // 올바른 총 결제 금액 계산
               const correctTotalAmount = itemsTotal + shippingFee
@@ -659,6 +668,9 @@ export default function AdminOrderDetailPage() {
               console.log('💰 관리자 주문 상세 금액 계산:', {
                 'order.status': order.status,
                 'itemsTotal': itemsTotal,
+                'baseShipping': shippingInfo.baseShipping,
+                'surcharge': shippingInfo.surcharge,
+                'region': shippingInfo.region,
                 'shippingFee': shippingFee,
                 'correctTotalAmount': correctTotalAmount,
                 'order.payment?.amount (DB값)': order.payment?.amount,
@@ -677,7 +689,14 @@ export default function AdminOrderDetailPage() {
                     <span>₩{itemsTotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">배송비</span>
+                    <span className="text-gray-600">
+                      배송비
+                      {shippingInfo.isRemote && (
+                        <span className="text-orange-600 text-xs ml-1">
+                          (+{shippingInfo.region})
+                        </span>
+                      )}
+                    </span>
                     <span>{shippingFee > 0 ? `₩${shippingFee.toLocaleString()}` : '무료'}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
