@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { getAllOrders } from '@/lib/supabaseApi'
+import { formatShippingInfo } from '@/lib/shippingUtils'
 
 export default function AdminOrdersPage() {
   const router = useRouter()
@@ -409,11 +410,15 @@ export default function AdminOrdersPage() {
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         {(() => {
-                          // 정확한 결제 금액 계산
+                          // 정확한 결제 금액 계산 (도서산간 배송비 포함)
                           const itemsTotal = order.items.reduce((sum, item) => {
                             return sum + ((item.price || 0) * (item.quantity || 1))
                           }, 0)
-                          const shippingFee = order.status === 'pending' ? 0 : 4000
+                          const shippingInfo = formatShippingInfo(
+                            order.status === 'pending' ? 0 : 4000,
+                            order.shipping?.postal_code
+                          )
+                          const shippingFee = shippingInfo.totalShipping
                           const correctAmount = itemsTotal + shippingFee
 
                           return `₩${correctAmount.toLocaleString()}`
@@ -541,7 +546,11 @@ export default function AdminOrdersPage() {
         <div className="lg:hidden divide-y divide-gray-200">
           {filteredOrders.map((order, index) => {
             const itemsTotal = order.items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0)
-            const shippingFee = order.status === 'pending' ? 0 : 4000
+            const shippingInfo = formatShippingInfo(
+              order.status === 'pending' ? 0 : 4000,
+              order.shipping?.postal_code
+            )
+            const shippingFee = shippingInfo.totalShipping
             const correctAmount = itemsTotal + shippingFee
             const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
             const uniqueProducts = order.items.length
