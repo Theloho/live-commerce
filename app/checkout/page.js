@@ -1020,7 +1020,8 @@ export default function CheckoutPage() {
                     setDepositOption(e.target.value)
                     setDepositName(userProfile.name)
                   }}
-                  className="mr-3 w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+                  className="mr-3 w-4 h-4 accent-red-600"
+                  style={{ accentColor: '#dc2626' }}
                 />
                 <div>
                   <p className="font-medium text-gray-900">고객 이름</p>
@@ -1039,7 +1040,8 @@ export default function CheckoutPage() {
                     const currentUser = userSession || user
                     setDepositName(currentUser?.nickname || currentUser?.user_metadata?.nickname || userProfile.name)
                   }}
-                  className="mr-3 w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+                  className="mr-3 w-4 h-4 accent-red-600"
+                  style={{ accentColor: '#dc2626' }}
                 />
                 <div>
                   <p className="font-medium text-gray-900">닉네임</p>
@@ -1057,7 +1059,8 @@ export default function CheckoutPage() {
                     setDepositOption(e.target.value)
                     setDepositName(customDepositName)
                   }}
-                  className="mr-3 mt-1 w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+                  className="mr-3 mt-1 w-4 h-4 accent-red-600"
+                  style={{ accentColor: '#dc2626' }}
                 />
                 <div className="flex-1">
                   <p className="font-medium text-gray-900 mb-2">다른 이름으로 입금</p>
