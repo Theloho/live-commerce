@@ -457,7 +457,7 @@ export default function AddressManager({ userId, onAddressChange }) {
             >
               <form onSubmit={handleSubmit} className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">
+                  <h3 className="text-lg font-semibold text-gray-900" style={{ WebkitTextFillColor: '#111827' }}>
                     {editingId ? '주소 수정' : '새 주소 추가'}
                   </h3>
                   <button
@@ -471,7 +471,7 @@ export default function AddressManager({ userId, onAddressChange }) {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-900 mb-1" style={{ WebkitTextFillColor: '#111827' }}>
                       배송지 이름
                     </label>
                     <input
@@ -479,12 +479,17 @@ export default function AddressManager({ userId, onAddressChange }) {
                       value={formData.label}
                       onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                       placeholder="예: 집, 회사, 기타"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      style={{
+                        WebkitTextFillColor: '#111827',
+                        color: '#111827',
+                        opacity: 1
+                      }}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-900 mb-1" style={{ WebkitTextFillColor: '#111827' }}>
                       주소 *
                     </label>
                     <div className="flex space-x-2">
@@ -493,13 +498,19 @@ export default function AddressManager({ userId, onAddressChange }) {
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                         placeholder="주소를 입력하거나 검색하세요"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        style={{
+                          WebkitTextFillColor: '#111827',
+                          color: '#111827',
+                          opacity: 1
+                        }}
                         required
                       />
                       <button
                         type="button"
                         onClick={handleAddressSearch}
-                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                        className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                        style={{ WebkitTextFillColor: '#111827' }}
                       >
                         주소 검색
                       </button>
@@ -507,7 +518,7 @@ export default function AddressManager({ userId, onAddressChange }) {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-900 mb-1" style={{ WebkitTextFillColor: '#111827' }}>
                       상세 주소
                     </label>
                     <input
@@ -515,7 +526,12 @@ export default function AddressManager({ userId, onAddressChange }) {
                       value={formData.detail_address}
                       onChange={(e) => setFormData({ ...formData, detail_address: e.target.value })}
                       placeholder="상세 주소를 입력하세요 (선택사항)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      style={{
+                        WebkitTextFillColor: '#111827',
+                        color: '#111827',
+                        opacity: 1
+                      }}
                     />
                   </div>
                 </div>
@@ -524,7 +540,8 @@ export default function AddressManager({ userId, onAddressChange }) {
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition-colors"
+                    style={{ WebkitTextFillColor: '#111827' }}
                   >
                     취소
                   </button>

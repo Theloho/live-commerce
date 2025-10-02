@@ -153,16 +153,9 @@ export default function ProductCatalogPage() {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">🛍️ 전체 상품 관리</h1>
-              <p className="text-gray-600 mt-1">상품 마스터 데이터를 관리하고 라이브 방송에 추가할 수 있습니다</p>
+              <p className="text-gray-600 mt-1">상품 마스터 데이터를 관리합니다</p>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => router.push('/admin/products')}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center"
-              >
-                <PlayIcon className="w-4 h-4 mr-2" />
-                라이브 방송 관리
-              </button>
               <button
                 onClick={() => router.push('/admin/products/catalog/new')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
@@ -171,6 +164,30 @@ export default function ProductCatalogPage() {
                 상세 상품 등록
               </button>
             </div>
+          </div>
+
+          {/* 탭 네비게이션 */}
+          <div className="flex gap-2 pb-4">
+            <button
+              onClick={() => router.push('/admin/products')}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <PlayIcon className="w-4 h-4" />
+              실시간 방송 컨트롤
+            </button>
+            <button
+              onClick={() => router.push('/admin/live-products')}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <Squares2X2Icon className="w-4 h-4" />
+              라이브 상품 관리
+            </button>
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium"
+            >
+              <ListBulletIcon className="w-4 h-4" />
+              전체 상품 관리
+            </button>
           </div>
           </div>
         </div>

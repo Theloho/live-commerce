@@ -355,6 +355,13 @@ export default function AdminProductsPage() {
               실시간 방송 컨트롤
             </button>
             <button
+              onClick={() => router.push('/admin/live-products')}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <QueueListIcon className="w-4 h-4" />
+              라이브 상품 관리
+            </button>
+            <button
               onClick={() => router.push('/admin/products/catalog')}
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
