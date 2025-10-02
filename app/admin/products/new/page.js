@@ -189,10 +189,39 @@ export default function NewProductPage() {
     }
   }, [isAdminAuthenticated])
 
-  // 제품번호 자동 생성 (타임스탬프 기반 - 동시 업로드 안전)
-  const generateProductNumber = () => {
-    const timestamp = Date.now().toString().slice(-10)
-    setProductNumber(timestamp)
+  // 제품번호 자동 생성 (가장 낮은 빈 번호 찾기)
+  const generateProductNumber = async () => {
+    try {
+      // 기존 제품들의 title에서 번호 패턴 추출
+      const { data: products, error } = await supabase
+        .from('products')
+        .select('title')
+        .not('title', 'is', null)
+
+      if (error) throw error
+
+      // title에서 숫자 패턴 추출 (0001, 0042/제품명 등)
+      const usedNumbers = products
+        .map(p => {
+          const match = p.title.match(/^(\d{4})/)
+          return match ? parseInt(match[1]) : null
+        })
+        .filter(num => num !== null)
+
+      // 1부터 9999까지 중 가장 작은 미사용 번호 찾기
+      for (let i = 1; i <= 9999; i++) {
+        if (!usedNumbers.includes(i)) {
+          setProductNumber(String(i).padStart(4, '0'))
+          return
+        }
+      }
+
+      // 모든 번호가 사용 중이면 마지막 번호 + 1
+      setProductNumber(String(Math.max(...usedNumbers, 0) + 1).padStart(4, '0'))
+    } catch (error) {
+      console.error('제품번호 생성 오류:', error)
+      setProductNumber('0001')
+    }
   }
 
   // 이미지 업로드 (갤러리)

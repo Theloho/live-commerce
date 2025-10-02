@@ -311,9 +311,26 @@ export default function ProductEditPage() {
                   {!formData.product_number && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const timestamp = Date.now().toString().slice(-10)
-                        handleChange('product_number', `P-${timestamp}`)
+                      onClick={async () => {
+                        const { data: products } = await supabase
+                          .from('products')
+                          .select('product_number')
+                          .not('product_number', 'is', null)
+
+                        const usedNumbers = products
+                          .map(p => {
+                            const match = p.product_number?.match(/^P-(\d{4})$/)
+                            return match ? parseInt(match[1]) : null
+                          })
+                          .filter(num => num !== null)
+
+                        for (let i = 1; i <= 9999; i++) {
+                          if (!usedNumbers.includes(i)) {
+                            handleChange('product_number', `P-${String(i).padStart(4, '0')}`)
+                            return
+                          }
+                        }
+                        handleChange('product_number', `P-${String(Math.max(...usedNumbers, 0) + 1).padStart(4, '0')}`)
                       }}
                       className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm whitespace-nowrap"
                     >
