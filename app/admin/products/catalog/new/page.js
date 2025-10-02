@@ -13,6 +13,7 @@ import {
   getProductOptions
 } from '@/lib/supabaseApi'
 import { supabase } from '@/lib/supabase'
+import { generateProductNumber } from '@/lib/productNumberGenerator'
 import toast from 'react-hot-toast'
 import SupplierManageSheet from '@/app/components/SupplierManageSheet'
 import CategoryManageSheet from '@/app/components/CategoryManageSheet'
@@ -64,12 +65,23 @@ export default function DetailedProductNewPage() {
     }
   }, [authLoading, isAdminAuthenticated, router])
 
-  // 데이터 로드
+  // 데이터 로드 및 상품번호 자동 생성
   useEffect(() => {
     if (isAdminAuthenticated) {
       loadInitialData()
+      autoGenerateProductNumber()
     }
   }, [isAdminAuthenticated])
+
+  const autoGenerateProductNumber = async () => {
+    try {
+      const number = await generateProductNumber()
+      setProductData(prev => ({ ...prev, product_number: number }))
+    } catch (error) {
+      console.error('상품번호 생성 오류:', error)
+      toast.error('상품번호 생성 실패')
+    }
+  }
 
   const loadInitialData = async () => {
     try {
@@ -504,52 +516,10 @@ export default function DetailedProductNewPage() {
                     <input
                       type="text"
                       value={productData.product_number}
-                      onChange={(e) => setProductData(prev => ({ ...prev, product_number: e.target.value }))}
-                      placeholder="P-0001"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      readOnly
+                      placeholder="0001"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
                     />
-                    {!productData.product_number && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const { data: products, error } = await supabase
-                              .from('products')
-                              .select('product_number')
-                              .not('product_number', 'is', null)
-
-                            if (error) {
-                              console.error('상품번호 조회 오류:', error)
-                              toast.error('상품번호 조회 실패')
-                              return
-                            }
-
-                            const usedNumbers = (products || [])
-                              .map(p => {
-                                const match = p.product_number?.match(/^P-(\d{4})$/)
-                                return match ? parseInt(match[1]) : null
-                              })
-                              .filter(num => num !== null)
-
-                            for (let i = 1; i <= 9999; i++) {
-                              if (!usedNumbers.includes(i)) {
-                                setProductData(prev => ({ ...prev, product_number: `P-${String(i).padStart(4, '0')}` }))
-                                toast.success(`상품번호 P-${String(i).padStart(4, '0')} 생성됨`)
-                                return
-                              }
-                            }
-                            setProductData(prev => ({ ...prev, product_number: `P-${String(Math.max(...usedNumbers, 0) + 1).padStart(4, '0')}` }))
-                            toast.success('상품번호 생성됨')
-                          } catch (err) {
-                            console.error('상품번호 생성 오류:', err)
-                            toast.error('상품번호 생성 실패')
-                          }
-                        }}
-                        className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm whitespace-nowrap"
-                      >
-                        자동생성
-                      </button>
-                    )}
                   </div>
                 </div>
 

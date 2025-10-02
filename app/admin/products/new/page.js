@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { ArrowLeftIcon, CameraIcon, PlusIcon, MinusIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
+import { generateProductNumber } from '@/lib/productNumberGenerator'
 import toast from 'react-hot-toast'
 
 export default function NewProductPage() {
@@ -185,51 +186,19 @@ export default function NewProductPage() {
   // 페이지 로드 시 제품번호 자동 생성
   useEffect(() => {
     if (isAdminAuthenticated) {
-      generateProductNumber()
-    }
-  }, [isAdminAuthenticated])
-
-  // 제품번호 자동 생성 (가장 낮은 빈 번호 찾기)
-  const generateProductNumber = async () => {
-    try {
-      // product_number 컬럼에서 사용 중인 번호 조회
-      const { data: products, error } = await supabase
-        .from('products')
-        .select('product_number')
-        .not('product_number', 'is', null)
-
-      if (error) {
-        console.error('상품번호 조회 오류:', error)
-        toast.error('상품번호 조회 실패')
-        setProductNumber('0001')
-        return
-      }
-
-      // 0001~9999 형식의 번호만 추출
-      const usedNumbers = (products || [])
-        .map(p => {
-          if (!p.product_number) return null
-          const num = parseInt(p.product_number)
-          return (num >= 1 && num <= 9999) ? num : null
-        })
-        .filter(num => num !== null)
-
-      // 1부터 9999까지 중 가장 작은 미사용 번호 찾기
-      for (let i = 1; i <= 9999; i++) {
-        if (!usedNumbers.includes(i)) {
-          setProductNumber(String(i).padStart(4, '0'))
-          return
+      const autoGenerate = async () => {
+        try {
+          const number = await generateProductNumber()
+          setProductNumber(number)
+        } catch (error) {
+          console.error('제품번호 생성 오류:', error)
+          toast.error('상품번호 생성 실패')
+          setProductNumber('0001')
         }
       }
-
-      // 모든 번호가 사용 중이면 마지막 번호 + 1
-      setProductNumber(String(Math.max(...usedNumbers, 0) + 1).padStart(4, '0'))
-    } catch (error) {
-      console.error('제품번호 생성 오류:', error)
-      toast.error('상품번호 생성 실패')
-      setProductNumber('0001')
+      autoGenerate()
     }
-  }
+  }, [isAdminAuthenticated])
 
   // 이미지 업로드 (갤러리)
   const handleImageUpload = (e) => {
