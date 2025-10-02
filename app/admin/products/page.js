@@ -9,11 +9,13 @@ import { useAdminAuth } from '@/hooks/useAdminAuth'
 import {
   MagnifyingGlassIcon,
   PlusIcon,
-  PencilIcon,
   TrashIcon,
   PhotoIcon,
   XMarkIcon,
-  QueueListIcon
+  EyeIcon,
+  EyeSlashIcon,
+  CheckIcon,
+  Squares2X2Icon
 } from '@heroicons/react/24/outline'
 import { RadioIcon } from '@heroicons/react/24/solid'
 import toast from 'react-hot-toast'
@@ -21,22 +23,24 @@ import toast from 'react-hot-toast'
 export default function AdminProductsPage() {
   const router = useRouter()
   const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
-  const [products, setProducts] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
+
+  // 라이브 상품 목록
+  const [liveProducts, setLiveProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [editingProduct, setEditingProduct] = useState(null)
-  const [imagePreview, setImagePreview] = useState('')
-  const [productData, setProductData] = useState({
-    title: '',
-    description: '',
-    price: '',
-    inventory: '',
-    compare_price: '',
-    seller: '',
-    badge: '',
-    freeShipping: false
-  })
+  const [selectedIds, setSelectedIds] = useState([])
+
+  // 검색 모달
+  const [showSearchModal, setShowSearchModal] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchSelectedIds, setSearchSelectedIds] = useState([])
+
+  // 검색 필터
+  const [searchText, setSearchText] = useState('')
+  const [selectedSupplier, setSelectedSupplier] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [suppliers, setSuppliers] = useState([])
+  const [categories, setCategories] = useState([])
 
   useEffect(() => {
     if (!authLoading && !isAdminAuthenticated) {
@@ -46,268 +50,234 @@ export default function AdminProductsPage() {
     }
 
     if (!authLoading && isAdminAuthenticated) {
-      loadProducts()
+      loadLiveProducts()
+      loadSuppliers()
+      loadCategories()
     }
   }, [authLoading, isAdminAuthenticated, router])
 
-  const loadProducts = async () => {
+  // 라이브 상품 목록 로드
+  const loadLiveProducts = async () => {
     try {
       setLoading(true)
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+          *,
+          suppliers (
+            id,
+            name,
+            code
+          )
+        `)
+        .eq('is_live', true)
+        .eq('status', 'active')
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      console.log('📦 상품 데이터 로딩 완료:', data?.length || 0)
-
-      // 각 상품의 variants 로드
-      const { getProductVariants } = await import('@/lib/supabaseApi')
-      const productsWithVariants = await Promise.all(
-        (data || []).map(async (product) => {
-          try {
-            const variants = await getProductVariants(product.id)
-            return { ...product, variants: variants || [] }
-          } catch (error) {
-            console.error(`Variants 로딩 실패 for product ${product.id}:`, error)
-            return { ...product, variants: [] }
-          }
-        })
-      )
-
-      setProducts(productsWithVariants)
+      console.log('📋 라이브 상품 로드:', data?.length || 0)
+      setLiveProducts(data || [])
     } catch (error) {
-      console.error('상품 로딩 오류:', error)
-      toast.error('상품을 불러오는데 실패했습니다.')
+      console.error('라이브 상품 로딩 오류:', error)
+      toast.error('라이브 상품을 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
     }
   }
 
-  const filteredProducts = products.filter(product => {
-    return product && product.title && product.title.toLowerCase().includes(searchTerm.toLowerCase())
-  })
-
-  const updateProductStatus = async (productId, newStatus) => {
+  // 업체 목록 로드
+  const loadSuppliers = async () => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, name, code')
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+      setSuppliers(data || [])
+    } catch (error) {
+      console.error('업체 목록 로딩 오류:', error)
+    }
+  }
+
+  // 카테고리 목록 로드
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
         .from('products')
-        .update({ status: newStatus })
-        .eq('id', productId)
+        .select('category')
+        .not('category', 'is', null)
+        .eq('status', 'active')
 
       if (error) throw error
 
-      loadProducts()
-      toast.success('상품 상태가 변경되었습니다')
+      // 중복 제거
+      const uniqueCategories = [...new Set(data.map(p => p.category).filter(Boolean))]
+      setCategories(uniqueCategories.sort())
     } catch (error) {
-      console.error('상품 상태 변경 오류:', error)
-      toast.error('상품 상태 변경에 실패했습니다')
+      console.error('카테고리 로딩 오류:', error)
     }
   }
 
-  const updateInventory = async (productId, newQuantity) => {
-    if (newQuantity < 0) return
-
+  // 상품 검색
+  const handleSearch = async () => {
     try {
-      const { error } = await supabase
+      setSearchLoading(true)
+
+      let query = supabase
         .from('products')
-        .update({ inventory: newQuantity })
-        .eq('id', productId)
+        .select(`
+          *,
+          suppliers (
+            id,
+            name,
+            code
+          )
+        `)
+        .eq('is_live', false)  // 아직 라이브에 없는 것만
+        .eq('status', 'active')
+
+      // 업체 필터
+      if (selectedSupplier) {
+        query = query.eq('supplier_id', selectedSupplier)
+      }
+
+      // 카테고리 필터
+      if (selectedCategory) {
+        query = query.eq('category', selectedCategory)
+      }
+
+      // 검색어 필터
+      if (searchText.trim()) {
+        const keywords = searchText.split(/[,\s]+/).filter(k => k.trim())
+
+        // OR 조건으로 검색
+        const orConditions = keywords.map(keyword => {
+          const k = keyword.trim()
+          return `title.ilike.%${k}%,product_number.ilike.%${k}%,category.ilike.%${k}%,sub_category.ilike.%${k}%,model_number.ilike.%${k}%,sku.ilike.%${k}%`
+        }).join(',')
+
+        query = query.or(orConditions)
+      }
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(50)
 
       if (error) throw error
 
-      loadProducts()
-      toast.success('재고가 업데이트되었습니다')
+      setSearchResults(data || [])
+      setSearchSelectedIds([])
     } catch (error) {
-      console.error('재고 업데이트 오류:', error)
-      toast.error('재고 업데이트에 실패했습니다')
+      console.error('검색 오류:', error)
+      toast.error('상품 검색에 실패했습니다.')
+    } finally {
+      setSearchLoading(false)
     }
   }
 
-  // 옵션별 재고 업데이트 함수
-  const updateOptionInventory = async (productId, optionId, optionName, optionValueName, currentInventory, change) => {
-    const newInventory = Math.max(0, currentInventory + change)
-
-    try {
-      // 1. 현재 옵션 데이터 조회
-      const { data: currentOption, error: fetchError } = await supabase
-        .from('product_options')
-        .select('values')
-        .eq('id', optionId)
-        .single()
-
-      if (fetchError) throw fetchError
-
-      // 2. values 배열 업데이트
-      const values = Array.isArray(currentOption.values)
-        ? currentOption.values
-        : JSON.parse(currentOption.values || '[]')
-
-      const updatedValues = values.map(v => {
-        if (v.name === optionValueName) {
-          return { ...v, inventory: newInventory }
-        }
-        return v
-      })
-
-      // 3. 업데이트 실행
-      const { error: updateError } = await supabase
-        .from('product_options')
-        .update({ values: updatedValues })
-        .eq('id', optionId)
-
-      if (updateError) throw updateError
-
-      loadProducts()
-      toast.success(`"${optionName}: ${optionValueName}" 재고가 ${newInventory}개로 업데이트되었습니다`)
-    } catch (error) {
-      console.error('옵션 재고 업데이트 오류:', error)
-      toast.error('옵션 재고 업데이트에 실패했습니다')
+  // 선택한 상품을 라이브에 추가
+  const handleAddToLive = async () => {
+    if (searchSelectedIds.length === 0) {
+      toast.error('추가할 상품을 선택해주세요')
+      return
     }
-  }
 
-  const updateLiveStatus = async (productId, isLive) => {
     try {
       const { error } = await supabase
         .from('products')
         .update({
-          is_live_active: isLive,
-          live_start_time: isLive ? new Date().toISOString() : null,
-          live_end_time: isLive ? null : new Date().toISOString()
+          is_live: true,
+          is_live_active: false  // 기본값은 비활성
+        })
+        .in('id', searchSelectedIds)
+
+      if (error) throw error
+
+      toast.success(`${searchSelectedIds.length}개 상품이 라이브에 추가되었습니다`)
+      setShowSearchModal(false)
+      setSearchText('')
+      setSelectedSupplier('')
+      setSelectedCategory('')
+      setSearchResults([])
+      setSearchSelectedIds([])
+      loadLiveProducts()
+    } catch (error) {
+      console.error('라이브 추가 오류:', error)
+      toast.error('라이브 추가에 실패했습니다')
+    }
+  }
+
+  // 라이브에서 제거
+  const handleRemoveFromLive = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('제거할 상품을 선택해주세요')
+      return
+    }
+
+    if (!window.confirm(`${selectedIds.length}개 상품을 라이브에서 제거하시겠습니까?`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({
+          is_live: false,
+          is_live_active: false
+        })
+        .in('id', selectedIds)
+
+      if (error) throw error
+
+      toast.success(`${selectedIds.length}개 상품이 라이브에서 제거되었습니다`)
+      setSelectedIds([])
+      loadLiveProducts()
+    } catch (error) {
+      console.error('라이브 제거 오류:', error)
+      toast.error('라이브 제거에 실패했습니다')
+    }
+  }
+
+  // 개별 상품 노출 토글
+  const toggleLiveActive = async (productId, currentStatus) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({
+          is_live_active: !currentStatus,
+          live_start_time: !currentStatus ? new Date().toISOString() : null,
+          live_end_time: !currentStatus ? null : new Date().toISOString()
         })
         .eq('id', productId)
 
       if (error) throw error
 
-      loadProducts()
-      toast.success(`라이브 ${isLive ? '활성화' : '비활성화'}되었습니다`)
+      toast.success(!currentStatus ? '사용자 페이지에 노출됩니다' : '사용자 페이지에서 숨김 처리되었습니다')
+      loadLiveProducts()
     } catch (error) {
-      console.error('라이브 상태 변경 오류:', error)
-      toast.error('라이브 상태 변경에 실패했습니다')
+      console.error('노출 토글 오류:', error)
+      toast.error('노출 상태 변경에 실패했습니다')
     }
   }
 
-  const openEditModal = (product) => {
-    setEditingProduct(product)
-    setProductData({
-      title: product.title,
-      description: product.description || '',
-      price: product.price,
-      inventory: product.inventory,
-      compare_price: product.compare_price || '',
-      seller: product.seller || '',
-      badge: product.badge || '',
-      freeShipping: product.freeShipping || false
-    })
-    setImagePreview(product.thumbnail_url || '')
-    setShowEditModal(true)
-  }
-
-  const closeEditModal = () => {
-    setShowEditModal(false)
-    setEditingProduct(null)
-    setProductData({
-      title: '',
-      description: '',
-      price: '',
-      inventory: '',
-      compare_price: '',
-      seller: '',
-      badge: '',
-      freeShipping: false
-    })
-    setImagePreview('')
-  }
-
-  const handleUpdateProduct = async () => {
-    if (!editingProduct) return
-
-    if (!productData.title.trim()) {
-      toast.error('상품명을 입력해주세요')
-      return
-    }
-
-    if (!productData.price || productData.price <= 0) {
-      toast.error('올바른 가격을 입력해주세요')
-      return
-    }
-
-    if (productData.inventory < 0) {
-      toast.error('재고는 0개 이상이어야 합니다')
-      return
-    }
-
-    try {
-      const updatedData = {
-        title: productData.title.trim(),
-        description: productData.description.trim() || '',
-        price: parseInt(productData.price),
-        inventory: parseInt(productData.inventory) || 0,
-        compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
-        seller: productData.seller || editingProduct.seller,
-        badge: productData.badge || null,
-        free_shipping: productData.freeShipping,
-        thumbnail_url: imagePreview || editingProduct.thumbnail_url
-      }
-
-      const { error } = await supabase
-        .from('products')
-        .update(updatedData)
-        .eq('id', editingProduct.id)
-
-      if (error) throw error
-
-      loadProducts()
-      toast.success('상품이 수정되었습니다')
-      closeEditModal()
-    } catch (error) {
-      console.error('상품 수정 오류:', error)
-      toast.error('상품 수정에 실패했습니다')
-    }
-  }
-
-  const deleteProduct = async (productId) => {
-    if (window.confirm('이 상품을 삭제하시겠습니까?')) {
-      try {
-        const { error } = await supabase
-          .from('products')
-          .delete()
-          .eq('id', productId)
-
-        if (error) throw error
-
-        loadProducts()
-        toast.success('상품이 삭제되었습니다')
-      } catch (error) {
-        console.error('상품 삭제 오류:', error)
-        toast.error('상품 삭제에 실패했습니다')
-      }
-    }
-  }
-
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      active: { label: '판매중', color: 'bg-green-100 text-green-800' },
-      inactive: { label: '판매중지', color: 'bg-red-100 text-red-800' },
-      draft: { label: '임시저장', color: 'bg-gray-100 text-gray-800' }
-    }
-    const statusInfo = statusMap[status] || statusMap.active
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
-        {statusInfo.label}
-      </span>
-    )
-  }
-
-  const getInventoryStatus = (quantity) => {
-    const qty = quantity ?? 0
-    if (qty === 0) {
-      return <span className="text-red-600 font-medium">품절</span>
-    } else if (qty <= 5) {
-      return <span className="text-yellow-600 font-medium">품절임박</span>
+  // 전체 선택/해제
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedIds(liveProducts.map(p => p.id))
     } else {
-      return <span className="text-green-600 font-medium">충분</span>
+      setSelectedIds([])
+    }
+  }
+
+  // 검색 모달에서 전체 선택/해제
+  const handleSearchSelectAll = (checked) => {
+    if (checked) {
+      setSearchSelectedIds(searchResults.map(p => p.id))
+    } else {
+      setSearchSelectedIds([])
     }
   }
 
@@ -334,516 +304,415 @@ export default function AdminProductsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-6">
-      <div className="max-w-4xl mx-auto space-y-4">
+      <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
         <div className="bg-white rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4 p-6 pb-4">
-            <div className="flex items-center gap-4">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">상품 관리</h1>
-                <p className="text-gray-600">총 {products.length}개의 상품</p>
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <RadioIcon className="w-6 h-6 text-red-600" />
+                  실시간 방송 컨트롤
+                </h1>
+                <p className="text-gray-600">라이브 상품을 관리하고 사용자 페이지 노출을 제어합니다 (총 {liveProducts.length}개)</p>
               </div>
+              <button
+                onClick={() => router.push('/admin/products/catalog')}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <Squares2X2Icon className="w-4 h-4" />
+                전체 상품 관리
+              </button>
             </div>
-          </div>
 
-          {/* 탭 네비게이션 */}
-          <div className="flex gap-2 px-6 pb-4">
-            <button
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium"
-            >
-              <RadioIcon className="w-4 h-4" />
-              실시간 방송 컨트롤
-            </button>
-            <button
-              onClick={() => router.push('/admin/live-products')}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <QueueListIcon className="w-4 h-4" />
-              라이브 상품 관리
-            </button>
-            <button
-              onClick={() => router.push('/admin/products/catalog')}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <QueueListIcon className="w-4 h-4" />
-              전체 상품 관리
-            </button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-6 pb-6">
-            <div></div>
+            {/* 액션 버튼 */}
             <div className="flex gap-2">
               <button
-                onClick={async () => {
-                  if (window.confirm('모든 상품을 완전히 삭제하시겠습니까?')) {
-                    try {
-                      await supabase
-                        .from('product_options')
-                        .delete()
-                        .neq('id', '00000000-0000-0000-0000-000000000000')
-
-                      const { error } = await supabase
-                        .from('products')
-                        .delete()
-                        .neq('id', '00000000-0000-0000-0000-000000000000')
-
-                      if (error) throw error
-
-                      loadProducts()
-                      toast.success('모든 상품이 완전히 삭제되었습니다')
-                    } catch (error) {
-                      console.error('상품 삭제 오류:', error)
-                      toast.error('상품 삭제에 실패했습니다')
-                    }
-                  }
+                onClick={() => {
+                  setShowSearchModal(true)
+                  handleSearch()
                 }}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
-                전체 삭제
+                <MagnifyingGlassIcon className="w-4 h-4" />
+                검색으로 추가
               </button>
               <button
-                onClick={() => {
-                  loadProducts()
-                  toast.success('상품 목록을 새로고침했습니다')
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleRemoveFromLive}
+                disabled={selectedIds.length === 0}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                새로고침
+                <TrashIcon className="w-4 h-4" />
+                선택 항목 제거 ({selectedIds.length})
               </button>
               <button
                 onClick={() => router.push('/admin/products/new')}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
               >
                 <PlusIcon className="w-4 h-4" />
-                빠른 상품 등록
+                빠른 등록
               </button>
             </div>
           </div>
         </div>
 
-        {/* Search */}
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="relative max-w-md p-6">
-            <MagnifyingGlassIcon className="absolute left-9 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="상품명으로 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        {/* Products Grid */}
+        {/* 라이브 상품 목록 */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="grid grid-cols-2 gap-6">
-            {filteredProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+          {liveProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <Squares2X2Icon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">라이브에 등록된 상품이 없습니다</p>
+              <button
+                onClick={() => {
+                  setShowSearchModal(true)
+                  handleSearch()
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                {/* Product Image */}
-                <div className="relative aspect-square">
-                  {product.thumbnail_url ? (
-                    <Image
-                      src={product.thumbnail_url}
-                      alt={product.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                      <PhotoIcon className="w-12 h-12 text-gray-400" />
+                상품 검색하여 추가하기
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* 전체 선택 */}
+              <div className="flex items-center gap-2 mb-4 pb-4 border-b">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.length === liveProducts.length}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                />
+                <span className="text-sm text-gray-700">
+                  전체 선택 ({selectedIds.length}/{liveProducts.length})
+                </span>
+              </div>
+
+              {/* 상품 그리드 */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {liveProducts.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                  >
+                    {/* 이미지 */}
+                    <div className="relative aspect-square">
+                      {product.thumbnail_url ? (
+                        <Image
+                          src={product.thumbnail_url}
+                          alt={product.title}
+                          fill
+                          sizes="(max-width: 768px) 50vw, 25vw"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                          <PhotoIcon className="w-12 h-12 text-gray-400" />
+                        </div>
+                      )}
+
+                      {/* 체크박스 */}
+                      <div className="absolute top-2 left-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(product.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds([...selectedIds, product.id])
+                            } else {
+                              setSelectedIds(selectedIds.filter(id => id !== product.id))
+                            }
+                          }}
+                          className="w-5 h-5 text-red-600 border-white rounded focus:ring-red-500"
+                        />
+                      </div>
+
+                      {/* 노출 상태 배지 */}
+                      <div className="absolute top-2 right-2">
+                        {product.is_live_active ? (
+                          <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-600 text-white flex items-center gap-1 animate-pulse">
+                            <span className="w-2 h-2 bg-white rounded-full"></span>
+                            노출중
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-500 text-white">
+                            숨김
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
 
-                  {/* Status Badge */}
-                  <div className="absolute top-2 left-2">
-                    {getStatusBadge(product.status)}
-                  </div>
+                    {/* 상품 정보 */}
+                    <div className="p-3">
+                      <h3 className="font-medium text-sm text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem]">
+                        {product.title}
+                      </h3>
 
-                  {/* Live Badge */}
-                  {product.is_live_active && (
-                    <div className="absolute top-2 right-2">
-                      <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-600 text-white flex items-center gap-1 animate-pulse">
-                        <span className="w-2 h-2 bg-white rounded-full"></span>
-                        LIVE
-                      </span>
-                    </div>
-                  )}
+                      {/* 업체 정보 */}
+                      {product.suppliers && (
+                        <p className="text-xs text-gray-500 mb-2">
+                          {product.suppliers.name}
+                        </p>
+                      )}
 
-                  {/* Featured Badge */}
-                  {product.is_featured && !product.is_live_active && (
-                    <div className="absolute top-2 right-2">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                        추천
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Product Info */}
-                <div className="p-4">
-                  <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
-                    {product.title}
-                  </h3>
-
-                  {/* Price */}
-                  <div className="flex items-baseline gap-2 mb-3">
-                    <span className="text-lg font-bold text-gray-900">
-                      ₩{product.price.toLocaleString()}
-                    </span>
-                    {product.compare_price && (
-                      <span className="text-sm text-gray-400 line-through">
-                        ₩{product.compare_price.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Inventory */}
-                  {product.variants && product.variants.length > 0 ? (
-                    // Variant가 있는 경우: Variant별 재고 표시
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Variant별 재고</span>
-                        <span className="text-xs text-gray-500">
-                          총: {product.variants.reduce((sum, v) => sum + (v.inventory || 0), 0)}개
+                      {/* 가격 */}
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <span className="text-sm font-bold text-gray-900">
+                          ₩{product.price.toLocaleString()}
                         </span>
                       </div>
 
-                      <div className="border border-gray-200 rounded-lg p-2 space-y-1">
-                        {product.variants.map((variant) => {
-                          const inventory = variant.inventory ?? 0
-                          const optionLabel = variant.options?.map(opt => opt.optionValue).join(' × ') || variant.sku
-
-                          return (
-                            <div key={variant.id} className="flex items-center justify-between text-xs">
-                              <span className="text-gray-700">{optionLabel}</span>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      const { updateVariantInventory } = await import('@/lib/supabaseApi')
-                                      await updateVariantInventory(variant.id, -1)
-                                      toast.success('재고가 업데이트되었습니다')
-                                      loadProducts()
-                                    } catch (error) {
-                                      toast.error('재고 업데이트 실패')
-                                    }
-                                  }}
-                                  className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300"
-                                >
-                                  -
-                                </button>
-                                <span className={`font-medium w-6 text-center ${inventory === 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                                  {inventory}
-                                </span>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      const { updateVariantInventory } = await import('@/lib/supabaseApi')
-                                      await updateVariantInventory(variant.id, 1)
-                                      toast.success('재고가 업데이트되었습니다')
-                                      loadProducts()
-                                    } catch (error) {
-                                      toast.error('재고 업데이트 실패')
-                                    }
-                                  }}
-                                  className="w-5 h-5 bg-gray-200 rounded text-gray-600 hover:bg-gray-300"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    // 옵션이 없는 경우: 기존 재고 표시
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm text-gray-600">재고</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateInventory(product.id, (product.inventory ?? 0) - 1)}
-                          className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
-                        >
-                          -
-                        </button>
-                        <span className="text-sm font-medium w-8 text-center">
-                          {product.inventory ?? 0}
-                        </span>
-                        <button
-                          onClick={() => updateInventory(product.id, (product.inventory ?? 0) + 1)}
-                          className="w-6 h-6 bg-gray-200 rounded text-gray-600 hover:bg-gray-300 text-xs"
-                        >
-                          +
-                        </button>
-                        <span className="text-xs ml-2">
-                          {getInventoryStatus(product.inventory)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="space-y-2">
-                    {/* 라이브 토글 */}
-                    <div className="flex items-center gap-2">
+                      {/* 노출 토글 버튼 */}
                       <button
-                        onClick={() => updateLiveStatus(product.id, !product.is_live_active)}
-                        className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                        onClick={() => toggleLiveActive(product.id, product.is_live_active)}
+                        className={`w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
                           product.is_live_active
                             ? 'bg-red-500 text-white hover:bg-red-600'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                       >
-                        <RadioIcon className="w-4 h-4" />
-                        {product.is_live_active ? 'LIVE 중' : '라이브 상품 추가'}
-                      </button>
-                    </div>
-
-                    {/* 판매 상태 토글 */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateProductStatus(
-                          product.id,
-                          product.status === 'active' ? 'inactive' : 'active'
+                        {product.is_live_active ? (
+                          <>
+                            <EyeIcon className="w-4 h-4" />
+                            노출중
+                          </>
+                        ) : (
+                          <>
+                            <EyeSlashIcon className="w-4 h-4" />
+                            숨김
+                          </>
                         )}
-                        className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                          product.status === 'active'
-                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                            : 'bg-green-100 text-green-700 hover:bg-green-200'
-                        }`}
-                      >
-                        {product.status === 'active' ? '판매중지' : '판매시작'}
-                      </button>
-
-                      <button
-                        onClick={() => openEditModal(product)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => deleteProduct(product.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {filteredProducts.length === 0 && (
-            <div className="col-span-2 p-12 text-center">
-              <p className="text-gray-500">조건에 맞는 상품이 없습니다.</p>
-            </div>
+                  </motion.div>
+                ))}
+              </div>
+            </>
           )}
         </div>
+      </div>
 
-        {/* Edit Product Modal */}
-        <AnimatePresence>
-          {showEditModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={closeEditModal}
-                className="absolute inset-0 bg-black/50"
-              />
+      {/* 검색 모달 */}
+      <AnimatePresence>
+        {showSearchModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSearchModal(false)}
+              className="absolute inset-0 bg-black/50"
+            />
 
-              {/* Modal */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-6 max-h-[90vh] overflow-hidden"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b">
-                  <h2 className="text-lg font-semibold text-gray-900">상품 수정</h2>
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-semibold text-gray-900">상품 검색 및 추가</h2>
+                <button
+                  onClick={() => setShowSearchModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* 검색 필터 */}
+              <div className="p-4 bg-gray-50 border-b space-y-3">
+                {/* 검색어 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    검색어
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      placeholder="상품명, 상품번호, 카테고리 등 (쉼표로 구분)"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      onClick={handleSearch}
+                      disabled={searchLoading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                      검색
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    💡 여러 키워드는 쉼표나 스페이스로 구분하세요
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* 업체 선택 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      업체 선택
+                    </label>
+                    <select
+                      value={selectedSupplier}
+                      onChange={(e) => setSelectedSupplier(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">전체 업체</option>
+                      {suppliers.map((supplier) => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.name} {supplier.code && `(${supplier.code})`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 카테고리 필터 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      카테고리
+                    </label>
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">전체 카테고리</option>
+                      {categories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 검색 결과 */}
+              <div className="p-4 max-h-[50vh] overflow-y-auto">
+                {searchLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                    <p className="text-gray-600">검색 중...</p>
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">검색 결과가 없습니다</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* 전체 선택 */}
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={searchSelectedIds.length === searchResults.length}
+                          onChange={(e) => handleSearchSelectAll(e.target.checked)}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          전체 선택 ({searchSelectedIds.length}/{searchResults.length})
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">검색 결과: {searchResults.length}개</p>
+                    </div>
+
+                    {/* 상품 그리드 */}
+                    <div className="grid grid-cols-3 gap-3">
+                      {searchResults.map((product) => (
+                        <div
+                          key={product.id}
+                          className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => {
+                            if (searchSelectedIds.includes(product.id)) {
+                              setSearchSelectedIds(searchSelectedIds.filter(id => id !== product.id))
+                            } else {
+                              setSearchSelectedIds([...searchSelectedIds, product.id])
+                            }
+                          }}
+                        >
+                          {/* 이미지 */}
+                          <div className="relative aspect-square">
+                            {product.thumbnail_url ? (
+                              <Image
+                                src={product.thumbnail_url}
+                                alt={product.title}
+                                fill
+                                sizes="200px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                <PhotoIcon className="w-8 h-8 text-gray-400" />
+                              </div>
+                            )}
+
+                            {/* 체크박스 */}
+                            <div className="absolute top-2 left-2">
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                searchSelectedIds.includes(product.id)
+                                  ? 'bg-blue-600 border-blue-600'
+                                  : 'bg-white border-gray-300'
+                              }`}>
+                                {searchSelectedIds.includes(product.id) && (
+                                  <CheckIcon className="w-4 h-4 text-white" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 상품 정보 */}
+                          <div className="p-2">
+                            <h3 className="text-xs font-medium text-gray-900 line-clamp-2 mb-1">
+                              {product.title}
+                            </h3>
+                            {product.suppliers && (
+                              <p className="text-xs text-gray-500 mb-1">
+                                {product.suppliers.name}
+                              </p>
+                            )}
+                            <p className="text-xs font-bold text-gray-900">
+                              ₩{product.price.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+                <p className="text-sm text-gray-600">
+                  {searchSelectedIds.length}개 선택됨
+                </p>
+                <div className="flex gap-2">
                   <button
-                    onClick={closeEditModal}
-                    className="text-red-600 hover:text-red-800 transition-colors"
+                    onClick={() => setShowSearchModal(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                   >
-                    <XMarkIcon className="w-5 h-5" />
+                    취소
+                  </button>
+                  <button
+                    onClick={handleAddToLive}
+                    disabled={searchSelectedIds.length === 0}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    선택 항목 추가 ({searchSelectedIds.length})
                   </button>
                 </div>
-
-                {/* Modal Content */}
-                <div className="p-8 max-h-[70vh] overflow-y-auto">
-                  <div className="space-y-4">
-                    {/* 썸네일 이미지 */}
-                    {imagePreview && (
-                      <div className="relative">
-                        <div className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden">
-                          <Image
-                            src={imagePreview}
-                            alt="상품 미리보기"
-                            width={400}
-                            height={400}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <button
-                          onClick={() => setImagePreview('')}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                        >
-                          <XMarkIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* 상품명 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        상품명 *
-                      </label>
-                      <input
-                        type="text"
-                        value={productData.title}
-                        onChange={(e) => setProductData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="상품명을 입력해주세요"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      />
-                    </div>
-
-                    {/* 상품 설명 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        상품 설명 (선택사항)
-                      </label>
-                      <textarea
-                        value={productData.description}
-                        onChange={(e) => setProductData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="상품에 대한 간단한 설명을 입력해주세요"
-                        rows={3}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                      />
-                    </div>
-
-                    {/* 가격 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        판매가격 *
-                      </label>
-                      <input
-                        type="number"
-                        value={productData.price}
-                        onChange={(e) => setProductData(prev => ({ ...prev, price: e.target.value }))}
-                        placeholder="가격을 입력해주세요"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      />
-                    </div>
-
-                    {/* 정가 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        정가 (할인 표시용)
-                      </label>
-                      <input
-                        type="number"
-                        value={productData.compare_price}
-                        onChange={(e) => setProductData(prev => ({ ...prev, compare_price: e.target.value }))}
-                        placeholder="정가를 입력해주세요 (선택사항)"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      />
-                    </div>
-
-                    {/* 재고 수량 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        재고 수량
-                      </label>
-                      <input
-                        type="number"
-                        value={productData.inventory}
-                        onChange={(e) => setProductData(prev => ({ ...prev, inventory: e.target.value }))}
-                        placeholder="재고 수량"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      />
-                    </div>
-
-                    {/* 판매자 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        판매자
-                      </label>
-                      <input
-                        type="text"
-                        value={productData.seller}
-                        onChange={(e) => setProductData(prev => ({ ...prev, seller: e.target.value }))}
-                        placeholder="판매자명"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      />
-                    </div>
-
-                    {/* 배지 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        상품 배지
-                      </label>
-                      <select
-                        value={productData.badge}
-                        onChange={(e) => setProductData(prev => ({ ...prev, badge: e.target.value }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      >
-                        <option value="">배지 없음</option>
-                        <option value="BEST">BEST</option>
-                        <option value="NEW">NEW</option>
-                        <option value="HOT">HOT</option>
-                        <option value="SALE">SALE</option>
-                      </select>
-                    </div>
-
-                    {/* 무료배송 */}
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="freeShipping"
-                        checked={productData.freeShipping}
-                        onChange={(e) => setProductData(prev => ({ ...prev, freeShipping: e.target.checked }))}
-                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="freeShipping" className="ml-2 text-sm text-gray-700">
-                        무료배송
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-6">
-                    <button
-                      onClick={closeEditModal}
-                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                    >
-                      취소
-                    </button>
-                    <button
-                      onClick={handleUpdateProduct}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      수정 완료
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-      </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

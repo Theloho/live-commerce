@@ -166,7 +166,7 @@ export default function ProductCatalogPage() {
             </div>
           </div>
 
-          {/* 탭 네비게이션 */}
+          {/* 빠른 이동 */}
           <div className="flex gap-2 pb-4">
             <button
               onClick={() => router.push('/admin/products')}
@@ -174,19 +174,6 @@ export default function ProductCatalogPage() {
             >
               <PlayIcon className="w-4 h-4" />
               실시간 방송 컨트롤
-            </button>
-            <button
-              onClick={() => router.push('/admin/live-products')}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <Squares2X2Icon className="w-4 h-4" />
-              라이브 상품 관리
-            </button>
-            <button
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium"
-            >
-              <ListBulletIcon className="w-4 h-4" />
-              전체 상품 관리
             </button>
           </div>
           </div>
