@@ -768,6 +768,7 @@ export default function CheckoutPage() {
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="font-medium text-gray-900 mb-1">{selectedAddress.label}</p>
                   <p className="text-gray-600">
+                    {selectedAddress.postal_code && <span className="text-gray-500">[{selectedAddress.postal_code}] </span>}
                     {selectedAddress.address}
                     {selectedAddress.detail_address && <><br/>{selectedAddress.detail_address}</>}
                   </p>

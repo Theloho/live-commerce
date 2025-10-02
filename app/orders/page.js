@@ -1031,6 +1031,7 @@ function OrdersContent() {
                   <p className="font-medium text-gray-900">{selectedGroupOrder.shipping?.name || '김진태'}</p>
                   <p className="text-gray-600">{selectedGroupOrder.shipping?.phone || '010-0000-0000'}</p>
                   <p className="text-gray-600">
+                    {selectedGroupOrder.shipping?.postal_code && <span className="text-gray-500">[{selectedGroupOrder.shipping.postal_code}] </span>}
                     {selectedGroupOrder.shipping?.address || '기본주소'}
                     {selectedGroupOrder.shipping?.detail_address && ` ${selectedGroupOrder.shipping.detail_address}`}
                   </p>

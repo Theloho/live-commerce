@@ -418,9 +418,11 @@ export default function AdminShippingPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900 max-w-xs">
                         {(() => {
+                          const postalCode = order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
                           const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
                           const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
-                          return detailAddress ? `${address} ${detailAddress}` : address
+                          const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+                          return postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
                         })()}
                       </div>
                     </td>
