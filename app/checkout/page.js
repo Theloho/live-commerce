@@ -569,11 +569,12 @@ export default function CheckoutPage() {
       if (orderItem.isBulkPayment && orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
         logger.debug('일괄결제 처리 시작', { count: orderItem.originalOrderIds.length })
 
-        // 선택된 주소를 userProfile에 병합
+        // 선택된 주소를 userProfile에 병합 (우편번호 포함)
         const orderProfile = {
           ...userProfile,
           address: selectedAddress?.address || userProfile.address,
-          detail_address: selectedAddress?.detail_address || userProfile.detail_address
+          detail_address: selectedAddress?.detail_address || userProfile.detail_address,
+          postal_code: selectedAddress?.postal_code || userProfile.postal_code
         }
 
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
@@ -587,7 +588,8 @@ export default function CheckoutPage() {
               shipping_name: orderProfile.name,
               shipping_phone: orderProfile.phone,
               shipping_address: orderProfile.address,
-              shipping_detail_address: orderProfile.detail_address
+              shipping_detail_address: orderProfile.detail_address,
+              shipping_postal_code: selectedAddress?.postal_code || userProfile.postal_code
             }
           }
         )
@@ -601,11 +603,12 @@ export default function CheckoutPage() {
         }))
       } else {
         // 단일 주문 생성
-        // 선택된 주소를 userProfile에 병합
+        // 선택된 주소를 userProfile에 병합 (우편번호 포함)
         const orderProfile = {
           ...userProfile,
           address: selectedAddress?.address || userProfile.address,
-          detail_address: selectedAddress?.detail_address || userProfile.detail_address
+          detail_address: selectedAddress?.detail_address || userProfile.detail_address,
+          postal_code: selectedAddress?.postal_code || userProfile.postal_code
         }
 
         const newOrder = await createOrder(orderItem, orderProfile, depositName)
