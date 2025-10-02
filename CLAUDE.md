@@ -41,6 +41,8 @@
 - `order_items`: price/unit_price, total/total_price 중복 → **양쪽 모두 저장**
 - `orders.user_id`: NULL 가능 (카카오 사용자)
 - `order_type`: 패턴 확인 필수 (direct:KAKAO:123456)
+- `profiles.postal_code`: 도서산간 배송비 계산에 필수 (2025-10-03 추가)
+- `order_shipping.postal_code`: 주문 시점 우편번호 저장 필수
 
 ---
 
@@ -172,6 +174,8 @@
 - [ ] total, total_price 양쪽 모두 저장했는가?
 - [ ] order_type에 카카오 ID 포함했는가?
 - [ ] depositor_name 저장했는가?
+- [ ] postal_code 저장했는가? (도서산간 배송비 계산 필수)
+- [ ] formatShippingInfo() 사용하여 배송비 계산했는가?
 ```
 
 ### 주문 조회 시
@@ -209,6 +213,7 @@
 
 ### 📦 Archive 문서 (참고용)
 **작업 로그** (`docs/archive/work-logs/`)
+- **WORK_LOG_2025-10-03.md** - 우편번호 시스템 완전 통합 (최신)
 - WORK_LOG_2025-10-01.md
 - WORK_LOG_2025-01-23.md
 - WORK_SUMMARY.md
@@ -234,6 +239,38 @@
 
 ---
 
+---
+
+## 🎉 최근 주요 업데이트
+
+### 2025-10-03: 우편번호 시스템 완전 통합
+**변경사항**:
+- ✅ `profiles.postal_code` 컬럼 추가
+- ✅ 모든 페이지에 우편번호 표시 및 배송비 계산 적용
+- ✅ 모바일 입력 필드 가시성 문제 해결 (`globals.css` 전면 개선)
+- ✅ 라디오 버튼 `appearance: none` 문제 해결
+- ✅ MyPage AddressManager 구버전 → 신버전 전환
+
+**주요 함수**:
+```javascript
+// 모든 배송비 계산에 이 함수 사용 필수!
+import { formatShippingInfo } from '@/lib/shippingUtils'
+
+const shippingInfo = formatShippingInfo(baseShipping, postalCode)
+// 반환: { baseShipping, surcharge, totalShipping, region, isRemote }
+```
+
+**도서산간 배송비 규칙**:
+- 제주: 63000-63644 → +3,000원
+- 울릉도: 40200-40240 → +5,000원
+- 기타 도서산간 → +5,000원
+
+**적용 페이지**: 체크아웃, 주문 상세, 주문 목록, 관리자 주문 리스트/상세, 발송 관리
+
+**상세 로그**: `docs/archive/work-logs/WORK_LOG_2025-10-03.md`
+
+---
+
 **🎯 모든 작업 전에 이 문서를 다시 읽으세요!**
 
-**마지막 업데이트**: 2025-10-02 (문서 정리 및 최적화 완료)
+**마지막 업데이트**: 2025-10-03 (우편번호 시스템 통합 및 배송비 계산 완료)
