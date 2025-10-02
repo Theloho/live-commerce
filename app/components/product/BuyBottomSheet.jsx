@@ -24,13 +24,53 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
-  // 직접 세션 확인 (카카오 로그인 지원)
+  // 직접 세션 확인 (카카오 로그인 지원) + 주소 정보 불러오기
   useEffect(() => {
-    const checkUserSession = () => {
+    const checkUserSession = async () => {
       try {
         const storedUser = sessionStorage.getItem('user')
         if (storedUser) {
           const userData = JSON.parse(storedUser)
+
+          // profiles 테이블에서 최신 주소 정보 불러오기 (postal_code 포함)
+          if (userData.id) {
+            try {
+              const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+              const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+
+              const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userData.id}&select=addresses,address,detail_address,postal_code`, {
+                method: 'GET',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json'
+                }
+              })
+
+              if (response.ok) {
+                const profiles = await response.json()
+                if (profiles && profiles.length > 0) {
+                  const profile = profiles[0]
+
+                  // 기본 배송지 정보로 사용자 데이터 업데이트
+                  if (profile.addresses && profile.addresses.length > 0) {
+                    const defaultAddr = profile.addresses.find(a => a.is_default) || profile.addresses[0]
+                    userData.address = defaultAddr.address
+                    userData.detail_address = defaultAddr.detail_address || ''
+                    userData.postal_code = defaultAddr.postal_code || ''
+                  } else {
+                    // addresses가 없으면 기본 주소 정보 사용
+                    userData.address = profile.address || ''
+                    userData.detail_address = profile.detail_address || ''
+                    userData.postal_code = profile.postal_code || ''
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('BuyBottomSheet 주소 정보 로드 오류:', error)
+            }
+          }
+
           setUserSession(userData)
         } else {
           setUserSession(null)
@@ -364,12 +404,13 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
     console.log('BuyBottomSheet 장바구니 담기 클릭됨') // 디버깅
 
-    // 사용자 정보 확인
+    // 사용자 정보 확인 (우편번호 포함)
     const userProfile = {
       name: currentUser?.name || '사용자',
       phone: currentUser?.phone || '',
       address: currentUser?.address || '',
-      detail_address: currentUser?.detail_address || ''
+      detail_address: currentUser?.detail_address || '',
+      postal_code: currentUser?.postal_code || ''
     }
 
     // Handle multiple combinations or single selection
