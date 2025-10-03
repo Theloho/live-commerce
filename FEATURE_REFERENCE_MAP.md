@@ -2898,31 +2898,61 @@ createCoupon(couponData)
 
 #### 🔧 핵심 함수 체인
 ```javascript
+// 프론트엔드 (lib/couponApi.js)
 distributeCoupon(couponId, userIds)
-  ↓ validates
+  ↓ calls API Route
+  POST /api/admin/coupons/distribute
+  ↓ validates (서버 사이드)
+  - 관리자 이메일 검증 (verifyAdminAuth)
   - 쿠폰 활성화 상태 확인
   - 사용자 ID 배열 유효성 검증
-  ↓ creates
-  user_coupons (INSERT with upsert)
+  ↓ distributes (Service Role Key 사용)
+  user_coupons (INSERT with upsert, RLS 우회)
   ↓ triggers
   coupons.total_issued_count 자동 증가 (DB trigger)
   ↓ returns
-  { distributed: 배포 성공 수, duplicates: 중복 수 }
+  { success, distributedCount, requestedCount, duplicates, couponCode }
 ```
+
+#### 🗄️ 관련 파일
+- **프론트엔드**: `lib/couponApi.js` - distributeCoupon()
+- **API Route**: `app/api/admin/coupons/distribute/route.js`
+- **Admin Client**: `lib/supabaseAdmin.js` - Service Role 클라이언트
+- **RLS 정책**: `supabase_user_coupons_rls.sql`
 
 #### 🗄️ 관련 테이블
 - `user_coupons` (main)
 - `coupons` (통계 업데이트)
 
 #### ⚠️ 주요 특징
+- **보안**: Service Role Key 사용 + 관리자 이메일 검증
+- **RLS 우회**: supabaseAdmin 클라이언트로 RLS 정책 우회
 - 중복 배포 방지: UNIQUE(user_id, coupon_id)
 - upsert 사용으로 중복 시 조용히 무시
 - 배포자 정보 저장 (issued_by)
 
+#### 🔒 보안 구조 (2025-10-03 업데이트)
+```
+관리자 UI
+  ↓ localStorage (admin_email)
+  ↓
+API Route (서버 사이드)
+  ↓ verifyAdminAuth(adminEmail)
+  ↓ process.env.ADMIN_EMAILS 확인
+  ↓
+supabaseAdmin (Service Role)
+  ↓ SUPABASE_SERVICE_ROLE_KEY
+  ↓ RLS 정책 우회
+  ↓
+user_coupons 테이블 INSERT
+```
+
 #### ✅ 필수 체크리스트
-- [ ] 활성화된 쿠폰만 배포 가능
-- [ ] 이미 보유한 사용자는 중복 제외
-- [ ] 배포 결과 피드백 (성공 X건, 중복 Y건)
+- [x] 활성화된 쿠폰만 배포 가능
+- [x] 이미 보유한 사용자는 중복 제외
+- [x] 배포 결과 피드백 (성공 X건, 중복 Y건)
+- [x] 관리자 권한 검증 (ADMIN_EMAILS)
+- [x] Service Role Key로 안전한 배포
 
 ---
 
