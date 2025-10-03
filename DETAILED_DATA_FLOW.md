@@ -1,6 +1,7 @@
 # 📊 Live Commerce 시스템 상세 데이터 흐름 문서
 
 **작성일**: 2025-10-01
+**최종 업데이트**: 2025-10-03
 **최종 검증**: 실제 프로덕션 코드 기반
 **목적**: 각 페이지/기능별 정확한 데이터 흐름 및 DB 매핑 문서화
 
@@ -1237,19 +1238,792 @@ const order_type = 'direct' // user_id 기반 조회 가능
 
 ---
 
+---
+
+### 9. 🏷️ 관리자 - 카테고리 관리 (`/app/admin/categories/page.js`)
+
+#### 📥 데이터 로드 흐름
+```mermaid
+graph TD
+    A[페이지 로드] --> B[loadCategories]
+    B --> C[categories 테이블 조회]
+    C --> D[각 카테고리의 상품 개수 조회]
+    D --> E[products 테이블 COUNT]
+    E --> F[카테고리 + 상품 개수 표시]
+```
+
+#### 실제 코드 흐름
+```javascript
+// 1. 카테고리 로드
+const { data: categoriesData, error } = await supabase
+  .from('categories')
+  .select('*')
+  .order('parent_id', { ascending: true, nullsFirst: true })
+  .order('name', { ascending: true })
+
+// 2. 각 카테고리의 상품 개수 가져오기
+const categoriesWithCount = await Promise.all(
+  (categoriesData || []).map(async (category) => {
+    const { count, error: countError } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('category_id', category.id)
+
+    return {
+      ...category,
+      product_count: countError ? 0 : (count || 0)
+    }
+  })
+)
+```
+
+#### 📤 카테고리 생성 흐름
+```mermaid
+graph TD
+    A[카테고리 추가 버튼] --> B[모달 열기]
+    B --> C[카테고리명 입력]
+    C --> D{상위 카테고리 선택}
+    D -->|대분류| E[parent_id = null]
+    D -->|소분류| F[parent_id 설정]
+    E --> G[categories INSERT]
+    F --> G
+    G --> H[slug 자동 생성]
+    H --> I[목록 새로고침]
+```
+
+#### 실제 저장 코드
+```javascript
+// slug 자동 생성 (입력 안 했을 경우)
+const slug = formData.slug || formData.name.toLowerCase().replace(/\s+/g, '-')
+
+if (editingCategory) {
+  // 수정
+  const { error } = await supabase
+    .from('categories')
+    .update({
+      name: formData.name,
+      slug: slug,
+      parent_id: formData.parent_id || null,
+      description: formData.description,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', editingCategory.id)
+} else {
+  // 추가
+  const { error } = await supabase
+    .from('categories')
+    .insert({
+      name: formData.name,
+      slug: slug,
+      parent_id: formData.parent_id || null,
+      description: formData.description,
+      is_active: true
+    })
+}
+```
+
+#### 사용되는 DB 컬럼
+**categories:**
+- `id, name, slug, parent_id, description, is_active, created_at, updated_at`
+
+**products (COUNT):**
+- `id, category_id`
+
+#### 화면 표시 정보
+- 대분류/소분류 구분 표시
+- 각 카테고리의 상품 개수
+- 활성/비활성 상태
+- 계층 구조 (parent_id 기반)
+
+---
+
+### 10. 🏢 관리자 - 업체 관리 (`/app/admin/suppliers/page.js`)
+
+#### 📥 데이터 로드 흐름
+```mermaid
+graph TD
+    A[페이지 로드] --> B[loadSuppliers]
+    B --> C[suppliers 테이블 조회]
+    C --> D[각 업체의 상품 개수 조회]
+    D --> E[products 테이블 COUNT]
+    E --> F[업체 + 상품 개수 표시]
+```
+
+#### 실제 코드 흐름
+```javascript
+// 1. 공급업체 로드
+const { data: suppliersData, error } = await supabase
+  .from('suppliers')
+  .select('*')
+  .order('created_at', { ascending: false })
+
+// 2. 각 업체의 상품 개수 가져오기
+const suppliersWithCount = await Promise.all(
+  (suppliersData || []).map(async (supplier) => {
+    const { count, error: countError } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('supplier_id', supplier.id)
+
+    return {
+      ...supplier,
+      product_count: countError ? 0 : (count || 0)
+    }
+  })
+)
+```
+
+#### 📤 업체 생성 흐름
+```mermaid
+graph TD
+    A[업체 추가 버튼] --> B[모달 열기]
+    B --> C[업체 정보 입력]
+    C --> D{업체 코드 입력?}
+    D -->|Yes| E[입력한 코드 사용]
+    D -->|No| F[자동 생성: SUP + 타임스탬프]
+    E --> G[suppliers INSERT]
+    F --> G
+    G --> H[목록 새로고침]
+```
+
+#### 실제 저장 코드
+```javascript
+if (editingSupplier) {
+  // 수정
+  const { error } = await supabase
+    .from('suppliers')
+    .update({
+      ...formData,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', editingSupplier.id)
+} else {
+  // 추가 - code가 비어있으면 자동 생성
+  const supplierData = {
+    ...formData,
+    code: formData.code || `SUP${Date.now().toString().slice(-8)}`,
+    is_active: true
+  }
+
+  const { error } = await supabase
+    .from('suppliers')
+    .insert(supplierData)
+}
+```
+
+#### 사용되는 DB 컬럼
+**suppliers:**
+- `id, code, name, contact_person, phone, email, address, notes, is_active, created_at, updated_at`
+
+**products (COUNT):**
+- `id, supplier_id`
+
+#### 화면 표시 정보
+- 업체명, 코드
+- 담당자명, 연락처, 이메일
+- 주소, 메모
+- 상품 개수
+- 활성/비활성 상태
+
+---
+
+### 11. 📦 관리자 - 상품 카탈로그 (`/app/admin/products/catalog/page.js`)
+
+#### 📥 데이터 로드 흐름
+```mermaid
+graph TD
+    A[페이지 로드] --> B[getAllProducts + getCategories 병렬 호출]
+    B --> C[products 테이블 조회]
+    C --> D[categories 테이블 조회]
+    D --> E[각 상품의 Variant 정보 로드]
+    E --> F[getProductVariants 호출]
+    F --> G[product_variants 조인]
+    G --> H[상품 + Variant 데이터 결합]
+    H --> I[그리드/리스트 뷰 렌더링]
+```
+
+#### 실제 코드 흐름
+```javascript
+// 1. 데이터 로딩 (병렬)
+const [productsData, categoriesData] = await Promise.all([
+  getAllProducts({
+    search: searchTerm,
+    category_id: selectedCategory,
+    status: selectedStatus
+  }),
+  getCategories()
+])
+
+// 2. 각 상품의 variant 정보도 함께 로드
+const productsWithVariants = await Promise.all(
+  productsData.map(async (product) => {
+    try {
+      const { getProductVariants } = await import('@/lib/supabaseApi')
+      const variants = await getProductVariants(product.id)
+      return { ...product, variants: variants || [] }
+    } catch (error) {
+      console.error(`Variant 로딩 실패 for product ${product.id}:`, error)
+      return { ...product, variants: [] }
+    }
+  })
+)
+```
+
+#### 📤 필터링 및 검색 흐름
+```mermaid
+graph TD
+    A[검색어 입력] --> B[300ms 디바운스]
+    B --> C[getAllProducts 재호출]
+    C --> D{필터 조건}
+    D -->|검색어| E[title, description, SKU 검색]
+    D -->|카테고리| F[category_id 필터]
+    D -->|상태| G[status 필터]
+    E --> H[결과 표시]
+    F --> H
+    G --> H
+```
+
+#### 사용되는 DB 컬럼
+**products:**
+- `id, title, price, compare_price, inventory, status, is_live_active, thumbnail_url, category_id, supplier_id, created_at, updated_at`
+
+**categories:**
+- `id, name`
+
+**product_variants:**
+- `id, product_id, sku, inventory, price_adjustment`
+
+#### 화면 표시 모드
+**그리드 뷰:**
+- 컴팩트한 카드 디자인 (2~6열 반응형)
+- 썸네일 이미지
+- 라이브 배지 (is_live_active)
+- Variant 개수 또는 재고 표시
+
+**리스트 뷰:**
+- 테이블 형식
+- 상품명, 카테고리, 가격, 재고, 상태, 라이브 여부
+- 상세/편집 버튼
+
+---
+
+### 12. ⚡ 관리자 - 상품 등록 (Variant) (`/app/admin/products/new/page.js`)
+
+#### 📥 페이지 초기화 흐름
+```mermaid
+graph TD
+    A[페이지 로드] --> B[관리자 권한 확인]
+    B --> C[제품번호 자동 생성]
+    C --> D[generateProductNumber]
+    D --> E[기존 상품 개수 조회]
+    E --> F[순차 번호 생성]
+    F --> G[폼 초기화 완료]
+```
+
+#### 📤 Variant 상품 등록 흐름 (복잡!)
+```mermaid
+graph TD
+    A[필수값 검증] --> B{이미지 + 가격?}
+    B -->|No| C[에러 메시지]
+    B -->|Yes| D[products 테이블 INSERT]
+    D --> E{옵션 있음?}
+    E -->|No| F[등록 완료]
+    E -->|Yes| G[product_options 생성]
+    G --> H[사이즈/색상 옵션별]
+    H --> I[product_option_values INSERT]
+    I --> J[옵션 조합 생성]
+    J --> K[product_variants INSERT]
+    K --> L[variant_option_values 매핑]
+    L --> M[등록 완료]
+```
+
+#### 실제 코드 흐름 (상세)
+```javascript
+// 1. 제품 생성
+const { data: product, error: productError } = await supabase
+  .from('products')
+  .insert({
+    title: productData.title.trim() || productNumber,
+    product_number: productNumber,
+    price: parseInt(productData.price),
+    inventory: totalInventory,  // 옵션이 있으면 모든 variant 재고 합계
+    thumbnail_url: imagePreview,
+    description: productData.description || '',
+    status: 'active',
+    is_featured: false,
+    tags: ['NEW']
+  })
+  .select()
+  .single()
+
+// 2. 옵션이 있는 경우 Variant 시스템으로 저장
+if (productData.optionType !== 'none' && combinations.length > 0) {
+  // 2-1. product_options 생성
+  const optionsToCreate = []
+
+  if (productData.optionType === 'size' || productData.optionType === 'both') {
+    optionsToCreate.push({ name: '사이즈', values: productData.sizeOptions })
+  }
+  if (productData.optionType === 'color' || productData.optionType === 'both') {
+    optionsToCreate.push({ name: '색상', values: productData.colorOptions })
+  }
+
+  const createdOptionValues = {} // 매핑 저장용
+
+  for (const option of optionsToCreate) {
+    // product_options INSERT
+    const { data: createdOption } = await supabase
+      .from('product_options')
+      .insert({
+        product_id: product.id,
+        name: option.name,
+        display_order: 0,
+        is_required: false
+      })
+      .select()
+      .single()
+
+    // product_option_values INSERT
+    const valuesToInsert = option.values.map((value, index) => ({
+      option_id: createdOption.id,
+      value: value,
+      display_order: index
+    }))
+
+    const { data: createdValues } = await supabase
+      .from('product_option_values')
+      .insert(valuesToInsert)
+      .select()
+
+    // 매핑 저장
+    createdOptionValues[option.name] = {}
+    createdValues.forEach(val => {
+      createdOptionValues[option.name][val.value] = val.id
+    })
+  }
+
+  // 2-2. product_variants 생성 (조합별로)
+  for (const combo of combinations) {
+    // SKU 생성
+    let sku = productNumber
+    if (combo.type === 'size') {
+      sku = `${productNumber}-${combo.size}`
+    } else if (combo.type === 'color') {
+      sku = `${productNumber}-${combo.color}`
+    } else if (combo.type === 'both') {
+      sku = `${productNumber}-${combo.size}-${combo.color}`
+    }
+
+    // 재고
+    const inventory = productData.optionInventories[combo.key] || 0
+
+    // product_variants INSERT
+    const { data: variant } = await supabase
+      .from('product_variants')
+      .insert({
+        product_id: product.id,
+        sku: sku,
+        inventory: inventory,
+        price_adjustment: 0,
+        is_active: true
+      })
+      .select()
+      .single()
+
+    // 2-3. variant_option_values 매핑
+    const mappings = []
+    if (combo.type === 'size') {
+      mappings.push({
+        variant_id: variant.id,
+        option_value_id: createdOptionValues['사이즈'][combo.size]
+      })
+    } else if (combo.type === 'color') {
+      mappings.push({
+        variant_id: variant.id,
+        option_value_id: createdOptionValues['색상'][combo.color]
+      })
+    } else if (combo.type === 'both') {
+      mappings.push({
+        variant_id: variant.id,
+        option_value_id: createdOptionValues['사이즈'][combo.size]
+      })
+      mappings.push({
+        variant_id: variant.id,
+        option_value_id: createdOptionValues['색상'][combo.color]
+      })
+    }
+
+    await supabase
+      .from('variant_option_values')
+      .insert(mappings)
+  }
+}
+```
+
+#### 옵션 조합 생성 로직
+```javascript
+const generateOptionCombinations = () => {
+  const { optionType, sizeOptions, colorOptions } = productData
+  const combinations = []
+
+  if (optionType === 'size') {
+    // 사이즈만: 55, 66, 77, 88, 99
+    sizeOptions.forEach(size => {
+      combinations.push({
+        key: `size:${size}`,
+        label: size,
+        type: 'size',
+        value: size
+      })
+    })
+  } else if (optionType === 'color') {
+    // 색상만: 블랙, 화이트, 그레이...
+    colorOptions.forEach(color => {
+      combinations.push({
+        key: `color:${color}`,
+        label: color,
+        type: 'color',
+        value: color
+      })
+    })
+  } else if (optionType === 'both') {
+    // 사이즈 × 색상: 55-블랙, 55-화이트, 66-블랙...
+    sizeOptions.forEach(size => {
+      colorOptions.forEach(color => {
+        combinations.push({
+          key: `size:${size}|color:${color}`,
+          label: `${size} × ${color}`,
+          type: 'both',
+          size,
+          color
+        })
+      })
+    })
+  }
+
+  return combinations
+}
+```
+
+#### 사용되는 DB 컬럼 (INSERT)
+**products:**
+- `title, product_number, price, inventory, thumbnail_url, description, status, is_featured, tags`
+
+**product_options:**
+- `product_id, name, display_order, is_required`
+
+**product_option_values:**
+- `option_id, value, display_order`
+
+**product_variants:**
+- `product_id, sku, inventory, price_adjustment, is_active`
+
+**variant_option_values:**
+- `variant_id, option_value_id`
+
+#### 화면 표시 정보
+- 제품번호: 자동 생성 (예: 0001, 0002...)
+- 제품명: 선택사항 (입력 시: "0001/밍크자켓", 미입력 시: "0001")
+- 가격: 천원 단위 입력 옵션 (19.5 → 19,500원)
+- 사이즈 템플릿: 숫자(55~99), 알파벳(XS~XXL), FREE
+- 색상 프리셋: 블랙, 화이트, 그레이 등 10가지
+- 옵션별 재고 설정 (일괄 입력 가능)
+
+---
+
+### 13. 🚚 관리자 - 발송 관리 (`/app/admin/shipping/page.js`)
+
+#### 📥 데이터 로드 흐름
+```mermaid
+graph TD
+    A[페이지 로드] --> B[loadPaidOrders]
+    B --> C[getAllOrders 호출]
+    C --> D{주문 상태 필터}
+    D -->|paid/shipping/delivered| E[결제완료 주문만 선택]
+    D -->|기타| F[제외]
+    E --> G[배송 정보 추출]
+    G --> H[shipping_* 컬럼 우선]
+    H --> I[order_shipping 조인 정보 대체]
+    I --> J[우편번호 포함 주소 표시]
+```
+
+#### 실제 코드 흐름
+```javascript
+// 1. 결제 완료된 주문들 가져오기
+const { getAllOrders } = await import('@/lib/supabaseApi')
+const allOrders = await getAllOrders()
+
+// 2. 결제완료, 배송중, 배송완료 주문만 필터링
+const paidOrders = allOrders.filter(order =>
+  order.status === 'paid' || order.status === 'shipping' || order.status === 'delivered'
+)
+
+// 3. 배송 정보 추출 (shipping_* 컬럼 우선)
+const ordersWithUserInfo = paidOrders.map(order => {
+  const shippingInfo = {
+    name: order.shipping_name || order.order_shipping?.[0]?.name || order.shipping?.name || '',
+    phone: order.shipping_phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || '',
+    address: order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '',
+    detail_address: order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || '',
+    postal_code: order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
+  }
+
+  return {
+    ...order,
+    user: {
+      name: shippingInfo?.name || '배송 정보 없음',
+      phone: shippingInfo?.phone || '연락처 없음',
+      address: shippingInfo?.address || '',
+      detail_address: shippingInfo?.detail_address || ''
+    },
+    hasValidShipping: !!(shippingInfo.name && shippingInfo.phone && shippingInfo.address)
+  }
+})
+```
+
+#### 📤 송장 다운로드 흐름
+```mermaid
+graph TD
+    A[주문 선택] --> B[송장 다운로드 버튼]
+    B --> C[CSV 데이터 생성]
+    C --> D[shipping_* 컬럼 우선 사용]
+    D --> E[우편번호 포함 주소 포맷]
+    E --> F[상품 정보 조합]
+    F --> G[Blob 생성]
+    G --> H[파일 다운로드]
+```
+
+#### 실제 송장 생성 코드
+```javascript
+// CSV 헤더
+const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
+
+// 각 주문의 CSV 데이터 생성
+const csvData = selectedOrderData.map(order => {
+  // 상품 정보
+  const items = order.order_items.map(item => {
+    const title = item.products?.title || item.product?.title || item.title || '상품'
+    const quantity = item.quantity || 1
+    return `${title}(${quantity}개)`
+  }).join(';')
+
+  // 배송 정보 (shipping_* 컬럼 우선)
+  const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || ''
+  const address = order.shipping_address || order.order_shipping?.[0]?.address || '정보없음'
+  const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || ''
+  const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+  const fullAddressWithPostal = postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
+
+  // 고객명 및 연락처
+  const customerName = order.shipping_name || order.user?.name || '정보없음'
+  const phone = order.shipping_phone || order.user?.phone || '정보없음'
+
+  // 총 수량 및 금액
+  const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+  const amount = order.order_payments?.[0]?.amount || order.payment?.amount || order.total_amount || 0
+
+  return [
+    order.customer_order_number || order.id?.slice(-8),
+    customerName,
+    phone,
+    `"${fullAddressWithPostal}"`,  // ⚠️ 우편번호 포함!
+    `"${items}"`,
+    totalQuantity,
+    amount,
+    getStatusInfo(order.status).label
+  ].join(',')
+}).join('\n')
+
+// CSV 파일 생성 및 다운로드
+const csvContent = csvHeader + csvData
+const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+const link = document.createElement('a')
+const url = URL.createObjectURL(blob)
+link.setAttribute('href', url)
+link.setAttribute('download', `송장_${new Date().toISOString().split('T')[0]}.csv`)
+link.click()
+```
+
+#### 사용되는 DB 컬럼
+**orders:**
+- `id, customer_order_number, status, created_at`
+
+**order_items:**
+- `id, order_id, product_id, quantity`
+- `products.title` (조인)
+
+**order_shipping:**
+- `name, phone, address, detail_address, postal_code`  ⚠️ postal_code 필수
+
+**order_payments:**
+- `amount`
+
+#### 화면 표시 정보
+**탭:**
+- 발송대기: status = 'paid' 또는 'shipping'
+- 발송완료: status = 'delivered'
+
+**테이블/카드:**
+- 주문번호, 고객명, 연락처
+- 주소 (우편번호 포함)
+- 상태 (발송 대기, 발송 중, 발송 완료)
+- 송장 다운로드 버튼 (개별/일괄)
+
+---
+
+### 14. 👥 관리자 - 고객 관리 (`/app/admin/customers/page.js`)
+
+#### 📥 데이터 로드 흐름
+```mermaid
+graph TD
+    A[페이지 로드] --> B[loadCustomers]
+    B --> C[getAllCustomers 호출]
+    C --> D[profiles 테이블 조회]
+    D --> E[각 고객의 주문 통계 집계]
+    E --> F[orders 테이블 JOIN]
+    F --> G[orderCount, totalSpent 계산]
+    G --> H[lastOrderDate 추출]
+    H --> I[고객 등급 계산]
+```
+
+#### 실제 코드 흐름
+```javascript
+// getAllCustomers() 함수 내부
+const customersData = await getAllCustomers()
+
+// 반환 데이터 구조
+{
+  id: "uuid",
+  name: "홍길동",
+  nickname: "hong",
+  phone: "010-1234-5678",
+  address: "서울시 강남구...",
+  detail_address: "101동 101호",
+  created_at: "2025-01-01T00:00:00Z",
+  orderCount: 5,              // 총 주문 건수
+  totalSpent: 250000,         // 총 구매 금액
+  lastOrderDate: "2025-10-01" // 최근 주문 날짜
+}
+```
+
+#### 📤 고객 등급 계산 로직
+```javascript
+const getCustomerGrade = (totalSpent) => {
+  if (totalSpent >= 1000000) {
+    return { label: 'VIP', color: 'bg-yellow-100 text-yellow-800', icon: '👑' }
+  } else if (totalSpent >= 500000) {
+    return { label: 'GOLD', color: 'bg-amber-100 text-amber-800', icon: '🥇' }
+  } else if (totalSpent >= 200000) {
+    return { label: 'SILVER', color: 'bg-gray-100 text-gray-800', icon: '🥈' }
+  } else if (totalSpent > 0) {
+    return { label: 'BRONZE', color: 'bg-orange-100 text-orange-800', icon: '🥉' }
+  } else {
+    return { label: 'NEW', color: 'bg-blue-100 text-blue-800', icon: '🆕' }
+  }
+}
+```
+
+#### 📤 필터링 및 정렬 흐름
+```mermaid
+graph TD
+    A[검색어 입력] --> B{검색 조건}
+    B -->|이름| C[name LIKE]
+    B -->|닉네임| D[nickname LIKE]
+    B -->|전화번호| E[phone LIKE]
+    C --> F[필터링된 결과]
+    D --> F
+    E --> F
+    F --> G{정렬 기준}
+    G -->|가입순| H[created_at DESC]
+    G -->|이름순| I[name ASC]
+    G -->|주문수순| J[orderCount DESC]
+    G -->|구매금액순| K[totalSpent DESC]
+```
+
+#### 사용되는 DB 컬럼
+**profiles:**
+- `id, name, nickname, phone, address, detail_address, avatar_url, created_at`
+
+**orders (집계):**
+- `COUNT(*) as orderCount`
+- `SUM(total_amount) as totalSpent`
+- `MAX(created_at) as lastOrderDate`
+
+#### 화면 표시 정보
+**통계 카드:**
+- 전체 고객 수
+- 활성 고객 수 (주문이 있는 고객)
+- VIP 고객 수 (100만원 이상)
+- 신규 고객 수 (주문 없음)
+
+**고객 테이블/카드:**
+- 프로필 이미지, 이름, 닉네임
+- 연락처, 주소
+- 주문 통계 (주문 수, 총 구매액, 최근 주문일)
+- 등급 배지 (VIP/GOLD/SILVER/BRONZE/NEW)
+- 상세보기 버튼
+
+---
+
+## 🔄 핵심 데이터 흐름 다이어그램
+
+### Variant 재고 차감 흐름 (2025-10-01 추가)
+```mermaid
+graph TD
+    A[사용자 옵션 선택] --> B[프론트엔드에서 variant_id 확인]
+    B --> C[checkVariantInventory 호출]
+    C --> D{재고 충분?}
+    D -->|No| E[에러 메시지 표시]
+    D -->|Yes| F[createOrder 호출]
+    F --> G[order_items INSERT with variant_id]
+    G --> H[updateVariantInventory 호출]
+    H --> I[FOR UPDATE 락 획득]
+    I --> J[product_variants.inventory 차감]
+    J --> K[트리거 자동 실행]
+    K --> L[products.inventory 자동 업데이트]
+    L --> M[주문 생성 완료]
+```
+
+### 배송비 계산 흐름 (2025-10-03 추가)
+```mermaid
+graph TD
+    A[체크아웃 페이지 로드] --> B[사용자 프로필 로드]
+    B --> C[profiles.postal_code 확인]
+    C --> D[formatShippingInfo 호출]
+    D --> E{우편번호 범위 확인}
+    E -->|제주 63000-63644| F[기본 배송비 + 3,000원]
+    E -->|울릉도 40200-40240| G[기본 배송비 + 5,000원]
+    E -->|기타 도서산간| H[기본 배송비 + 5,000원]
+    E -->|일반 지역| I[기본 배송비 4,000원]
+    F --> J[총 배송비 표시]
+    G --> J
+    H --> J
+    I --> J
+    J --> K[주문 생성 시 postal_code 저장]
+```
+
+---
+
 ## 📝 문서 버전 정보
 
-**버전**: 1.0
-**최종 업데이트**: 2025-10-01
+**버전**: 2.0
+**최종 업데이트**: 2025-10-03
 **검증 상태**: ✅ 실제 프로덕션 코드 기반 검증 완료
+**추가된 페이지**: 6개 (카테고리, 업체, 상품 카탈로그, 상품 등록, 발송 관리, 고객 관리)
+**업데이트 내용**:
+- Variant 시스템 상세 데이터 흐름 추가
+- 우편번호 시스템 및 배송비 계산 로직 추가
+- 관리자 페이지 6개 데이터 흐름 완전 문서화
 **작성자**: Claude Code
 
 ---
 
 ## 🔗 관련 문서
 
-- `WORK_LOG_2025-10-01.md` - 오늘의 작업 내역
-- `SYSTEM_ARCHITECTURE_PRODUCTION.md` - 시스템 아키텍처
+- `WORK_LOG_2025-10-03.md` - 우편번호 시스템 통합 작업 로그
+- `WORK_LOG_2025-10-01.md` - Variant 시스템 작업 로그
+- `SYSTEM_ARCHITECTURE.md` - 시스템 아키텍처
 - `DATA_ARCHITECTURE.md` - 데이터 아키텍처
+- `DB_REFERENCE_GUIDE.md` - DB 레퍼런스 가이드
 - `CLAUDE.md` - 개발 가이드라인
 - `supabase_schema.sql` - 실제 DB 스키마

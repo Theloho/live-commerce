@@ -18,6 +18,7 @@ import {
   PhotoIcon
 } from '@heroicons/react/24/outline'
 import { formatShippingInfo } from '@/lib/shippingUtils'
+import { OrderCalculations } from '@/lib/orderCalculations'
 import toast from 'react-hot-toast'
 
 export default function AdminOrderDetailPage() {
@@ -314,33 +315,65 @@ export default function AdminOrderDetailPage() {
                   )
                 })()}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">결제 금액</span>
-                {(() => {
-                  // 정확한 결제 금액 계산 (도서산간 추가 배송비 포함)
-                  const itemsTotal = order.items.reduce((sum, item) => {
-                    return sum + ((item.price || 0) * (item.quantity || 1))
-                  }, 0)
-                  const shippingInfo = formatShippingInfo(
-                    order.status === 'pending' ? 0 : 4000,
-                    order.shipping?.postal_code
-                  )
-                  const shippingFee = shippingInfo.totalShipping
-                  const correctAmount = itemsTotal + shippingFee
+              {/* 결제 금액 상세 (중앙화된 계산 모듈 사용) */}
+              {(() => {
+                const shippingInfo = formatShippingInfo(
+                  order.status === 'pending' ? 0 : 4000,
+                  order.shipping?.postal_code
+                )
 
-                  console.log('💰 관리자 주문 상세 금액 계산:', {
-                    itemsTotal,
-                    shippingFee,
-                    correctAmount,
-                    postalCode: order.shipping?.postal_code,
-                    shippingInfo
-                  })
+                // 🧮 중앙화된 계산 모듈 사용
+                const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
+                  region: shippingInfo.region,
+                  coupon: order.discount_amount > 0 ? {
+                    type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
+                    value: order.discount_amount
+                  } : null,
+                  paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer'
+                })
 
-                  return (
-                    <span className="font-bold text-lg">₩{correctAmount.toLocaleString()}</span>
-                  )
-                })()}
-              </div>
+                console.log('💰 관리자 주문 상세 금액 계산 (중앙화 모듈):', {
+                  ...orderCalc.breakdown,
+                  postalCode: order.shipping?.postal_code,
+                  shippingInfo
+                })
+
+                return (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">상품 금액</span>
+                      <span className="font-medium">₩{orderCalc.itemsTotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">배송비</span>
+                      <div className="text-right">
+                        <span className="font-medium">₩{orderCalc.shippingFee.toLocaleString()}</span>
+                        {shippingInfo.isRemote && (
+                          <p className="text-xs text-orange-600">
+                            ({shippingInfo.region} +₩{shippingInfo.surcharge.toLocaleString()})
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-blue-600">쿠폰 할인</span>
+                        <span className="font-medium text-blue-600">-₩{orderCalc.couponDiscount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {order.payment?.method === 'card' && orderCalc.vat > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">부가세 (10%)</span>
+                        <span className="font-medium">₩{orderCalc.vat.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                      <span className="text-gray-900 font-semibold">최종 결제 금액</span>
+                      <span className="font-bold text-lg text-red-600">₩{orderCalc.finalAmount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )
+              })()}
               {order.payment?.method === 'bank_transfer' && (
                 <>
                   <div className="flex justify-between items-center">
@@ -653,48 +686,36 @@ export default function AdminOrderDetailPage() {
         {/* Order Summary */}
         <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="space-y-2">
+            {/* 결제 금액 상세 (중앙화된 계산 모듈 사용) */}
             {(() => {
-              // 상품 금액 정확히 계산
-              const itemsTotal = order.items.reduce((sum, item) => {
-                const itemPrice = item.price || 0
-                const itemQuantity = item.quantity || 1
-                const itemTotal = itemPrice * itemQuantity
-                return sum + itemTotal
-              }, 0)
-
-              // 배송비 계산: 결제대기는 0원, 나머지는 기본 4000원 + 도서산간 추가비
               const shippingInfo = formatShippingInfo(
                 order.status === 'pending' ? 0 : 4000,
                 order.shipping?.postal_code
               )
-              const shippingFee = shippingInfo.totalShipping
 
-              // 올바른 총 결제 금액 계산
-              const correctTotalAmount = itemsTotal + shippingFee
+              // 🧮 중앙화된 계산 모듈 사용
+              const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
+                region: shippingInfo.region,
+                coupon: order.discount_amount > 0 ? {
+                  type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
+                  value: order.discount_amount
+                } : null,
+                paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer'
+              })
 
-              // 디버깅 로그
-              console.log('💰 관리자 주문 상세 금액 계산:', {
+              console.log('💰 관리자 주문 상세 하단 금액 계산 (중앙화 모듈):', {
+                ...orderCalc.breakdown,
                 'order.status': order.status,
-                'itemsTotal': itemsTotal,
-                'baseShipping': shippingInfo.baseShipping,
-                'surcharge': shippingInfo.surcharge,
-                'region': shippingInfo.region,
-                'shippingFee': shippingFee,
-                'correctTotalAmount': correctTotalAmount,
-                'order.payment?.amount (DB값)': order.payment?.amount,
-                'order.items': order.items.map(item => ({
-                  title: item.title,
-                  price: item.price,
-                  quantity: item.quantity,
-                  total: item.price * item.quantity
-                }))
+                'postalCode': order.shipping?.postal_code,
+                'shippingInfo': shippingInfo,
+                'order.payment?.amount (DB값)': order.payment?.amount
               })
 
               return (
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">상품 금액</span>
-                    <span>₩{itemsTotal.toLocaleString()}</span>
+                    <span>₩{orderCalc.itemsTotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">
@@ -705,13 +726,25 @@ export default function AdminOrderDetailPage() {
                         </span>
                       )}
                     </span>
-                    <span>{shippingFee > 0 ? `₩${shippingFee.toLocaleString()}` : '무료'}</span>
+                    <span>{orderCalc.shippingFee > 0 ? `₩${orderCalc.shippingFee.toLocaleString()}` : '무료'}</span>
                   </div>
+                  {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-blue-600">쿠폰 할인</span>
+                      <span className="text-blue-600">-₩{orderCalc.couponDiscount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {order.payment?.method === 'card' && orderCalc.vat > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">부가세 (10%)</span>
+                      <span>₩{orderCalc.vat.toLocaleString()}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
                     <span>총 결제 금액</span>
-                    <span className="text-red-600">₩{correctTotalAmount.toLocaleString()}</span>
+                    <span className="text-red-600">₩{orderCalc.finalAmount.toLocaleString()}</span>
                   </div>
-                  {order.payment?.amount !== correctTotalAmount && (
+                  {order.payment?.amount && order.payment.amount !== orderCalc.finalAmount && (
                     <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
                       ⚠️ DB 저장값(₩{order.payment?.amount?.toLocaleString()})과 계산값이 다릅니다
                     </div>

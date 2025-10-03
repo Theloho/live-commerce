@@ -158,14 +158,87 @@ AddressManager → addresses API → addresses 테이블
 - `admin/stats` API ← 통계 데이터
 - `admin/reset-data` API ← DB 초기화
 
+#### `/admin/categories` (카테고리 관리) ⭐ 신규
+**주요 기능**:
+- 카테고리 계층 구조 관리 (대/중/소 분류)
+- 카테고리 생성, 수정, 삭제
+- 표시 순서 조정
+
+**연관 시스템**:
+- `categories` 테이블 ← 카테고리 데이터
+- `getCategories()` API ← 계층 구조 조회
+
+**데이터 흐름**:
+```
+categories 테이블 (parent_id 기반 계층)
+→ 대분류 (parent_id = NULL)
+  → 중분류 (parent_id = 대분류 ID)
+    → 소분류 (parent_id = 중분류 ID)
+```
+
+#### `/admin/suppliers` (업체 관리) ⭐ 신규
+**주요 기능**:
+- 공급업체 정보 관리
+- 업체 코드 자동 생성
+- 연락처 및 계좌 정보 관리
+
+**연관 시스템**:
+- `suppliers` 테이블 ← 업체 데이터
+- `getSuppliers()`, `createSupplier()`, `updateSupplier()` API
+
+**영향받는 페이지**:
+- `/admin/products/catalog` (상품 등록 시 업체 선택)
+- `/admin/purchase-orders` (발주 관리)
+
+#### `/admin/products/catalog` (상품 카탈로그) ⭐ 신규
+**주요 기능**:
+- 전체 상품 목록 및 필터링
+- Variant 시스템 기반 상품 관리
+- 카테고리/업체별 필터링
+- 재고 현황 표시
+
+**연관 시스템**:
+- `getAllProducts()` API ← 상품 + Variant 데이터
+- `products`, `product_variants`, `categories`, `suppliers` JOIN
+
+**데이터 흐름**:
+```
+products 테이블
+→ JOIN categories (카테고리 정보)
+→ JOIN suppliers (업체 정보)
+→ JOIN product_variants (SKU별 재고)
+```
+
+#### `/admin/products/new` (상품 등록 - Variant) ⭐ 신규
+**주요 기능**:
+- Variant 시스템 기반 상품 등록
+- 옵션 정의 및 조합 생성
+- SKU 자동 생성
+- 조합별 재고 설정
+
+**연관 시스템**:
+- `createProductWithOptions()` API ← 상품 + 옵션 + Variant 일괄 생성
+- `product_options`, `product_option_values`, `product_variants`, `variant_option_values` 테이블
+
+**데이터 흐름**:
+```
+1. products 생성
+2. product_options 생성 (색상, 사이즈)
+3. product_option_values 생성 (빨강, 파랑, S, M, L)
+4. 옵션 조합 생성 → product_variants
+5. variant_option_values 매핑
+```
+
 #### `/admin/orders` (주문 관리)
 **주요 기능**:
 - 모든 주문 목록 표시
 - 주문 상태별 필터링
+- 도서산간 배송비 자동 계산 표시
 
 **연관 시스템**:
 - `getAllOrders()` in supabaseApi ← 모든 주문 데이터
 - UserProfileManager 로직 ← 카카오 사용자 인식
+- `formatShippingInfo()` ← 배송비 계산
 
 **데이터 흐름**:
 ```
@@ -173,6 +246,43 @@ getAllOrders() → 모든 주문
 카카오 주문: order_type.startsWith('direct:KAKAO:')
 일반 주문: user_id 매칭
 → 사용자 정보 매핑
+→ postal_code 기반 배송비 계산
+```
+
+#### `/admin/shipping` (발송 관리) ⭐ 신규
+**주요 기능**:
+- 배송 상태 일괄 관리
+- 송장 번호 입력
+- 발송 완료 처리
+
+**연관 시스템**:
+- `orders`, `order_shipping` 테이블 UPDATE
+- `updateOrderStatus()` API ← 상태 변경
+
+**데이터 흐름**:
+```
+orders (status = 'paid') 조회
+→ 송장 번호 입력
+→ order_shipping.tracking_number UPDATE
+→ updateOrderStatus('shipped')
+→ orders.shipped_at 자동 기록
+```
+
+#### `/admin/customers` (고객 관리) ⭐ 신규
+**주요 기능**:
+- 고객 목록 및 검색
+- 고객별 주문 이력
+- 통계 정보 표시
+
+**연관 시스템**:
+- `getAllCustomers()` API ← 고객 데이터
+- `profiles`, `orders` JOIN
+
+**데이터 흐름**:
+```
+profiles 테이블
+→ JOIN orders (고객별 주문)
+→ 주문 횟수, 총 구매액 계산
 ```
 
 #### `/admin/purchase-orders` (업체별 발주 관리)
@@ -230,6 +340,166 @@ supplierId → 해당 업체 주문 아이템 조회
 - **수량 조정**: order_items별 조정 값 JSONB 저장
 - **자동 완료**: Excel 다운로드 시 purchase_order_batches 자동 생성
 - **이력 관리**: 발주 시점, 주문 ID 목록, 조정 내역 모두 기록
+
+---
+
+## 🔧 핵심 시스템 아키텍처
+
+### 5. Variant 시스템 (옵션 조합 재고 관리) ⭐ 신규
+
+**목적**: 옵션 조합별 독립 재고 관리 (예: 색상-사이즈 조합)
+
+**구조**:
+```
+products (상품)
+  └─ product_options (옵션: 색상, 사이즈)
+      └─ product_option_values (옵션값: 빨강, 파랑, S, M, L)
+          └─ product_variants (SKU별 재고) ⭐ 핵심
+              └─ variant_option_values (매핑)
+```
+
+**테이블 구조**:
+- `product_options`: 옵션 정의 (색상, 사이즈)
+- `product_option_values`: 옵션 값 (빨강, 파랑, S, M, L)
+- `product_variants`: SKU별 재고 관리 (빨강-S: 10개, 빨강-M: 5개)
+- `variant_option_values`: Variant-옵션 매핑 (N:N)
+
+**연관 페이지**:
+- `/admin/products/new` (Variant 상품 등록)
+- `/admin/products/[id]/edit` (Variant 수정)
+- `/product/[id]` (사용자 옵션 선택)
+- `/checkout` (주문 생성)
+
+**주요 함수**:
+- `getProductVariants(productId)`: Variant 목록 조회
+- `createVariant(variantData, optionValueIds)`: Variant 생성
+- `updateVariantInventory(variantId, quantityChange)`: 재고 업데이트 (FOR UPDATE 락)
+- `checkVariantInventory(productId, selectedOptions)`: 재고 확인
+
+**재고 관리 흐름**:
+```
+1. 사용자 옵션 선택 (색상: 빨강, 사이즈: S)
+2. findVariant() - 해당 조합의 variant_id 찾기
+3. checkVariantInventory() - 재고 확인
+4. 주문 생성 시 updateVariantInventory() 호출
+5. FOR UPDATE 락으로 동시성 제어
+6. 재고 차감 성공 시 트리거가 자동으로 products.inventory 업데이트
+```
+
+---
+
+### 6. 발주 시스템 ⭐ 신규
+
+**목적**: 업체별 발주서 다운로드 및 이력 추적
+
+**데이터 흐름**:
+```
+1. 입금확인 완료 주문 조회 (status = 'deposited')
+2. 업체별 그룹핑 (products.supplier_id 기준)
+3. 발주서 Excel 다운로드
+4. purchase_order_batches 테이블에 이력 저장
+5. 중복 발주 방지 (order_ids 배열 검색)
+```
+
+**핵심 테이블**: `purchase_order_batches`
+```sql
+CREATE TABLE purchase_order_batches (
+    id UUID PRIMARY KEY,
+    supplier_id UUID NOT NULL,
+    download_date TIMESTAMPTZ NOT NULL,
+    order_ids UUID[] NOT NULL,  -- 포함된 주문 ID 배열
+    adjusted_quantities JSONB,  -- 수량 조정 내역
+    total_items INT NOT NULL,
+    total_amount INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'completed',
+    created_by VARCHAR(255)  -- 관리자 이메일
+);
+```
+
+**연관 페이지**:
+- `/admin/purchase-orders` (업체별 요약)
+- `/admin/purchase-orders/[supplierId]` (발주서 상세 및 다운로드)
+
+**주요 함수**:
+- `getPurchaseOrdersBySupplier()`: 모든 업체의 발주 데이터 조회
+- `getPurchaseOrderBySupplier(supplierId)`: 특정 업체의 발주 데이터 조회
+
+**중복 방지 로직**:
+```javascript
+// 1. 완료된 발주 조회
+const completedBatches = await supabase
+  .from('purchase_order_batches')
+  .select('order_ids')
+  .eq('status', 'completed')
+
+// 2. 완료된 주문 ID Set 생성
+const completedOrderIds = new Set()
+completedBatches?.forEach(batch => {
+  batch.order_ids?.forEach(id => completedOrderIds.add(id))
+})
+
+// 3. 발주 안 된 주문만 필터링
+const pendingOrders = orders.filter(order => !completedOrderIds.has(order.id))
+```
+
+---
+
+### 7. 우편번호 및 도서산간 배송비 시스템 ⭐ 신규
+
+**목적**: 우편번호 기반 자동 배송비 계산
+
+**구조**:
+- `profiles.postal_code`: 사용자 기본 우편번호
+- `order_shipping.postal_code`: 주문 시점 우편번호 저장
+- `shippingUtils.js`: 도서산간 판별 및 배송비 계산
+
+**도서산간 규칙**:
+```javascript
+제주 (63000-63644): 기본 배송비 + 3,000원
+울릉도 (40200-40240): 기본 배송비 + 5,000원
+기타 도서산간: 기본 배송비 + 5,000원
+```
+
+**주요 함수**:
+```javascript
+import { formatShippingInfo } from '@/lib/shippingUtils'
+
+const shippingInfo = formatShippingInfo(4000, "63001")
+// 반환: {
+//   baseShipping: 4000,
+//   surcharge: 3000,
+//   totalShipping: 7000,
+//   region: "제주",
+//   isRemote: true
+// }
+```
+
+**연관 페이지**:
+- 체크아웃 (`/checkout`)
+- 주문 상세 (`/orders/[id]/complete`)
+- 관리자 주문 리스트 (`/admin/orders`)
+- 관리자 주문 상세 (`/admin/orders/[id]`)
+- 발송 관리 (`/admin/shipping`)
+- 마이페이지 (`/mypage`)
+
+**주문 생성 시 동작**:
+```javascript
+// 1. 사용자 프로필에서 우편번호 가져오기
+const postalCode = userProfile.postal_code
+
+// 2. 배송비 계산
+const shippingInfo = formatShippingInfo(4000, postalCode)
+
+// 3. 주문 총액 계산
+const totalAmount = orderData.totalPrice + shippingInfo.totalShipping
+
+// 4. order_shipping에 postal_code 저장 (주문 시점 우편번호)
+await supabase.from('order_shipping').insert({
+  order_id: orderId,
+  postal_code: postalCode,
+  shipping_fee: shippingInfo.totalShipping
+})
+```
 
 ---
 
@@ -328,10 +598,19 @@ graph TD
 ## 📈 시스템 상태 (실시간 업데이트)
 
 ### 최근 주요 변경사항
-- **2025-10-02**: ✨ **NEW FEATURE** - 업체별 발주서 출력 기능 구현 (purchase_order_batches 테이블 추가)
-- **2025-10-02**: 입금확인 완료 주문 자동 집계 및 업체별 그룹핑
-- **2025-10-02**: 수량 조정 기능 및 Excel 다운로드 기능 추가
-- **2025-10-02**: 중복 발주 방지 로직 구현 (완료된 주문 자동 제외)
+- **2025-10-03**: ⭐ **NEW SYSTEM** - 우편번호 시스템 완전 통합
+  - `profiles.postal_code`, `order_shipping.postal_code` 추가
+  - `formatShippingInfo()` 함수로 도서산간 배송비 자동 계산
+  - 체크아웃, 주문 상세, 관리자 페이지 전체 적용
+- **2025-10-02**: ⭐ **NEW SYSTEM** - 업체별 발주서 출력 기능 구현
+  - `purchase_order_batches` 테이블 추가
+  - 입금확인 완료 주문 자동 집계 및 업체별 그룹핑
+  - 수량 조정 기능 및 Excel 다운로드
+  - 중복 발주 방지 로직 구현
+- **2025-10-01**: ⭐ **NEW SYSTEM** - Variant 시스템 구축
+  - 8개 테이블 추가 (categories, suppliers, product_options, product_option_values, product_variants, variant_option_values, live_broadcasts, live_products)
+  - 옵션 조합별 독립 재고 관리
+  - FOR UPDATE 락으로 동시성 제어
 - **2025-09-30**: 🚨 **CRITICAL BUG FIX** - deprecated 카카오 API에서 totalPrice 변수 순서 오류 해결
 - **2025-09-30**: order_items 생성 실패 및 total_amount undefined 문제 근본 해결
 - **2025-09-30**: cart:KAKAO 주문에서 "0종 0개", "₩0" 표시 문제 해결
@@ -379,5 +658,8 @@ graph TD
 
 ---
 
-*마지막 업데이트: 2025-10-02*
-*담당자: Claude Code*
+---
+
+**마지막 업데이트**: 2025-10-03
+**담당자**: Claude Code
+**문서 상태**: 100% 최신 (Variant 시스템, 발주 시스템, 우편번호 시스템 완전 반영)

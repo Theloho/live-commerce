@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast'
 import { getAllOrders } from '@/lib/supabaseApi'
 import { formatShippingInfo } from '@/lib/shippingUtils'
+import { OrderCalculations } from '@/lib/orderCalculations'
 
 export default function AdminOrdersPage() {
   const router = useRouter()
@@ -410,18 +411,31 @@ export default function AdminOrdersPage() {
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         {(() => {
-                          // 정확한 결제 금액 계산 (도서산간 배송비 포함)
-                          const itemsTotal = order.items.reduce((sum, item) => {
-                            return sum + ((item.price || 0) * (item.quantity || 1))
-                          }, 0)
+                          // 🧮 중앙화된 계산 모듈 사용
                           const shippingInfo = formatShippingInfo(
                             order.status === 'pending' ? 0 : 4000,
                             order.shipping?.postal_code
                           )
-                          const shippingFee = shippingInfo.totalShipping
-                          const correctAmount = itemsTotal + shippingFee
 
-                          return `₩${correctAmount.toLocaleString()}`
+                          const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
+                            region: shippingInfo.region,
+                            coupon: order.discount_amount > 0 ? {
+                              type: 'fixed_amount',
+                              value: order.discount_amount
+                            } : null,
+                            paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer'
+                          })
+
+                          return (
+                            <div>
+                              <div>₩{orderCalc.finalAmount.toLocaleString()}</div>
+                              {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
+                                <div className="text-xs text-blue-600 mt-0.5">
+                                  (쿠폰 -₩{orderCalc.couponDiscount.toLocaleString()})
+                                </div>
+                              )}
+                            </div>
+                          )
                         })()}
                       </div>
                       <div className="flex items-center gap-1 mt-1">
@@ -545,13 +559,21 @@ export default function AdminOrdersPage() {
         {/* 모바일 카드 뷰 */}
         <div className="lg:hidden divide-y divide-gray-200">
           {filteredOrders.map((order, index) => {
-            const itemsTotal = order.items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0)
+            // 🧮 중앙화된 계산 모듈 사용 (모바일 뷰)
             const shippingInfo = formatShippingInfo(
               order.status === 'pending' ? 0 : 4000,
               order.shipping?.postal_code
             )
-            const shippingFee = shippingInfo.totalShipping
-            const correctAmount = itemsTotal + shippingFee
+
+            const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
+              region: shippingInfo.region,
+              coupon: order.discount_amount > 0 ? {
+                type: 'fixed_amount',
+                value: order.discount_amount
+              } : null,
+              paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer'
+            })
+
             const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
             const uniqueProducts = order.items.length
 
@@ -587,9 +609,16 @@ export default function AdminOrdersPage() {
                     <span className="text-sm font-medium text-gray-900">
                       {order.userName || order.shipping?.name || '정보없음'}
                     </span>
-                    <span className="text-sm font-bold text-gray-900">
-                      ₩{correctAmount.toLocaleString()}
-                    </span>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-gray-900">
+                        ₩{orderCalc.finalAmount.toLocaleString()}
+                      </div>
+                      {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
+                        <div className="text-xs text-blue-600">
+                          (쿠폰 -₩{orderCalc.couponDiscount.toLocaleString()})
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="text-sm text-gray-600">
                     {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || '익명')}

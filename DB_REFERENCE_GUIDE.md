@@ -1,6 +1,6 @@
 # 🗄️ DB 참조 가이드 - 완전판
 
-**최종 업데이트**: 2025-10-02
+**최종 업데이트**: 2025-10-03
 **목적**: 모든 작업 시 DB 구조를 정확히 참조하고 올바르게 사용하기 위한 필수 가이드
 
 ---
@@ -466,23 +466,162 @@ CREATE TABLE purchase_order_batches (
     created_by VARCHAR(255)  -- 다운로드한 관리자 이메일
 );
 
+-- 인덱스 (중요!)
 CREATE INDEX idx_purchase_order_batches_supplier ON purchase_order_batches(supplier_id);
 CREATE INDEX idx_purchase_order_batches_date ON purchase_order_batches(download_date DESC);
 CREATE INDEX idx_purchase_order_batches_order_ids ON purchase_order_batches USING GIN(order_ids);
+-- ⭐ GIN 인덱스: UUID 배열 검색 최적화 (order_ids @> ARRAY[...])
 ```
 
 **중요 포인트**:
 - 발주서 다운로드 시 자동 생성
-- `order_ids`: 해당 발주에 포함된 주문 ID 배열
-- `adjusted_quantities`: 관리자가 수량 조정한 내역 (JSONB)
-- GIN 인덱스로 배열 검색 최적화
+- `order_ids`: UUID 배열, **GIN 인덱스로 배열 검색 최적화**
+- `adjusted_quantities`: **{order_item_id: adjusted_quantity} JSONB 구조**
+- **중복 발주 방지**: 이미 발주된 order_ids 자동 제외 (배열 검색)
 
-**사용 패턴**:
+**JSONB 구조 상세**:
+```json
+// adjusted_quantities 예시
+{
+  "abc123-uuid-order-item-id-1": 5,  // order_item_id: 조정된 수량
+  "def456-uuid-order-item-id-2": 3,  // 원래 10개 → 3개로 조정
+  "ghi789-uuid-order-item-id-3": 0   // 0으로 설정하면 해당 아이템 제외
+}
+```
+
+**발주 중복 방지 로직**:
+```javascript
+// 1. 이미 발주 완료된 주문 ID 수집
+const { data: completedBatches } = await supabase
+  .from('purchase_order_batches')
+  .select('order_ids')
+  .eq('status', 'completed')
+
+const completedOrderIds = new Set()
+completedBatches?.forEach(batch => {
+  // order_ids는 UUID 배열
+  batch.order_ids?.forEach(id => completedOrderIds.add(id))
+})
+
+// 2. 발주 안 된 주문만 필터링
+const pendingOrders = allOrders.filter(order =>
+  !completedOrderIds.has(order.id)
+)
+
+console.log(`전체 ${allOrders.length}개 중 ${pendingOrders.length}개 발주 가능`)
+```
+
+**사용 패턴 (전체 프로세스)**:
 ```javascript
 // 1. 입금확인 완료(deposited) 주문 조회
-// 2. purchase_order_batches에서 이미 발주된 order_ids 조회
-// 3. 발주 안 된 주문만 필터링
+const { data: orders } = await supabase
+  .from('orders')
+  .select(`
+    id,
+    customer_order_number,
+    order_items (
+      id,
+      quantity,
+      products (
+        title,
+        supplier_id,
+        purchase_price
+      )
+    )
+  `)
+  .eq('status', 'deposited')  // 입금확인 완료만
+  .order('created_at', { ascending: false })
+
+// 2. 이미 발주된 주문 제외
+const { data: completedBatches } = await supabase
+  .from('purchase_order_batches')
+  .select('order_ids')
+  .eq('status', 'completed')
+
+const completedOrderIds = new Set()
+completedBatches?.forEach(batch => {
+  batch.order_ids?.forEach(id => completedOrderIds.add(id))
+})
+
+const pendingOrders = orders.filter(o => !completedOrderIds.has(o.id))
+
+// 3. 업체별 그룹핑
+const supplierMap = new Map()
+pendingOrders.forEach(order => {
+  order.order_items.forEach(item => {
+    const supplierId = item.products.supplier_id
+    if (!supplierMap.has(supplierId)) {
+      supplierMap.set(supplierId, {
+        items: [],
+        totalAmount: 0
+      })
+    }
+    const summary = supplierMap.get(supplierId)
+    summary.items.push(item)
+    summary.totalAmount += (item.products.purchase_price || 0) * item.quantity
+  })
+})
+
 // 4. Excel 다운로드 시 batch 생성
+const orderIds = [...new Set(items.map(item => item.order_id))]
+
+await supabase.from('purchase_order_batches').insert({
+  supplier_id: supplierId,
+  order_ids: orderIds,  // ⭐ UUID 배열 (중복 방지용)
+  adjusted_quantities: adjustedQty,  // ⭐ JSONB (수량 조정 내역)
+  total_items: items.length,
+  total_amount: totalAmount,
+  status: 'completed',
+  created_by: adminEmail
+})
+
+console.log(`✅ ${supplierName} 발주 완료: ${items.length}개 아이템`)
+```
+
+**GIN 인덱스 활용 (고급)**:
+```sql
+-- ✅ 특정 주문 ID를 포함하는 발주 batch 검색
+SELECT * FROM purchase_order_batches
+WHERE order_ids @> ARRAY['order-uuid-here']::uuid[];
+
+-- ✅ 특정 주문 ID가 발주되었는지 확인
+SELECT EXISTS(
+  SELECT 1 FROM purchase_order_batches
+  WHERE order_ids @> ARRAY['order-uuid-here']::uuid[]
+    AND status = 'completed'
+) AS is_already_ordered;
+
+-- ✅ 여러 주문 ID 중 하나라도 포함하는 batch 찾기
+SELECT * FROM purchase_order_batches
+WHERE order_ids && ARRAY['uuid1', 'uuid2', 'uuid3']::uuid[];
+```
+
+**adjusted_quantities 활용 예시**:
+```javascript
+// 발주 수량 조정 시나리오
+const adjustedQuantities = {}
+
+orderItems.forEach(item => {
+  // 기본: 원래 수량 그대로
+  let finalQuantity = item.quantity
+
+  // 재고 부족 시 수량 조정
+  if (item.products.inventory < item.quantity) {
+    finalQuantity = item.products.inventory
+    console.warn(`⚠️ 재고 부족: ${item.products.title} (${item.quantity} → ${finalQuantity})`)
+  }
+
+  // 조정된 수량 기록
+  if (finalQuantity !== item.quantity) {
+    adjustedQuantities[item.id] = finalQuantity
+  }
+})
+
+// batch 생성 시 저장
+await supabase.from('purchase_order_batches').insert({
+  // ...
+  adjusted_quantities: adjustedQuantities  // 조정 내역 저장
+})
 ```
 
 ---
@@ -1210,9 +1349,396 @@ for (const [supplierId, data] of Object.entries(supplierOrders)) {
 - [ ] 업체별로 정확히 그룹핑되는가?
 - [ ] Excel 다운로드 시 batch 생성하는가?
 - [ ] `order_ids` 배열에 모든 주문 포함했는가?
+- [ ] `adjusted_quantities` JSONB에 수량 조정 내역 저장했는가?
+
+---
+
+## 7. 우편번호 및 배송비 계산 ⭐ 신규 (2025-10-03)
+
+### 7.1 우편번호 시스템 구조
+
+**데이터베이스 구조**:
+```sql
+-- profiles 테이블 (사용자 기본 정보)
+ALTER TABLE profiles ADD COLUMN postal_code VARCHAR(10);
+
+-- order_shipping 테이블 (주문 시점 스냅샷)
+ALTER TABLE order_shipping ADD COLUMN postal_code VARCHAR(10);
+```
+
+**저장 패턴**:
+- `profiles.postal_code`: 사용자가 설정한 **기본 우편번호** (마이페이지에서 수정 가능)
+- `order_shipping.postal_code`: 주문 시점의 **우편번호 스냅샷** (변경 불가, 이력 보존)
+
+**도서산간 배송비 규칙** (2025-10-03 기준):
+```javascript
+// /lib/shippingUtils.js
+제주도: 63000-63644 → 기본 배송비 + 3,000원
+울릉도: 40200-40240 → 기본 배송비 + 5,000원
+기타 도서산간: → 기본 배송비 + 5,000원
+
+// 예시
+기본 배송비 4,000원 + 제주 추가 3,000원 = 총 7,000원
+```
+
+---
+
+### 7.2 핵심 함수: formatShippingInfo()
+
+**위치**: `/lib/shippingUtils.js`
+
+```javascript
+import { formatShippingInfo } from '@/lib/shippingUtils'
+
+// 사용법
+const shippingInfo = formatShippingInfo(baseShipping, postalCode)
+
+// 입력 예시
+formatShippingInfo(4000, "63001")  // 제주
+formatShippingInfo(4000, "40210")  // 울릉도
+formatShippingInfo(4000, "06000")  // 일반 지역
+
+// 반환 객체 구조
+{
+  baseShipping: 4000,      // 기본 배송비
+  surcharge: 3000,         // 도서산간 추가 배송비 (제주: 3000, 울릉도: 5000)
+  totalShipping: 7000,     // 총 배송비 (baseShipping + surcharge)
+  region: "제주",          // 지역명 ("제주", "울릉도", "기타 도서산간", "일반")
+  isRemote: true           // 도서산간 여부 (true/false)
+}
+```
+
+**함수 내부 로직**:
+```javascript
+// /lib/shippingUtils.js
+export const formatShippingInfo = (baseShipping, postalCode) => {
+  let surcharge = 0
+  let region = "일반"
+  let isRemote = false
+
+  if (!postalCode) {
+    return { baseShipping, surcharge, totalShipping: baseShipping, region, isRemote }
+  }
+
+  const code = parseInt(postalCode)
+
+  // 제주: 63000-63644
+  if (code >= 63000 && code <= 63644) {
+    surcharge = 3000
+    region = "제주"
+    isRemote = true
+  }
+  // 울릉도: 40200-40240
+  else if (code >= 40200 && code <= 40240) {
+    surcharge = 5000
+    region = "울릉도"
+    isRemote = true
+  }
+  // 기타 도서산간 (필요 시 추가)
+  // else if (...) {
+  //   surcharge = 5000
+  //   region = "기타 도서산간"
+  //   isRemote = true
+  // }
+
+  return {
+    baseShipping,
+    surcharge,
+    totalShipping: baseShipping + surcharge,
+    region,
+    isRemote
+  }
+}
+```
+
+---
+
+### 7.3 적용 페이지 (100% 통합 완료)
+
+**모든 배송비 계산 페이지에 필수 적용**:
+
+| 페이지 | 경로 | 역할 | 우편번호 사용 |
+|--------|------|------|--------------|
+| ✅ 체크아웃 | `/checkout` | 주문 생성, 배송비 실시간 계산 | `profiles.postal_code` 조회 → `formatShippingInfo()` |
+| ✅ 주문 상세 | `/orders/[id]/complete` | 주문 완료 내역 표시 | `order_shipping.postal_code` 조회 → 배송비 재계산 |
+| ✅ 주문 목록 | `/orders` | 주문 리스트 표시 | `order_shipping.postal_code` 조회 → 배송비 표시 |
+| ✅ 관리자 주문 리스트 | `/admin/orders` | 주문 관리 | `order_shipping.postal_code` 조회 → 배송비 표시 |
+| ✅ 관리자 주문 상세 | `/admin/orders/[id]` | 주문 상세 관리 | `order_shipping.postal_code` 조회 → 배송비 표시 |
+| ✅ 발송 관리 | `/admin/shipping` | 송장 번호 입력 | `order_shipping.postal_code` 조회 → 배송비 표시 |
+| ✅ 마이페이지 | `/mypage` | 주소 관리 | `profiles.postal_code` 저장/수정 |
+
+---
+
+### 7.4 주문 생성 시 체크리스트
+
+**⭐ 모든 주문 생성 시 필수 확인**:
+
+```javascript
+// ✅ 필수 단계 체크리스트
+- [ ] 1. userProfile.postal_code 조회했는가?
+- [ ] 2. formatShippingInfo(baseShipping, postalCode) 호출했는가?
+- [ ] 3. shippingInfo.totalShipping 값 확인했는가?
+- [ ] 4. order_shipping.postal_code에 우편번호 저장했는가?
+- [ ] 5. order_shipping.shipping_fee에 totalShipping 저장했는가?
+- [ ] 6. orders.total_amount에 배송비 포함했는가? (상품금액 + totalShipping)
+- [ ] 7. 도서산간인 경우 UI에 추가 배송비 표시했는가?
+```
+
+**❌ 흔한 실수**:
+```javascript
+// ❌ 잘못된 예시: postal_code 없이 배송비 계산
+const shippingFee = 4000  // 무조건 4,000원 (도서산간 무시)
+
+// ❌ 잘못된 예시: postal_code 저장 누락
+await supabase.from('order_shipping').insert({
+  // postal_code 필드 누락!
+  shipping_fee: 4000
+})
+
+// ✅ 올바른 예시
+const postalCode = userProfile.postal_code || "06000"
+const shippingInfo = formatShippingInfo(4000, postalCode)
+await supabase.from('order_shipping').insert({
+  postal_code: postalCode,  // ⭐ 필수!
+  shipping_fee: shippingInfo.totalShipping
+})
+```
+
+---
+
+### 7.5 코드 예제 (실전)
+
+#### 7.5.1 주문 생성 시 (체크아웃 페이지)
+
+```javascript
+// /app/checkout/page.js 또는 /lib/supabaseApi.js
+
+// 1. 사용자 프로필에서 우편번호 가져오기
+const userProfile = await UserProfileManager.getCurrentUser()
+const postalCode = userProfile.postal_code || "06000"  // 기본값: 서울
+
+console.log('사용자 우편번호:', postalCode)
+
+// 2. 배송비 계산 (formatShippingInfo 사용 필수!)
+const shippingInfo = formatShippingInfo(4000, postalCode)
+console.log('배송비 정보:', shippingInfo)
+// 제주: { baseShipping: 4000, surcharge: 3000, totalShipping: 7000, region: "제주", isRemote: true }
+// 일반: { baseShipping: 4000, surcharge: 0, totalShipping: 4000, region: "일반", isRemote: false }
+
+// 3. 주문 총액 계산 (상품금액 + 배송비)
+const itemsTotal = orderData.items.reduce((sum, item) => sum + item.total_price, 0)
+const totalAmount = itemsTotal + shippingInfo.totalShipping
+
+console.log(`상품 금액: ${itemsTotal}원`)
+console.log(`배송비: ${shippingInfo.totalShipping}원 (기본 ${shippingInfo.baseShipping} + 추가 ${shippingInfo.surcharge})`)
+console.log(`총 결제 금액: ${totalAmount}원`)
+
+// 4. 주문 생성
+const { data: order } = await supabase
+  .from('orders')
+  .insert({
+    user_id: userId,
+    total_amount: totalAmount,  // ⭐ 배송비 포함
+    status: 'pending'
+  })
+  .select()
+  .single()
+
+// 5. order_shipping 생성 (postal_code 저장 필수!)
+await supabase.from('order_shipping').insert({
+  order_id: order.id,
+  name: shippingData.name,
+  phone: shippingData.phone,
+  address: shippingData.address,
+  detail_address: shippingData.detail_address,
+  postal_code: postalCode,  // ⭐ 주문 시점 우편번호 저장 (스냅샷)
+  shipping_fee: shippingInfo.totalShipping  // ⭐ 계산된 배송비 저장
+})
+
+// 6. UI에 도서산간 안내 표시 (선택)
+if (shippingInfo.isRemote) {
+  toast.info(`${shippingInfo.region} 지역 추가 배송비 ${shippingInfo.surcharge.toLocaleString()}원`)
+}
+```
+
+---
+
+#### 7.5.2 주문 조회 시 (주문 상세 페이지)
+
+```javascript
+// /app/orders/[id]/complete/page.js
+
+// 1. 주문 데이터 조회 (postal_code 포함)
+const { data: order } = await supabase
+  .from('orders')
+  .select(`
+    *,
+    order_items (
+      id,
+      title,
+      quantity,
+      total_price
+    ),
+    order_shipping (
+      name,
+      phone,
+      address,
+      detail_address,
+      postal_code,
+      shipping_fee
+    )
+  `)
+  .eq('id', orderId)
+  .single()
+
+// 2. 저장된 우편번호로 배송비 정보 재계산 (표시용)
+const postalCode = order.order_shipping.postal_code
+const shippingInfo = formatShippingInfo(4000, postalCode)
+
+console.log('주문 시점 우편번호:', postalCode)
+console.log('도서산간 지역:', shippingInfo.region)
+console.log('추가 배송비:', shippingInfo.surcharge)
+
+// 3. UI 렌더링
+return (
+  <div>
+    <h2>배송 정보</h2>
+    <p>주소: {order.order_shipping.address}</p>
+    <p>우편번호: {postalCode}</p>
+
+    <h2>결제 정보</h2>
+    <p>상품 금액: {(order.total_amount - shippingInfo.totalShipping).toLocaleString()}원</p>
+    <p>
+      배송비: {shippingInfo.totalShipping.toLocaleString()}원
+      {shippingInfo.isRemote && (
+        <span className="text-orange-600">
+          ({shippingInfo.region} 지역 추가 {shippingInfo.surcharge.toLocaleString()}원)
+        </span>
+      )}
+    </p>
+    <p className="font-bold">총 결제 금액: {order.total_amount.toLocaleString()}원</p>
+  </div>
+)
+```
+
+---
+
+#### 7.5.3 마이페이지 - 우편번호 저장/수정
+
+```javascript
+// /app/mypage/page.js (AddressManager 컴포넌트)
+
+const handlePostalCodeUpdate = async (newPostalCode) => {
+  // 1. profiles 테이블 업데이트
+  const { error } = await supabase
+    .from('profiles')
+    .update({ postal_code: newPostalCode })
+    .eq('id', userId)
+
+  if (error) {
+    toast.error('우편번호 저장 실패')
+    return
+  }
+
+  // 2. 배송비 미리보기
+  const shippingInfo = formatShippingInfo(4000, newPostalCode)
+
+  if (shippingInfo.isRemote) {
+    toast.info(`${shippingInfo.region} 지역으로 설정되었습니다. 추가 배송비 ${shippingInfo.surcharge.toLocaleString()}원`)
+  } else {
+    toast.success('우편번호가 저장되었습니다.')
+  }
+
+  console.log('업데이트된 배송비:', shippingInfo)
+}
+```
+
+---
+
+#### 7.5.4 관리자 - 주문 리스트에서 배송비 표시
+
+```javascript
+// /app/admin/orders/page.js
+
+const { data: orders } = await supabase
+  .from('orders')
+  .select(`
+    id,
+    customer_order_number,
+    total_amount,
+    order_shipping (
+      postal_code,
+      shipping_fee,
+      address
+    )
+  `)
+  .order('created_at', { ascending: false })
+
+// 각 주문의 배송비 정보 계산
+const ordersWithShippingInfo = orders.map(order => {
+  const postalCode = order.order_shipping.postal_code
+  const shippingInfo = formatShippingInfo(4000, postalCode)
+
+  return {
+    ...order,
+    shippingRegion: shippingInfo.region,
+    isRemoteArea: shippingInfo.isRemote,
+    shippingSurcharge: shippingInfo.surcharge
+  }
+})
+
+console.log('도서산간 주문 수:', ordersWithShippingInfo.filter(o => o.isRemoteArea).length)
+```
+
+---
+
+### 7.6 트러블슈팅
+
+#### 문제 1: 배송비가 항상 4,000원으로 계산됨
+**원인**: `formatShippingInfo()` 미사용
+**해결**:
+```javascript
+// ❌ 잘못된 코드
+const shippingFee = 4000
+
+// ✅ 올바른 코드
+const shippingInfo = formatShippingInfo(4000, postalCode)
+const shippingFee = shippingInfo.totalShipping
+```
+
+#### 문제 2: 주문 후 배송비가 변경됨
+**원인**: `order_shipping.postal_code` 저장 누락
+**해결**: 주문 생성 시 반드시 `postal_code` 저장 (스냅샷)
+
+#### 문제 3: 우편번호가 null 또는 빈 문자열
+**원인**: 신규 사용자 또는 마이페이지 미설정
+**해결**:
+```javascript
+const postalCode = userProfile.postal_code || "06000"  // 기본값 설정
+```
+
+---
+
+### 7.7 주의사항 및 베스트 프랙티스
+
+**⭐ 반드시 지킬 것**:
+1. **모든 주문 생성 시** `formatShippingInfo()` 사용
+2. **order_shipping.postal_code** 반드시 저장 (주문 이력 보존)
+3. **orders.total_amount**에 배송비 포함 (상품금액 + 배송비)
+4. **UI에 도서산간 안내** 표시 (사용자 경험)
+
+**권장 사항**:
+- 우편번호 없는 사용자: 기본값 "06000" (서울) 사용
+- 체크아웃 페이지: 실시간 배송비 계산 표시
+- 관리자 페이지: 도서산간 주문 필터링 기능
+
+**성능 최적화**:
+- `formatShippingInfo()`는 순수 함수 → 캐싱 가능
+- 주문 조회 시 `postal_code` 인덱스 활용
 
 ---
 
 **이 문서를 항상 참고하여 DB 작업을 수행하세요!**
 
-**최종 업데이트**: 2025-10-02
+**최종 업데이트**: 2025-10-03 (Section 2.14 & Section 7 완전 개선)
+**문서 상태**: 100% 최신 (Variant 시스템, 발주 시스템, 우편번호 시스템 완전 반영)

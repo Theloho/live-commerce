@@ -59,6 +59,41 @@ export async function POST(request) {
     }
 
     console.log('카카오 사용자 생성 성공:', profile)
+
+    // 3. 웰컴 쿠폰 자동 발급
+    try {
+      // WELCOME 쿠폰 찾기
+      const { data: welcomeCoupon } = await supabaseAdmin
+        .from('coupons')
+        .select('id, code, name')
+        .eq('code', 'WELCOME')
+        .eq('is_active', true)
+        .single()
+
+      if (welcomeCoupon) {
+        // 웰컴 쿠폰 발급
+        const { error: couponError } = await supabaseAdmin
+          .from('user_coupons')
+          .insert({
+            user_id: userId,
+            coupon_id: welcomeCoupon.id,
+            issued_by: null, // 시스템 자동 발급
+            issued_at: new Date().toISOString()
+          })
+
+        if (couponError) {
+          console.error('웰컴 쿠폰 발급 실패:', couponError)
+        } else {
+          console.log('🎟️ 웰컴 쿠폰 자동 발급 성공:', welcomeCoupon.code)
+        }
+      } else {
+        console.log('⚠️ WELCOME 쿠폰이 존재하지 않거나 비활성화되어 있습니다')
+      }
+    } catch (couponError) {
+      console.error('웰컴 쿠폰 발급 중 오류:', couponError)
+      // 쿠폰 발급 실패해도 회원가입은 성공 처리
+    }
+
     return NextResponse.json(profile)
 
   } catch (error) {

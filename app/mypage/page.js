@@ -12,7 +12,8 @@ import {
   ArrowRightOnRectangleIcon,
   CheckIcon,
   XMarkIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  TicketIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -542,6 +543,20 @@ export default function MyPage() {
               <span className="font-medium text-gray-900">주문 내역</span>
             </div>
             <div className="text-gray-400">
+              &rarr;
+            </div>
+          </button>
+
+          {/* 내 쿠폰 */}
+          <button
+            onClick={() => router.push('/mypage/coupons')}
+            className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg hover:from-blue-100 hover:to-purple-100 transition-colors border border-blue-200"
+          >
+            <div className="flex items-center gap-3">
+              <TicketIcon className="h-5 w-5 text-blue-600" />
+              <span className="font-medium text-gray-900">내 쿠폰</span>
+            </div>
+            <div className="text-blue-600 font-semibold">
               &rarr;
             </div>
           </button>
