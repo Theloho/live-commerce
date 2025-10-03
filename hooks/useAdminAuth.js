@@ -69,39 +69,22 @@ export function AdminAuthProvider({ children }) {
     try {
       console.log('🔍 checkIsAdmin 시작:', user.email, 'user.id:', user.id, 'retry:', retryCount)
 
-      // profiles 테이블에서 is_admin, is_master 확인 (10초 타임아웃, 첫 시도는 더 길게)
-      const timeoutMs = retryCount === 0 ? 10000 : 5000
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout: ${timeoutMs / 1000}초 초과`)), timeoutMs)
-      )
+      // Service Role API로 프로필 조회 (RLS 우회)
+      console.log('🔍 API로 profiles 조회 시작...')
+      const response = await fetch('/api/admin/check-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
 
-      const queryPromise = supabase
-        .from('profiles')
-        .select('is_admin, is_master, email, name')
-        .eq('id', user.id)
-        .single()
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'API 호출 실패')
+      }
 
-      console.log(`🔍 profiles 쿼리 시작... (타임아웃: ${timeoutMs / 1000}초)`)
-      const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise])
+      const { profile } = await response.json()
       console.log('✅ profiles 쿼리 완료:', profile)
 
-      if (error) {
-        console.error('❌ 프로필 조회 실패:', error.message, error.code)
-        console.error('❌ 상세 에러:', JSON.stringify(error, null, 2))
-        setIsAdminAuthenticated(false)
-        setAdminUser(null)
-        setIsMaster(false)
-        setPermissions([])
-        setLoading(false)
-
-        // RLS 에러인 경우 로그아웃하지 않고 그냥 반환
-        if (error.code === 'PGRST116' || error.message?.includes('RLS')) {
-          console.warn('⚠️ RLS 정책 문제 - 세션 유지')
-          return
-        }
-
-        return
-      }
 
       if (profile?.is_admin === true) {
         console.log('✅ 관리자 인증 성공:', profile.email, profile.is_master ? '(마스터)' : '')
@@ -133,14 +116,6 @@ export function AdminAuthProvider({ children }) {
       setLoading(false)
     } catch (error) {
       console.error('❌ 관리자 확인 에러:', error)
-
-      // 타임아웃 에러이고 재시도 횟수가 2번 미만이면 재시도
-      if (error.message?.includes('Timeout') && retryCount < 2) {
-        console.log(`🔄 재시도 중... (${retryCount + 1}/2)`)
-        await checkIsAdmin(user, retryCount + 1)
-        return
-      }
-
       setIsAdminAuthenticated(false)
       setAdminUser(null)
       setIsMaster(false)
@@ -186,18 +161,20 @@ export function AdminAuthProvider({ children }) {
       }
 
       if (data.user) {
-        // is_admin, is_master 확인
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_admin, is_master, email, name')
-          .eq('id', data.user.id)
-          .single()
+        // Service Role API로 프로필 조회 (RLS 우회)
+        const response = await fetch('/api/admin/check-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: data.user.id })
+        })
 
-        if (profileError) {
-          console.error('❌ 프로필 조회 실패:', profileError)
+        if (!response.ok) {
+          console.error('❌ 프로필 조회 실패')
           await supabase.auth.signOut()
           return { success: false, error: '프로필 조회 실패' }
         }
+
+        const { profile } = await response.json()
 
         if (profile?.is_admin !== true) {
           console.warn('⚠️ 관리자 권한 없음:', profile?.email)
