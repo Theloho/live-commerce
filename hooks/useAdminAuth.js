@@ -67,6 +67,8 @@ export function AdminAuthProvider({ children }) {
 
   const checkIsAdmin = async (user) => {
     try {
+      console.log('🔍 checkIsAdmin 시작:', user.email)
+
       // profiles 테이블에서 is_admin, is_master 확인
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -75,12 +77,20 @@ export function AdminAuthProvider({ children }) {
         .single()
 
       if (error) {
-        console.error('❌ 프로필 조회 실패:', error)
+        console.error('❌ 프로필 조회 실패:', error.message, error.code)
+        console.error('❌ 상세 에러:', JSON.stringify(error, null, 2))
         setIsAdminAuthenticated(false)
         setAdminUser(null)
         setIsMaster(false)
         setPermissions([])
         setLoading(false)
+
+        // RLS 에러인 경우 로그아웃하지 않고 그냥 반환
+        if (error.code === 'PGRST116' || error.message?.includes('RLS')) {
+          console.warn('⚠️ RLS 정책 문제 - 세션 유지')
+          return
+        }
+
         return
       }
 
