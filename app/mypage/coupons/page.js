@@ -17,26 +17,55 @@ import toast from 'react-hot-toast'
 export default function MyCouponsPage() {
   const router = useRouter()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
+  const [userSession, setUserSession] = useState(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
   const [coupons, setCoupons] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('unused') // unused, used, expired
 
+  // 세션 확인 (카카오 로그인 사용자 지원)
   useEffect(() => {
-    if (authLoading) return
+    const checkUserSession = () => {
+      try {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          console.log('쿠폰 페이지에서 세션 복원:', userData)
+          setUserSession(userData)
+        } else {
+          setUserSession(null)
+        }
+      } catch (error) {
+        console.error('쿠폰 페이지 세션 확인 오류:', error)
+        setUserSession(null)
+      } finally {
+        setSessionLoading(false)
+      }
+    }
 
-    if (!isAuthenticated) {
+    checkUserSession()
+  }, [])
+
+  // 로그인 확인 및 쿠폰 로드
+  useEffect(() => {
+    const currentUser = userSession || user
+    const isUserLoggedIn = userSession || isAuthenticated
+
+    if (!sessionLoading && !authLoading && !isUserLoggedIn) {
       toast.error('로그인이 필요합니다')
       router.push('/login')
       return
     }
 
-    loadCoupons()
-  }, [authLoading, isAuthenticated, user])
+    if (currentUser) {
+      loadCoupons(currentUser)
+    }
+  }, [user, userSession, authLoading, sessionLoading, isAuthenticated, router])
 
-  const loadCoupons = async () => {
+  const loadCoupons = async (currentUser) => {
     try {
       setLoading(true)
-      const data = await getUserCoupons(user.id)
+      const data = await getUserCoupons(currentUser.id)
       setCoupons(data)
     } catch (error) {
       console.error('쿠폰 로딩 오류:', error)
@@ -78,7 +107,7 @@ export default function MyCouponsPage() {
     return { unused, used, expired }
   }
 
-  if (authLoading || loading) {
+  if (authLoading || sessionLoading || loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
