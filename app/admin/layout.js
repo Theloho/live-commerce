@@ -16,7 +16,8 @@ import {
   Bars3Icon,
   XMarkIcon,
   CogIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  TicketIcon
 } from '@heroicons/react/24/outline'
 import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuth'
 import toast from 'react-hot-toast'
@@ -68,6 +69,7 @@ function AdminLayoutContent({ children }) {
     { href: '/admin/orders', label: '주문관리', icon: ClipboardDocumentListIcon },
     { href: '/admin/purchase-orders', label: '업체별 발주서', icon: DocumentTextIcon },
     { href: '/admin/customers', label: '고객관리', icon: UsersIcon },
+    { href: '/admin/coupons', label: '쿠폰관리', icon: TicketIcon },
     { href: '/admin/deposits', label: '입금확인', icon: BanknotesIcon },
     { href: '/admin/shipping', label: '발송관리', icon: TruckIcon },
     { href: '/admin/settings', label: '시스템설정', icon: CogIcon },
@@ -134,7 +136,8 @@ function AdminLayoutContent({ children }) {
               {menuItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href ||
-                  (item.href === '/admin/products/catalog' && pathname.startsWith('/admin/products/catalog'))
+                  (item.href === '/admin/products/catalog' && pathname.startsWith('/admin/products/catalog')) ||
+                  (item.href === '/admin/coupons' && pathname.startsWith('/admin/coupons'))
                 return (
                   <li key={item.href}>
                     <Link
