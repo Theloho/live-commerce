@@ -284,68 +284,31 @@ export default function AdminCouponDetailPage() {
         </div>
       </motion.div>
 
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white p-6 rounded-lg shadow"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">총 발급</p>
-              <p className="text-2xl font-bold text-purple-600">{stats?.total_issued || 0}</p>
-            </div>
-            <UsersIcon className="h-12 w-12 text-purple-500" />
+      {/* 통계 카드 - 컴팩트 버전 */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-lg shadow mb-6 p-4"
+      >
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">총 발급</p>
+            <p className="text-xl font-bold text-purple-600">{stats?.total_issued || 0}</p>
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="bg-white p-6 rounded-lg shadow"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">총 사용</p>
-              <p className="text-2xl font-bold text-green-600">{stats?.total_used || 0}</p>
-            </div>
-            <CheckCircleIcon className="h-12 w-12 text-green-500" />
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">총 사용</p>
+            <p className="text-xl font-bold text-green-600">{stats?.total_used || 0}</p>
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white p-6 rounded-lg shadow"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">사용률</p>
-              <p className="text-2xl font-bold text-blue-600">{stats?.usage_rate || 0}%</p>
-            </div>
-            <ChartBarIcon className="h-12 w-12 text-blue-500" />
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">사용률</p>
+            <p className="text-xl font-bold text-blue-600">{stats?.usage_rate || 0}%</p>
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="bg-white p-6 rounded-lg shadow"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">미사용</p>
-              <p className="text-2xl font-bold text-orange-600">{stats?.unused_count || 0}</p>
-            </div>
-            <ClockIcon className="h-12 w-12 text-orange-500" />
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">미사용</p>
+            <p className="text-xl font-bold text-orange-600">{stats?.unused_count || 0}</p>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
 
       {/* 쿠폰 배포 섹션 */}
       <motion.div
