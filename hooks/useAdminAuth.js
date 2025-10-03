@@ -65,13 +65,14 @@ export function AdminAuthProvider({ children }) {
     }
   }
 
-  const checkIsAdmin = async (user) => {
+  const checkIsAdmin = async (user, retryCount = 0) => {
     try {
-      console.log('🔍 checkIsAdmin 시작:', user.email, 'user.id:', user.id)
+      console.log('🔍 checkIsAdmin 시작:', user.email, 'user.id:', user.id, 'retry:', retryCount)
 
-      // profiles 테이블에서 is_admin, is_master 확인 (5초 타임아웃)
+      // profiles 테이블에서 is_admin, is_master 확인 (10초 타임아웃, 첫 시도는 더 길게)
+      const timeoutMs = retryCount === 0 ? 10000 : 5000
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout: 5초 초과')), 5000)
+        setTimeout(() => reject(new Error(`Timeout: ${timeoutMs / 1000}초 초과`)), timeoutMs)
       )
 
       const queryPromise = supabase
@@ -80,7 +81,7 @@ export function AdminAuthProvider({ children }) {
         .eq('id', user.id)
         .single()
 
-      console.log('🔍 profiles 쿼리 시작...')
+      console.log(`🔍 profiles 쿼리 시작... (타임아웃: ${timeoutMs / 1000}초)`)
       const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise])
       console.log('✅ profiles 쿼리 완료:', profile)
 
@@ -132,6 +133,14 @@ export function AdminAuthProvider({ children }) {
       setLoading(false)
     } catch (error) {
       console.error('❌ 관리자 확인 에러:', error)
+
+      // 타임아웃 에러이고 재시도 횟수가 2번 미만이면 재시도
+      if (error.message?.includes('Timeout') && retryCount < 2) {
+        console.log(`🔄 재시도 중... (${retryCount + 1}/2)`)
+        await checkIsAdmin(user, retryCount + 1)
+        return
+      }
+
       setIsAdminAuthenticated(false)
       setAdminUser(null)
       setIsMaster(false)
