@@ -140,48 +140,30 @@ export default function AdminCouponsPage() {
         </div>
       </div>
 
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">전체 쿠폰</p>
-              <p className="text-2xl font-bold text-gray-900">{coupons.length}</p>
-            </div>
-            <TicketIcon className="h-12 w-12 text-blue-500" />
+      {/* 통계 카드 - 컴팩트 버전 */}
+      <div className="bg-white rounded-lg shadow mb-6 p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">전체 쿠폰</p>
+            <p className="text-xl font-bold text-gray-900">{coupons.length}</p>
           </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">활성 쿠폰</p>
-              <p className="text-2xl font-bold text-green-600">
-                {coupons.filter(c => c.is_active).length}
-              </p>
-            </div>
-            <CheckCircleIcon className="h-12 w-12 text-green-500" />
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">활성 쿠폰</p>
+            <p className="text-xl font-bold text-green-600">
+              {coupons.filter(c => c.is_active).length}
+            </p>
           </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">총 발급</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {coupons.reduce((sum, c) => sum + c.total_issued_count, 0)}
-              </p>
-            </div>
-            <UsersIcon className="h-12 w-12 text-purple-500" />
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">총 발급</p>
+            <p className="text-xl font-bold text-purple-600">
+              {coupons.reduce((sum, c) => sum + c.total_issued_count, 0)}
+            </p>
           </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">총 사용</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {coupons.reduce((sum, c) => sum + c.total_used_count, 0)}
-              </p>
-            </div>
-            <CheckCircleIcon className="h-12 w-12 text-orange-500" />
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">총 사용</p>
+            <p className="text-xl font-bold text-orange-600">
+              {coupons.reduce((sum, c) => sum + c.total_used_count, 0)}
+            </p>
           </div>
         </div>
       </div>
