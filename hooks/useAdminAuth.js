@@ -67,14 +67,22 @@ export function AdminAuthProvider({ children }) {
 
   const checkIsAdmin = async (user) => {
     try {
-      console.log('🔍 checkIsAdmin 시작:', user.email)
+      console.log('🔍 checkIsAdmin 시작:', user.email, 'user.id:', user.id)
 
-      // profiles 테이블에서 is_admin, is_master 확인
-      const { data: profile, error } = await supabase
+      // profiles 테이블에서 is_admin, is_master 확인 (5초 타임아웃)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout: 5초 초과')), 5000)
+      )
+
+      const queryPromise = supabase
         .from('profiles')
         .select('is_admin, is_master, email, name')
         .eq('id', user.id)
         .single()
+
+      console.log('🔍 profiles 쿼리 시작...')
+      const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise])
+      console.log('✅ profiles 쿼리 완료:', profile)
 
       if (error) {
         console.error('❌ 프로필 조회 실패:', error.message, error.code)
