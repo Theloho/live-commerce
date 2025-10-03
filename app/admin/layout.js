@@ -25,18 +25,8 @@ import toast from 'react-hot-toast'
 function AdminLayoutContent({ children }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { isAdminAuthenticated, loading, adminLogout } = useAdminAuth()
+  const { isAdminAuthenticated, loading, adminLogout, adminUser } = useAdminAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [adminEmail, setAdminEmail] = useState('master@allok.world')
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const email = localStorage.getItem('admin_email')
-      if (email) {
-        setAdminEmail(email)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     console.log('🏠 AdminLayout useEffect:', {
@@ -189,7 +179,7 @@ function AdminLayoutContent({ children }) {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-600 hidden sm:inline">
-                {adminEmail}
+                {adminUser?.email || 'master@allok.world'}
               </span>
             </div>
           </div>

@@ -22,20 +22,32 @@ function AdminLoginContent() {
   const [isLoading, setIsLoading] = useState(false)
 
 
-  const handleEmailLogin = () => {
+  const handleEmailLogin = async () => {
     console.log('로그인 버튼 클릭됨')
+
+    if (!email || !password) {
+      toast.error('이메일과 비밀번호를 입력하세요')
+      return
+    }
+
     setIsLoading(true)
 
-    // adminLogin Hook 사용
-    if (adminLogin(email, password)) {
-      console.log('관리자 로그인 성공!')
-      toast.success('관리자 로그인 성공!')
-      router.push('/admin')
-    } else if (!email || !password) {
-      toast.error('아이디와 비밀번호를 입력하세요')
-      setIsLoading(false)
-    } else {
-      toast.error('이메일: master@allok.world, 비밀번호: yi01buddy!!')
+    try {
+      // Supabase Auth 사용
+      const result = await adminLogin(email, password)
+
+      if (result.success) {
+        console.log('✅ 관리자 로그인 성공!')
+        toast.success('관리자 로그인 성공!')
+        router.push('/admin')
+      } else {
+        console.error('❌ 로그인 실패:', result.error)
+        toast.error(result.error || '로그인에 실패했습니다')
+        setIsLoading(false)
+      }
+    } catch (error) {
+      console.error('❌ 로그인 에러:', error)
+      toast.error('로그인 중 오류가 발생했습니다')
       setIsLoading(false)
     }
   }

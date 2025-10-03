@@ -267,7 +267,10 @@ export default function SupplierPurchaseOrderDetailPage() {
 
       // 2. 발주 완료 처리 (DB에 기록)
       const orderIds = [...new Set(orderItems.map(item => item.orderId))]
-      const adminEmail = localStorage.getItem('admin_email') || 'unknown'
+
+      // Supabase Auth에서 관리자 이메일 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      const adminEmail = session?.user?.email || 'unknown'
 
       const { error: batchError } = await supabase
         .from('purchase_order_batches')
