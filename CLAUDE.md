@@ -369,7 +369,8 @@ CODE_ANALYSIS_COMPLETE.md 업데이트 (대규모 변경 시)
 
 ### 📦 Archive 문서 (참고용)
 **작업 로그** (`docs/archive/work-logs/`)
-- **WORK_LOG_2025-10-03.md** - 우편번호 시스템 완전 통합 (최신)
+- **WORK_LOG_2025-10-03_RLS_ISSUE.md** - 🔐 관리자 RLS 문제 해결 (Service Role API) ⭐ 최신
+- **WORK_LOG_2025-10-03.md** - 우편번호 시스템 완전 통합
 - WORK_LOG_2025-10-01.md
 - WORK_LOG_2025-01-23.md
 - WORK_SUMMARY.md
@@ -399,7 +400,36 @@ CODE_ANALYSIS_COMPLETE.md 업데이트 (대규모 변경 시)
 
 ## 🎉 최근 주요 업데이트
 
-### 2025-10-03: 우편번호 시스템 완전 통합
+### 2025-10-03 (야간): 🔐 관리자 RLS 문제 완전 해결 ⭐
+**문제**:
+- profiles 테이블 조회 10초+ 타임아웃
+- 새로고침 시 무한루프 → 로그인 페이지 리다이렉트
+- RLS 순환 참조 발생 (`is_admin()` 함수 → profiles → RLS → `is_admin()` → 무한)
+
+**해결책**:
+- ✅ Service Role API Route 생성 (`/api/admin/check-profile`)
+- ✅ `SUPABASE_SERVICE_ROLE_KEY` 환경변수 추가
+- ✅ `useAdminAuth.js`에서 API 호출로 변경 (RLS 우회)
+
+**결과**:
+- ✅ 로그인 즉시 성공 (10초+ → **1초 이내**)
+- ✅ 새로고침 시 세션 유지, 무한루프 완전 해결
+- ✅ 타임아웃 에러 제거
+
+**구조**:
+```
+브라우저 (anon key, RLS 적용)
+  ↓ fetch('/api/admin/check-profile')
+Next.js API Route (서버)
+  ↓ Service Role 클라이언트 (RLS 우회)
+Supabase profiles 테이블 ✅ 즉시 성공
+```
+
+**상세 로그**: `docs/archive/work-logs/WORK_LOG_2025-10-03_RLS_ISSUE.md`
+
+---
+
+### 2025-10-03 (주간): 우편번호 시스템 완전 통합
 **변경사항**:
 - ✅ `profiles.postal_code` 컬럼 추가
 - ✅ 모든 페이지에 우편번호 표시 및 배송비 계산 적용
