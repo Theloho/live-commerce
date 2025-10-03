@@ -9,6 +9,8 @@ export function AdminAuthProvider({ children }) {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [adminUser, setAdminUser] = useState(null)
+  const [isMaster, setIsMaster] = useState(false)
+  const [permissions, setPermissions] = useState([])
 
   useEffect(() => {
     console.log('🔍 AdminAuth 초기화 시작 (Supabase Auth)')
@@ -65,10 +67,10 @@ export function AdminAuthProvider({ children }) {
 
   const checkIsAdmin = async (user) => {
     try {
-      // profiles 테이블에서 is_admin 확인
+      // profiles 테이블에서 is_admin, is_master 확인
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('is_admin, email, name')
+        .select('is_admin, is_master, email, name')
         .eq('id', user.id)
         .single()
 
@@ -76,22 +78,35 @@ export function AdminAuthProvider({ children }) {
         console.error('❌ 프로필 조회 실패:', error)
         setIsAdminAuthenticated(false)
         setAdminUser(null)
+        setIsMaster(false)
+        setPermissions([])
         setLoading(false)
         return
       }
 
       if (profile?.is_admin === true) {
-        console.log('✅ 관리자 인증 성공:', profile.email)
+        console.log('✅ 관리자 인증 성공:', profile.email, profile.is_master ? '(마스터)' : '')
         setIsAdminAuthenticated(true)
+        setIsMaster(profile.is_master === true)
         setAdminUser({
           id: user.id,
           email: user.email,
           name: profile.name
         })
+
+        // 권한 로드 (마스터가 아닌 경우만)
+        if (profile.is_master !== true) {
+          await loadPermissions(user.id)
+        } else {
+          // 마스터는 모든 권한
+          setPermissions(['*'])
+        }
       } else {
         console.warn('⚠️ 관리자 권한 없음:', profile?.email)
         setIsAdminAuthenticated(false)
         setAdminUser(null)
+        setIsMaster(false)
+        setPermissions([])
         // 관리자 아닌 경우 로그아웃
         await supabase.auth.signOut()
       }
@@ -101,7 +116,31 @@ export function AdminAuthProvider({ children }) {
       console.error('❌ 관리자 확인 에러:', error)
       setIsAdminAuthenticated(false)
       setAdminUser(null)
+      setIsMaster(false)
+      setPermissions([])
       setLoading(false)
+    }
+  }
+
+  const loadPermissions = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_permissions')
+        .select('permission')
+        .eq('admin_id', userId)
+
+      if (error) {
+        console.error('❌ 권한 조회 실패:', error)
+        setPermissions([])
+        return
+      }
+
+      const perms = data.map(p => p.permission)
+      console.log('🔐 관리자 권한 로드:', perms)
+      setPermissions(perms)
+    } catch (error) {
+      console.error('❌ 권한 로드 에러:', error)
+      setPermissions([])
     }
   }
 
@@ -120,10 +159,10 @@ export function AdminAuthProvider({ children }) {
       }
 
       if (data.user) {
-        // is_admin 확인
+        // is_admin, is_master 확인
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('is_admin, email, name')
+          .select('is_admin, is_master, email, name')
           .eq('id', data.user.id)
           .single()
 
@@ -139,13 +178,22 @@ export function AdminAuthProvider({ children }) {
           return { success: false, error: '관리자 권한이 없습니다' }
         }
 
-        console.log('✅ 관리자 로그인 성공:', profile.email)
+        console.log('✅ 관리자 로그인 성공:', profile.email, profile.is_master ? '(마스터)' : '')
         setIsAdminAuthenticated(true)
+        setIsMaster(profile.is_master === true)
         setAdminUser({
           id: data.user.id,
           email: data.user.email,
           name: profile.name
         })
+
+        // 권한 로드
+        if (profile.is_master !== true) {
+          await loadPermissions(data.user.id)
+        } else {
+          setPermissions(['*'])
+        }
+
         return { success: true }
       }
 
@@ -162,9 +210,26 @@ export function AdminAuthProvider({ children }) {
       await supabase.auth.signOut()
       setIsAdminAuthenticated(false)
       setAdminUser(null)
+      setIsMaster(false)
+      setPermissions([])
     } catch (error) {
       console.error('❌ 로그아웃 에러:', error)
     }
+  }
+
+  // 권한 체크 함수 (와일드카드 지원)
+  const hasPermission = (requiredPermission) => {
+    // 마스터는 모든 권한
+    if (isMaster) return true
+
+    // 정확한 권한 매칭
+    if (permissions.includes(requiredPermission)) return true
+
+    // 와일드카드 체크 (예: 'customers.*' → 'customers.view' 허용)
+    const [menu] = requiredPermission.split('.')
+    if (permissions.includes(`${menu}.*`)) return true
+
+    return false
   }
 
   return (
@@ -172,6 +237,9 @@ export function AdminAuthProvider({ children }) {
       isAdminAuthenticated,
       loading,
       adminUser,
+      isMaster,
+      permissions,
+      hasPermission,
       adminLogin,
       adminLogout
     }}>
