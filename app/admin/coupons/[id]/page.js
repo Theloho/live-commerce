@@ -580,7 +580,7 @@ export default function AdminCouponDetailPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-blue-600 font-medium">
-                            {holder.order?.order_number || '-'}
+                            {holder.order?.customer_order_number || '-'}
                           </div>
                         </td>
                         <td className="px-6 py-4">
