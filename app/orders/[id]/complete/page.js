@@ -794,9 +794,13 @@ export default function OrderCompletePage() {
                           const shippingInfo = formatShippingInfo(4000, orderData.shipping?.postal_code)
                           const shippingFee = shippingInfo.totalShipping
 
+                          // 쿠폰 할인 금액 (DB에서 저장된 값)
+                          const couponDiscount = orderData.discount_amount || 0
+
                           console.log('💰 주문 상세 금액 계산:', {
                             correctTotalProductAmount,
                             shippingFee,
+                            couponDiscount,
                             actualPaymentAmount,
                             postalCode: orderData.shipping?.postal_code,
                             shippingInfo
@@ -819,6 +823,14 @@ export default function OrderCompletePage() {
                                   ₩{shippingFee.toLocaleString()}
                                 </span>
                               </div>
+                              {couponDiscount > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-blue-600">쿠폰 할인</span>
+                                  <span className="font-medium text-blue-600">
+                                    -₩{couponDiscount.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex justify-between items-center border-t pt-2">
                                 <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
                                 <span className="font-bold text-lg text-gray-900">
