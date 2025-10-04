@@ -195,37 +195,31 @@ export default function AdminsPage() {
         </button>
       </div>
 
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">전체 관리자</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{admins.length}</p>
-            </div>
-            <UserIcon className="w-10 h-10 text-gray-400" />
+      {/* 통계 카드 - 컴팩트 디자인 */}
+      <div className="flex flex-wrap gap-3">
+        <div className="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200 flex items-center gap-3 flex-1 min-w-[180px]">
+          <UserIcon className="w-6 h-6 text-gray-400 flex-shrink-0" />
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-bold text-gray-900">{admins.length}</span>
+            <span className="text-xs text-gray-500">전체 관리자</span>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">마스터 관리자</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
-                {admins.filter(a => a.is_master).length}
-              </p>
-            </div>
-            <ShieldCheckIcon className="w-10 h-10 text-red-400" />
+        <div className="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200 flex items-center gap-3 flex-1 min-w-[180px]">
+          <ShieldCheckIcon className="w-6 h-6 text-red-500 flex-shrink-0" />
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-bold text-red-600">
+              {admins.filter(a => a.is_master).length}
+            </span>
+            <span className="text-xs text-gray-500">마스터</span>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">일반 관리자</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">
-                {admins.filter(a => !a.is_master && a.is_admin).length}
-              </p>
-            </div>
-            <UserIcon className="w-10 h-10 text-blue-400" />
+        <div className="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200 flex items-center gap-3 flex-1 min-w-[180px]">
+          <UserIcon className="w-6 h-6 text-blue-500 flex-shrink-0" />
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-bold text-blue-600">
+              {admins.filter(a => !a.is_master && a.is_admin).length}
+            </span>
+            <span className="text-xs text-gray-500">일반</span>
           </div>
         </div>
       </div>
