@@ -599,8 +599,11 @@ export default function CheckoutPage() {
   })
 
   // 쿠폰 적용/해제 핸들러
-  const handleApplyCoupon = async (coupon) => {
+  const handleApplyCoupon = async (userCoupon) => {
     try {
+      // userCoupon 구조: { id, coupon: { code, name, ... } }
+      const coupon = userCoupon.coupon
+
       // DB 함수로 쿠폰 검증 (상품 금액만 전달, 배송비 제외)
       const result = await validateCoupon(coupon.code, user?.id || userSession?.id, orderItem.totalPrice)
 
@@ -609,7 +612,7 @@ export default function CheckoutPage() {
         return
       }
 
-      setSelectedCoupon(coupon)
+      setSelectedCoupon(userCoupon)
       setShowCouponList(false)
       toast.success(`${coupon.name} 쿠폰이 적용되었습니다 (₩${result.discount_amount.toLocaleString()} 할인)`)
 
