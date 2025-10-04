@@ -27,33 +27,45 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
   })
   const [showAddressSearch, setShowAddressSearch] = useState(false)
 
-  // 초기 주소 데이터 로드
+  // 초기 주소 데이터 로드 + legacy 주소 마이그레이션
   useEffect(() => {
-    if (userProfile?.addresses && Array.isArray(userProfile.addresses) && userProfile.addresses.length > 0) {
-      setAddresses(userProfile.addresses)
-      // 기본 주소 자동 선택
-      const defaultAddr = userProfile.addresses.find(a => a.is_default)
-      if (defaultAddr) {
-        setSelectedAddressId(defaultAddr.id)
-      }
-    } else if (userProfile?.address) {
-      // 기존 주소를 addresses 형식으로 변환 (우편번호 포함)
-      const defaultAddress = {
-        id: 1,
-        label: '기본 배송지',
-        address: userProfile.address,
-        detail_address: userProfile.detail_address || '',
-        postal_code: userProfile.postal_code || '',
-        is_default: true,
-        created_at: new Date().toISOString()
-      }
-      setAddresses([defaultAddress])
-      setSelectedAddressId(1)
+    let currentAddresses = userProfile?.addresses && Array.isArray(userProfile.addresses)
+      ? userProfile.addresses
+      : []
 
-      // 즉시 DB에 마이그레이션 저장
-      if (onUpdate) {
-        onUpdate({ addresses: [defaultAddress] })
+    // legacy address 필드가 있으면 addresses 배열에 없는지 확인 후 추가
+    if (userProfile?.address) {
+      const legacyExists = currentAddresses.some(addr =>
+        addr.address === userProfile.address &&
+        addr.detail_address === (userProfile.detail_address || '')
+      )
+
+      if (!legacyExists) {
+        console.log('🔄 legacy 주소 마이그레이션:', userProfile.address)
+        const legacyAddress = {
+          id: Date.now(),
+          label: '기본 배송지',
+          address: userProfile.address,
+          detail_address: userProfile.detail_address || '',
+          postal_code: userProfile.postal_code || '',
+          is_default: currentAddresses.length === 0, // 첫 번째면 기본
+          created_at: new Date().toISOString()
+        }
+        currentAddresses = [...currentAddresses, legacyAddress]
+
+        // 즉시 DB에 저장
+        if (onUpdate) {
+          onUpdate({ addresses: currentAddresses })
+        }
       }
+    }
+
+    setAddresses(currentAddresses)
+
+    // 기본 주소 자동 선택
+    const defaultAddr = currentAddresses.find(a => a.is_default)
+    if (defaultAddr) {
+      setSelectedAddressId(defaultAddr.id)
     }
   }, [userProfile])
 
