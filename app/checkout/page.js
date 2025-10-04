@@ -670,13 +670,8 @@ export default function CheckoutPage() {
       if (orderItem.isBulkPayment && orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
         logger.debug('일괄결제 처리 시작', { count: orderItem.originalOrderIds.length })
 
-        // 선택된 주소를 userProfile에 병합 (우편번호 포함)
-        const orderProfile = {
-          ...userProfile,
-          address: selectedAddress?.address || userProfile.address,
-          detail_address: selectedAddress?.detail_address || userProfile.detail_address,
-          postal_code: selectedAddress?.postal_code || userProfile.postal_code
-        }
+        // ✅ userProfile 사용 (onSelect에서 이미 업데이트됨)
+        const orderProfile = userProfile
 
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
         const updateResult = await updateMultipleOrderStatus(
@@ -690,7 +685,7 @@ export default function CheckoutPage() {
               shipping_phone: orderProfile.phone,
               shipping_address: orderProfile.address,
               shipping_detail_address: orderProfile.detail_address,
-              shipping_postal_code: selectedAddress?.postal_code || userProfile.postal_code
+              shipping_postal_code: userProfile.postal_code
             }
           }
         )
@@ -704,13 +699,8 @@ export default function CheckoutPage() {
         }))
       } else {
         // 단일 주문 생성
-        // 선택된 주소를 userProfile에 병합 (우편번호 포함)
-        const orderProfile = {
-          ...userProfile,
-          address: selectedAddress?.address || userProfile.address,
-          detail_address: selectedAddress?.detail_address || userProfile.detail_address,
-          postal_code: selectedAddress?.postal_code || userProfile.postal_code
-        }
+        // ✅ userProfile 사용 (onSelect에서 이미 업데이트됨)
+        const orderProfile = userProfile
 
         // ✅ DEBUG: 주문 생성 데이터 확인
         console.log('📦 주문 생성 데이터:', {
@@ -999,14 +989,16 @@ export default function CheckoutPage() {
                     }
                   }}
                   onSelect={(address) => {
-                    setSelectedAddress(address)
-                    // userProfile에도 주소 정보 반영 (우편번호 포함)
-                    setUserProfile(prev => ({
-                      ...prev,
+                    // ✅ 동기적으로 즉시 반영 (state 업데이트 대기 안 함)
+                    const updatedProfile = {
+                      ...userProfile,
                       address: address.address,
                       detail_address: address.detail_address || '',
                       postal_code: address.postal_code || ''
-                    }))
+                    }
+
+                    setSelectedAddress(address)
+                    setUserProfile(updatedProfile)
                     setShowAddressModal(false)
                     // ✨ 토스트 제거: 배송지 선택은 시각적으로 이미 확인 가능
                   }}
