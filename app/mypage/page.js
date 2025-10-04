@@ -119,7 +119,11 @@ export default function MyPage() {
               const profile = {
                 name: dbProfile.name || currentUser.name || '',
                 phone: dbProfile.phone || currentUser.phone || '',
-                nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || ''
+                nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || '',
+                address: dbProfile.address || '',
+                detail_address: dbProfile.detail_address || '',
+                addresses: dbProfile.addresses || [],
+                postal_code: dbProfile.postal_code || ''
               }
               console.log('마이페이지 프로필 로드:', { dbProfile, currentUser, profile })
               setUserProfile(profile)
@@ -136,7 +140,11 @@ export default function MyPage() {
               const profile = {
                 name: currentUser.name || '',
                 phone: currentUser.phone || '',
-                nickname: currentUser.nickname || currentUser.name || ''
+                nickname: currentUser.nickname || currentUser.name || '',
+                address: currentUser.address || '',
+                detail_address: currentUser.detail_address || '',
+                addresses: currentUser.addresses || [],
+                postal_code: currentUser.postal_code || ''
               }
               setUserProfile(profile)
               setEditValues(profile)
@@ -146,7 +154,11 @@ export default function MyPage() {
             const profile = {
               name: currentUser.name || '',
               phone: currentUser.phone || '',
-              nickname: currentUser.nickname || currentUser.name || ''
+              nickname: currentUser.nickname || currentUser.name || '',
+              address: currentUser.address || '',
+              detail_address: currentUser.detail_address || '',
+              addresses: currentUser.addresses || [],
+              postal_code: currentUser.postal_code || ''
             }
             setUserProfile(profile)
             setEditValues(profile)
@@ -156,7 +168,11 @@ export default function MyPage() {
           const profile = {
             name: currentUser.name || '',
             phone: currentUser.phone || '',
-            nickname: currentUser.nickname || currentUser.name || ''
+            nickname: currentUser.nickname || currentUser.name || '',
+            address: currentUser.address || '',
+            detail_address: currentUser.detail_address || '',
+            addresses: currentUser.addresses || [],
+            postal_code: currentUser.postal_code || ''
           }
           setUserProfile(profile)
           setEditValues(profile)
@@ -166,7 +182,11 @@ export default function MyPage() {
         const profile = {
           name: currentUser.name || currentUser.user_metadata?.name || '',
           phone: currentUser.phone || currentUser.user_metadata?.phone || '',
-          nickname: currentUser.nickname || currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || ''
+          nickname: currentUser.nickname || currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || '',
+          address: currentUser.address || '',
+          detail_address: currentUser.detail_address || '',
+          addresses: currentUser.addresses || [],
+          postal_code: currentUser.postal_code || ''
         }
         setUserProfile(profile)
         setEditValues(profile)
@@ -190,7 +210,11 @@ export default function MyPage() {
             id: currentUser.id,
             name: currentUser.user_metadata?.name || '',
             phone: currentUser.user_metadata?.phone || '',
-            nickname: currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || ''
+            nickname: currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || '',
+            address: '',
+            detail_address: '',
+            addresses: [],
+            postal_code: ''
           }
 
           // 프로필이 없는 경우 추가 정보 입력 페이지로 리다이렉트
