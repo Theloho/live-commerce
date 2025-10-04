@@ -365,6 +365,11 @@ export default function OrderCompletePage() {
                       })
 
                       console.log('💳 카드결제 금액 계산 (중앙화 모듈):', orderCalc.breakdown)
+                      console.log('🎟️ 쿠폰 정보 (DB에서 조회):', {
+                        db_discount_amount: orderData.discount_amount,
+                        coupon_applied: orderCalc.couponApplied,
+                        coupon_discount: orderCalc.couponDiscount
+                      })
 
                       return (
                         <div className="space-y-2">
@@ -465,6 +470,12 @@ export default function OrderCompletePage() {
                                           orderData.depositName ||
                                           orderData.shipping?.name ||
                                           '입금자명 확인 필요'
+
+                      console.log('🎟️ 쿠폰 정보 (DB에서 조회):', {
+                        db_discount_amount: orderData.discount_amount,
+                        coupon_applied: orderCalc.couponApplied,
+                        coupon_discount: orderCalc.couponDiscount
+                      })
 
                       console.log('🏦 입금 안내 정보 (중앙화 모듈):', {
                         ...orderCalc.breakdown,

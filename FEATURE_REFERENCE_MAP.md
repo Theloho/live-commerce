@@ -165,6 +165,8 @@ createOrder(orderData, userProfile, depositName)
 7. `products` (자동 업데이트) - 트리거 실행
 
 #### 📊 데이터 흐름
+
+**A. BuyBottomSheet → Checkout 경로 (일반)**
 ```
 BuyBottomSheet (옵션 선택)
   ↓
@@ -193,6 +195,27 @@ sessionStorage.setItem('recentOrder')
 router.replace(`/orders/${orderId}/complete`)
 ```
 
+**B. BuyBottomSheet → 바로구매 경로 (직접 주문 생성)**
+```
+BuyBottomSheet mount
+  ↓
+useEffect 실행
+  ├── sessionStorage.getItem('user') - 기존 데이터 로드
+  ├── profiles DB fetch - 최신 addresses 배열 조회
+  ├── userData.postal_code 업데이트 (addresses[default].postal_code)
+  ├── sessionStorage.setItem('user', userData) - ⭐ 동기화 필수!
+  └── setUserSession(userData)
+  ↓
+사용자 "바로구매" 클릭
+  ↓
+handleAddToCart()
+  ├── currentUser = userSession (최신 DB 데이터)
+  ├── userProfile = currentUser 기반 생성
+  └── createOrder(orderData, userProfile) 직접 호출
+  ↓
+주문 생성 완료
+```
+
 #### ⚠️ 필수 체크리스트
 - [ ] Variant 재고 확인 (checkVariantInventory)
 - [ ] FOR UPDATE 잠금 사용 (동시성 제어)
@@ -206,6 +229,7 @@ router.replace(`/orders/${orderId}/complete`)
 - [ ] 이메일 발송 (선택적)
 - [ ] sessionStorage에 checkoutItem, recentOrder 저장
 - [ ] **userProfile 사용** (selectedAddress 병합 금지 - React state 비동기 이슈)
+- [ ] **sessionStorage 동기화** (DB fetch 후 sessionStorage.setItem('user') 필수 - BuyBottomSheet)
 
 #### 🔗 연관 기능
 - **Variant 재고 관리** (재고 차감)
@@ -221,9 +245,11 @@ router.replace(`/orders/${orderId}/complete`)
 - **재고 차감 시점**: 주문 생성 전 (체크아웃 진입 시)
 - **배송비 0원**: pending 상태에서는 배송비 미계산 (결제 확인 시 계산)
 - **React State 주의**: selectedAddress 대신 userProfile 사용 (onSelect에서 이미 업데이트됨)
+- **sessionStorage 동기화**: DB에서 최신 주소 fetch 후 반드시 sessionStorage.setItem('user') 호출 (BuyBottomSheet)
 
 #### 📝 최근 수정 이력
-- 2025-10-04: React state 비동기 문제 수정 (주소 저장 버그)
+- 2025-10-04: sessionStorage 동기화 문제 수정 (BuyBottomSheet 주소 버그)
+- 2025-10-04: React state 비동기 문제 수정 (checkout 주소 저장 버그)
 - 2025-10-03: 우편번호 시스템 통합 (배송비 자동 계산)
 - 2025-10-02: 발주 시스템 연동
 - 2025-10-01: Variant 시스템으로 전환

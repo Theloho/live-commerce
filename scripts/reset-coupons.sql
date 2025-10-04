@@ -1,6 +1,8 @@
+-- ==========================================
 -- 쿠폰 리셋 (테스트용)
 -- 사용일: 2025-10-04
 -- 목적: 사용한 쿠폰 재사용 가능하도록 리셋
+-- ==========================================
 
 UPDATE user_coupons
 SET
@@ -19,6 +21,9 @@ SELECT
   uc.id,
   c.code,
   c.name,
+  c.discount_type,
+  c.discount_value,
+  c.max_discount_amount,
   uc.is_used,
   uc.used_at
 FROM user_coupons uc

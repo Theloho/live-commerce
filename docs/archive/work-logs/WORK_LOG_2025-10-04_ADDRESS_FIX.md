@@ -217,6 +217,85 @@ setState(newValue)
 
 ---
 
+---
+
+## 🔄 2차 수정: BuyBottomSheet sessionStorage 동기화 (2025-10-04 밤)
+
+### 증상
+- checkout 페이지는 수정했지만, BuyBottomSheet (바로구매)에서 여전히 서울 주소 저장
+
+### 로그 분석
+```javascript
+사용자 프로필: {postal_code: '05794'}  // ← sessionStorage 데이터
+💰 체크아웃 주문 계산: {postalCode: '63625'}  // ← UI 표시 정상
+💰 주문 상세 금액 계산: {postalCode: '05794'}  // ← DB 저장 잘못
+```
+
+### 근본 원인
+```
+마이페이지에서 주소 변경
+  ↓
+DB profiles.addresses 업데이트 ✅
+  ↓
+sessionStorage는 업데이트 안 됨 ❌
+  ↓
+BuyBottomSheet 로드
+  ├── sessionStorage 읽기 → 서울 (stale)
+  ├── DB fetch → 제주 (fresh)
+  ├── userData 업데이트 → 제주
+  ├── setUserSession(userData) → 제주
+  ├── ❌ sessionStorage.setItem() 누락!
+  └── 다음 렌더링 시 다시 서울 로드
+  ↓
+주문 생성 시 서울 주소 사용 ❌
+```
+
+### 해결책
+
+**BuyBottomSheet.jsx (Lines 68-73):**
+```javascript
+// ✅ sessionStorage도 업데이트하여 최신 상태 유지
+sessionStorage.setItem('user', JSON.stringify(userData))
+console.log('✅ BuyBottomSheet: 최신 주소 정보 동기화 완료', {
+  postal_code: userData.postal_code,
+  address: userData.address
+})
+```
+
+**추가 디버깅 로그 (Lines 413-416):**
+```javascript
+console.log('🔍 currentUser 상태:', {
+  postal_code: currentUser?.postal_code,
+  address: currentUser?.address
+})
+```
+
+### 수정 파일
+1. ✅ `app/components/product/BuyBottomSheet.jsx`
+   - Line 68-73: sessionStorage 동기화 추가
+   - Line 413-416: 디버깅 로그 추가
+
+2. ✅ `FEATURE_REFERENCE_MAP.md`
+   - § 1.1 데이터 흐름: BuyBottomSheet 바로구매 경로 추가
+   - § 1.1 체크리스트: sessionStorage 동기화 필수 추가
+   - § 1.1 특이사항: sessionStorage 동기화 주의사항 추가
+   - § 1.1 최근 수정 이력: 2025-10-04 BuyBottomSheet 수정 추가
+
+### 핵심 교훈
+
+**1. sessionStorage와 DB 동기화 필수**
+- DB 업데이트 시 sessionStorage도 함께 업데이트
+- 페이지 간 이동 시 stale data 방지
+
+**2. 두 가지 주문 생성 경로**
+- A. BuyBottomSheet → `/checkout` → createOrder (일반)
+- B. BuyBottomSheet → 바로구매 → createOrder (직접)
+
+**3. 체계적 디버깅**
+- 로그 확인 → 데이터 흐름 추적 → 근본 원인 파악 → 해결
+
+---
+
 **작업 완료**: 2025-10-04
 **작업자**: Claude Code
 **승인**: 사용자 피드백 반영 (체계적 분석 요청)

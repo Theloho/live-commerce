@@ -597,14 +597,33 @@ export default function CheckoutPage() {
       // userCoupon 구조: { id, coupon: { code, name, ... } }
       const coupon = userCoupon.coupon
 
+      // 🔒 쿠폰 데이터 검증 (RLS 문제로 JOIN 실패 시 대응)
+      if (!coupon || !coupon.code || !coupon.discount_type || coupon.discount_value == null) {
+        console.error('❌ 쿠폰 데이터 불완전:', userCoupon)
+        toast.error('쿠폰 정보를 불러올 수 없습니다. 페이지를 새로고침해주세요.')
+        return
+      }
+
       // ✅ 수정: 쿠폰 목록 조회와 동일한 user_id 사용 (userSession 우선)
       const currentUser = userSession || user
 
       // DB 함수로 쿠폰 검증 (상품 금액만 전달, 배송비 제외)
       const result = await validateCoupon(coupon.code, currentUser?.id, orderItem.totalPrice)
 
+      console.log('🎟️ validateCoupon 결과:', {
+        code: coupon.code,
+        userId: currentUser?.id,
+        productAmount: orderItem.totalPrice,
+        result: {
+          is_valid: result.is_valid,
+          discount_amount: result.discount_amount,
+          error_message: result.error_message
+        }
+      })
+
       if (!result.is_valid) {
         toast.error(result.error_message || '쿠폰을 사용할 수 없습니다')
+        console.log('❌ 쿠폰 검증 실패 - 주문 진행 중단')
         return
       }
 
@@ -732,6 +751,24 @@ export default function CheckoutPage() {
           couponDiscount: orderCalc.couponDiscount || 0,
           couponCode: selectedCoupon?.coupon?.code || null
         }
+
+        console.log('💰 주문 생성 데이터:', {
+          selectedCoupon: selectedCoupon ? {
+            code: selectedCoupon.coupon.code,
+            discount_type: selectedCoupon.coupon.discount_type,
+            discount_value: selectedCoupon.coupon.discount_value
+          } : null,
+          orderCalc: {
+            itemsTotal: orderCalc.itemsTotal,
+            couponDiscount: orderCalc.couponDiscount,
+            couponApplied: orderCalc.couponApplied,
+            finalAmount: orderCalc.finalAmount
+          },
+          orderItemWithCoupon: {
+            couponDiscount: orderItemWithCoupon.couponDiscount,
+            couponCode: orderItemWithCoupon.couponCode
+          }
+        })
 
         const newOrder = await createOrder(orderItemWithCoupon, orderProfile, depositName)
         orderId = newOrder.id

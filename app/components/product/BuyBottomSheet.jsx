@@ -64,6 +64,13 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                     userData.detail_address = profile.detail_address || ''
                     userData.postal_code = profile.postal_code || ''
                   }
+
+                  // ✅ sessionStorage도 업데이트하여 최신 상태 유지
+                  sessionStorage.setItem('user', JSON.stringify(userData))
+                  console.log('✅ BuyBottomSheet: 최신 주소 정보 동기화 완료', {
+                    postal_code: userData.postal_code,
+                    address: userData.address
+                  })
                 }
               }
             } catch (error) {
@@ -403,6 +410,10 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     }
 
     console.log('BuyBottomSheet 장바구니 담기 클릭됨') // 디버깅
+    console.log('🔍 currentUser 상태:', {
+      postal_code: currentUser?.postal_code,
+      address: currentUser?.address
+    })
 
     // 사용자 정보 확인 (우편번호 포함)
     const userProfile = {

@@ -324,6 +324,112 @@ applyCouponUsage(currentUser?.id, couponId, orderId, discount)
 
 ---
 
+---
+
+## 🔄 추가 수정: 쿠폰 할인 0원 버그 (RLS 정책 누락) - 2025-10-04 저녁
+
+### 문제 4: 쿠폰 할인이 0원으로 저장됨
+
+**증상**:
+- 체크아웃에서 쿠폰 적용
+- 주문 생성
+- 주문 상세에서 쿠폰 할인 0원 표시
+- 로그: "⚠️ 쿠폰 사용 처리 실패 (이미 사용됨)"
+
+**사용자 피드백**:
+> "콘솔 보기전에 너는 소스를 시작부터 끝까지 따라가보면 아주 충분히 확인하고 알수있는거 아닌가?"
+
+→ **코드 전체 플로우를 체계적으로 추적하여 근본 원인 발견**
+
+### 전체 플로우 추적
+
+**1. getUserCoupons (couponApi.js:318)**
+```javascript
+.select(`
+  *,
+  coupon:coupons(*)  // ← JOIN으로 coupons 데이터 가져옴
+`)
+```
+
+**문제**: `coupons` 테이블에 SELECT RLS 정책 없음
+→ JOIN은 성공하지만 **coupon 필드가 null**로 반환됨
+
+**2. handleApplyCoupon → setSelectedCoupon**
+```javascript
+setSelectedCoupon(userCoupon)  // ← { coupon: null } 저장
+```
+
+**3. OrderCalculations 호출**
+```javascript
+const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderItems, {
+  coupon: {
+    type: selectedCoupon.coupon.discount_type,   // ← null.xxx = undefined
+    value: selectedCoupon.coupon.discount_value  // ← undefined!
+  }
+})
+```
+
+**4. applyCouponDiscount (orderCalculations.js:220)**
+```javascript
+if (!coupon || !coupon.type || !coupon.value) {  // ← !undefined = true
+  return { discountAmount: 0 }  // ← 0 반환!
+}
+```
+
+**5. DB 저장**
+```javascript
+discount_amount: orderData.couponDiscount || 0  // ← 0 저장
+```
+
+**핵심**: validateCoupon (RPC)은 성공하지만, getUserCoupons (JOIN)은 RLS에 막힘
+
+### 해결 방법
+
+**1. RLS 정책 추가 (supabase/migrations/fix_coupon_rls.sql)**
+```sql
+CREATE POLICY "Users can view their coupons"
+ON coupons
+FOR SELECT
+TO authenticated
+USING (
+  id IN (
+    SELECT coupon_id
+    FROM user_coupons
+    WHERE user_id = auth.uid()
+  )
+);
+```
+
+**2. 코드 레벨 방어 로직 (checkout/page.js:600-605)**
+```javascript
+// 쿠폰 데이터 검증 (RLS 문제로 JOIN 실패 시 대응)
+if (!coupon || !coupon.code || !coupon.discount_type || coupon.discount_value == null) {
+  console.error('❌ 쿠폰 데이터 불완전:', userCoupon)
+  toast.error('쿠폰 정보를 불러올 수 없습니다. 페이지를 새로고침해주세요.')
+  return
+}
+```
+
+### 변경 파일
+
+4. ✅ `supabase/migrations/fix_coupon_rls.sql` - ⭐ 새 파일
+5. ✅ `app/checkout/page.js` - 쿠폰 데이터 검증 추가
+6. ✅ `scripts/reset-coupons.sql` - 확인 쿼리 개선
+
+### 배운 점
+
+**RLS 정책과 JOIN:**
+- **RPC 함수**: `SECURITY DEFINER` → RLS 우회
+- **JOIN**: 클라이언트 권한 → RLS 적용됨
+
+**체계적 코드 분석:**
+> "소스를 시작부터 끝까지 따라가면 충분히 알 수 있다"
+- getUserCoupons → OrderCalculations → DB 저장 → 조회
+- 각 단계별 데이터 변환 추적
+- RLS 정책 누락 발견
+
+---
+
 **작업 완료**: 2025-10-04
 **작업자**: Claude Code
-**승인**: 사용자 테스트 완료 (3건 모두 해결)
+**승인**: 사용자 테스트 완료 (4건 모두 해결)
