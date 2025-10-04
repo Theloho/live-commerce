@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MapPinIcon,
@@ -25,6 +25,9 @@ export default function AddressManager({ userId, onAddressChange }) {
     detail_address: ''
   })
 
+  // 🔒 마이그레이션 완료 플래그 (리렌더링 없음)
+  const migrationDone = useRef(false)
+
   useEffect(() => {
     if (userId) {
       fetchAddresses()
@@ -39,7 +42,7 @@ export default function AddressManager({ userId, onAddressChange }) {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
       const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
-      const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=addresses,address,detail_address`, {
+      const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=addresses,address,detail_address,postal_code`, {
         method: 'GET',
         headers: {
           'apikey': supabaseKey,
@@ -57,8 +60,8 @@ export default function AddressManager({ userId, onAddressChange }) {
 
           let addresses = profile?.addresses || []
 
-          // legacy address 필드가 있으면 addresses 배열에 없는지 확인 후 추가
-          if (profile?.address) {
+          // 📥 legacy address 마이그레이션 (한 번만 실행)
+          if (!migrationDone.current && profile?.address) {
             const legacyExists = addresses.some(addr =>
               addr.address === profile.address &&
               addr.detail_address === (profile.detail_address || '')
@@ -87,6 +90,8 @@ export default function AddressManager({ userId, onAddressChange }) {
                 },
                 body: JSON.stringify({ addresses })
               })
+
+              migrationDone.current = true // 완료 표시
             }
           }
 

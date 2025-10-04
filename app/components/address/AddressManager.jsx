@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   MapPinIcon,
   PlusIcon,
@@ -27,15 +27,20 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
   })
   const [showAddressSearch, setShowAddressSearch] = useState(false)
 
-  // 초기 주소 데이터 로드 + legacy 주소 마이그레이션
+  // 🔒 마이그레이션 완료 플래그 (리렌더링 없음)
+  const migrationDone = useRef(false)
+
+  // 📥 초기화: 한 번만 실행 (무한 루프 방지)
   useEffect(() => {
-    let currentAddresses = userProfile?.addresses && Array.isArray(userProfile.addresses)
-      ? userProfile.addresses
+    if (migrationDone.current) return // 이미 완료됐으면 종료
+
+    let initialAddresses = userProfile?.addresses && Array.isArray(userProfile.addresses)
+      ? [...userProfile.addresses]
       : []
 
     // legacy address 필드가 있으면 addresses 배열에 없는지 확인 후 추가
     if (userProfile?.address) {
-      const legacyExists = currentAddresses.some(addr =>
+      const legacyExists = initialAddresses.some(addr =>
         addr.address === userProfile.address &&
         addr.detail_address === (userProfile.detail_address || '')
       )
@@ -48,26 +53,28 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
           address: userProfile.address,
           detail_address: userProfile.detail_address || '',
           postal_code: userProfile.postal_code || '',
-          is_default: currentAddresses.length === 0, // 첫 번째면 기본
+          is_default: initialAddresses.length === 0,
           created_at: new Date().toISOString()
         }
-        currentAddresses = [...currentAddresses, legacyAddress]
+        initialAddresses = [...initialAddresses, legacyAddress]
 
         // 즉시 DB에 저장
         if (onUpdate) {
-          onUpdate({ addresses: currentAddresses })
+          onUpdate({ addresses: initialAddresses })
         }
       }
     }
 
-    setAddresses(currentAddresses)
+    setAddresses(initialAddresses)
 
     // 기본 주소 자동 선택
-    const defaultAddr = currentAddresses.find(a => a.is_default)
+    const defaultAddr = initialAddresses.find(a => a.is_default)
     if (defaultAddr) {
       setSelectedAddressId(defaultAddr.id)
     }
-  }, [userProfile])
+
+    migrationDone.current = true // 완료 표시
+  }, [userProfile, onUpdate])
 
   // 아이콘 선택 함수
   const getIcon = (label) => {

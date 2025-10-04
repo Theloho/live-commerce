@@ -516,7 +516,7 @@ export default function MyPage() {
             <AddressManager
               userProfile={userProfile}
               onUpdate={async (updatedData) => {
-                // 주소 업데이트를 profiles 테이블에 저장
+                // 💾 DB만 업데이트 (userProfile state 건드리지 않음 → 무한 루프 방지)
                 try {
                   const currentUser = userSession || user
                   if (!currentUser?.id) return
@@ -529,16 +529,14 @@ export default function MyPage() {
                     headers: {
                       'apikey': supabaseKey,
                       'Authorization': `Bearer ${supabaseKey}`,
-                      'Content-Type': 'application/json',
-                      'Prefer': 'return=representation'
+                      'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(updatedData)
                   })
 
                   if (response.ok) {
-                    const updated = await response.json()
-                    setUserProfile(prev => ({ ...prev, ...updatedData }))
-                    console.log('✅ 주소 업데이트 성공:', updatedData)
+                    console.log('✅ 주소 DB 업데이트 성공:', updatedData)
+                    // setUserProfile 제거! → AddressManager는 독립적으로 작동
                   } else {
                     console.error('주소 업데이트 실패:', response.status)
                     toast.error('주소 저장에 실패했습니다')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -53,6 +53,9 @@ export default function CheckoutPage() {
   const [availableCoupons, setAvailableCoupons] = useState([])
   const [selectedCoupon, setSelectedCoupon] = useState(null)
   const [showCouponList, setShowCouponList] = useState(false)
+
+  // 🔒 마이그레이션 완료 플래그 (리렌더링 없음)
+  const migrationDone = useRef(false)
 
   // 🚀 통합된 초기화 - 모든 useEffect를 하나로 통합하여 성능 최적화
   useEffect(() => {
@@ -207,8 +210,8 @@ export default function CheckoutPage() {
               const profile = profiles[0]
               let addresses = profile?.addresses || []
 
-              // legacy address 필드가 있으면 addresses 배열에 없는지 확인 후 추가
-              if (profile?.address) {
+              // 📥 legacy address 마이그레이션 (한 번만 실행)
+              if (!migrationDone.current && profile?.address) {
                 const legacyExists = addresses.some(addr =>
                   addr.address === profile.address &&
                   addr.detail_address === (profile.detail_address || '')
@@ -236,6 +239,8 @@ export default function CheckoutPage() {
                     },
                     body: JSON.stringify({ addresses })
                   })
+
+                  migrationDone.current = true // 완료 표시
                 }
               }
 
@@ -937,7 +942,7 @@ export default function CheckoutPage() {
                   userProfile={userProfile}
                   selectMode={true}
                   onUpdate={async (updatedData) => {
-                    // 카카오 사용자 프로필 업데이트
+                    // 💾 DB만 업데이트 (userProfile state 건드리지 않음 → 무한 루프 방지)
                     const currentUser = userSession || user
                     if (currentUser?.provider === 'kakao') {
                       try {
@@ -952,8 +957,8 @@ export default function CheckoutPage() {
                           console.error('주소 업데이트 오류:', error)
                           toast.error('주소 저장에 실패했습니다')
                         } else {
-                          // 로컬 상태도 업데이트
-                          setUserProfile(prev => ({ ...prev, addresses: updatedData.addresses }))
+                          console.log('✅ 주소 DB 업데이트 성공')
+                          // setUserProfile 제거! → AddressManager는 독립적으로 작동
                         }
                       } catch (error) {
                         console.error('주소 업데이트 실패:', error)
