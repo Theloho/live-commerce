@@ -368,6 +368,7 @@ CREATE TABLE orders (
 
     -- 금액
     total_amount NUMERIC(10,2),
+    discount_amount NUMERIC(12,2) DEFAULT 0 NOT NULL,  -- ⭐ 쿠폰 할인 금액 (2025-10-04 추가)
 
     -- 배송 정보 (orders 테이블에 직접 저장) ⚠️ order_shipping과 중복
     shipping_name TEXT,
@@ -389,6 +390,7 @@ CREATE TABLE orders (
 
 **중요 포인트**:
 - `status = 'deposited'`: 입금확인 완료, **발주 대상 상태**
+- `discount_amount`: 쿠폰 할인 금액 (체크아웃에서 설정, 실제 결제 금액 = total_amount - discount_amount)
 - 타임스탬프 흐름: `created_at` → `verifying_at` → `paid_at` → `delivered_at`
 
 ---
