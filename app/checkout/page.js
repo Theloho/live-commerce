@@ -689,8 +689,18 @@ export default function CheckoutPage() {
       if (orderItem.isBulkPayment && orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
         logger.debug('일괄결제 처리 시작', { count: orderItem.originalOrderIds.length })
 
-        // ✅ userProfile 사용 (onSelect에서 이미 업데이트됨)
-        const orderProfile = userProfile
+        // ✅ selectedAddress 직접 사용 (React setState 비동기 문제 해결)
+        const finalAddress = selectedAddress || {
+          address: userProfile.address,
+          detail_address: userProfile.detail_address,
+          postal_code: userProfile.postal_code
+        }
+
+        console.log('🏠 최종 배송지 확인:', {
+          selectedAddress_postal_code: selectedAddress?.postal_code,
+          userProfile_postal_code: userProfile.postal_code,
+          finalAddress_postal_code: finalAddress.postal_code
+        })
 
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
         const paymentUpdateData = {
@@ -698,18 +708,20 @@ export default function CheckoutPage() {
           depositorName: depositName,
           discountAmount: orderCalc.couponDiscount || 0, // ✅ 쿠폰 할인 추가
           shippingData: {
-            shipping_name: orderProfile.name,
-            shipping_phone: orderProfile.phone,
-            shipping_address: orderProfile.address,
-            shipping_detail_address: orderProfile.detail_address,
-            shipping_postal_code: userProfile.postal_code
+            shipping_name: userProfile.name,
+            shipping_phone: userProfile.phone,
+            shipping_address: finalAddress.address,
+            shipping_detail_address: finalAddress.detail_address || '',
+            shipping_postal_code: finalAddress.postal_code || ''
           }
         }
 
         console.log('📤 updateMultipleOrderStatus 전달 데이터:', {
           orderIds: orderItem.originalOrderIds,
           status: 'verifying',
+          selectedCoupon_code: selectedCoupon?.coupon?.code,
           orderCalc_couponDiscount: orderCalc.couponDiscount,
+          depositName: depositName,
           paymentUpdateData
         })
 
@@ -728,8 +740,19 @@ export default function CheckoutPage() {
         }))
       } else {
         // 단일 주문 생성
-        // ✅ userProfile 사용 (onSelect에서 이미 업데이트됨)
-        const orderProfile = userProfile
+        // ✅ selectedAddress 직접 사용 (React setState 비동기 문제 해결)
+        const finalAddress = selectedAddress || {
+          address: userProfile.address,
+          detail_address: userProfile.detail_address,
+          postal_code: userProfile.postal_code
+        }
+
+        const orderProfile = {
+          ...userProfile,
+          address: finalAddress.address,
+          detail_address: finalAddress.detail_address,
+          postal_code: finalAddress.postal_code
+        }
 
         // ✅ DEBUG: 주문 생성 데이터 확인
         console.log('📦 주문 생성 데이터:', {
@@ -742,6 +765,11 @@ export default function CheckoutPage() {
             postal_code: userProfile.postal_code,
             address: userProfile.address,
             detail_address: userProfile.detail_address
+          },
+          finalAddress: {
+            postal_code: finalAddress.postal_code,
+            address: finalAddress.address,
+            detail_address: finalAddress.detail_address
           },
           orderProfile: {
             postal_code: orderProfile.postal_code,
