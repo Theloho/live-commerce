@@ -115,6 +115,7 @@ export default function MyPage() {
                 hasAddress: !!dbProfile.address,
                 hasAddresses: !!(dbProfile.addresses && dbProfile.addresses.length > 0)
               })
+              console.log('🔍 addresses 배열 상세:', JSON.stringify(dbProfile.addresses, null, 2))
 
               const profile = {
                 name: dbProfile.name || currentUser.name || '',
