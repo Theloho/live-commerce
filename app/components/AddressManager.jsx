@@ -57,7 +57,7 @@ export default function AddressManager({ userId, onAddressChange }) {
 
           let addresses = profile?.addresses || []
 
-          // addresses가 비어있지만 기본 주소 정보가 있으면 마이그레이션
+          // addresses가 비어있지만 기본 주소 정보가 있으면 마이그레이션 (우편번호 포함)
           if ((!addresses || addresses.length === 0) && profile?.address) {
             console.log('🔄 AddressManager - 기본 주소 마이그레이션:', profile.address)
             const defaultAddress = {
@@ -65,6 +65,7 @@ export default function AddressManager({ userId, onAddressChange }) {
               label: '기본 배송지',
               address: profile.address,
               detail_address: profile.detail_address || '',
+              postal_code: profile.postal_code || '',
               is_default: true,
               created_at: new Date().toISOString()
             }

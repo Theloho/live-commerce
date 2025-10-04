@@ -29,7 +29,7 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
 
   // 초기 주소 데이터 로드
   useEffect(() => {
-    if (userProfile?.addresses && Array.isArray(userProfile.addresses)) {
+    if (userProfile?.addresses && Array.isArray(userProfile.addresses) && userProfile.addresses.length > 0) {
       setAddresses(userProfile.addresses)
       // 기본 주소 자동 선택
       const defaultAddr = userProfile.addresses.find(a => a.is_default)
@@ -37,16 +37,23 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
         setSelectedAddressId(defaultAddr.id)
       }
     } else if (userProfile?.address) {
-      // 기존 주소를 addresses 형식으로 변환
+      // 기존 주소를 addresses 형식으로 변환 (우편번호 포함)
       const defaultAddress = {
         id: 1,
         label: '기본 배송지',
         address: userProfile.address,
         detail_address: userProfile.detail_address || '',
-        is_default: true
+        postal_code: userProfile.postal_code || '',
+        is_default: true,
+        created_at: new Date().toISOString()
       }
       setAddresses([defaultAddress])
       setSelectedAddressId(1)
+
+      // 즉시 DB에 마이그레이션 저장
+      if (onUpdate) {
+        onUpdate({ addresses: [defaultAddress] })
+      }
     }
   }, [userProfile])
 
