@@ -2008,6 +2008,7 @@ addresses: [
 - **postal_code**: 도서산간 배송비 계산 필수
 
 #### 📝 최근 수정 이력
+- 2025-10-04: **무한 루프 및 삭제/수정 문제 근본 해결** (useRef + 독립 state, onUpdate에서 userProfile 건드리지 않음)
 - 2025-10-04: AddressManager 마이그레이션 로직 완전 수정 (postal_code 포함, 빈 배열 체크, 즉시 DB 저장)
 - 2025-10-03: 우편번호 시스템 통합 (배송비 자동 계산)
 - 2025-10-01: AddressManager 컴포넌트 신버전 전환
