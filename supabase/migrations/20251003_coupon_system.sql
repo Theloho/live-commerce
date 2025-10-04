@@ -193,10 +193,10 @@ BEGIN
         RETURN;
     END IF;
 
-    -- 사용자 보유 확인
+    -- 사용자 보유 확인 (✅ 2025-10-04 수정: 테이블 prefix 추가로 ambiguous 에러 해결)
     SELECT * INTO v_user_coupon
     FROM user_coupons
-    WHERE user_id = p_user_id AND coupon_id = v_coupon.id;
+    WHERE user_coupons.user_id = p_user_id AND user_coupons.coupon_id = v_coupon.id;
 
     IF NOT FOUND THEN
         RETURN QUERY SELECT false, '보유하지 않은 쿠폰입니다.'::TEXT, NULL::UUID, 0::DECIMAL(12, 2);

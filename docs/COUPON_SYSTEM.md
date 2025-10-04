@@ -767,6 +767,47 @@ if (coupon.type === 'percentage') {
 
 ---
 
+### 문제 6: "column reference 'coupon_id' is ambiguous" (PostgreSQL 에러 42702)
+
+**원인**: validate_coupon 함수에서 WHERE 절의 `coupon_id`가 테이블 컬럼인지 변수인지 모호함
+
+**증상**:
+```javascript
+// 쿠폰 적용 시 에러 발생
+{
+  code: '42702',
+  message: 'column reference "coupon_id" is ambiguous',
+  hint: 'It could refer to either a PL/pgSQL variable or a table column.'
+}
+```
+
+**해결**:
+```sql
+-- ❌ 잘못된 코드
+SELECT * INTO v_user_coupon
+FROM user_coupons
+WHERE user_id = p_user_id AND coupon_id = v_coupon.id;
+
+-- ✅ 올바른 코드 (테이블 prefix 추가)
+SELECT * INTO v_user_coupon
+FROM user_coupons
+WHERE user_coupons.user_id = p_user_id AND user_coupons.coupon_id = v_coupon.id;
+```
+
+**적용 방법**:
+1. Supabase Dashboard → SQL Editor
+2. `/supabase/migrations/fix_validate_coupon.sql` 파일 내용 복사
+3. Run 클릭
+
+**주의**: `CREATE OR REPLACE FUNCTION`으로 파라미터 이름을 변경할 수 없으므로 먼저 `DROP FUNCTION` 필수
+
+```sql
+DROP FUNCTION IF EXISTS validate_coupon(character varying, uuid, numeric);
+CREATE OR REPLACE FUNCTION validate_coupon(...) ...
+```
+
+---
+
 ## 🎯 체크리스트
 
 ### 쿠폰 생성 시

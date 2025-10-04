@@ -3034,6 +3034,9 @@ IF v_coupon.max_discount_amount IS NOT NULL THEN
 END IF
 ```
 
+#### 📝 최근 수정 이력
+- 2025-10-04: validate_coupon 함수 ambiguous 에러 수정 (user_coupons.coupon_id 테이블 prefix 추가, DROP FUNCTION 선행)
+
 #### ✅ 필수 체크리스트
 - [ ] 모든 검증 단계 통과 확인
 - [ ] 에러 메시지 사용자 친화적으로 표시
