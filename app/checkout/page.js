@@ -699,6 +699,7 @@ export default function CheckoutPage() {
           {
             method: 'bank_transfer',
             depositorName: depositName,
+            discountAmount: orderCalc.couponDiscount || 0, // ✅ 쿠폰 할인 추가
             shippingData: {
               shipping_name: orderProfile.name,
               shipping_phone: orderProfile.phone,

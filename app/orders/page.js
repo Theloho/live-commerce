@@ -242,7 +242,11 @@ function OrdersContent() {
       thumbnail_url: firstItem?.thumbnail_url || '/placeholder.png',
       quantity: itemQuantity,
       totalPrice: calculatedTotalPrice, // 수정된 계산
-      selectedOptions: firstItem.selectedOptions || {}
+      selectedOptions: firstItem.selectedOptions || {},
+      // ✅ 기존 주문 업데이트용 플래그 추가
+      isBulkPayment: true,
+      originalOrderIds: [order.id], // 단일 주문도 배열로 전달
+      itemCount: 1
     }
 
     sessionStorage.setItem('checkoutItem', JSON.stringify(orderItem))
