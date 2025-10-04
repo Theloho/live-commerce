@@ -849,6 +849,41 @@ CREATE OR REPLACE FUNCTION validate_coupon(...) ...
 
 ---
 
+### 문제 7: "보유하지 않은 쿠폰입니다" (user_id 불일치)
+
+**원인**: 쿠폰 목록 조회와 쿠폰 검증에서 사용하는 user_id 우선순위가 다름
+
+**증상**:
+- 쿠폰 목록에는 쿠폰이 표시됨
+- 쿠폰 적용 시 "보유하지 않은 쿠폰입니다" 토스트 에러
+
+**해결**:
+```javascript
+// ❌ 잘못된 코드 (app/checkout/page.js)
+// 쿠폰 목록 조회
+const currentUser = sessionUser || user
+getUserCoupons(currentUser.id)  // sessionUser 우선
+
+// 쿠폰 검증
+validateCoupon(code, user?.id || userSession?.id, amount)  // user 우선 ❌
+
+// ✅ 올바른 코드 (우선순위 통일)
+// 쿠폰 목록 조회
+const currentUser = userSession || user
+getUserCoupons(currentUser.id)  // userSession 우선
+
+// 쿠폰 검증
+const currentUser = userSession || user  // ✅ 동일한 우선순위
+validateCoupon(code, currentUser?.id, amount)
+```
+
+**핵심**:
+- 카카오 로그인 사용자는 `userSession`에만 존재
+- Supabase Auth 사용자는 `user`에만 존재
+- **동일한 우선순위**를 사용해야 같은 user_id로 조회/검증
+
+---
+
 ## 🎯 체크리스트
 
 ### 쿠폰 생성 시

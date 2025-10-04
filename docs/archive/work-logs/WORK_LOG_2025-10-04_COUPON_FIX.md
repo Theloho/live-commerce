@@ -1,8 +1,8 @@
-# 쿠폰 시스템 DB 함수 에러 수정 (2건)
+# 쿠폰 시스템 완전 수정 (3건)
 
 **작업일**: 2025-10-04
 **상태**: ✅ 완료
-**작업 타입**: 버그 수정 (PostgreSQL Function + JS API)
+**작업 타입**: 버그 수정 (PostgreSQL Function + JS API + 체크아웃)
 
 ---
 
@@ -45,6 +45,33 @@ await supabase.rpc('validate_coupon', {
   p_order_amount: orderAmount  // ❌ SQL 함수는 p_product_amount 기대
 })
 ```
+
+---
+
+### 문제 3: user_id 우선순위 불일치
+
+**증상**:
+- 쿠폰 목록에 쿠폰이 보임
+- 쿠폰 적용 시 "보유하지 않은 쿠폰입니다" 토스트 에러
+
+**원인**:
+쿠폰 목록 조회와 검증에서 user_id 우선순위가 달라서 다른 user_id로 조회/검증
+
+```javascript
+// ❌ 문제 코드 (app/checkout/page.js)
+// 쿠폰 목록 조회
+const currentUser = sessionUser || user  // sessionUser 우선
+getUserCoupons(currentUser.id)
+
+// 쿠폰 검증
+validateCoupon(code, user?.id || userSession?.id, amount)  // user 우선 ❌
+// → 카카오 사용자는 userSession에만 존재하므로 다른 user_id로 검증됨
+```
+
+**근본 원인**:
+- 카카오 로그인: `userSession`에만 존재, `user`는 null
+- Supabase Auth: `user`에만 존재, `userSession`은 null
+- 우선순위가 다르면 조회/검증이 다른 user_id로 실행됨
 
 ---
 
@@ -114,10 +141,43 @@ git push
 
 ---
 
+### 3. 체크아웃 user_id 우선순위 통일 (문제 3 해결)
+
+**파일**: `/app/checkout/page.js`
+
+```javascript
+// ✅ 수정: 쿠폰 목록 조회와 동일한 우선순위 사용
+const handleApplyCoupon = async (userCoupon) => {
+  try {
+    const coupon = userCoupon.coupon
+
+    // ✅ userSession 우선 (목록 조회와 동일)
+    const currentUser = userSession || user
+
+    // DB 함수로 쿠폰 검증
+    const result = await validateCoupon(coupon.code, currentUser?.id, orderItem.totalPrice)
+
+    // ...
+  }
+}
+```
+
+**적용 방법**:
+```bash
+git add app/checkout/page.js
+git commit -m "fix: 쿠폰 검증 user_id 불일치 수정"
+git push
+```
+
+**결과**: "보유하지 않은 쿠폰" 에러 해결 ✅
+
+---
+
 ## 📝 변경 파일 목록
 
 ### 코드 수정
 1. ✅ `lib/couponApi.js` - validateCoupon() 파라미터 수정 (p_product_amount)
+2. ✅ `app/checkout/page.js` - handleApplyCoupon() user_id 우선순위 통일 (userSession || user)
 
 ### SQL 마이그레이션
 1. ✅ `/supabase/migrations/fix_validate_coupon.sql` - ⭐ 새 파일
@@ -125,13 +185,14 @@ git push
 
 ### 문서 업데이트
 1. ✅ `FEATURE_REFERENCE_MAP.md`
-   - § 8.4 쿠폰 유효성 검증 - 최근 수정 이력 추가 (2건)
+   - § 8.4 쿠폰 유효성 검증 - 최근 수정 이력 추가 (3건)
 
 2. ✅ `docs/COUPON_SYSTEM.md`
    - § 트러블슈팅 - 문제 6 추가 (2건: ambiguous + 404)
+   - § 트러블슈팅 - 문제 7 추가 (user_id 우선순위 불일치)
 
 3. ✅ `docs/archive/work-logs/WORK_LOG_2025-10-04_COUPON_FIX.md`
-   - 작업 로그 상세 기록
+   - 작업 로그 상세 기록 (3건 완료)
 
 ### 보조 파일 (참고용)
 1. `/scripts/apply-coupon-fix.js` - 자동 적용 스크립트 (미사용)
@@ -210,6 +271,36 @@ await supabase.rpc('validate_coupon', {
 
 ---
 
+### 3. 다중 인증 시스템에서 user_id 일관성 유지
+
+**배경**:
+- 카카오 로그인: sessionStorage의 `userSession` 사용
+- Supabase Auth: Supabase의 `user` 사용
+- 두 시스템은 상호 배타적 (동시에 존재하지 않음)
+
+**문제**:
+- 기능 A: `sessionUser || user` (sessionUser 우선)
+- 기능 B: `user?.id || userSession?.id` (user 우선)
+- → 같은 사용자인데 다른 user_id로 인식됨
+
+**해결책**:
+```javascript
+// ✅ 전체 앱에서 일관된 우선순위 사용
+const currentUser = userSession || user  // 항상 동일한 순서
+
+// 모든 API 호출에 동일한 user_id 사용
+getUserCoupons(currentUser?.id)
+validateCoupon(code, currentUser?.id, amount)
+applyCouponUsage(currentUser?.id, couponId, orderId, discount)
+```
+
+**교훈**:
+- 다중 인증 시스템에서는 **우선순위 통일** 필수
+- 전역 상수로 정의하거나 유틸 함수로 추상화 권장
+- 예: `const getCurrentUserId = () => (userSession || user)?.id`
+
+---
+
 ## 🔗 관련 문서
 
 - **COUPON_SYSTEM.md** - § 트러블슈팅 문제 6
@@ -220,9 +311,10 @@ await supabase.rpc('validate_coupon', {
 
 ## 📊 영향도
 
-### 영향받는 기능
-- ✅ 쿠폰 적용 (체크아웃 페이지)
-- ✅ 쿠폰 검증 (모든 페이지)
+### 영향받는 기능 (3건 모두 해결)
+1. ✅ **쿠폰 검증** - ambiguous 에러 해결 (PostgreSQL 함수)
+2. ✅ **쿠폰 API 호출** - 404 에러 해결 (파라미터 이름 일치)
+3. ✅ **쿠폰 적용** - "보유하지 않은 쿠폰" 에러 해결 (user_id 우선순위 통일)
 
 ### 영향받지 않는 기능
 - ✅ 쿠폰 발행
@@ -234,4 +326,4 @@ await supabase.rpc('validate_coupon', {
 
 **작업 완료**: 2025-10-04
 **작업자**: Claude Code
-**승인**: 사용자 테스트 완료
+**승인**: 사용자 테스트 완료 (3건 모두 해결)

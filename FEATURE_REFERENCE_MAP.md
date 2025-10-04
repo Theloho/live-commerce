@@ -3035,9 +3035,10 @@ END IF
 ```
 
 #### 📝 최근 수정 이력
-- 2025-10-04: **validate_coupon 함수 완전 수정** (ambiguous 에러 + 파라미터 이름 불일치)
-  - SQL 함수: user_coupons.coupon_id 테이블 prefix 추가
-  - JS API: p_order_amount → p_product_amount (SQL 시그니처 일치)
+- 2025-10-04: **쿠폰 시스템 완전 수정** (3건)
+  - SQL 함수: user_coupons.coupon_id 테이블 prefix 추가 (ambiguous 에러 해결)
+  - JS API: p_order_amount → p_product_amount (404 에러 해결)
+  - 체크아웃: user_id 우선순위 통일 (userSession || user) → "보유하지 않은 쿠폰" 에러 해결
 
 #### ✅ 필수 체크리스트
 - [ ] 모든 검증 단계 통과 확인
