@@ -3035,7 +3035,9 @@ END IF
 ```
 
 #### 📝 최근 수정 이력
-- 2025-10-04: validate_coupon 함수 ambiguous 에러 수정 (user_coupons.coupon_id 테이블 prefix 추가, DROP FUNCTION 선행)
+- 2025-10-04: **validate_coupon 함수 완전 수정** (ambiguous 에러 + 파라미터 이름 불일치)
+  - SQL 함수: user_coupons.coupon_id 테이블 prefix 추가
+  - JS API: p_order_amount → p_product_amount (SQL 시그니처 일치)
 
 #### ✅ 필수 체크리스트
 - [ ] 모든 검증 단계 통과 확인

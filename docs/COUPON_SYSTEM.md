@@ -767,13 +767,14 @@ if (coupon.type === 'percentage') {
 
 ---
 
-### 문제 6: "column reference 'coupon_id' is ambiguous" (PostgreSQL 에러 42702)
+### 문제 6: validate_coupon 함수 에러 (2건)
+
+#### 6-1. "column reference 'coupon_id' is ambiguous" (PostgreSQL 에러 42702)
 
 **원인**: validate_coupon 함수에서 WHERE 절의 `coupon_id`가 테이블 컬럼인지 변수인지 모호함
 
 **증상**:
 ```javascript
-// 쿠폰 적용 시 에러 발생
 {
   code: '42702',
   message: 'column reference "coupon_id" is ambiguous',
@@ -794,10 +795,46 @@ FROM user_coupons
 WHERE user_coupons.user_id = p_user_id AND user_coupons.coupon_id = v_coupon.id;
 ```
 
-**적용 방법**:
-1. Supabase Dashboard → SQL Editor
-2. `/supabase/migrations/fix_validate_coupon.sql` 파일 내용 복사
-3. Run 클릭
+---
+
+#### 6-2. "Could not find the function" (404 Not Found)
+
+**원인**: JS API와 SQL 함수의 파라미터 이름 불일치
+
+**증상**:
+```javascript
+POST /rest/v1/rpc/validate_coupon 404 (Not Found)
+{
+  code: 'PGRST202',
+  message: 'Could not find the function public.validate_coupon(p_coupon_code, p_order_amount, p_user_id)',
+  hint: 'Perhaps you meant to call the function public.validate_coupon(p_coupon_code, p_product_amount, p_user_id)'
+}
+```
+
+**해결**:
+```javascript
+// ❌ 잘못된 코드 (lib/couponApi.js)
+const { data, error } = await supabase.rpc('validate_coupon', {
+  p_coupon_code: couponCode.toUpperCase(),
+  p_user_id: userId,
+  p_order_amount: orderAmount  // ❌ SQL 함수는 p_product_amount
+})
+
+// ✅ 올바른 코드
+const { data, error } = await supabase.rpc('validate_coupon', {
+  p_coupon_code: couponCode.toUpperCase(),
+  p_user_id: userId,
+  p_product_amount: orderAmount  // ✅ SQL 함수와 일치
+})
+```
+
+---
+
+#### 적용 방법
+
+**1. SQL 함수 수정 (Supabase Dashboard)**:
+1. https://supabase.com/dashboard 접속
+2. SQL Editor → `/supabase/migrations/fix_validate_coupon.sql` 실행
 
 **주의**: `CREATE OR REPLACE FUNCTION`으로 파라미터 이름을 변경할 수 없으므로 먼저 `DROP FUNCTION` 필수
 
@@ -805,6 +842,10 @@ WHERE user_coupons.user_id = p_user_id AND user_coupons.coupon_id = v_coupon.id;
 DROP FUNCTION IF EXISTS validate_coupon(character varying, uuid, numeric);
 CREATE OR REPLACE FUNCTION validate_coupon(...) ...
 ```
+
+**2. JS API 수정 (코드)**:
+- `lib/couponApi.js` 파일에서 `p_order_amount` → `p_product_amount` 변경
+- 배포
 
 ---
 
