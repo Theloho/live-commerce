@@ -38,30 +38,23 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
       ? [...userProfile.addresses]
       : []
 
-    // legacy address 필드가 있으면 addresses 배열에 없는지 확인 후 추가
-    if (userProfile?.address) {
-      const legacyExists = initialAddresses.some(addr =>
-        addr.address === userProfile.address &&
-        addr.detail_address === (userProfile.detail_address || '')
-      )
+    // legacy address 마이그레이션 (addresses 배열이 비어있고, legacy 주소가 있을 때만 실행)
+    if (initialAddresses.length === 0 && userProfile?.address) {
+      console.log('🔄 legacy 주소 마이그레이션:', userProfile.address)
+      const legacyAddress = {
+        id: Date.now(),
+        label: '기본 배송지',
+        address: userProfile.address,
+        detail_address: userProfile.detail_address || '',
+        postal_code: userProfile.postal_code || '',
+        is_default: true,
+        created_at: new Date().toISOString()
+      }
+      initialAddresses = [legacyAddress]
 
-      if (!legacyExists) {
-        console.log('🔄 legacy 주소 마이그레이션:', userProfile.address)
-        const legacyAddress = {
-          id: Date.now(),
-          label: '기본 배송지',
-          address: userProfile.address,
-          detail_address: userProfile.detail_address || '',
-          postal_code: userProfile.postal_code || '',
-          is_default: initialAddresses.length === 0,
-          created_at: new Date().toISOString()
-        }
-        initialAddresses = [...initialAddresses, legacyAddress]
-
-        // 즉시 DB에 저장
-        if (onUpdate) {
-          onUpdate({ addresses: initialAddresses })
-        }
+      // 즉시 DB에 저장
+      if (onUpdate) {
+        onUpdate({ addresses: initialAddresses })
       }
     }
 

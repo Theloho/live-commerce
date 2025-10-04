@@ -61,39 +61,32 @@ export default function AddressManager({ userId, onAddressChange }) {
 
           let addresses = profile?.addresses || []
 
-          // 📥 legacy address 마이그레이션 (한 번만 실행)
-          if (!migrationDone.current && profile?.address) {
-            const legacyExists = addresses.some(addr =>
-              addr.address === profile.address &&
-              addr.detail_address === (profile.detail_address || '')
-            )
-
-            if (!legacyExists) {
-              console.log('🔄 AddressManager - legacy 주소 마이그레이션:', profile.address)
-              const legacyAddress = {
-                id: Date.now(),
-                label: '기본 배송지',
-                address: profile.address,
-                detail_address: profile.detail_address || '',
-                postal_code: profile.postal_code || '',
-                is_default: addresses.length === 0,
-                created_at: new Date().toISOString()
-              }
-              addresses = [...addresses, legacyAddress]
-
-              // 마이그레이션된 주소를 데이터베이스에 저장
-              await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
-                method: 'PATCH',
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ addresses })
-              })
-
-              migrationDone.current = true // 완료 표시
+          // 📥 legacy address 마이그레이션 (addresses 배열이 비어있고, legacy 주소가 있을 때만 실행)
+          if (!migrationDone.current && addresses.length === 0 && profile?.address) {
+            console.log('🔄 AddressManager - legacy 주소 마이그레이션:', profile.address)
+            const legacyAddress = {
+              id: Date.now(),
+              label: '기본 배송지',
+              address: profile.address,
+              detail_address: profile.detail_address || '',
+              postal_code: profile.postal_code || '',
+              is_default: true,
+              created_at: new Date().toISOString()
             }
+            addresses = [legacyAddress]
+
+            // 마이그레이션된 주소를 데이터베이스에 저장
+            await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+              method: 'PATCH',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ addresses })
+            })
+
+            migrationDone.current = true // 완료 표시
           }
 
           setAddresses(addresses || [])
