@@ -693,21 +693,30 @@ export default function CheckoutPage() {
         const orderProfile = userProfile
 
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
+        const paymentUpdateData = {
+          method: 'bank_transfer',
+          depositorName: depositName,
+          discountAmount: orderCalc.couponDiscount || 0, // ✅ 쿠폰 할인 추가
+          shippingData: {
+            shipping_name: orderProfile.name,
+            shipping_phone: orderProfile.phone,
+            shipping_address: orderProfile.address,
+            shipping_detail_address: orderProfile.detail_address,
+            shipping_postal_code: userProfile.postal_code
+          }
+        }
+
+        console.log('📤 updateMultipleOrderStatus 전달 데이터:', {
+          orderIds: orderItem.originalOrderIds,
+          status: 'verifying',
+          orderCalc_couponDiscount: orderCalc.couponDiscount,
+          paymentUpdateData
+        })
+
         const updateResult = await updateMultipleOrderStatus(
           orderItem.originalOrderIds,
           'verifying',
-          {
-            method: 'bank_transfer',
-            depositorName: depositName,
-            discountAmount: orderCalc.couponDiscount || 0, // ✅ 쿠폰 할인 추가
-            shippingData: {
-              shipping_name: orderProfile.name,
-              shipping_phone: orderProfile.phone,
-              shipping_address: orderProfile.address,
-              shipping_detail_address: orderProfile.detail_address,
-              shipping_postal_code: userProfile.postal_code
-            }
-          }
+          paymentUpdateData
         )
 
         // 첫 번째 주문 ID를 사용 (일괄결제의 대표 ID)
