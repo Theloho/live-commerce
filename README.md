@@ -43,7 +43,7 @@
 > - 🎟️ `docs/COUPON_SYSTEM.md` - 쿠폰 시스템 완벽 가이드 ⭐ NEW!
 >   - DB 구조 (coupons, user_coupons)
 >   - 할인 규칙 (금액/퍼센트)
->   - API 함수 (validateCoupon, useCoupon)
+>   - API 함수 (validateCoupon, applyCouponUsage)
 >   - 중앙화된 계산 (OrderCalculations)
 >   - UI 적용 현황
 >   - 사용 예제 및 트러블슈팅

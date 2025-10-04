@@ -3048,7 +3048,7 @@ END IF
 
 #### 🔧 핵심 함수 체인
 ```javascript
-useCoupon(userId, couponId, orderId, discountAmount)
+applyCouponUsage(userId, couponId, orderId, discountAmount)
   ↓ calls DB function
   use_coupon(p_user_id, p_coupon_id, p_order_id, p_discount_amount)
   ↓ updates
@@ -3211,7 +3211,7 @@ coupons.total_issued_count 증가
   ↓ validateCoupon()
 할인 금액 계산 및 표시
   ↓ 주문 생성
-  ↓ useCoupon()
+  ↓ applyCouponUsage()
 user_coupons.is_used = true
   ↓ trigger
 coupons.total_used_count 증가

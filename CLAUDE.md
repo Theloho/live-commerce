@@ -10,7 +10,7 @@
 - **현재 상태**: 시스템 점수 95/100 (SYSTEM_HEALTH_CHECK_2025-10-01.md)
 
 ### 2️⃣ 핵심 문서 위치 (이 문서에서 모두 안내)
-- 🗄️ **DB 작업**: `DB_REFERENCE_GUIDE.md` (23개 테이블 스키마)
+- 🗄️ **DB 작업**: `DB_REFERENCE_GUIDE.md` (16개 테이블 스키마)
 - 📊 **데이터 흐름**: `DETAILED_DATA_FLOW.md` (8개 주요 페이지)
 - 🏗️ **시스템 구조**: `SYSTEM_ARCHITECTURE.md` (전체 아키텍처)
 - 🚀 **배포**: `DEPLOYMENT_STRATEGY.md` (Vercel 배포 전략)
@@ -230,7 +230,7 @@ CODE_ANALYSIS_COMPLETE.md 업데이트 (대규모 변경 시)
 
 ### 🔴 작업 시작 전 (필수)
 1. 🗄️ **DB_REFERENCE_GUIDE.md** (DB 작업 시)
-   - 17개 테이블 스키마
+   - 16개 테이블 스키마
    - 중복 컬럼 처리법
    - 코드 예제
    - 체크리스트
@@ -301,7 +301,7 @@ CODE_ANALYSIS_COMPLETE.md 업데이트 (대규모 변경 시)
 - [ ] 🎟️ 쿠폰 사용 시: docs/COUPON_SYSTEM.md 읽기
 - [ ] 🎟️ OrderCalculations.calculateFinalOrderAmount() 사용했는가?
 - [ ] 🎟️ 쿠폰 할인은 배송비 제외하고 계산했는가?
-- [ ] 🎟️ useCoupon() 호출하여 쿠폰 사용 처리했는가?
+- [ ] 🎟️ applyCouponUsage() 호출하여 쿠폰 사용 처리했는가?
 ```
 
 ### 주문 조회 시
@@ -356,7 +356,7 @@ CODE_ANALYSIS_COMPLETE.md 업데이트 (대규모 변경 시)
 4. **CODE_ANALYSIS_COMPLETE.md** ⭐ NEW! - 전체 코드베이스 분석 (31 페이지 + 47 함수)
 5. **README.md** - 프로젝트 소개 및 시작 가이드
 6. **ROADMAP_2025-10-04.md** - 🗺️ 개발 로드맵 (쿠폰, 송장, 최적화, 보안)
-7. **DB_REFERENCE_GUIDE.md** - DB 작업 필수 (23개 테이블 스키마)
+7. **DB_REFERENCE_GUIDE.md** - DB 작업 필수 (16개 테이블 스키마)
 8. **SYSTEM_HEALTH_CHECK_2025-10-01.md** - 전체 시스템 상태 (95/100)
 9. **DETAILED_DATA_FLOW.md** - 페이지별 데이터 흐름 상세
 10. **SYSTEM_ARCHITECTURE.md** - 페이지별 구조 및 연관관계

@@ -669,6 +669,136 @@ CREATE TABLE order_payments (
 
 ---
 
+### 2.14 coupons (쿠폰) ⭐ 신규 (2025-10-03)
+
+```sql
+CREATE TABLE coupons (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- 기본 정보
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+
+    -- 할인 규칙
+    discount_type VARCHAR(20) NOT NULL,  -- 'fixed_amount' or 'percentage'
+    discount_value DECIMAL(12, 2) NOT NULL,
+
+    -- 사용 조건
+    min_purchase_amount DECIMAL(12, 2) DEFAULT 0,
+    max_discount_amount DECIMAL(12, 2),  -- percentage 타입일 때 최대 할인 금액
+
+    -- 유효 기간
+    valid_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    valid_until TIMESTAMPTZ NOT NULL,
+
+    -- 사용 제한
+    usage_limit_per_user INTEGER DEFAULT 1,
+    total_usage_limit INTEGER,  -- 전체 사용 가능 횟수 (선착순)
+    total_issued_count INTEGER DEFAULT 0,  -- 총 발급된 수
+    total_used_count INTEGER DEFAULT 0,  -- 총 사용된 수
+
+    -- 상태
+    is_active BOOLEAN DEFAULT true,
+
+    -- 생성자 정보
+    created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+
+    -- 타임스탬프
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**핵심 컬럼**:
+- `discount_type`: 'fixed_amount' (정액 할인) 또는 'percentage' (퍼센트 할인)
+- `discount_value`: 할인 값 (정액인 경우 원 단위, 퍼센트인 경우 % 단위)
+- `min_purchase_amount`: 최소 구매 금액 (배송비 제외)
+- `max_discount_amount`: 퍼센트 할인 시 최대 할인 금액 제한
+
+**주의사항**:
+- 퍼센트 할인은 **상품 금액에만 적용** (배송비는 할인 대상 아님)
+- `validateCoupon()` DB 함수로 유효성 검증
+- `total_used_count`는 트리거로 자동 증가
+
+---
+
+### 2.15 user_coupons (사용자 쿠폰) ⭐ 신규 (2025-10-03)
+
+```sql
+CREATE TABLE user_coupons (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- 관계
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    coupon_id UUID NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+
+    -- 사용 정보
+    is_used BOOLEAN DEFAULT false,
+    used_at TIMESTAMPTZ,
+    order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+
+    -- 할인 금액 (사용 시 스냅샷)
+    discount_amount DECIMAL(12, 2),
+
+    -- 배포 정보
+    issued_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    issued_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- 타임스탬프
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- 중복 방지
+    UNIQUE(user_id, coupon_id)
+);
+```
+
+**핵심 컬럼**:
+- `is_used`: 사용 여부 (기본값 false)
+- `discount_amount`: 실제 할인된 금액 (사용 시 스냅샷)
+- `order_id`: 어떤 주문에 사용했는지
+
+**주의사항**:
+- 동일 사용자에게 동일 쿠폰 중복 배포 불가 (UNIQUE 제약)
+- `use_coupon()` DB 함수로 사용 처리
+- 사용 시 트리거로 `coupons.total_used_count` 자동 증가
+
+---
+
+### 2.16 admin_permissions (관리자 권한) ⭐ 신규 (2025-10-03)
+
+```sql
+CREATE TABLE admin_permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- 관리자
+    admin_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+
+    -- 권한 정보
+    permission VARCHAR(100) NOT NULL,  -- 예: 'customers.view', 'orders.*'
+
+    -- 메타 정보
+    granted_by UUID REFERENCES profiles(id),
+    granted_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- 중복 방지
+    UNIQUE(admin_id, permission)
+);
+```
+
+**핵심 컬럼**:
+- `permission`: 권한 형식 `{메뉴}.{액션}` 또는 `{메뉴}.*` (전체)
+  - 예: 'customers.view', 'orders.edit', 'products.*'
+- `granted_by`: 권한을 부여한 마스터 관리자 ID
+
+**주의사항**:
+- `profiles.is_master = true`인 관리자는 모든 권한 보유
+- `has_permission()` DB 함수로 권한 체크 (와일드카드 지원)
+- 일반 관리자는 자기 권한만 조회 가능 (RLS)
+
+---
+
 ## 3. 데이터 저장 패턴
 
 ### 3.1 Variant 상품 등록 (2025-10-02 신규)
@@ -1740,5 +1870,6 @@ const postalCode = userProfile.postal_code || "06000"  // 기본값 설정
 
 **이 문서를 항상 참고하여 DB 작업을 수행하세요!**
 
-**최종 업데이트**: 2025-10-03 (Section 2.14 & Section 7 완전 개선)
-**문서 상태**: 100% 최신 (Variant 시스템, 발주 시스템, 우편번호 시스템 완전 반영)
+**최종 업데이트**: 2025-10-04 (쿠폰/관리자 권한 시스템 추가)
+**문서 상태**: 100% 최신 (Variant, 발주, 우편번호, 쿠폰, 관리자 권한 시스템 완전 반영)
+**총 테이블 수**: 16개

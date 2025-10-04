@@ -17,7 +17,10 @@ import {
   XMarkIcon,
   CogIcon,
   DocumentTextIcon,
-  TicketIcon
+  TicketIcon,
+  BuildingOfficeIcon,
+  TagIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuth'
 import toast from 'react-hot-toast'
@@ -51,18 +54,46 @@ function AdminLayoutContent({ children }) {
     }
   }
 
-  const menuItems = [
-    { href: '/admin', label: '대시보드', icon: HomeIcon },
-    { href: '/admin/products/catalog', label: '전체 상품 관리', icon: CubeIcon },
-    { href: '/admin/products', label: '라이브 상품 관리', icon: VideoCameraIcon },
-    { href: '/admin/broadcasts', label: '방송관리', icon: VideoCameraIcon },
-    { href: '/admin/orders', label: '주문관리', icon: ClipboardDocumentListIcon },
-    { href: '/admin/purchase-orders', label: '업체별 발주서', icon: DocumentTextIcon },
-    { href: '/admin/customers', label: '고객관리', icon: UsersIcon },
-    { href: '/admin/coupons', label: '쿠폰관리', icon: TicketIcon },
-    { href: '/admin/deposits', label: '입금확인', icon: BanknotesIcon },
-    { href: '/admin/shipping', label: '발송관리', icon: TruckIcon },
-    { href: '/admin/settings', label: '시스템설정', icon: CogIcon },
+  const menuGroups = [
+    {
+      title: '운영 관리',
+      items: [
+        { href: '/admin', label: '대시보드', icon: HomeIcon },
+        { href: '/admin/orders', label: '주문관리', icon: ClipboardDocumentListIcon },
+        { href: '/admin/deposits', label: '입금확인', icon: BanknotesIcon },
+        { href: '/admin/shipping', label: '발송관리', icon: TruckIcon },
+      ]
+    },
+    {
+      title: '상품 관리',
+      items: [
+        { href: '/admin/products/catalog', label: '전체 상품 관리', icon: CubeIcon },
+        { href: '/admin/products', label: '라이브 상품 관리', icon: VideoCameraIcon },
+        { href: '/admin/broadcasts', label: '방송관리', icon: VideoCameraIcon },
+      ]
+    },
+    {
+      title: '기초 정보',
+      items: [
+        { href: '/admin/suppliers', label: '업체 관리', icon: BuildingOfficeIcon },
+        { href: '/admin/categories', label: '카테고리 관리', icon: TagIcon },
+        { href: '/admin/purchase-orders', label: '업체별 발주서', icon: DocumentTextIcon },
+      ]
+    },
+    {
+      title: '고객 관리',
+      items: [
+        { href: '/admin/customers', label: '고객관리', icon: UsersIcon },
+        { href: '/admin/coupons', label: '쿠폰관리', icon: TicketIcon },
+      ]
+    },
+    {
+      title: '시스템',
+      items: [
+        { href: '/admin/admins', label: '관리자 관리', icon: ShieldCheckIcon },
+        { href: '/admin/settings', label: '시스템설정', icon: CogIcon },
+      ]
+    },
   ]
 
   if (loading) {
@@ -121,31 +152,43 @@ function AdminLayoutContent({ children }) {
           </div>
 
           {/* Menu */}
-          <nav className="flex-1 px-4 py-6">
-            <ul className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href ||
-                  (item.href === '/admin/products/catalog' && pathname.startsWith('/admin/products/catalog')) ||
-                  (item.href === '/admin/coupons' && pathname.startsWith('/admin/coupons'))
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        isActive
-                          ? 'bg-red-50 text-red-600 border border-red-200'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {item.label}
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
+          <nav className="flex-1 px-4 py-6 overflow-y-auto">
+            <div className="space-y-6">
+              {menuGroups.map((group, groupIndex) => (
+                <div key={groupIndex}>
+                  <h3 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {group.title}
+                  </h3>
+                  <ul className="space-y-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon
+                      const isActive = pathname === item.href ||
+                        (item.href === '/admin/products/catalog' && pathname.startsWith('/admin/products/catalog')) ||
+                        (item.href === '/admin/coupons' && pathname.startsWith('/admin/coupons')) ||
+                        (item.href === '/admin/suppliers' && pathname.startsWith('/admin/suppliers')) ||
+                        (item.href === '/admin/categories' && pathname.startsWith('/admin/categories')) ||
+                        (item.href === '/admin/admins' && pathname.startsWith('/admin/admins'))
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setSidebarOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
+                              isActive
+                                ? 'bg-red-50 text-red-600 border border-red-200'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon className="w-5 h-5" />
+                            <span className="text-sm">{item.label}</span>
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </nav>
 
           {/* Logout */}
@@ -174,7 +217,7 @@ function AdminLayoutContent({ children }) {
                 <Bars3Icon className="w-6 h-6 text-gray-600" />
               </button>
               <h2 className="text-xl font-semibold text-gray-900">
-                {menuItems.find(item => item.href === pathname)?.label || '관리자 대시보드'}
+                {menuGroups.flatMap(group => group.items).find(item => item.href === pathname)?.label || '관리자 대시보드'}
               </h2>
             </div>
             <div className="flex items-center gap-3">

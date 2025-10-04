@@ -228,7 +228,7 @@ const shippingInfo = formatShippingInfo(4000, '63000')
 **주요 함수**:
 - `getUserCoupons(userId)` - 사용자 쿠폰 목록
 - `validateCoupon(code, userId, productAmount)` - 쿠폰 검증 (DB 함수 호출)
-- `useCoupon(userId, couponId, orderId, discountAmount)` - 쿠폰 사용 처리
+- `applyCouponUsage(userId, couponId, orderId, discountAmount)` - 쿠폰 사용 처리
 
 ---
 
