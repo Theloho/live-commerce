@@ -400,6 +400,39 @@ CODE_ANALYSIS_COMPLETE.md 업데이트 (대규모 변경 시)
 
 ## 🎉 최근 주요 업데이트
 
+### 2025-10-04: 🎟️ 체크아웃 RLS UPDATE 정책 완전 해결 ⭐
+**문제**:
+- 체크아웃 시 PATCH 요청 204 성공하지만 **실제 DB 저장 안 됨**
+- discount_amount, postal_code, depositor_name이 0 또는 기본값으로 저장
+- 쿠폰 사용 처리 실패 (is_used = false 유지)
+
+**근본 원인**:
+1. **RLS UPDATE 정책 누락**: orders, order_payments, order_shipping, user_coupons 테이블
+2. **ANON KEY 사용**: `auth.uid()` = null → RLS 권한 없음 → 0 rows updated
+3. **discount_amount 컬럼 없음**: DB 스키마에 존재하지 않음
+
+**해결책**:
+- ✅ `discount_amount DECIMAL(12,2)` 컬럼 추가
+- ✅ `orders`, `order_payments`, `order_shipping` UPDATE RLS 정책 추가
+- ✅ `user_coupons` UPDATE RLS 정책 추가 (쿠폰 사용 처리)
+- ✅ 사용자 세션 토큰으로 인증 (`Authorization: Bearer ${accessToken}`)
+- ✅ 주문 상세 하단에 쿠폰 할인 표시 추가
+
+**결과**:
+- ✅ 체크아웃 데이터 즉시 저장 (204 성공 + DB 반영 ✅)
+- ✅ discount_amount, postal_code, depositor_name 정상 저장
+- ✅ 쿠폰 사용 완료 처리 (is_used = true, used_at, order_id)
+- ✅ 주문 상세 페이지 쿠폰 할인 정확히 표시
+
+**마이그레이션**:
+```
+supabase/migrations/20251004_add_discount_to_orders.sql
+supabase/migrations/20251004_fix_rls_update_policies.sql
+supabase/migrations/20251004_fix_user_coupons_rls.sql
+```
+
+---
+
 ### 2025-10-03 (야간): 🔐 관리자 RLS 문제 완전 해결 ⭐
 **문제**:
 - profiles 테이블 조회 10초+ 타임아웃
