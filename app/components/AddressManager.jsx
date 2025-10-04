@@ -22,7 +22,8 @@ export default function AddressManager({ userId, onAddressChange }) {
   const [formData, setFormData] = useState({
     label: '',
     address: '',
-    detail_address: ''
+    detail_address: '',
+    postal_code: '' // ✅ 우편번호 필드 추가
   })
 
   // 🔒 마이그레이션 완료 플래그 (리렌더링 없음)
@@ -120,7 +121,8 @@ export default function AddressManager({ userId, onAddressChange }) {
         oncomplete: function(data) {
           setFormData(prev => ({
             ...prev,
-            address: data.address
+            address: data.address,
+            postal_code: data.zonecode // ✅ 우편번호 추가
           }))
         }
       }).open()
@@ -173,6 +175,7 @@ export default function AddressManager({ userId, onAddressChange }) {
           label: formData.label || '배송지',
           address: formData.address,
           detail_address: formData.detail_address || '',
+          postal_code: formData.postal_code || '', // ✅ 우편번호 포함
           updated_at: new Date().toISOString()
         }
       } else {
@@ -187,6 +190,7 @@ export default function AddressManager({ userId, onAddressChange }) {
           label: formData.label || '배송지',
           address: formData.address,
           detail_address: formData.detail_address || '',
+          postal_code: formData.postal_code || '', // ✅ 우편번호 포함
           is_default: addresses.length === 0, // 첫 번째 주소면 기본으로 설정
           created_at: new Date().toISOString()
         }
@@ -224,7 +228,8 @@ export default function AddressManager({ userId, onAddressChange }) {
     setFormData({
       label: address.label,
       address: address.address,
-      detail_address: address.detail_address || ''
+      detail_address: address.detail_address || '',
+      postal_code: address.postal_code || '' // ✅ 우편번호 포함
     })
     setShowAddForm(true)
   }
@@ -355,7 +360,8 @@ export default function AddressManager({ userId, onAddressChange }) {
     setFormData({
       label: '',
       address: '',
-      detail_address: ''
+      detail_address: '',
+      postal_code: '' // ✅ 우편번호 리셋
     })
     setEditingId(null)
     setShowAddForm(false)

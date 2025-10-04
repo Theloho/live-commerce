@@ -17,7 +17,7 @@ import useAuth from '@/hooks/useAuth'
 import CardPaymentModal from '@/app/components/common/CardPaymentModal'
 import { supabase } from '@/lib/supabase'
 import AddressManager from '@/app/components/address/AddressManager'
-import { createOrder, updateMultipleOrderStatus } from '@/lib/supabaseApi'
+import { createOrder, updateMultipleOrderStatus, updateOrderStatus } from '@/lib/supabaseApi'
 import { UserProfileManager } from '@/lib/userProfileManager'
 import { formatShippingInfo } from '@/lib/shippingUtils'
 import { getUserCoupons, validateCoupon, applyCouponUsage } from '@/lib/couponApi'
@@ -719,6 +719,30 @@ export default function CheckoutPage() {
           postal_code: selectedAddress?.postal_code || userProfile.postal_code
         }
 
+        // ✅ DEBUG: 주문 생성 데이터 확인
+        console.log('📦 주문 생성 데이터:', {
+          selectedAddress: selectedAddress ? {
+            postal_code: selectedAddress.postal_code,
+            address: selectedAddress.address,
+            detail_address: selectedAddress.detail_address
+          } : null,
+          userProfile: {
+            postal_code: userProfile.postal_code,
+            address: userProfile.address,
+            detail_address: userProfile.detail_address
+          },
+          orderProfile: {
+            postal_code: orderProfile.postal_code,
+            address: orderProfile.address,
+            detail_address: orderProfile.detail_address
+          },
+          selectedCoupon: selectedCoupon ? {
+            code: selectedCoupon.coupon.code,
+            coupon_id: selectedCoupon.coupon_id
+          } : null,
+          couponDiscount: orderCalc.couponDiscount
+        })
+
         // 쿠폰 할인 금액을 orderItem에 포함
         const orderItemWithCoupon = {
           ...orderItem,
@@ -756,6 +780,15 @@ export default function CheckoutPage() {
           logger.error('❌ 쿠폰 사용 처리 중 오류:', error)
           // 쿠폰 사용 실패해도 주문은 진행
         }
+      }
+
+      // ✅ 주문 상태를 'verifying'으로 변경 (입금 확인중)
+      try {
+        await updateOrderStatus(orderId, 'verifying')
+        logger.debug('🕐 주문 상태 변경: pending → verifying', { orderId })
+      } catch (error) {
+        logger.error('❌ 주문 상태 변경 실패:', error)
+        // 상태 변경 실패해도 주문은 진행
       }
 
       // 계좌번호 복사 시도
