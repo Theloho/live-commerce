@@ -604,8 +604,11 @@ export default function CheckoutPage() {
       // userCoupon 구조: { id, coupon: { code, name, ... } }
       const coupon = userCoupon.coupon
 
+      // ✅ 수정: 쿠폰 목록 조회와 동일한 user_id 사용 (userSession 우선)
+      const currentUser = userSession || user
+
       // DB 함수로 쿠폰 검증 (상품 금액만 전달, 배송비 제외)
-      const result = await validateCoupon(coupon.code, user?.id || userSession?.id, orderItem.totalPrice)
+      const result = await validateCoupon(coupon.code, currentUser?.id, orderItem.totalPrice)
 
       if (!result.is_valid) {
         toast.error(result.error_message || '쿠폰을 사용할 수 없습니다')
