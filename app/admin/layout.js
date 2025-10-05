@@ -22,7 +22,7 @@ import {
   TagIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline'
-import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuth'
+import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
 
 function AdminLayoutContent({ children }) {

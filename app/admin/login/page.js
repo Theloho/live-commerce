@@ -10,7 +10,7 @@ import {
   ShieldCheckIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
-import { useAdminAuth } from '@/hooks/useAdminAuth'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
 
 function AdminLoginContent() {

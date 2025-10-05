@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowLeftIcon, PlusIcon, MinusIcon, PencilIcon } from '@heroicons/react/24/outline'
-import { useAdminAuth } from '@/hooks/useAdminAuth'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import {
   getProductVariants,
   updateVariantInventory,

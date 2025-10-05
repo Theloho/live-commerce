@@ -200,70 +200,214 @@ const subscription = supabase
 
 ### 2. 💳 체크아웃 페이지 (`/app/checkout/page.js`)
 
-#### 📥 데이터 로드 흐름
+#### 📥 데이터 로드 흐름 (병렬 최적화)
 ```mermaid
 graph TD
     A[페이지 로드] --> B[세션 데이터 확인]
     B --> C{카카오 세션?}
     C -->|Yes| D[sessionStorage.getItem('user')]
     C -->|No| E[useAuth 훅으로 Supabase Auth]
-    D --> F[UserProfileManager.getProfile]
+    D --> F[병렬 데이터 로드 시작]
     E --> F
-    F --> G[사용자 프로필 로드]
-    G --> H[주문 상품 정보 복원]
-    H --> I[폼 초기화 완료]
+    F --> G1[UserProfileManager.getProfile]
+    F --> G2[AddressManager 주소 로드]
+    F --> G3[🎟️ getUserCoupons - 쿠폰 조회]
+    G1 --> H[데이터 통합]
+    G2 --> H
+    G3 --> H
+    H --> I[주문 상품 정보 복원]
+    I --> J[폼 초기화 완료]
 ```
 
-#### 실제 코드 흐름
+#### 실제 코드 흐름 (고성능 초기화)
 ```javascript
-// 1. 세션 데이터 로드
-const storedUser = sessionStorage.getItem('user')
-let sessionUser = null
-if (storedUser) {
-  sessionUser = JSON.parse(storedUser)
-  setUserSession(sessionUser)
-}
+// ⚡ 병렬 데이터 로드 (Promise.allSettled)
+await Promise.allSettled([
+  loadUserProfileOptimized(currentUser),
+  loadUserAddressesOptimized(currentUser),
+  loadUserCouponsOptimized(currentUser)  // 🎟️ 쿠폰 로드
+]).then(([profileResult, addressResult, couponResult]) => {
+  // 프로필 처리
+  if (profileResult.status === 'fulfilled') {
+    setUserProfile(profileResult.value)
+  }
 
-// 2. 사용자 프로필 로드 (병렬 처리)
-const currentUser = await UserProfileManager.getCurrentUser()
-if (!currentUser) {
-  throw new Error('사용자 정보를 찾을 수 없습니다')
-}
+  // 주소 처리 (기본 배송지 자동 선택)
+  if (addressResult.status === 'fulfilled' && addressResult.value?.length > 0) {
+    const addresses = addressResult.value
+    const defaultAddress = addresses.find(addr => addr.is_default) || addresses[0]
+    setSelectedAddress(defaultAddress)
+  }
 
-// 3. 프로필 데이터 로드
-const profileData = await UserProfileManager.getProfile(currentUser)
-setUserProfile(profileData)
+  // 🎟️ 쿠폰 처리 (미사용 쿠폰만 필터링)
+  if (couponResult.status === 'fulfilled') {
+    setAvailableCoupons(couponResult.value)
+  }
+})
 
-// 4. 주문 상품 정보 복원
-const storedOrderItem = sessionStorage.getItem('orderItem')
-if (storedOrderItem) {
-  const item = JSON.parse(storedOrderItem)
-  setOrderItem(item)
+// ⚡ 최적화된 사용자 쿠폰 로드
+const loadUserCouponsOptimized = async (currentUser) => {
+  try {
+    if (!currentUser?.id) return []
+
+    const coupons = await getUserCoupons(currentUser.id)
+    // 미사용 쿠폰만 필터링
+    return coupons.filter(c => !c.is_used)
+  } catch (error) {
+    console.warn('쿠폰 로드 실패:', error)
+    return []
+  }
 }
 ```
 
-#### 📤 주문 생성 흐름 (무통장 입금)
+#### 🎟️ 쿠폰 적용 흐름 (2025-10-04 추가)
 ```mermaid
 graph TD
-    A[입금자명 + 배송지 입력] --> B[handleDepositOrder]
+    A[사용자 쿠폰 선택] --> B[handleApplyCoupon]
+    B --> C[쿠폰 데이터 검증]
+    C --> D{데이터 완전?}
+    D -->|No| E[에러: 페이지 새로고침 요청]
+    D -->|Yes| F[validateCoupon DB 함수 호출]
+    F --> G{검증 통과?}
+    G -->|No| H[에러 메시지 표시]
+    G -->|Yes| I[setSelectedCoupon]
+    I --> J[OrderCalculations.calculateFinalOrderAmount]
+    J --> K[쿠폰 할인 금액 계산]
+    K --> L[UI 업데이트 - 할인 표시]
+```
+
+#### 실제 쿠폰 적용 코드
+```javascript
+// 🎟️ 쿠폰 적용 핸들러 (/app/checkout/page.js:595-644)
+const handleApplyCoupon = async (userCoupon) => {
+  // 1. 쿠폰 데이터 검증 (RLS JOIN 실패 대응)
+  const coupon = userCoupon.coupon
+  if (!coupon || !coupon.code || !coupon.discount_type || coupon.discount_value == null) {
+    toast.error('쿠폰 정보를 불러올 수 없습니다. 페이지를 새로고침해주세요.')
+    return
+  }
+
+  // 2. DB 함수로 쿠폰 검증 (상품 금액만 전달, 배송비 제외!)
+  const currentUser = userSession || user
+  const result = await validateCoupon(coupon.code, currentUser?.id, orderItem.totalPrice)
+
+  // 3. 검증 실패 시 에러 처리
+  if (!result.is_valid) {
+    toast.error(result.error_message || '쿠폰을 사용할 수 없습니다')
+    return
+  }
+
+  // 4. 쿠폰 적용 완료
+  setSelectedCoupon(userCoupon)
+  toast.success(`${coupon.name} 쿠폰이 적용되었습니다 (₩${result.discount_amount.toLocaleString()} 할인)`)
+}
+
+// 🧮 OrderCalculations를 사용한 최종 금액 계산 (/app/checkout/page.js:563-592)
+const orderItems = orderItem.isBulkPayment
+  ? [{ price: orderItem.totalPrice, quantity: 1, title: orderItem.title }]
+  : [{ price: orderItem.price, quantity: orderItem.quantity, title: orderItem.title }]
+
+const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderItems, {
+  region: shippingInfo.region,
+  coupon: selectedCoupon ? {
+    type: selectedCoupon.coupon.discount_type,
+    value: selectedCoupon.coupon.discount_value,
+    maxDiscount: selectedCoupon.coupon.max_discount_amount,
+    code: selectedCoupon.coupon.code
+  } : null,
+  paymentMethod: 'transfer'
+})
+
+// 결과:
+// - orderCalc.itemsTotal: 상품 금액
+// - orderCalc.couponDiscount: 쿠폰 할인 (배송비 제외!)
+// - orderCalc.shippingFee: 배송비 (도서산간 포함)
+// - orderCalc.finalAmount: 최종 결제 금액
+```
+
+#### 📤 주문 생성 흐름 (무통장 입금 + 쿠폰)
+```mermaid
+graph TD
+    A[입금자명 + 배송지 입력] --> B[confirmBankTransfer]
     B --> C[입력값 검증]
     C --> D{검증 통과?}
     D -->|No| E[에러 메시지 표시]
-    D -->|Yes| F[createOrder API 호출]
-    F --> G[/lib/supabaseApi.js]
-    G --> H[orders 테이블 INSERT]
-    H --> I[order_items 테이블 INSERT]
-    I --> J[order_shipping 테이블 INSERT]
-    J --> K[order_payments 테이블 INSERT]
-    K --> L{모두 성공?}
-    L -->|Yes| M[주문 완료 페이지 이동]
-    L -->|No| N[트랜잭션 롤백]
+    D -->|Yes| F[🎟️ orderItemWithCoupon 생성]
+    F --> G[createOrder API 호출]
+    G --> H[/lib/supabaseApi.js]
+    H --> I[orders 테이블 INSERT - discount_amount 포함]
+    I --> J[order_items 테이블 INSERT]
+    J --> K[order_shipping 테이블 INSERT - postal_code 포함]
+    K --> L[order_payments 테이블 INSERT]
+    L --> M{쿠폰 사용?}
+    M -->|Yes| N[🎟️ applyCouponUsage 호출]
+    M -->|No| O[주문 상태 변경]
+    N --> P[user_coupons UPDATE - is_used=true]
+    P --> O
+    O --> Q[주문 완료 페이지 이동]
 ```
 
-#### 실제 createOrder 코드 흐름
+#### 실제 주문 생성 코드 흐름 (쿠폰 포함)
 ```javascript
-// /lib/supabaseApi.js - createOrder 함수
+// 📦 체크아웃 페이지 - 쿠폰 할인 포함 주문 생성 (/app/checkout/page.js:659-874)
 
+// 1. 🎟️ 쿠폰 할인 금액을 orderItem에 포함
+const orderItemWithCoupon = {
+  ...orderItem,
+  couponDiscount: orderCalc.couponDiscount || 0,
+  couponCode: selectedCoupon?.coupon?.code || null
+}
+
+console.log('💰 주문 생성 데이터:', {
+  selectedCoupon: selectedCoupon ? {
+    code: selectedCoupon.coupon.code,
+    discount_type: selectedCoupon.coupon.discount_type,
+    discount_value: selectedCoupon.coupon.discount_value
+  } : null,
+  orderCalc: {
+    itemsTotal: orderCalc.itemsTotal,
+    couponDiscount: orderCalc.couponDiscount,
+    finalAmount: orderCalc.finalAmount
+  }
+})
+
+// 2. createOrder API 호출
+const newOrder = await createOrder(orderItemWithCoupon, orderProfile, depositName)
+const orderId = newOrder.id
+
+// 3. 🎟️ 쿠폰 사용 처리 (user_coupons 업데이트)
+if (selectedCoupon && orderCalc.couponDiscount > 0) {
+  try {
+    const currentUserId = user?.id || userSession?.id
+    const couponUsed = await applyCouponUsage(
+      currentUserId,
+      selectedCoupon.coupon_id,
+      orderId,
+      orderCalc.couponDiscount
+    )
+
+    if (couponUsed) {
+      logger.debug('🎟️ 쿠폰 사용 완료', {
+        coupon: selectedCoupon.coupon.code,
+        discount: orderCalc.couponDiscount,
+        orderId
+      })
+    }
+  } catch (error) {
+    logger.error('❌ 쿠폰 사용 처리 중 오류:', error)
+    // 쿠폰 사용 실패해도 주문은 진행
+  }
+}
+
+// 4. 주문 상태 변경 (pending → verifying)
+await updateOrderStatus(orderId, 'verifying')
+
+// 5. 주문 완료 페이지로 이동
+router.replace(`/orders/${orderId}/complete`)
+```
+
+#### /lib/supabaseApi.js - createOrder 함수
+```javascript
 // 1. 사용자 식별 (UserProfileManager 사용)
 const user = await UserProfileManager.getCurrentUser()
 const userProfile = await UserProfileManager.getProfile(user)
@@ -274,7 +418,7 @@ if (user.kakao_id) {
   order_type = `${orderData.orderType || 'direct'}:KAKAO:${user.kakao_id}`
 }
 
-// 3. orders 테이블 INSERT
+// 3. 🎟️ orders 테이블 INSERT (discount_amount 포함)
 const { data: order, error: orderError } = await supabase
   .from('orders')
   .insert({
@@ -283,7 +427,8 @@ const { data: order, error: orderError } = await supabase
     user_id: user.id || null,
     status: 'pending', // 무통장 입금은 pending
     order_type: order_type,
-    total_amount: totalAmount
+    total_amount: totalAmount,
+    discount_amount: orderData.couponDiscount || 0  // 🎟️ 쿠폰 할인 저장
   })
   .select()
   .single()
@@ -300,7 +445,7 @@ const { error: itemsError } = await supabase
     selected_options: item.options || {}
   })))
 
-// 5. order_shipping 테이블 INSERT
+// 5. order_shipping 테이블 INSERT (postal_code 포함)
 const { error: shippingError } = await supabase
   .from('order_shipping')
   .insert({
@@ -309,6 +454,7 @@ const { error: shippingError } = await supabase
     phone: userProfile.phone,
     address: userProfile.address,
     detail_address: userProfile.detail_address,
+    postal_code: userProfile.postal_code || '',  // 🏝️ 우편번호 (도서산간 배송비)
     shipping_fee: 4000
   })
 
@@ -330,18 +476,61 @@ const { error: inventoryError } = await supabase.rpc('decrease_inventory', {
 })
 ```
 
-#### 사용되는 DB 컬럼 (INSERT)
+#### /lib/couponApi.js - applyCouponUsage 함수
+```javascript
+// 🎟️ 쿠폰 사용 처리 (user_coupons UPDATE)
+export async function applyCouponUsage(userId, couponId, orderId, discountAmount) {
+  try {
+    // DB 함수 호출: apply_coupon_usage()
+    const { data, error } = await supabase.rpc('apply_coupon_usage', {
+      p_user_id: userId,
+      p_coupon_id: couponId,
+      p_order_id: orderId,
+      p_discount_amount: discountAmount
+    })
+
+    if (error) {
+      console.error('쿠폰 사용 처리 실패:', error)
+      return false
+    }
+
+    // DB 함수가 true 반환: 성공
+    // DB 함수가 false 반환: 이미 사용됨
+    return data === true
+  } catch (error) {
+    console.error('쿠폰 사용 처리 오류:', error)
+    return false
+  }
+}
+
+// DB 함수 내부 로직 (supabase/migrations/20251003_create_coupon_functions.sql):
+// UPDATE user_coupons
+// SET is_used = true,
+//     used_at = NOW(),
+//     order_id = p_order_id,
+//     discount_amount = p_discount_amount
+// WHERE user_id = p_user_id
+//   AND coupon_id = p_coupon_id
+//   AND is_used = false
+// RETURNING id INTO v_user_coupon_id;
+```
+
+#### 사용되는 DB 컬럼 (INSERT/UPDATE)
 **orders:**
-- `id, customer_order_number, user_id, status, order_type, total_amount`
+- `id, customer_order_number, user_id, status, order_type, total_amount, discount_amount` 🎟️
 
 **order_items:**
 - `order_id, product_id, quantity, unit_price, total_price, selected_options`
 
 **order_shipping:**
-- `order_id, name, phone, address, detail_address, shipping_fee`
+- `order_id, name, phone, address, detail_address, postal_code, shipping_fee` 🏝️
 
 **order_payments:**
 - `order_id, method, amount, status, depositor_name`
+
+**user_coupons:** 🎟️ (UPDATE)
+- `is_used = true, used_at = NOW(), order_id, discount_amount`
+- WHERE: `user_id, coupon_id, is_used = false`
 
 ---
 
@@ -417,17 +606,38 @@ const getBestPayment = (payments) => {
 }
 ```
 
-#### 화면 표시 계산 로직
+#### 화면 표시 계산 로직 (쿠폰 할인 포함)
 ```javascript
-// 총 상품금액 계산 (모든 상품 합계)
-const correctTotalProductAmount = orderData.items.reduce((sum, item) => {
-  const itemTotal = item.totalPrice || (item.price * item.quantity)
-  return sum + itemTotal
-}, 0)
+// /app/orders/[id]/complete/page.js:360-384, 797-828
 
-// 입금금액 = 상품금액 + 배송비
-const shippingFee = 4000
-const correctTotalAmount = correctTotalProductAmount + shippingFee
+// 🧮 OrderCalculations를 사용한 최종 금액 계산
+const shippingRegion = orderData.shipping?.postal_code
+  ? formatShippingInfo(4000, orderData.shipping.postal_code).region
+  : '일반'
+
+const orderCalc = OrderCalculations.calculateFinalOrderAmount(
+  orderData.items.map(item => ({
+    price: item.price,
+    quantity: item.quantity,
+    title: item.title
+  })),
+  {
+    region: shippingRegion,
+    coupon: orderData.discount_amount > 0 ? {
+      type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
+      value: orderData.discount_amount
+    } : null,
+    paymentMethod: orderData.payment?.method || 'bank_transfer'
+  }
+)
+
+console.log('💰 주문 완료 페이지 계산:', {
+  itemsTotal: orderCalc.itemsTotal,
+  couponDiscount: orderCalc.couponDiscount,
+  shippingFee: orderCalc.shippingFee,
+  finalAmount: orderCalc.finalAmount,
+  db_discount_amount: orderData.discount_amount
+})
 
 // 입금자명 우선순위
 const depositorName =
@@ -435,6 +645,27 @@ const depositorName =
   orderData.depositName ||              // 2순위: 주문 시 입력값
   orderData.shipping?.name ||           // 3순위: 수령인명
   '입금자명 확인 필요'
+
+// 🎟️ 쿠폰 할인 표시 (하단 결제 정보)
+{orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
+  <div className="flex items-center justify-between">
+    <span className="text-sm text-blue-600">쿠폰 할인</span>
+    <span className="text-blue-600 font-medium">
+      -₩{orderCalc.couponDiscount.toLocaleString()}
+    </span>
+  </div>
+)}
+```
+
+#### 💾 orders 테이블에서 로드되는 쿠폰 데이터
+```javascript
+// orders.discount_amount: 주문 시 적용된 쿠폰 할인 금액
+// - 체크아웃 시 OrderCalculations.calculateFinalOrderAmount()로 계산된 값
+// - applyCouponUsage()로 user_coupons 테이블에도 기록됨
+// - 주문 완료 페이지에서 다시 OrderCalculations로 재계산하여 표시
+
+// ⚠️ 주의: 쿠폰 타입(fixed_amount, percentage)은 orders 테이블에 저장 안 됨
+//         discount_amount만 저장되므로, 주문 완료 페이지에서는 fixed_amount로 간주
 ```
 
 ---

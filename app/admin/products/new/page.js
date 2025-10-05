@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowLeftIcon, CameraIcon, PlusIcon, MinusIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
-import { useAdminAuth } from '@/hooks/useAdminAuth'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import { generateProductNumber } from '@/lib/productNumberGenerator'
 import toast from 'react-hot-toast'
 

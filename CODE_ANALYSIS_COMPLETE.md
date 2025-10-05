@@ -1,7 +1,8 @@
 # 본서버 코드베이스 완전 분석 결과
 
 **분석 기준**: main 브랜치 (프로덕션)
-**분석 일시**: 2025-10-03
+**최초 분석**: 2025-10-03
+**최근 업데이트**: 2025-10-05 (쿠폰 시스템 반영)
 **분석 도구**: Claude Code (Automated Analysis)
 
 ## 📊 전체 통계
@@ -10,8 +11,14 @@
   - 사용자 페이지: 8개
   - 관리자 페이지: 21개
   - 인증 페이지: 2개
-- **총 함수 (lib/)**: 47개 exported functions
+- **총 함수 (lib/)**: 80+ exported functions
+  - supabaseApi.js: 49개
+  - couponApi.js: 15개 ⭐ 신규 (2025-10-03)
+  - orderCalculations.js: 11개 (쿠폰 계산 추가)
+  - 기타: validation.js(8), adminAuth.js(4), logger.js(4) 등
 - **총 테이블**: 23개 (Supabase)
+  - coupons, user_coupons ⭐ 신규 (2025-10-03)
+  - orders.discount_amount 컬럼 추가 (2025-10-04)
 - **총 hooks**: 2개 (useAuth, useRealtimeProducts)
 
 ---
@@ -528,10 +535,122 @@
 
 ### orderCalculations.js
 
-**OrderCalculations 클래스** (추정)
-- 주문 금액 계산 로직
-- 할인/쿠폰 적용
-- 세금 계산
+**OrderCalculations 클래스** - 주문 계산 통합 모듈
+- **위치**: `/lib/orderCalculations.js`
+- **목적**: 모든 주문 관련 계산을 중앙화하여 일관성 보장
+- **업데이트**: 2025-10-04 (쿠폰 할인 로직 추가)
+
+**주요 메서드** (11개):
+1. **calculateItemsTotal(items)** - 상품 아이템 총액 계산
+   - 신규/구 스키마 모두 지원 (price/unit_price, total/total_price)
+
+2. **calculateShippingFee(itemsTotal, region)** - 배송비 계산
+   - 기본 4,000원 + 지역별 추가비 (normal/remote/island)
+
+3. **calculateOrderTotal(items, region)** - 총 주문 금액 계산
+   - 반환: {itemsTotal, shippingFee, totalAmount, breakdown}
+
+4. **calculateGroupOrderTotal(orders)** - 그룹 주문 계산 (여러 주문 묶음)
+   - 일괄결제용
+
+5. **calculateCardAmount(baseAmount)** - 카드결제 부가세 포함 계산
+   - 부가세 10% 자동 추가
+
+6. **calculateDepositAmount(items, region)** - 입금 금액 계산 (계좌이체용)
+   - 부가세 없음
+
+7. **normalizeOrderItems(items)** - 주문 아이템 데이터 정규화
+   - 다양한 스키마 형태를 통일된 형태로 변환
+
+8. **calculateFinalAmount(items, paymentMethod, region)** - 결제 방법별 최종 금액 계산
+   - paymentMethod: 'card' | 'transfer'
+
+9. **applyCouponDiscount(itemsTotal, coupon)** ⭐ 신규 (2025-10-04)
+   - 쿠폰 할인 적용 (배송비 제외!)
+   - 타입: 'fixed_amount' (정액) | 'percentage' (퍼센트)
+   - 최대 할인 금액 제한 지원
+   - 반환: {itemsTotal, discountAmount, itemsTotalAfterDiscount, couponApplied}
+
+10. **calculateFinalOrderAmount(items, options)** ⭐ 신규 (2025-10-04)
+    - 쿠폰 할인 포함 최종 주문 금액 계산
+    - options: {region?, coupon?, paymentMethod?}
+    - 계산 순서: 상품금액 → 쿠폰할인 → 배송비 → 부가세(카드결제만)
+    - 반환: {itemsTotal, couponDiscount, itemsTotalAfterDiscount, shippingFee, subtotal, vat, finalAmount, breakdown}
+
+11. **applyDiscount(baseAmount, discount)** - 레거시 (deprecated)
+    - calculateFinalOrderAmount 사용 권장
+
+**중요 사항**:
+- ⚠️ 쿠폰 할인은 **상품 금액에만** 적용 (배송비는 할인 대상 아님)
+- 카드결제 시 부가세 10% 자동 추가
+- 모든 계산 메서드는 static 메서드로 제공
+
+### couponApi.js ⭐ 신규 (2025-10-03)
+
+**쿠폰 시스템 API**
+- **위치**: `/lib/couponApi.js`
+- **목적**: 쿠폰 발행, 배포, 사용 관리
+- **테이블**: `coupons`, `user_coupons`
+
+**쿠폰 관리 함수** (15개):
+
+1. **createCoupon(couponData)** - 쿠폰 생성 (관리자)
+   - 테이블: coupons (INSERT)
+   - 필드: code, name, discount_type, discount_value, valid_from, valid_until, etc.
+
+2. **getCoupons(filters)** - 쿠폰 목록 조회 (관리자)
+   - 필터: is_active, discount_type
+   - JOIN: profiles (created_by)
+
+3. **getCoupon(couponId)** - 단일 쿠폰 상세 조회
+   - 사용 통계 포함
+
+4. **getCouponByCode(code)** - 쿠폰 코드로 조회
+   - 대소문자 구분 없음 (자동 대문자 변환)
+
+5. **updateCoupon(couponId, updates)** - 쿠폰 수정
+   - 테이블: coupons (UPDATE)
+
+6. **toggleCouponStatus(couponId, isActive)** - 쿠폰 활성화/비활성화
+
+7. **deleteCoupon(couponId)** - 쿠폰 삭제
+
+8. **distributeCoupon(couponId, userIds)** - 특정 사용자들에게 쿠폰 배포
+   - 테이블: user_coupons (INSERT)
+   - 중복 배포 방지 (UNIQUE 제약)
+
+9. **distributeToAllCustomers(couponId)** - 모든 고객에게 쿠폰 배포
+   - profiles 테이블의 모든 사용자에게 배포
+
+10. **getCouponHolders(couponId, filters)** - 쿠폰 보유자 목록 조회
+    - 필터: is_used, used_date_from, used_date_to
+    - JOIN: profiles, orders
+
+11. **getUserCoupons(userId, filters)** - 사용자별 보유 쿠폰 목록
+    - 필터: is_used, is_active
+    - 유효기간 자동 체크
+
+12. **validateCoupon(couponCode, userId, orderAmount)** ⭐ 핵심
+    - DB 함수 호출: validate_coupon()
+    - 검증 항목: 유효기간, 사용 여부, 최소 구매 금액, 사용 횟수
+    - 반환: {valid, coupon_id, discount_type, discount_value, message}
+
+13. **applyCouponUsage(userId, couponId, orderId, discountAmount)** ⭐ 핵심
+    - DB 함수 호출: apply_coupon_usage()
+    - 테이블: user_coupons (UPDATE is_used=true, used_at, order_id, discount_amount)
+    - 트리거: coupons.total_used_count 자동 증가
+
+14. **getCouponStats(couponId)** - 단일 쿠폰 통계
+    - 총 발급, 사용, 미사용, 총 할인 금액
+
+15. **getAllCouponsStats()** - 전체 쿠폰 통계
+    - 각 쿠폰별 통계 집계
+
+**중요 사항**:
+- 모든 쿠폰 코드는 자동 대문자 변환
+- 중복 배포 방지 (UNIQUE 제약조건)
+- DB 함수 사용: validate_coupon(), apply_coupon_usage()
+- RLS 정책: user_coupons UPDATE 정책 있음 (체크아웃 시 쿠폰 사용 처리)
 
 ### logger.js
 
