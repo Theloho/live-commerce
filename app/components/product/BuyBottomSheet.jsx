@@ -32,13 +32,13 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
         if (storedUser) {
           const userData = JSON.parse(storedUser)
 
-          // profiles 테이블에서 최신 주소 정보 불러오기 (postal_code 포함)
+          // profiles 테이블에서 최신 프로필 정보 불러오기 (체크아웃 페이지와 동일한 패턴)
           if (userData.id) {
             try {
               const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
               const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
-              const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userData.id}&select=addresses,address,detail_address,postal_code`, {
+              const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userData.id}`, {
                 method: 'GET',
                 headers: {
                   'apikey': supabaseKey,
@@ -50,31 +50,38 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
               if (response.ok) {
                 const profiles = await response.json()
                 if (profiles && profiles.length > 0) {
-                  const profile = profiles[0]
+                  const dbProfile = profiles[0]
+
+                  // ✅ MyPage/Checkout와 동일한 방식으로 전체 프로필 업데이트
+                  userData.name = dbProfile.name || userData.name || ''
+                  userData.phone = dbProfile.phone || userData.phone || ''
+                  userData.nickname = dbProfile.nickname || userData.nickname || userData.name || ''
 
                   // 기본 배송지 정보로 사용자 데이터 업데이트
-                  if (profile.addresses && profile.addresses.length > 0) {
-                    const defaultAddr = profile.addresses.find(a => a.is_default) || profile.addresses[0]
+                  if (dbProfile.addresses && dbProfile.addresses.length > 0) {
+                    const defaultAddr = dbProfile.addresses.find(a => a.is_default) || dbProfile.addresses[0]
                     userData.address = defaultAddr.address
                     userData.detail_address = defaultAddr.detail_address || ''
                     userData.postal_code = defaultAddr.postal_code || ''
                   } else {
                     // addresses가 없으면 기본 주소 정보 사용
-                    userData.address = profile.address || ''
-                    userData.detail_address = profile.detail_address || ''
-                    userData.postal_code = profile.postal_code || ''
+                    userData.address = dbProfile.address || ''
+                    userData.detail_address = dbProfile.detail_address || ''
+                    userData.postal_code = dbProfile.postal_code || ''
                   }
 
                   // ✅ sessionStorage도 업데이트하여 최신 상태 유지
                   sessionStorage.setItem('user', JSON.stringify(userData))
-                  console.log('✅ BuyBottomSheet: 최신 주소 정보 동기화 완료', {
+                  console.log('✅ BuyBottomSheet: 최신 프로필 정보 동기화 완료', {
+                    name: userData.name,
+                    phone: userData.phone,
                     postal_code: userData.postal_code,
                     address: userData.address
                   })
                 }
               }
             } catch (error) {
-              console.error('BuyBottomSheet 주소 정보 로드 오류:', error)
+              console.error('BuyBottomSheet 프로필 정보 로드 오류:', error)
             }
           }
 
