@@ -149,6 +149,9 @@ export default function AuthCallback() {
 
         // 1. Supabase Auth에 사용자 생성 (고정 패턴 임시 패스워드)
         const tempPassword = `kakao_temp_${kakaoUserId}`  // ✅ 고정 패턴 (타임스탬프 제거)
+
+        console.log('🔐 [디버그] signUp 시도:', { email, password: tempPassword.substring(0, 20) + '...' })
+
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: email,
           password: tempPassword,
@@ -160,6 +163,14 @@ export default function AuthCallback() {
               provider: 'kakao'
             }
           }
+        })
+
+        console.log('🔐 [디버그] signUp 결과:', {
+          hasData: !!authData,
+          hasSession: !!authData?.session,
+          hasUser: !!authData?.user,
+          error: authError,
+          session_access_token: authData?.session?.access_token?.substring(0, 50)
         })
 
         if (authError) {
@@ -217,9 +228,20 @@ export default function AuthCallback() {
 
         // ✅ 1. 기존 사용자 Supabase Auth 로그인
         const tempPassword = `kakao_temp_${kakaoUserId}`
+
+        console.log('🔐 [디버그] signInWithPassword 시도:', { email, password: tempPassword.substring(0, 20) + '...' })
+
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: email,
           password: tempPassword
+        })
+
+        console.log('🔐 [디버그] signInWithPassword 결과:', {
+          hasData: !!signInData,
+          hasSession: !!signInData?.session,
+          hasUser: !!signInData?.user,
+          error: signInError,
+          session_access_token: signInData?.session?.access_token?.substring(0, 50)
         })
 
         if (signInError) {
@@ -263,9 +285,19 @@ export default function AuthCallback() {
         console.log('✅ 기존 사용자 Supabase Auth 로그인 성공')
 
         // ✅ 1.5. 세션 확인 및 대기 (localStorage 저장 보장)
+        console.log('🔍 [디버그] 세션 확인 시작')
         let sessionVerified = false
         for (let i = 0; i < 10; i++) {
-          const { data: sessionData } = await supabase.auth.getSession()
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+          console.log(`🔍 [디버그] 세션 확인 ${i + 1}/10:`, {
+            hasSession: !!sessionData?.session,
+            hasUser: !!sessionData?.session?.user,
+            userId: sessionData?.session?.user?.id,
+            error: sessionError,
+            localStorage_keys: Object.keys(localStorage).filter(k => k.includes('sb-') || k.includes('auth'))
+          })
+
           if (sessionData?.session?.user?.id) {
             console.log('✅ Supabase Auth 세션 확인 완료:', sessionData.session.user.id)
             sessionVerified = true
