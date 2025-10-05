@@ -169,6 +169,24 @@ export default function AuthCallback() {
 
         console.log('✅ auth.users 생성 성공:', authData.user.id)
 
+        // 1.5. 세션 확인 및 대기 (localStorage 저장 보장)
+        let sessionVerified = false
+        for (let i = 0; i < 10; i++) {
+          const { data: sessionData } = await supabase.auth.getSession()
+          if (sessionData?.session?.user?.id) {
+            console.log('✅ Supabase Auth 세션 확인 완료:', sessionData.session.user.id)
+            sessionVerified = true
+            break
+          }
+          console.log(`⏳ 세션 저장 대기 중... (${i + 1}/10)`)
+          await new Promise(resolve => setTimeout(resolve, 100)) // 100ms 대기
+        }
+
+        if (!sessionVerified) {
+          console.error('❌ Supabase Auth 세션 확인 실패')
+          throw new Error('세션 생성 실패 - 다시 로그인해주세요')
+        }
+
         // 2. profiles 테이블에 추가 정보 저장
         const { data: newProfile, error: profileError } = await supabase
           .from('profiles')
@@ -243,6 +261,24 @@ export default function AuthCallback() {
         }
 
         console.log('✅ 기존 사용자 Supabase Auth 로그인 성공')
+
+        // ✅ 1.5. 세션 확인 및 대기 (localStorage 저장 보장)
+        let sessionVerified = false
+        for (let i = 0; i < 10; i++) {
+          const { data: sessionData } = await supabase.auth.getSession()
+          if (sessionData?.session?.user?.id) {
+            console.log('✅ Supabase Auth 세션 확인 완료:', sessionData.session.user.id)
+            sessionVerified = true
+            break
+          }
+          console.log(`⏳ 세션 저장 대기 중... (${i + 1}/10)`)
+          await new Promise(resolve => setTimeout(resolve, 100)) // 100ms 대기
+        }
+
+        if (!sessionVerified) {
+          console.error('❌ Supabase Auth 세션 확인 실패')
+          throw new Error('세션 생성 실패 - 다시 로그인해주세요')
+        }
 
         // ✅ 2. profiles 테이블 업데이트
         const { data: updatedProfile, error: updateError } = await supabase
