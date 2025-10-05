@@ -28,6 +28,21 @@ import logger from '@/lib/logger'
 export default function CheckoutPage() {
   const router = useRouter()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
+
+  // 🔍 RLS 디버그: auth.uid() 확인
+  useEffect(() => {
+    const checkAuthSession = async () => {
+      const { data: sessionData } = await supabase.auth.getSession()
+      console.log('🔍 [체크아웃] Auth 세션 상태:', {
+        hasSession: !!sessionData?.session,
+        authUid: sessionData?.session?.user?.id || 'NULL',
+        sessionStorageUser: sessionStorage.getItem('user') ? 'EXISTS' : 'NULL',
+        isAuthenticated,
+        userFromHook: user?.id || 'NULL'
+      })
+    }
+    checkAuthSession()
+  }, [])
   const [orderItem, setOrderItem] = useState(null)
   const [userProfile, setUserProfile] = useState({
     name: '',

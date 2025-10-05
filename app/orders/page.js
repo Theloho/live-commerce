@@ -33,6 +33,22 @@ function OrdersContent() {
   const [filterStatus, setFilterStatus] = useState('pending')
   const [selectedGroupOrder, setSelectedGroupOrder] = useState(null)
 
+  // 🔍 RLS 디버그: auth.uid() 확인
+  useEffect(() => {
+    const checkAuthSession = async () => {
+      const { supabase } = await import('@/lib/supabase')
+      const { data: sessionData } = await supabase.auth.getSession()
+      console.log('🔍 [주문목록] Auth 세션 상태:', {
+        hasSession: !!sessionData?.session,
+        authUid: sessionData?.session?.user?.id || 'NULL',
+        sessionStorageUser: sessionStorage.getItem('user') ? 'EXISTS' : 'NULL',
+        isAuthenticated,
+        userFromHook: user?.id || 'NULL'
+      })
+    }
+    checkAuthSession()
+  }, [])
+
   // 🚀 통합된 고성능 초기화 (모든 useEffect 통합)
   useEffect(() => {
     const initOrdersPageFast = async () => {
