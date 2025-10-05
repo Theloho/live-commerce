@@ -819,14 +819,14 @@ export default function CheckoutPage() {
         couponDiscount: orderCalc.couponDiscount,
         willProcess: selectedCoupon && orderCalc.couponDiscount > 0,
         couponId: selectedCoupon?.coupon_id,
-        userId: user?.id || userSession?.id,
+        userId: selectedCoupon?.user_id,
         orderId: orderId
       })
 
       // 쿠폰 사용 처리
       if (selectedCoupon && orderCalc.couponDiscount > 0) {
         try {
-          const currentUserId = user?.id || userSession?.id
+          const currentUserId = selectedCoupon.user_id  // ✅ 쿠폰 소유자 ID 직접 사용
 
           console.log('🎟️ [쿠폰 디버깅] applyCouponUsage 호출:', {
             userId: currentUserId,
