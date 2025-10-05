@@ -36,6 +36,8 @@ export default function useAuth() {
     // 카카오 로그인 성공 이벤트 리스너
     const handleKakaoLogin = (event) => {
       const userProfile = event.detail
+      // ✅ sessionStorage에도 저장 (페이지 새로고침 시 세션 유지)
+      sessionStorage.setItem('user', JSON.stringify(userProfile))
       setUser(userProfile)
       toast.success('카카오 로그인되었습니다')
     }
@@ -43,6 +45,8 @@ export default function useAuth() {
     // 프로필 완성 이벤트 리스너
     const handleProfileCompleted = (event) => {
       const userProfile = event.detail
+      // ✅ sessionStorage에도 저장
+      sessionStorage.setItem('user', JSON.stringify(userProfile))
       setUser(userProfile)
       console.log('프로필 완성 이벤트 수신:', userProfile)
     }

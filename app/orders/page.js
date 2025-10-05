@@ -292,6 +292,36 @@ function OrdersContent() {
       return
     }
 
+    // ✅ 재고 검증 추가 (증가 시에만)
+    if (change > 0 && item.product_id) {
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+
+        const productResponse = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${item.product_id}&select=inventory`, {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (productResponse.ok) {
+          const products = await productResponse.json()
+          if (products.length > 0) {
+            const availableInventory = products[0].inventory || 0
+            if (newQuantity > availableInventory) {
+              toast.error(`재고가 부족합니다. (재고: ${availableInventory}개)`)
+              return
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('재고 확인 실패:', error)
+        // 재고 확인 실패 시에도 계속 진행 (UX 우선)
+      }
+    }
+
     try {
       // 1. 로컬 상태 즉시 업데이트 (옵티미스틱 업데이트)
       const updatedOrders = orders.map(o => {
@@ -320,19 +350,13 @@ function OrdersContent() {
 
       // 3. 서버에서 최신 데이터 가져와서 동기화
       setTimeout(() => {
-        const currentUser = userSession || user
-        if (currentUser) {
-          loadOrdersDataFast(currentUser)
-        }
+        refreshOrders()  // ✅ loadOrdersDataFast 대신 refreshOrders 사용
       }, 500)
     } catch (error) {
       console.error('수량 변경 중 오류:', error)
       toast.error('수량 변경에 실패했습니다')
       // 오류 발생 시 서버에서 다시 가져와서 복구
-      const currentUser = userSession || user
-      if (currentUser) {
-        loadOrdersDataFast(currentUser)
-      }
+      refreshOrders()  // ✅ loadOrdersDataFast 대신 refreshOrders 사용
     }
   }
 

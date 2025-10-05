@@ -339,12 +339,16 @@ export default function AuthCallback() {
     const finalizeLoginFast = async (userProfile) => {
       console.log('🔐 통합 시스템 세션 저장:', userProfile.id)
 
-      // ✅ localStorage에 사용자 정보 저장 (auth.users ID 우선)
+      // ✅ localStorage + sessionStorage에 사용자 정보 저장 (모든 필드 포함)
       const sessionUser = {
         id: userProfile.id, // auth.users ID (통합 시스템)
         email: userProfile.email,
         name: userProfile.name,
         nickname: userProfile.nickname,
+        phone: userProfile.phone || '', // ✅ phone 필드 추가
+        address: userProfile.address || '', // ✅ address 필드 추가
+        detail_address: userProfile.detail_address || '', // ✅ detail_address 필드 추가
+        postal_code: userProfile.postal_code || '', // ✅ postal_code 필드 추가
         avatar_url: userProfile.avatar_url,
         provider: 'kakao',
         kakao_id: userProfile.kakao_id
@@ -352,7 +356,9 @@ export default function AuthCallback() {
 
       // ✅ localStorage 사용 (페이지 새로고침 후에도 유지)
       localStorage.setItem('unified_user_session', JSON.stringify(sessionUser))
-      console.log('✅ 통합 세션 저장 완료 (localStorage)')
+      // ✅ sessionStorage에도 저장 (checkout/mypage 호환성)
+      sessionStorage.setItem('user', JSON.stringify(sessionUser))
+      console.log('✅ 통합 세션 저장 완료 (localStorage + sessionStorage)')
 
       // 커스텀 로그인 이벤트 발생
       window.dispatchEvent(new CustomEvent('kakaoLoginSuccess', {

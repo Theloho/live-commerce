@@ -162,25 +162,74 @@ export default function CheckoutPage() {
         // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기
         if (currentUser.provider === 'kakao') {
           try {
-            const { data: dbProfile, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('kakao_id', currentUser.kakao_id)
-              .single()
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+            const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
-            if (error) {
-              console.error('데이터베이스 프로필 조회 오류:', error)
-              // 오류 시 기본 프로필 사용
-              loadedProfile = UserProfileManager.normalizeProfile(currentUser)
-            } else if (dbProfile) {
-              loadedProfile = UserProfileManager.normalizeProfile(dbProfile)
+            const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+              method: 'GET',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json'
+              }
+            })
+
+            if (response.ok) {
+              const profiles = await response.json()
+              if (profiles && profiles.length > 0) {
+                const dbProfile = profiles[0]
+                console.log('✅ 체크아웃: 카카오 사용자 프로필 로드 성공:', {
+                  name: dbProfile.name,
+                  phone: dbProfile.phone,
+                  hasAddress: !!dbProfile.address
+                })
+
+                // ✅ MyPage와 동일한 방식으로 프로필 객체 생성 (normalizeProfile 사용 안 함)
+                loadedProfile = {
+                  name: dbProfile.name || currentUser.name || '',
+                  phone: dbProfile.phone || currentUser.phone || '',
+                  nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || '',
+                  address: dbProfile.address || '',
+                  detail_address: dbProfile.detail_address || '',
+                  addresses: dbProfile.addresses || [],
+                  postal_code: dbProfile.postal_code || ''
+                }
+              } else {
+                console.warn('⚠️ 데이터베이스에서 프로필을 찾을 수 없음, currentUser 사용')
+                loadedProfile = {
+                  name: currentUser.name || '',
+                  phone: currentUser.phone || '',
+                  nickname: currentUser.nickname || currentUser.name || '',
+                  address: currentUser.address || '',
+                  detail_address: currentUser.detail_address || '',
+                  addresses: currentUser.addresses || [],
+                  postal_code: currentUser.postal_code || ''
+                }
+              }
             } else {
-              loadedProfile = UserProfileManager.normalizeProfile(currentUser)
+              console.error('❌ 프로필 조회 HTTP 오류:', response.status)
+              loadedProfile = {
+                name: currentUser.name || '',
+                phone: currentUser.phone || '',
+                nickname: currentUser.nickname || currentUser.name || '',
+                address: currentUser.address || '',
+                detail_address: currentUser.detail_address || '',
+                addresses: currentUser.addresses || [],
+                postal_code: currentUser.postal_code || ''
+              }
             }
           } catch (error) {
-            console.error('카카오 사용자 프로필 로드 오류:', error)
+            console.error('❌ 카카오 사용자 프로필 로드 실패:', error)
             // 오류 시 기본 프로필 사용
-            loadedProfile = UserProfileManager.normalizeProfile(currentUser)
+            loadedProfile = {
+              name: currentUser.name || '',
+              phone: currentUser.phone || '',
+              nickname: currentUser.nickname || currentUser.name || '',
+              address: currentUser.address || '',
+              detail_address: currentUser.detail_address || '',
+              addresses: currentUser.addresses || [],
+              postal_code: currentUser.postal_code || ''
+            }
           }
         } else {
           // 일반 사용자는 기존 로직 사용
@@ -188,6 +237,7 @@ export default function CheckoutPage() {
         }
 
         // 프로필 설정
+        console.log('🎯 체크아웃: 최종 로드된 프로필:', loadedProfile)
         setUserProfile(loadedProfile)
 
         // AddressManager와 동일한 방식으로 직접 Supabase API 호출하여 주소 목록 불러오기
@@ -563,7 +613,7 @@ export default function CheckoutPage() {
   // 🧮 중앙화된 계산 모듈 사용
   // selectedAddress 우편번호 우선, 없으면 userProfile 우편번호 사용
   const postalCode = selectedAddress?.postal_code || userProfile.postal_code
-  const shippingInfo = formatShippingInfo(4000, postalCode)
+  const shippingInfo = formatShippingInfo(4000, postalCode)  // ✅ 기본 배송비 4000원
 
   // OrderCalculations를 사용한 완전한 주문 계산
   const orderItems = orderItem.isBulkPayment
@@ -571,7 +621,7 @@ export default function CheckoutPage() {
     : [{ price: orderItem.price, quantity: orderItem.quantity, title: orderItem.title }]
 
   const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderItems, {
-    region: shippingInfo.region,
+    region: postalCode || 'normal',  // ✅ 우편번호 직접 전달 (shippingInfo.region → postalCode)
     coupon: selectedCoupon ? {
       type: selectedCoupon.coupon.discount_type,
       value: selectedCoupon.coupon.discount_value,
@@ -674,10 +724,30 @@ export default function CheckoutPage() {
       return
     }
 
-    // 필수 고객 정보 검증
-    const profileCompleteness = UserProfileManager.checkCompleteness(userProfile)
-    if (!profileCompleteness.isComplete) {
-      toast.error(`다음 정보를 입력해주세요: ${profileCompleteness.missingFields.join(', ')}`)
+    // ✅ 실제 사용될 데이터로 직접 검증 (selectedAddress 포함)
+    const missing = []
+    if (!userProfile.name || userProfile.name.trim().length === 0) {
+      missing.push('이름')
+    }
+    if (!userProfile.phone || userProfile.phone.trim().length < 10) {
+      missing.push('연락처')
+    }
+    if (!selectedAddress.address || selectedAddress.address.trim().length === 0) {
+      missing.push('배송지 주소')
+    }
+
+    if (missing.length > 0) {
+      toast.error(`다음 정보를 입력해주세요: ${missing.join(', ')}`)
+      console.log('🔍 검증 실패:', {
+        userProfile: {
+          name: userProfile.name,
+          phone: userProfile.phone
+        },
+        selectedAddress: {
+          address: selectedAddress.address
+        },
+        missing
+      })
       return
     }
 
@@ -1360,7 +1430,7 @@ export default function CheckoutPage() {
                   💳 카드결제신청 (₩{(() => {
                     // 카드결제용 계산 (부가세 10% 추가)
                     const cardCalc = OrderCalculations.calculateFinalOrderAmount(orderItems, {
-                      region: shippingInfo.region,
+                      region: postalCode || 'normal',  // ✅ 우편번호 직접 전달
                       coupon: selectedCoupon ? {
                         type: selectedCoupon.coupon.discount_type,
                         value: selectedCoupon.coupon.discount_value,
