@@ -812,16 +812,37 @@ export default function CheckoutPage() {
         orderId = newOrder.id
       }
 
+      // 🔍 디버깅: 쿠폰 사용 처리 전 상태 확인
+      console.log('🔍 [쿠폰 디버깅] 주문 생성 완료, 쿠폰 사용 처리 시작:', {
+        selectedCoupon: selectedCoupon,
+        hasCoupon: !!selectedCoupon,
+        couponDiscount: orderCalc.couponDiscount,
+        willProcess: selectedCoupon && orderCalc.couponDiscount > 0,
+        couponId: selectedCoupon?.coupon_id,
+        userId: user?.id || userSession?.id,
+        orderId: orderId
+      })
+
       // 쿠폰 사용 처리
       if (selectedCoupon && orderCalc.couponDiscount > 0) {
         try {
           const currentUserId = user?.id || userSession?.id
+
+          console.log('🎟️ [쿠폰 디버깅] applyCouponUsage 호출:', {
+            userId: currentUserId,
+            couponId: selectedCoupon.coupon_id,
+            orderId: orderId,
+            discount: orderCalc.couponDiscount
+          })
+
           const couponUsed = await applyCouponUsage(
             currentUserId,
             selectedCoupon.coupon_id,
             orderId,
             orderCalc.couponDiscount
           )
+
+          console.log('🎟️ [쿠폰 디버깅] applyCouponUsage 결과:', couponUsed)
 
           if (couponUsed) {
             logger.debug('🎟️ 쿠폰 사용 완료', {
@@ -835,9 +856,12 @@ export default function CheckoutPage() {
             })
           }
         } catch (error) {
+          console.error('❌ [쿠폰 디버깅] 쿠폰 사용 처리 중 에러:', error)
           logger.error('❌ 쿠폰 사용 처리 중 오류:', error)
           // 쿠폰 사용 실패해도 주문은 진행
         }
+      } else {
+        console.log('⚠️ [쿠폰 디버깅] 쿠폰 사용 처리 건너뜀 - 조건 불충족')
       }
 
       // ✅ 주문 상태를 'verifying'으로 변경 (입금 확인중)
