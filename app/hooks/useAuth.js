@@ -11,19 +11,65 @@ export default function useAuth() {
   const { user, setUser, setLoading: setAuthLoading, clearUser } = useAuthStore()
 
   useEffect(() => {
-    // 초기 세션 확인 (세션 스토리지 기반)
-    const getSession = () => {
+    // ✅ 초기 세션 확인 (Supabase Auth 우선, sessionStorage 동기화)
+    const getSession = async () => {
       try {
-        const storedUser = sessionStorage.getItem('user')
-        if (storedUser) {
-          const userData = JSON.parse(storedUser)
-          // 로그 제거: 과도한 콘솔 출력 방지
-          setUser(userData)
+        // 1️⃣ Supabase Auth 세션 확인 (최우선)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+        if (sessionError) {
+          console.error('Supabase Auth 세션 확인 오류:', sessionError)
+          // 세션 에러 시 sessionStorage 클리어
+          sessionStorage.removeItem('user')
+          clearUser()
+          setLoading(false)
+          setAuthLoading(false)
+          return
+        }
+
+        if (session?.user) {
+          // 2️⃣ Supabase Auth 세션이 있으면 profiles에서 최신 정보 가져오기
+          console.log('✅ Supabase Auth 세션 존재:', session.user.id)
+
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          if (profile && !profileError) {
+            // 3️⃣ sessionStorage 동기화
+            const userData = {
+              id: profile.id,
+              email: profile.email,
+              name: profile.name,
+              nickname: profile.nickname,
+              phone: profile.phone || '',
+              address: profile.address || '',
+              detail_address: profile.detail_address || '',
+              postal_code: profile.postal_code || '',
+              avatar_url: profile.avatar_url || '',
+              provider: profile.provider || 'email',
+              kakao_id: profile.kakao_id || ''
+            }
+
+            sessionStorage.setItem('user', JSON.stringify(userData))
+            setUser(userData)
+            console.log('✅ 세션 복원 성공:', userData.email)
+          } else {
+            console.warn('⚠️ profiles 테이블에서 사용자 정보를 찾을 수 없음')
+            sessionStorage.removeItem('user')
+            clearUser()
+          }
         } else {
+          // 4️⃣ Supabase Auth 세션이 없으면 sessionStorage도 클리어
+          console.log('❌ Supabase Auth 세션 없음 - sessionStorage 클리어')
+          sessionStorage.removeItem('user')
           clearUser()
         }
       } catch (error) {
         console.error('세션 확인 오류:', error)
+        sessionStorage.removeItem('user')
         clearUser()
       } finally {
         setLoading(false)
@@ -32,6 +78,48 @@ export default function useAuth() {
     }
 
     getSession()
+
+    // ✅ Supabase Auth 상태 변화 실시간 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔔 Auth 상태 변화:', event, session?.user?.id || 'NO_SESSION')
+
+      if (event === 'SIGNED_OUT') {
+        // 로그아웃 시 sessionStorage 클리어
+        console.log('🚪 로그아웃 감지 - sessionStorage 클리어')
+        sessionStorage.removeItem('user')
+        clearUser()
+      } else if (event === 'SIGNED_IN' && session) {
+        // 로그인 시 profiles에서 정보 가져와 동기화
+        console.log('🔐 로그인 감지 - profiles 동기화')
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (profile) {
+          const userData = {
+            id: profile.id,
+            email: profile.email,
+            name: profile.name,
+            nickname: profile.nickname,
+            phone: profile.phone || '',
+            address: profile.address || '',
+            detail_address: profile.detail_address || '',
+            postal_code: profile.postal_code || '',
+            avatar_url: profile.avatar_url || '',
+            provider: profile.provider || 'email',
+            kakao_id: profile.kakao_id || ''
+          }
+          sessionStorage.setItem('user', JSON.stringify(userData))
+          setUser(userData)
+        }
+      } else if (event === 'TOKEN_REFRESHED') {
+        // 토큰 갱신 시 (자동 처리)
+        console.log('🔄 토큰 갱신 완료')
+      }
+    })
 
     // 카카오 로그인 성공 이벤트 리스너
     const handleKakaoLogin = (event) => {
@@ -68,6 +156,9 @@ export default function useAuth() {
     window.addEventListener('storage', handleStorageChange)
 
     return () => {
+      // ✅ Supabase Auth 구독 해제
+      subscription?.unsubscribe()
+
       window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
       window.removeEventListener('profileCompleted', handleProfileCompleted)
       window.removeEventListener('storage', handleStorageChange)
