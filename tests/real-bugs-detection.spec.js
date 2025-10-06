@@ -168,8 +168,8 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
     await page.goto('/checkout');
     await page.waitForTimeout(3000);
 
-    // 🔍 배송비 확인 (자동 계산됨)
-    const shippingFeeElement = page.locator('p.font-medium.text-gray-900:has-text("₩")').filter({ hasText: /^₩\d/ }).nth(1);
+    // 🔍 배송비 확인 (결제 금액 섹션의 두 번째 span)
+    const shippingFeeElement = page.locator('span.text-gray-900:has-text("₩")').nth(1);
     const shippingFeeText = await shippingFeeElement.textContent();
     console.log('🔍 서울 배송비:', shippingFeeText);
 
@@ -184,13 +184,19 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
     await page.goto('/checkout');
     await page.waitForTimeout(3000);
 
-    // 🚨 버그 탐지: 제주 배송비가 7000원이어야 함
-    const shippingFeeElement = page.locator('p.font-medium.text-gray-900:has-text("₩")').filter({ hasText: /^₩\d/ }).nth(1);
+    // 🚨 버그 탐지: 제주는 기본 배송비만 표시, 추가비는 별도 행
+    const shippingFeeElement = page.locator('span.text-gray-900:has-text("₩")').nth(1);
     const shippingFeeText = await shippingFeeElement.textContent();
-    console.log('🔍 제주 배송비:', shippingFeeText);
+    console.log('🔍 제주 기본 배송비:', shippingFeeText);
 
-    // 기본 4000 + 제주 3000 = 7000원
-    expect(shippingFeeText).toContain('7,000');
+    // 제주 추가비 확인
+    const surchargeElement = page.locator('span.text-orange-600:has-text("+₩")');
+    const surchargeText = await surchargeElement.textContent();
+    console.log('🔍 제주 추가 배송비:', surchargeText);
+
+    // 기본 배송비 4000원, 추가비 3000원
+    expect(shippingFeeText).toContain('4,000');
+    expect(surchargeText).toContain('3,000');
   });
 
   test('울릉도 도서산간 배송비 계산 (+5,000원)', async ({ page }) => {
@@ -200,13 +206,19 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
     await page.goto('/checkout');
     await page.waitForTimeout(3000);
 
-    // 🚨 버그 탐지: 울릉도 배송비가 9000원이어야 함
-    const shippingFeeElement = page.locator('p.font-medium.text-gray-900:has-text("₩")').filter({ hasText: /^₩\d/ }).nth(1);
+    // 🚨 버그 탐지: 울릉도는 기본 배송비만 표시, 추가비는 별도 행
+    const shippingFeeElement = page.locator('span.text-gray-900:has-text("₩")').nth(1);
     const shippingFeeText = await shippingFeeElement.textContent();
-    console.log('🔍 울릉도 배송비:', shippingFeeText);
+    console.log('🔍 울릉도 기본 배송비:', shippingFeeText);
 
-    // 기본 4000 + 울릉도 5000 = 9000원
-    expect(shippingFeeText).toContain('9,000');
+    // 울릉도 추가비 확인
+    const surchargeElement = page.locator('span.text-orange-600:has-text("+₩")');
+    const surchargeText = await surchargeElement.textContent();
+    console.log('🔍 울릉도 추가 배송비:', surchargeText);
+
+    // 기본 배송비 4000원, 추가비 5000원
+    expect(shippingFeeText).toContain('4,000');
+    expect(surchargeText).toContain('5,000');
   });
 
   test('전체 주문 금액 계산 검증 (배송비 포함)', async ({ page }) => {
@@ -216,16 +228,26 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
     await page.goto('/checkout');
     await page.waitForTimeout(3000);
 
-    // 금액 확인 (체크아웃 페이지 결제 정보 섹션)
-    const paymentSection = page.locator('div:has-text("결제 정보")').last();
-    const amountTexts = await paymentSection.locator('p.text-gray-900').allTextContents();
+    // 금액 계산 검증 (결제 금액 섹션)
+    // 상품 금액: ₩50,000
+    const itemsTotal = await page.locator('span.text-gray-900:has-text("₩")').nth(0).textContent();
+    console.log('🔍 상품 금액:', itemsTotal);
+    expect(itemsTotal).toContain('50,000');
 
-    console.log('🔍 금액 계산:', amountTexts);
+    // 기본 배송비: ₩4,000
+    const baseShipping = await page.locator('span.text-gray-900:has-text("₩")').nth(1).textContent();
+    console.log('🔍 기본 배송비:', baseShipping);
+    expect(baseShipping).toContain('4,000');
 
-    // 최소한 배송비가 9000원인지 확인
-    const shippingFeeElement = page.locator('p.font-medium.text-gray-900:has-text("₩")').filter({ hasText: /^₩\d/ }).nth(1);
-    const shippingFeeText = await shippingFeeElement.textContent();
-    expect(shippingFeeText).toContain('9,000'); // 울릉도 배송비
+    // 도서산간 추가비: +₩5,000
+    const surcharge = await page.locator('span.text-orange-600:has-text("+₩")').textContent();
+    console.log('🔍 도서산간 추가비:', surcharge);
+    expect(surcharge).toContain('5,000');
+
+    // 총 결제금액: ₩59,000 (50,000 + 4,000 + 5,000)
+    const totalAmount = await page.locator('span.text-xl.font-bold.text-red-500').textContent();
+    console.log('🔍 총 결제금액:', totalAmount);
+    expect(totalAmount).toContain('59,000');
   });
 });
 
