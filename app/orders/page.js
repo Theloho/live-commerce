@@ -309,26 +309,51 @@ function OrdersContent() {
     }
 
     // ✅ 재고 검증 추가 (증가 시에만)
-    if (change > 0 && item.product_id) {
+    if (change > 0) {
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
 
-        const productResponse = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${item.product_id}&select=inventory`, {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
-          }
-        })
+        let availableInventory = 0
 
-        if (productResponse.ok) {
-          const products = await productResponse.json()
-          if (products.length > 0) {
-            const availableInventory = products[0].inventory || 0
-            if (newQuantity > availableInventory) {
-              toast.error(`재고가 부족합니다. (재고: ${availableInventory}개)`)
-              return
+        // Variant 재고 확인 (우선순위)
+        if (item.variant_id) {
+          const variantResponse = await fetch(`${supabaseUrl}/rest/v1/product_variants?id=eq.${item.variant_id}&select=inventory`, {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            }
+          })
+
+          if (variantResponse.ok) {
+            const variants = await variantResponse.json()
+            if (variants.length > 0) {
+              availableInventory = variants[0].inventory || 0
+              if (newQuantity > availableInventory) {
+                toast.error(`재고가 부족합니다. (옵션 재고: ${availableInventory}개)`)
+                return
+              }
+            }
+          }
+        } else if (item.product_id) {
+          // 일반 상품 재고 확인
+          const productResponse = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${item.product_id}&select=inventory`, {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            }
+          })
+
+          if (productResponse.ok) {
+            const products = await productResponse.json()
+            if (products.length > 0) {
+              availableInventory = products[0].inventory || 0
+              if (newQuantity > availableInventory) {
+                toast.error(`재고가 부족합니다. (재고: ${availableInventory}개)`)
+                return
+              }
             }
           }
         }
