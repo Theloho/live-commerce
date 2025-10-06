@@ -209,6 +209,11 @@ export default function AuthCallback() {
             nickname: profileData.nickname,
             avatar_url: profileData.avatar_url,
             provider: 'kakao',
+            // ✅ 연락처 및 주소 필드 초기화 (빈값으로라도 저장하여 NULL 방지)
+            phone: '',
+            address: '',
+            detail_address: '',
+            postal_code: '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
