@@ -4,74 +4,22 @@
  * 이 테스트는 WORK_LOG_2025-10-06_UNSOLVED.md에 기록된
  * 실제 버그 8개를 자동으로 탐지합니다.
  *
+ * ⚠️ 사전 준비:
+ * 1. npm run test:setup (브라우저가 열리면 카카오 로그인)
+ * 2. 로그인 상태가 playwright/.auth/user.json에 저장됨
+ * 3. 이후 모든 테스트는 저장된 상태를 재사용
+ *
  * 참고: docs/PLAYWRIGHT_DATA_VALIDATION_TESTS.md
  */
 
 import { test, expect } from '@playwright/test';
 
-// 테스트용 카카오 사용자 토큰 (실제 환경에 맞게 수정 필요)
-const TEST_USER_TOKEN = process.env.TEST_USER_TOKEN || '';
-const TEST_USER_REFRESH_TOKEN = process.env.TEST_USER_REFRESH_TOKEN || '';
-const TEST_USER_KAKAO_ID = process.env.TEST_USER_KAKAO_ID || '';
-
 /**
- * 사용자 세션 설정 헬퍼 함수
- * Supabase localStorage에 세션 직접 주입
- * @param {string} postalCode - 우편번호 (배송비 계산용)
+ * 테스트용 체크아웃 아이템 설정 헬퍼 함수
+ * (체크아웃 페이지 리다이렉트 방지)
  */
-async function setUserSession(page, accessToken = TEST_USER_TOKEN, refreshToken = TEST_USER_REFRESH_TOKEN, postalCode = '06000') {
-  if (!accessToken) return;
-
-  // Supabase 세션 객체 생성
-  const session = {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    token_type: 'bearer',
-    user: {
-      id: '8542d1dd-e5ca-4434-b486-7ef4ed91da21', // TEST_USER_KAKAO_ID에 해당하는 user
-      email: 'jay.machine@gmail.com',
-      user_metadata: {
-        kakao_id: TEST_USER_KAKAO_ID,
-        name: '김진태',
-        nickname: '기부자',
-        provider: 'kakao'
-      }
-    }
-  };
-
-  // localStorage에 Supabase 세션 저장
-  await page.addInitScript((sessionData, postal) => {
-    const supabaseKey = 'sb-xoinislnaxllijlnjeue-auth-token';
-    localStorage.setItem(supabaseKey, JSON.stringify(sessionData));
-
-    // sessionStorage에도 user 정보 저장 (useAuth 호환성)
-    const userData = {
-      id: sessionData.user.id,
-      email: sessionData.user.email,
-      name: sessionData.user.user_metadata.name,
-      nickname: sessionData.user.user_metadata.nickname,
-      phone: '01012345678', // 테스트 데이터
-      address: '서울시 강남구',
-      detail_address: '테스트동 123호',
-      postal_code: postal, // 동적 우편번호
-      avatar_url: '',
-      provider: 'kakao',
-      kakao_id: sessionData.user.user_metadata.kakao_id,
-      // AddressManager용 주소 목록
-      addresses: [{
-        id: 1,
-        label: '기본 배송지',
-        address: '서울시 강남구',
-        detail_address: '테스트동 123호',
-        postal_code: postal,
-        is_default: true
-      }]
-    };
-    sessionStorage.setItem('user', JSON.stringify(userData));
-
-    // 체크아웃용 주문 아이템 설정 (체크아웃 페이지 리다이렉트 방지)
+async function setCheckoutItem(page) {
+  await page.addInitScript(() => {
     const checkoutItem = {
       id: 'test-product-1',
       title: '테스트 상품',
@@ -83,7 +31,7 @@ async function setUserSession(page, accessToken = TEST_USER_TOKEN, refreshToken 
       orderType: 'direct'
     };
     sessionStorage.setItem('checkoutItem', JSON.stringify(checkoutItem));
-  }, session, postalCode);
+  });
 }
 
 /**
@@ -95,8 +43,7 @@ async function setUserSession(page, accessToken = TEST_USER_TOKEN, refreshToken 
  */
 test.describe('🐛 버그 #1, #3: 프로필 로딩 검증', () => {
   test('로그인 후 프로필 데이터 로딩 확인 (name, phone)', async ({ page }) => {
-    // 사용자 세션 설정 (localStorage + sessionStorage)
-    await setUserSession(page);
+    // 저장된 로그인 상태 자동 사용 (playwright.config.js - storageState)
 
     // 체크아웃 페이지 접근
     await page.goto('/checkout');
@@ -122,7 +69,6 @@ test.describe('🐛 버그 #1, #3: 프로필 로딩 검증', () => {
   });
 
   test('BuyBottomSheet 프로필 로딩 확인', async ({ page }) => {
-    await setUserSession(page);
 
     // 홈페이지 → 상품 클릭 → 구매 버튼
     await page.goto('/');
@@ -162,8 +108,8 @@ test.describe('🐛 버그 #1, #3: 프로필 로딩 검증', () => {
  */
 test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
   test('기본 배송비 계산 (서울)', async ({ page }) => {
-    // 서울 우편번호로 세션 설정
-    await setUserSession(page, TEST_USER_TOKEN, TEST_USER_REFRESH_TOKEN, '06000');
+    // 체크아웃 아이템 설정
+    await setCheckoutItem(page);
 
     await page.goto('/checkout');
     await page.waitForTimeout(3000);
@@ -178,8 +124,8 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
   });
 
   test('제주 도서산간 배송비 계산 (+3,000원)', async ({ page }) => {
-    // 제주 우편번호로 세션 설정
-    await setUserSession(page, TEST_USER_TOKEN, TEST_USER_REFRESH_TOKEN, '63000');
+    // 체크아웃 아이템 설정
+    await setCheckoutItem(page);
 
     // API 모킹: profiles 조회 시 제주 우편번호 반환
     await page.route('**/rest/v1/profiles?id=**', async route => {
@@ -218,8 +164,8 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
   });
 
   test('울릉도 도서산간 배송비 계산 (+5,000원)', async ({ page }) => {
-    // 울릉도 우편번호로 세션 설정
-    await setUserSession(page, TEST_USER_TOKEN, TEST_USER_REFRESH_TOKEN, '40200');
+    // 체크아웃 아이템 설정
+    await setCheckoutItem(page);
 
     // API 모킹: profiles 조회 시 울릉도 우편번호 반환
     await page.route('**/rest/v1/profiles?id=**', async route => {
@@ -259,7 +205,6 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
 
   test('전체 주문 금액 계산 검증 (배송비 포함)', async ({ page }) => {
     // 울릉도 우편번호로 세션 설정
-    await setUserSession(page, TEST_USER_TOKEN, TEST_USER_REFRESH_TOKEN, '40200');
 
     // API 모킹: profiles 조회 시 울릉도 우편번호 반환
     await page.route('**/rest/v1/profiles?id=**', async route => {
@@ -314,7 +259,6 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
  */
 test.describe('🐛 버그 #5, #6: 장바구니 주문 생성 검증', () => {
   test('여러 상품 장바구니 담기 → 1개 주문 생성 확인', async ({ page }) => {
-    await setUserSession(page);
 
     // 주문 전 개수 확인
     await page.goto('/orders');
@@ -380,7 +324,6 @@ test.describe('🐛 버그 #2: 주문 수량 조정 검증', () => {
     // 관리자 로그인 필요
     const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
     const ADMIN_REFRESH_TOKEN = process.env.ADMIN_REFRESH_TOKEN || '';
-    await setUserSession(page, ADMIN_TOKEN, ADMIN_REFRESH_TOKEN);
 
     // 관리자 주문 관리 페이지
     await page.goto('/admin/orders');
@@ -425,7 +368,6 @@ test.describe('🐛 버그 #7: 관리자 쿠폰 배포 검증', () => {
     const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
     const ADMIN_REFRESH_TOKEN = process.env.ADMIN_REFRESH_TOKEN || '';
     if (ADMIN_TOKEN) {
-      await setUserSession(page, ADMIN_TOKEN, ADMIN_REFRESH_TOKEN);
     }
 
     // 관리자 쿠폰 관리 페이지
@@ -462,7 +404,6 @@ test.describe('🐛 버그 #7: 관리자 쿠폰 배포 검증', () => {
  */
 test.describe('🐛 버그 #8: Auth 세션 검증', () => {
   test('로그인 후 세션 유지 확인', async ({ page }) => {
-    await setUserSession(page);
 
     // 여러 페이지 이동 후에도 세션 유지되는지 확인
     const pages = ['/', '/checkout', '/orders', '/mypage'];
@@ -481,7 +422,6 @@ test.describe('🐛 버그 #8: Auth 세션 검증', () => {
   });
 
   test('페이지 새로고침 후에도 세션 유지', async ({ page }) => {
-    await setUserSession(page);
 
     await page.goto('/mypage');
     await page.waitForTimeout(3000);
@@ -506,8 +446,7 @@ test.describe('🐛 버그 #8: Auth 세션 검증', () => {
  */
 test.describe('🎯 종합 E2E: 전체 구매 플로우 (모든 버그 검증)', () => {
   test('상품 선택 → 체크아웃 → 주문 완료 (전체 검증)', async ({ page }) => {
-    // 제주 우편번호로 세션 설정
-    await setUserSession(page, TEST_USER_TOKEN, TEST_USER_REFRESH_TOKEN, '63000');
+    // 저장된 로그인 상태 자동 사용
 
     // 1. 홈페이지 접근
     await page.goto('/');

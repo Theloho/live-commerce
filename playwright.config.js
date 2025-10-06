@@ -51,30 +51,61 @@ export default defineConfig({
 
   /* 프로젝트별 브라우저 설정 */
   projects: [
+    /* Setup: 로그인 상태 저장 (한 번만 실행) */
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.js/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: undefined, // setup은 새로운 상태로 시작
+      },
+    },
+
+    /* 실제 테스트 (저장된 로그인 상태 사용) */
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: './playwright/.auth/user.json',
+      },
+      // dependencies: ['setup'], // 이미 로그인 상태가 저장되어 있으므로 setup 건너뜀
     },
 
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: {
+        ...devices['Desktop Firefox'],
+        storageState: './playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
 
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: {
+        ...devices['Desktop Safari'],
+        storageState: './playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
 
     /* 모바일 테스트 */
     {
       name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
+      use: {
+        ...devices['Pixel 5'],
+        storageState: './playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
 
     {
       name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
+      use: {
+        ...devices['iPhone 12'],
+        storageState: './playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
   ],
 

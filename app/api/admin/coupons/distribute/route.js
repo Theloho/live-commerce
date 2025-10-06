@@ -100,12 +100,10 @@ export async function POST(request) {
     }))
 
     // 6. Service Role로 쿠폰 배포 (RLS 우회)
+    // ✅ 중복 배포 허용: 같은 사용자에게 같은 쿠폰을 여러 번 줄 수 있음
     const { data, error } = await supabaseAdmin
       .from('user_coupons')
-      .upsert(userCoupons, {
-        onConflict: 'user_id,coupon_id',
-        ignoreDuplicates: true
-      })
+      .insert(userCoupons)
       .select()
 
     if (error) {
@@ -121,8 +119,8 @@ export async function POST(request) {
       success: true,
       distributedCount: data?.length || 0,
       requestedCount: userIds.length,
-      duplicates: userIds.length - (data?.length || 0),
-      couponCode: coupon.code
+      couponCode: coupon.code,
+      message: '쿠폰이 성공적으로 배포되었습니다 (중복 배포 가능)'
     }
 
     if (isDevelopment) {
