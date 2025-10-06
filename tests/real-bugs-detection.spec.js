@@ -181,6 +181,24 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
     // 제주 우편번호로 세션 설정
     await setUserSession(page, TEST_USER_TOKEN, TEST_USER_REFRESH_TOKEN, '63000');
 
+    // API 모킹: profiles 조회 시 제주 우편번호 반환
+    await page.route('**/rest/v1/profiles?id=**', async route => {
+      const response = await route.fetch();
+      const json = await response.json();
+      if (json && json.length > 0) {
+        json[0].postal_code = '63000';
+        json[0].addresses = [{
+          id: 1,
+          label: '기본 배송지',
+          address: '제주특별자치도 제주시',
+          detail_address: '테스트동 123호',
+          postal_code: '63000',
+          is_default: true
+        }];
+      }
+      await route.fulfill({ response, json });
+    });
+
     await page.goto('/checkout');
     await page.waitForTimeout(3000);
 
@@ -203,6 +221,24 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
     // 울릉도 우편번호로 세션 설정
     await setUserSession(page, TEST_USER_TOKEN, TEST_USER_REFRESH_TOKEN, '40200');
 
+    // API 모킹: profiles 조회 시 울릉도 우편번호 반환
+    await page.route('**/rest/v1/profiles?id=**', async route => {
+      const response = await route.fetch();
+      const json = await response.json();
+      if (json && json.length > 0) {
+        json[0].postal_code = '40200';
+        json[0].addresses = [{
+          id: 1,
+          label: '기본 배송지',
+          address: '경상북도 울릉군',
+          detail_address: '테스트동 123호',
+          postal_code: '40200',
+          is_default: true
+        }];
+      }
+      await route.fulfill({ response, json });
+    });
+
     await page.goto('/checkout');
     await page.waitForTimeout(3000);
 
@@ -224,6 +260,24 @@ test.describe('🐛 버그 #4: 배송비 계산 검증', () => {
   test('전체 주문 금액 계산 검증 (배송비 포함)', async ({ page }) => {
     // 울릉도 우편번호로 세션 설정
     await setUserSession(page, TEST_USER_TOKEN, TEST_USER_REFRESH_TOKEN, '40200');
+
+    // API 모킹: profiles 조회 시 울릉도 우편번호 반환
+    await page.route('**/rest/v1/profiles?id=**', async route => {
+      const response = await route.fetch();
+      const json = await response.json();
+      if (json && json.length > 0) {
+        json[0].postal_code = '40200';
+        json[0].addresses = [{
+          id: 1,
+          label: '기본 배송지',
+          address: '경상북도 울릉군',
+          detail_address: '테스트동 123호',
+          postal_code: '40200',
+          is_default: true
+        }];
+      }
+      await route.fulfill({ response, json });
+    });
 
     await page.goto('/checkout');
     await page.waitForTimeout(3000);
