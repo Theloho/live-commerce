@@ -70,6 +70,19 @@ async function setUserSession(page, accessToken = TEST_USER_TOKEN, refreshToken 
       }]
     };
     sessionStorage.setItem('user', JSON.stringify(userData));
+
+    // 체크아웃용 주문 아이템 설정 (체크아웃 페이지 리다이렉트 방지)
+    const checkoutItem = {
+      id: 'test-product-1',
+      title: '테스트 상품',
+      price: 50000,
+      quantity: 1,
+      thumbnail_url: '',
+      totalPrice: 50000,
+      selectedOptions: {},
+      orderType: 'direct'
+    };
+    sessionStorage.setItem('checkoutItem', JSON.stringify(checkoutItem));
   }, session, postalCode);
 }
 
