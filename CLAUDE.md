@@ -428,7 +428,8 @@ npm run test:bugs:ui        # UI 모드
 
 ### 📦 Archive 문서 (참고용)
 **작업 로그** (`docs/archive/work-logs/`)
-- **WORK_LOG_2025-10-05_RLS_PERFORMANCE.md** - 🚀 RLS 정책 수정 + 성능 최적화 (5개 마이그레이션) ⭐ 최신
+- **WORK_LOG_2025-10-07_BUGFIX_SESSION.md** - 🐛 핵심 버그 수정 세션 (장바구니, 수량 변경, 쿠폰 생성) ⭐ 최신
+- **WORK_LOG_2025-10-05_RLS_PERFORMANCE.md** - 🚀 RLS 정책 수정 + 성능 최적화 (5개 마이그레이션)
 - **WORK_LOG_2025-10-03_RLS_ISSUE.md** - 🔐 관리자 RLS 문제 해결 (Service Role API)
 - **WORK_LOG_2025-10-03.md** - 우편번호 시스템 완전 통합
 - WORK_LOG_2025-10-01.md
@@ -459,6 +460,58 @@ npm run test:bugs:ui        # UI 모드
 ---
 
 ## 🎉 최근 주요 업데이트
+
+### 2025-10-07 (야간): 🐛 핵심 버그 수정 세션 ⭐⭐⭐
+
+**작업 시간**: 2025-10-07 야간
+**해결한 문제**: 3개 ✅ | **부분 해결**: 1개 ⚠️ | **미해결**: 1개 ❌
+
+**완료된 작업**:
+
+1. ✅ **장바구니 주문 생성 버그 수정** (커밋: 0c1d41a)
+   - **문제**: `TypeError: a.supabase.raw is not a function`
+   - **증상**: 여러 상품 장바구니 추가 시 1개만 주문 생성
+   - **해결**: `supabase.raw()` → 직접 쿼리 + 계산으로 변경
+   - **영향**: `/lib/supabaseApi.js` (lines 627-651, 967-992)
+
+2. ✅ **수량 변경 시 variant 재고 검증 추가** (커밋: 0c1d41a)
+   - **문제**: 주문 수량 변경 시 variant 재고 무시
+   - **증상**: 재고 초과해도 수량 변경 가능
+   - **해결**: variant_id 추가 + variant 재고 검증 + 업데이트 로직
+   - **영향**: `/lib/supabaseApi.js` (line 2416, 2465-2491), `/app/orders/page.js` (line 311-364)
+
+3. ✅ **관리자 쿠폰 생성 Service Role API 전환** (커밋: 10ef437)
+   - **문제**: `POST /rest/v1/coupons 403 (Forbidden)` - RLS 정책 차단
+   - **근본 원인**: 클라이언트 Supabase (Anon Key) 사용 → RLS 적용
+   - **해결**: Service Role API 생성 + `createCoupon()` 함수 수정
+   - **영향**: `/app/api/admin/coupons/create/route.js` (생성), `/lib/couponApi.js` (수정)
+
+**미해결 문제** (다음 세션 최우선):
+
+❌ **관리자 쿠폰 배포 403 에러** (커밋: d96a616, 4dccd19)
+- **증상**: `POST /api/admin/coupons/distribute 403 (Forbidden)` - "관리자 권한이 없습니다"
+- **시도한 해결책**:
+  1. ✅ `verifyAdminAuth()` 로직 개선 (환경변수 → DB 플래그 직접 확인)
+  2. ✅ `master@allok.world` 계정 `is_admin = true` 설정 (SQL 실행 완료)
+  3. ✅ 디버깅 로그 추가 배포 (`/lib/supabaseAdmin.js`)
+  4. ✅ 관리자 권한 확인 API 생성 (`/api/admin/check-admin-status`)
+- **현재 상태**: DB 설정 완료, 로직 개선 완료, **하지만 여전히 403 에러**
+- **다음 단계**:
+  1. Vercel Functions 로그 확인 (디버깅 메시지 분석)
+  2. `SUPABASE_SERVICE_ROLE_KEY` 환경변수 로드 여부 확인
+  3. Service Role 클라이언트 초기화 상태 확인
+
+**상세 로그**: `docs/archive/work-logs/WORK_LOG_2025-10-07_BUGFIX_SESSION.md`
+
+**배포 내역**:
+- 0c1d41a: 장바구니 주문 생성 + 수량 변경 버그 수정
+- 6b6f675: 관리자 쿠폰 생성 RLS 정책 수정 (마이그레이션)
+- 10ef437: 관리자 쿠폰 생성 Service Role API 전환
+- d96a616: 관리자 권한 확인 로직 개선 (DB 플래그)
+- 750a795: 관리자 권한 확인/설정 API 추가
+- 4dccd19: 관리자 권한 확인 상세 로깅 추가
+
+---
 
 ### 2025-10-06 (야간): 🧪 본서버 전체 E2E 테스트 완료 ⭐
 
@@ -795,34 +848,30 @@ products (상품)
 
 **🎯 모든 작업 전에 이 문서를 다시 읽으세요!**
 
-**마지막 업데이트**: 2025-10-06
-- ✅ **Playwright E2E 테스트 환경 구축 완료** 🧪 (야간 - 최신)
+**마지막 업데이트**: 2025-10-07
+- ✅ **핵심 버그 3개 수정 완료** 🐛 (야간 - 최신)
+  - 장바구니 주문 생성 버그 수정 (supabase.raw() 에러)
+  - 수량 변경 시 variant 재고 검증 추가
+  - 관리자 쿠폰 생성 Service Role API 전환
+  - 상세 로그: `docs/archive/work-logs/WORK_LOG_2025-10-07_BUGFIX_SESSION.md`
+- ⚠️ **미해결 문제 1개** (다음 세션 최우선)
+  - 관리자 쿠폰 배포 403 에러 (Vercel Functions 로그 확인 필요)
+  - DB 설정 완료, 디버깅 로그 추가 배포 완료
+  - 다음 단계: Vercel 로그 확인 → 환경변수 로드 여부 확인
+- ✅ **Playwright E2E 테스트 환경 구축 완료** 🧪 (2025-10-06)
   - 본서버(https://allok.shop) 전용 테스트 환경
   - 35개 테스트 케이스 작성 (8개 카테고리)
   - 전체 통과율 74.3% (26/35 통과)
   - 관리자 페이지 100% 통과, 성능 테스트 100% 통과
-  - 버그 리포트 2개 생성 (상세 13KB, 요약 2.7KB)
-  - 주요 발견: CSR 로딩 지연, SEO 메타 부족, 선택자 불일치
-  - tests/ 폴더 + playwright.config.js 설정
-- ✅ **쿠폰 사용 처리 완전 해결** 🎟️ (2025-10-05 오후)
+- ✅ **쿠폰 사용 처리 완전 해결** 🎟️ (2025-10-05)
   - use_coupon 함수 auth.uid() 검증 제거
   - RLS 정책 기반 보안으로 전환
-  - user_coupons.is_used = true 정상 처리
-  - 마이페이지 "사용 완료" 탭 이동 확인
-- ✅ **RLS 정책 긴급 수정 + 성능 최적화** (2025-10-05 오후)
+- ✅ **RLS 정책 긴급 수정 + 성능 최적화** (2025-10-05)
   - 관리자 로그인 복구 (UPDATE 정책 관리자 예외 추가)
   - 카카오 사용자 매칭 수정 (Supabase UUID → Kakao ID)
-  - 보안 위험 정책 제거 ("Anyone can view orders")
   - 인덱스 3개 추가, 헬퍼 함수 2개 생성
   - 성능 2-5배 향상 (서브쿼리 캐싱)
-  - 6개 DB 변경 적용 (5개 마이그레이션 + use_coupon 함수)
-- ✅ 쿠폰 시스템 문서화 완료 (CODE_ANALYSIS_COMPLETE.md, DETAILED_DATA_FLOW.md)
-- ✅ 실제 코드와 문서 100% 일치 (lib 함수 80+개, 쿠폰 데이터 흐름)
-- ✅ FEATURE_REFERENCE_MAP 파일 분할 (PART1/PART2/PART3)
-- ✅ 자동 워크플로우 추가 (목적 및 원칙 명시)
-- ✅ 77개 기능 완전 문서화 (FEATURE_REFERENCE_MAP_PARTX.md)
-- ✅ 전체 코드베이스 분석 (CODE_ANALYSIS_COMPLETE.md)
-- ✅ 5대 핵심 목표: 정확성, 완전성, 확장성, 효율성, 안정성
 
 **문서 상태**: 100% 최신
-**작업 철학**: 디버깅 없이 첫 시도에 완벽한 작업
+**작업 철학**: 체계적 접근으로 근본 원인 해결
+**다음 세션**: 쿠폰 배포 403 에러 해결 (Vercel Functions 로그 확인)
