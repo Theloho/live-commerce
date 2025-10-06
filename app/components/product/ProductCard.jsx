@@ -259,7 +259,10 @@ export default function ProductCard({ product, variant = 'default', priority = f
         onClick={currentInventory > 0 && !isProcessing ? handleBuyClick : undefined}
         className={currentInventory > 0 ? "cursor-pointer" : "cursor-not-allowed"}
       >
-        <div className={`${variants[variant]} ${currentInventory <= 0 ? 'opacity-60 grayscale' : ''}`}>
+        <div
+          className={`${variants[variant]} ${currentInventory <= 0 ? 'opacity-60 grayscale' : ''}`}
+          data-testid="product-card"
+        >
           {/* Image Section */}
           <div className={variant === 'horizontal' ? 'w-1/3' : 'relative aspect-[3/4]'}>
             <div className="relative w-full h-full">

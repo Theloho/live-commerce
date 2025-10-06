@@ -1,0 +1,67 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - link "allok" [ref=e6] [cursor=pointer]:
+            - /url: /
+            - heading "allok" [level=1] [ref=e7] [cursor=pointer]
+          - button [ref=e9]:
+            - img [ref=e10]
+        - generic [ref=e13]:
+          - textbox "상품, 브랜드를 검색해보세요" [ref=e14]
+          - img [ref=e15]
+    - main [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - heading "allok에 오신 것을 환영합니다!" [level=3] [ref=e20]
+          - paragraph [ref=e21]: 로그인하고 특별한 혜택을 받아보세요
+        - generic [ref=e22]:
+          - button "로그인" [ref=e23]
+          - button "회원가입" [ref=e24]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - generic [ref=e33]: LIVE
+            - link "🔥 특가 세일 라이브! 명 시청중" [ref=e35] [cursor=pointer]:
+              - /url: /live/live-broadcast-1
+              - paragraph [ref=e36] [cursor=pointer]: 🔥 특가 세일 라이브!
+              - paragraph [ref=e37] [cursor=pointer]: 명 시청중
+          - generic [ref=e38]:
+            - link "시청하기" [ref=e39] [cursor=pointer]:
+              - /url: /live/live-broadcast-1
+            - button [ref=e40]:
+              - img [ref=e41]
+        - generic [ref=e44]:
+          - generic [ref=e45]: 🎁 라이브 한정 특가 • 💳 무이자 할부 • 🚚 당일 배송
+          - generic [ref=e46]: 🎁 라이브 한정 특가 • 💳 무이자 할부 • 🚚 당일 배송
+          - generic [ref=e47]: 🎁 라이브 한정 특가 • 💳 무이자 할부 • 🚚 당일 배송
+      - generic [ref=e48]:
+        - heading "🔥 라이브 중인 상품" [level=2] [ref=e49]
+        - generic [ref=e54] [cursor=pointer]:
+          - generic [ref=e56] [cursor=pointer]:
+            - img "0001" [ref=e57] [cursor=pointer]
+            - generic [ref=e60] [cursor=pointer]: 🔴 LIVE
+          - generic [ref=e63] [cursor=pointer]:
+            - heading "0001" [level=3] [ref=e64] [cursor=pointer]
+            - generic [ref=e66] [cursor=pointer]: ₩123,000
+            - button "구매하기" [ref=e68]
+    - navigation [ref=e69]:
+      - generic [ref=e70]:
+        - link "홈" [ref=e71] [cursor=pointer]:
+          - /url: /
+          - img [ref=e72] [cursor=pointer]
+          - generic [ref=e75] [cursor=pointer]: 홈
+        - link "주문내역" [ref=e76] [cursor=pointer]:
+          - /url: /orders
+          - img [ref=e77] [cursor=pointer]
+          - generic [ref=e79] [cursor=pointer]: 주문내역
+        - link "MY" [ref=e80] [cursor=pointer]:
+          - /url: /mypage
+          - img [ref=e81] [cursor=pointer]
+          - generic [ref=e83] [cursor=pointer]: MY
+  - alert [ref=e84]
+```
