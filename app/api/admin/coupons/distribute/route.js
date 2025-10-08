@@ -112,35 +112,54 @@ export async function POST(request) {
     }))
     console.log('✅ Step 5: 사용자 쿠폰 데이터 생성 완료')
 
-    // 6. Service Role로 쿠폰 배포 (RLS 우회)
-    // ✅ 중복 배포 허용: 같은 사용자에게 같은 쿠폰을 여러 번 줄 수 있음
+    // 6. Service Role로 쿠폰 배포 (중복 시 무시)
     console.log(`💾 Step 6: DB INSERT 시작 (${userCoupons.length}개 레코드)`)
-    const { data, error } = await supabaseAdmin
-      .from('user_coupons')
-      .insert(userCoupons)
-      .select()
 
-    if (error) {
-      console.error('❌ Step 6: 쿠폰 배포 INSERT 실패:', error)
-      console.error('에러 상세:', JSON.stringify(error, null, 2))
+    const results = []
+    let duplicateCount = 0
+
+    for (const userCoupon of userCoupons) {
+      const { data: inserted, error: insertError } = await supabaseAdmin
+        .from('user_coupons')
+        .insert(userCoupon)
+        .select()
+        .single()
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          // UNIQUE 제약 위반 (중복) - 무시하고 계속
+          console.log(`ℹ️  중복 건너뜀: user_id=${userCoupon.user_id}`)
+          duplicateCount++
+        } else {
+          console.error(`❌ INSERT 실패: user_id=${userCoupon.user_id}`, insertError)
+        }
+      } else if (inserted) {
+        results.push(inserted)
+      }
+    }
+
+    console.log(`✅ Step 6: DB INSERT 완료 (${results.length}개 성공, ${duplicateCount}개 중복)`)
+
+    // 결과 정리
+    const data = results
+
+    // 성공한 건이 하나도 없고 모두 중복이 아닌 에러라면 실패로 처리
+    if (results.length === 0 && duplicateCount === 0) {
+      console.error('❌ Step 6: 모든 INSERT 실패')
       return NextResponse.json(
-        { error: '쿠폰 배포에 실패했습니다', details: error.message },
+        { error: '쿠폰 배포에 실패했습니다' },
         { status: 500 }
       )
     }
-    console.log(`✅ Step 6: DB INSERT 완료 (${data?.length}개 성공)`)
 
     // 7. 결과 반환
-    const distributedCount = data?.length || 0
-    const duplicates = userIds.length - distributedCount
-
     const result = {
       success: true,
-      distributedCount,
-      duplicates, // 중복 또는 실패 건수
+      distributedCount: results.length,
+      duplicates: duplicateCount,
       requestedCount: userIds.length,
       couponCode: coupon.code,
-      message: `쿠폰이 성공적으로 배포되었습니다 (${distributedCount}/${userIds.length})`
+      message: `쿠폰이 성공적으로 배포되었습니다 (${results.length}개 성공, ${duplicateCount}개 중복)`
     }
 
     console.log('✅ Step 7: 쿠폰 배포 완료:', result)
