@@ -22,7 +22,8 @@ export default function NewCouponPage() {
     valid_until: '',
     usage_limit_per_user: '1',
     total_usage_limit: '',
-    is_active: true
+    is_active: true,
+    is_welcome_coupon: false
   })
 
   const handleChange = (e) => {
@@ -87,7 +88,8 @@ export default function NewCouponPage() {
         valid_until: new Date(formData.valid_until + 'T23:59:59').toISOString(),
         usage_limit_per_user: parseInt(formData.usage_limit_per_user) || 1,
         total_usage_limit: formData.total_usage_limit ? parseInt(formData.total_usage_limit) : null,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        is_welcome_coupon: formData.is_welcome_coupon
       }
 
       console.log('쿠폰 생성 데이터:', couponData)
@@ -362,6 +364,35 @@ export default function NewCouponPage() {
           <p className="mt-1 ml-6 text-xs text-gray-500">
             비활성화 시 배포는 가능하지만 사용자가 사용할 수 없습니다
           </p>
+        </div>
+
+        {/* 웰컴 쿠폰 설정 */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              name="is_welcome_coupon"
+              checked={formData.is_welcome_coupon}
+              onChange={handleChange}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="ml-2 text-sm font-medium text-gray-700">
+              회원가입 시 자동 지급 (웰컴 쿠폰)
+            </span>
+          </label>
+          <p className="mt-1 ml-6 text-xs text-gray-500">
+            활성화하면 신규 회원가입 시 이 쿠폰이 자동으로 발급됩니다
+          </p>
+          {formData.is_welcome_coupon && (
+            <div className="mt-3 ml-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800">
+                💡 <strong>웰컴 쿠폰 안내</strong><br />
+                • 회원가입 완료 시 자동으로 쿠폰이 지급됩니다<br />
+                • 여러 웰컴 쿠폰이 있는 경우 최신 생성된 쿠폰이 지급됩니다<br />
+                • 발급 제한(전체 사용 가능 횟수)이 있으면 선착순으로 적용됩니다
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 버튼 */}

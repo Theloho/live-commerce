@@ -35,6 +35,7 @@ export async function POST(request) {
         usage_limit_per_user: couponData.usage_limit_per_user || 1,
         total_usage_limit: couponData.total_usage_limit || null,
         is_active: couponData.is_active !== false,
+        is_welcome_coupon: couponData.is_welcome_coupon || false,
         created_by: couponData.created_by || null
       })
       .select()

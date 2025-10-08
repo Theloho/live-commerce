@@ -253,8 +253,15 @@ export default function AdminCouponsPage() {
                   >
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-mono font-bold text-blue-600">
-                          {coupon.code}
+                        <div className="flex items-center gap-2">
+                          <div className="font-mono font-bold text-blue-600">
+                            {coupon.code}
+                          </div>
+                          {coupon.is_welcome_coupon && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                              🎁 웰컴
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm text-gray-900">{coupon.name}</div>
                         {coupon.description && (
