@@ -1161,8 +1161,19 @@ Phase 4: 최종 검증 및 문서 업데이트 (1분) ⭐
 
 **🎯 모든 작업 전에 이 문서를 다시 읽으세요!**
 
-**마지막 업데이트**: 2025-10-08 (오후 - 최신)
-- ✅ **관리자 쿠폰 배포 403 에러 완전 해결** 🎟️ (최신 ⭐⭐⭐)
+**마지막 업데이트**: 2025-10-08 (야간 - 최신)
+- ✅ **회원가입 시 자동 웰컴 쿠폰 지급 기능** 🎁 (최신 ⭐⭐⭐)
+  - **기능**: 신규 회원가입 시 웰컴 쿠폰 자동 발급
+  - **구현 방식**: Database Trigger + Function (handle_new_user_signup)
+  - **변경사항**:
+    - DB: `coupons.is_welcome_coupon` 컬럼 추가
+    - DB: `trigger_new_user_signup` 트리거 생성 (profiles INSERT)
+    - UI: 관리자 쿠폰 생성 페이지에 웰컴 쿠폰 설정 체크박스
+    - UI: 관리자 쿠폰 목록에 🎁 웰컴 배지 표시
+  - **동작**: 회원가입 → 트리거 실행 → 웰컴 쿠폰 자동 발급 → 마이페이지 확인
+  - **발급 제한**: total_usage_limit 설정 시 선착순 적용
+  - 마이그레이션: `20251008_welcome_coupon_auto_issue.sql`
+- ✅ **관리자 쿠폰 배포 403 에러 완전 해결** 🎟️ (오후 ⭐⭐⭐)
   - **문제 1**: `POST /api/admin/coupons/distribute 403 (Forbidden)`
     - 근본 원인: `supabase.auth.getSession()`으로 adminEmail 추출 실패
     - 해결책: useAdminAuth hook에서 검증된 adminUser.email 사용

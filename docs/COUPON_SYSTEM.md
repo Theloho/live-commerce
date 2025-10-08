@@ -22,6 +22,7 @@
 
 ### 쿠폰 시스템 플로우
 
+**일반 쿠폰 플로우**:
 ```
 1. 관리자가 쿠폰 생성
    ↓
@@ -36,6 +37,23 @@
 6. 쿠폰 상태 업데이트 (is_used = true)
 ```
 
+**웰컴 쿠폰 자동 지급 플로우** ⭐ (2025-10-08):
+```
+1. 관리자가 웰컴 쿠폰 생성 (is_welcome_coupon = true)
+   ↓
+2. 사용자 회원가입 (profiles 테이블 INSERT)
+   ↓
+3. trigger_new_user_signup 트리거 자동 실행
+   ↓
+4. handle_new_user_signup() 함수 실행
+   - 활성화된 웰컴 쿠폰 조회
+   - 발급 제한 확인 (total_usage_limit)
+   - user_coupons에 자동 발급 (issued_by = 'system')
+   - total_issued_count 증가
+   ↓
+5. 사용자 마이페이지에서 쿠폰 확인 가능
+```
+
 ### 핵심 특징
 
 - ✅ **배송비 제외 할인**: 퍼센트 할인은 상품 금액에만 적용
@@ -43,6 +61,7 @@
 - ✅ **중앙화된 계산**: OrderCalculations.js에서 일관된 계산
 - ✅ **DB 레벨 검증**: PostgreSQL 함수로 안전한 검증
 - ✅ **사용 이력 추적**: user_coupons 테이블에 모든 사용 기록
+- ✅ **웰컴 쿠폰 자동 지급**: 회원가입 시 트리거로 자동 발급 (2025-10-08)
 
 ---
 
@@ -81,6 +100,7 @@ CREATE TABLE coupons (
 
     -- 상태
     is_active BOOLEAN DEFAULT true,
+    is_welcome_coupon BOOLEAN DEFAULT false,    -- ⭐ 회원가입 시 자동 지급 (2025-10-08)
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
