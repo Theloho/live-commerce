@@ -1162,7 +1162,7 @@ Phase 4: 최종 검증 및 문서 업데이트 (1분) ⭐
 **🎯 모든 작업 전에 이 문서를 다시 읽으세요!**
 
 **마지막 업데이트**: 2025-10-08 (야간 - 최신)
-- ✅ **회원가입 시 자동 웰컴 쿠폰 지급 기능** 🎁 (최신 ⭐⭐⭐)
+- ✅ **회원가입 시 자동 웰컴 쿠폰 지급 기능** 🎁 (완료 ⭐⭐⭐)
   - **기능**: 신규 회원가입 시 웰컴 쿠폰 자동 발급
   - **구현 방식**: Database Trigger + Function (handle_new_user_signup)
   - **변경사항**:
@@ -1172,7 +1172,17 @@ Phase 4: 최종 검증 및 문서 업데이트 (1분) ⭐
     - UI: 관리자 쿠폰 목록에 🎁 웰컴 배지 표시
   - **동작**: 회원가입 → 트리거 실행 → 웰컴 쿠폰 자동 발급 → 마이페이지 확인
   - **발급 제한**: total_usage_limit 설정 시 선착순 적용
+  - **테스트**: DB 마이그레이션 완료, UI 정상 작동
   - 마이그레이션: `20251008_welcome_coupon_auto_issue.sql`
+- ⚠️ **쿠폰 전체 배포 중복 처리 개선** 🎟️ (부분 완료 - 추가 디버깅 필요)
+  - **문제**: 재배포 시 "duplicate key violates unique constraint" 500 에러
+  - **해결 시도**: 개별 INSERT로 중복 건너뛰기 로직 구현
+  - **현재 상태**:
+    - ✅ DB에는 정상 배포됨 (4명 배포 확인)
+    - ❌ 재배포 시 여전히 500 에러 (Vercel Functions 로그 확인 필요)
+    - ⚠️ 프론트엔드 보유 고객 현황 표시 누락 (1명만 표시)
+  - **다음 단계**: Vercel Functions 로그에서 Step 6 실행 여부 확인
+  - 상세 로그: `docs/archive/work-logs/WORK_LOG_2025-10-08_WELCOME_COUPON.md`
 - ✅ **관리자 쿠폰 배포 403 에러 완전 해결** 🎟️ (오후 ⭐⭐⭐)
   - **문제 1**: `POST /api/admin/coupons/distribute 403 (Forbidden)`
     - 근본 원인: `supabase.auth.getSession()`으로 adminEmail 추출 실패
