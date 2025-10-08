@@ -1162,14 +1162,18 @@ Phase 4: 최종 검증 및 문서 업데이트 (1분) ⭐
 **🎯 모든 작업 전에 이 문서를 다시 읽으세요!**
 
 **마지막 업데이트**: 2025-10-08 (오후 - 최신)
-- ✅ **관리자 쿠폰 배포 403 에러 해결** 🎟️ (최신 ⭐⭐⭐)
-  - **문제**: `POST /api/admin/coupons/distribute 403 (Forbidden)`
-  - **근본 원인**: `supabase.auth.getSession()`으로 adminEmail 추출 실패
-  - **해결책**: useAdminAuth hook에서 검증된 adminUser.email 사용
+- ✅ **관리자 쿠폰 배포 403 에러 완전 해결** 🎟️ (최신 ⭐⭐⭐)
+  - **문제 1**: `POST /api/admin/coupons/distribute 403 (Forbidden)`
+    - 근본 원인: `supabase.auth.getSession()`으로 adminEmail 추출 실패
+    - 해결책: useAdminAuth hook에서 검증된 adminUser.email 사용
+  - **문제 2**: 배포 후 "관리자 인증 정보를 확인할 수 없습니다" 에러
+    - 근본 원인: `/hooks/useAdminAuth.js` (구버전) import 사용 → adminUser undefined
+    - 해결책: `/hooks/useAdminAuthNew.js` (신버전) import로 변경
   - **변경 파일**:
     - `/lib/couponApi.js` - distributeCoupon/distributeToAllCustomers에 adminEmail 파라미터 추가
-    - `/app/admin/coupons/[id]/page.js` - useAdminAuth 사용 및 adminEmail 전달
-  - **결과**: 관리자 쿠폰 배포 정상화 (2025-10-07 미해결 문제 해결)
+    - `/app/admin/coupons/[id]/page.js` - useAdminAuthNew import + adminEmail 전달
+  - **핵심 교훈**: 시스템에 구버전/신버전 코드 공존 시 정확한 import 필수
+  - **결과**: 관리자 쿠폰 배포 정상화 (2025-10-07 미해결 문제 완전 해결)
   - 상세 로그: `docs/archive/work-logs/WORK_LOG_2025-10-08_COUPON_DISTRIBUTE_FIX.md`
 - ✅ **주문 내역 페이지 금액 표시 버그 수정** 💰 (2025-10-08 오후)
   - **문제**: 주문 카드에 배송비 제외된 금액 표시 (₩1,476,000 vs ₩1,485,000)
