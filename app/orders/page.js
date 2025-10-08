@@ -22,6 +22,8 @@ import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
+import OrderCalculations from '@/lib/orderCalculations'
+import { formatShippingInfo } from '@/lib/shippingUtils'
 
 function OrdersContent() {
   const router = useRouter()
@@ -595,6 +597,18 @@ function OrdersContent() {
                   selectedOptions: {}
                 } // 첫 번째 상품만 표시, 없으면 기본값
 
+                // 🧮 배송비 포함 총 결제금액 계산 (OrderCalculations 사용)
+                const shippingInfo = formatShippingInfo(4000, order.shipping?.postal_code)
+                const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
+                  region: shippingInfo.region,
+                  coupon: order.discount_amount > 0 ? {
+                    type: 'fixed_amount',
+                    value: order.discount_amount
+                  } : null,
+                  paymentMethod: order.payment?.method || 'transfer'
+                })
+                const finalAmount = orderCalc.finalAmount
+
                 return (
                   <motion.div
                     key={order.id}
@@ -702,7 +716,7 @@ function OrdersContent() {
                         })}
                       </div>
                       <div className="font-semibold text-gray-900">
-                        ₩{order.items.reduce((sum, item) => sum + item.totalPrice, 0).toLocaleString()}
+                        ₩{finalAmount.toLocaleString()}
                       </div>
                     </div>
 

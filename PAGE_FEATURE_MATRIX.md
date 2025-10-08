@@ -3,9 +3,10 @@
 **목적**: Claude가 페이지별 기능을 빠르게 파악하기 위한 참조 문서
 
 **작성일**: 2025-10-08
-**최종 업데이트**: 2025-10-08
-**버전**: 1.0
+**최종 업데이트**: 2025-10-08 (오후)
+**버전**: 1.1
 **기준**: 실제 프로덕션 코드 (main 브랜치) - CODEBASE_STRUCTURE_REPORT.md
+**변경사항**: `/admin/products/new` 페이지 추가 (37개 페이지로 증가)
 
 ---
 
@@ -29,7 +30,7 @@
 
 ---
 
-## 🗂️ 전체 페이지 리스트 (36개)
+## 🗂️ 전체 페이지 리스트 (37개)
 
 ### 📱 사용자 페이지 (11개) → PART1
 
@@ -78,26 +79,27 @@
 
 ---
 
-### ⚙️ 관리자 시스템 페이지 (13개) → PART3
+### ⚙️ 관리자 시스템 페이지 (14개) → PART3
 
 #### 상품 관리
 1. `/admin/products` - 라이브 상품 관리
-2. `/admin/products/catalog` - 전체 상품 목록
-3. `/admin/products/catalog/new` - 신규 상품 등록
-4. `/admin/products/catalog/[id]` - 상품 상세
-5. `/admin/products/catalog/[id]/edit` - 상품 수정
+2. `/admin/products/new` - 빠른 상품 등록 ⚡
+3. `/admin/products/catalog` - 전체 상품 목록
+4. `/admin/products/catalog/new` - 상세 상품 등록 📋
+5. `/admin/products/catalog/[id]` - 상품 상세
+6. `/admin/products/catalog/[id]/edit` - 상품 수정
 
 #### 방송 관리
-6. `/admin/broadcasts` - 라이브 방송 관리
+7. `/admin/broadcasts` - 라이브 방송 관리
 
 #### 기초 정보
-7. `/admin/suppliers` - 공급업체 관리
-8. `/admin/categories` - 카테고리 관리
+8. `/admin/suppliers` - 공급업체 관리
+9. `/admin/categories` - 카테고리 관리
 
 #### 시스템
-9. `/admin/admins` - 관리자 계정 관리
-10. `/admin/settings` - 시스템 설정
-11. `/admin/login` - 관리자 로그인
+10. `/admin/admins` - 관리자 계정 관리
+11. `/admin/settings` - 시스템 설정
+12. `/admin/login` - 관리자 로그인
 
 ---
 
@@ -161,8 +163,9 @@
 | `/admin/shipping` | 발송 처리 | PART2 |
 | `/admin/purchase-orders` | 발주서 생성, Excel | PART2 |
 | `/admin/coupons` | 쿠폰 발행, 배포 | PART2 |
-| `/admin/products/new` | 상품 등록, Variant 생성 | PART3 |
-| `/admin/products/[id]` | 상품 수정, Variant 관리 | PART3 |
+| `/admin/products/new` | 빠른 상품 등록 (간단) | PART3 |
+| `/admin/products/catalog/new` | 상세 상품 등록 (완전) | PART3 |
+| `/admin/products/catalog/[id]` | 상품 수정, Variant 관리 | PART3 |
 
 ---
 

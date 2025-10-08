@@ -27,10 +27,12 @@ import {
   getCouponStats
 } from '@/lib/couponApi'
 import { getAllCustomers } from '@/lib/supabaseApi'
+import { useAdminAuth } from '@/hooks/useAdminAuth'
 
 export default function AdminCouponDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { adminUser } = useAdminAuth()
   const [coupon, setCoupon] = useState(null)
   const [stats, setStats] = useState(null)
   const [holders, setHolders] = useState([])
@@ -85,9 +87,14 @@ export default function AdminCouponDetailPage() {
       return
     }
 
+    if (!adminUser?.email) {
+      toast.error('관리자 인증 정보를 확인할 수 없습니다')
+      return
+    }
+
     try {
       setDistributing(true)
-      const result = await distributeCoupon(params.id, selectedCustomers)
+      const result = await distributeCoupon(params.id, selectedCustomers, adminUser.email)
 
       if (result.duplicates > 0) {
         toast.success(
@@ -101,7 +108,7 @@ export default function AdminCouponDetailPage() {
       loadCouponDetail()
     } catch (error) {
       console.error('쿠폰 배포 실패:', error)
-      toast.error('쿠폰 배포에 실패했습니다')
+      toast.error(error.message || '쿠폰 배포에 실패했습니다')
     } finally {
       setDistributing(false)
     }
@@ -112,9 +119,14 @@ export default function AdminCouponDetailPage() {
       return
     }
 
+    if (!adminUser?.email) {
+      toast.error('관리자 인증 정보를 확인할 수 없습니다')
+      return
+    }
+
     try {
       setDistributing(true)
-      const result = await distributeToAllCustomers(params.id)
+      const result = await distributeToAllCustomers(params.id, adminUser.email)
 
       toast.success(
         `${result.distributedCount}명에게 배포 완료 (${result.duplicates}명은 이미 보유중)`
@@ -124,7 +136,7 @@ export default function AdminCouponDetailPage() {
       loadCouponDetail()
     } catch (error) {
       console.error('전체 배포 실패:', error)
-      toast.error('쿠폰 배포에 실패했습니다')
+      toast.error(error.message || '쿠폰 배포에 실패했습니다')
     } finally {
       setDistributing(false)
     }

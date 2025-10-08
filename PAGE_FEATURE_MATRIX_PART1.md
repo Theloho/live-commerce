@@ -194,9 +194,17 @@
 
 ### 🐛 알려진 이슈
 - ✅ 주문 수량 변경 시 variant 재고 검증 추가 (2025-10-07 해결)
+- ~~주문 카드 금액 표시 오류 (배송비 제외) (2025-10-08 오후 해결)~~
+  - **문제**: 주문 카드에 상품 금액만 표시, 배송비 미포함
+  - **증상**: ₩1,476,000 표시 (실제 입금 필요 금액: ₩1,485,000)
+  - **해결**: OrderCalculations + formatShippingInfo 사용
+  - **영향**: `/app/orders/page.js:600-610, 719`
 - ⚠️ 주문 수량 조정 실패 ("주문 아이템을 찾을 수 없습니다") (2025-10-06 미해결)
 
 ### 📝 체크리스트 (Claude용)
+- [x] ✅ OrderCalculations로 배송비 포함 총액 계산 (필수! 2025-10-08 적용)
+- [x] ✅ formatShippingInfo로 도서산간 배송비 정확히 계산
+- [x] ✅ shipping.postal_code 데이터 포함 확인 (getOrders)
 - [ ] 카카오 사용자 주문 조회 (order_type LIKE '%KAKAO:%')
 - [ ] pending 상태만 수량 변경/취소 가능
 - [ ] 수량 변경 시 variant_id 확인 → 재고 검증
@@ -244,11 +252,17 @@
 - 1.4 주문 상세 조회 (PART1)
 - 7.1 배송비 계산 (PART3)
 
+### 🐛 알려진 이슈
+- ~~총 결제금액 계산 오류 (2025-10-08 오후 수정 완료)~~
+  - **문제**: DB 저장값(`payment.amount`)을 직접 표시 → 잘못된 금액
+  - **해결**: OrderCalculations.calculateFinalOrderAmount() 사용 (line 788-840)
+  - **영향**: 주문 상세 하단 "총 결제금액" 섹션
+
 ### 📝 체크리스트 (Claude용)
 - [ ] discount_amount 쿠폰 할인 표시 확인
 - [ ] 입금자명 우선순위 (payment > depositName > shipping.name)
 - [ ] 배송비 계산 (postal_code 기반 도서산간 포함)
-- [ ] OrderCalculations 재계산으로 정확한 금액 표시
+- [x] ✅ OrderCalculations 재계산으로 정확한 금액 표시 (필수! 2025-10-08 적용)
 - [ ] getBestPayment로 최적 결제 정보 선택
 
 ---

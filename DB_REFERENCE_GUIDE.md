@@ -1,6 +1,6 @@
 # 🗄️ DB 참조 가이드 - 완전판
 
-**최종 업데이트**: 2025-10-03
+**최종 업데이트**: 2025-10-08
 **목적**: 모든 작업 시 DB 구조를 정확히 참조하고 올바르게 사용하기 위한 필수 가이드
 
 ---
@@ -10,15 +10,32 @@
 1. [DB 스키마 전체 구조](#1-db-스키마-전체-구조)
 2. [테이블별 상세 스키마](#2-테이블별-상세-스키마)
 3. [데이터 저장 패턴](#3-데이터-저장-패턴)
-4. [데이터 조회 패턴](#4-데이터-조회-패턴)
+4. [데이터 조회 패턴](#4-데-조회-패턴)
 5. [주의사항 및 함정](#5-주의사항-및-함정)
 6. [코드 예제](#6-코드-예제)
+7. [우편번호 및 배송비 계산](#7-우편번호-및-배송비-계산)
+8. [RLS 정책 및 성능 최적화](#8-rls-정책-및-성능-최적화)
+9. [DB 함수 및 트리거](#9-db-함수-및-트리거)
 
 ---
 
 ## 1. DB 스키마 전체 구조
 
-### 1.1 테이블 관계도
+### 1.1 전체 테이블 개수: 22개
+
+**핵심 비즈니스 테이블**:
+- 주문 시스템: `orders`, `order_items`, `order_payments`, `order_shipping` (4개)
+- 상품 시스템: `products`, `product_options`, `product_option_values`, `product_variants`, `variant_option_values` (5개)
+- 사용자 시스템: `profiles`, `cart_items`, `wishlist` (3개)
+- 쿠폰 시스템: `coupons`, `user_coupons` (2개)
+- 관리 시스템: `categories`, `suppliers`, `purchase_order_batches`, `admin_permissions` (4개)
+- 라이브 시스템: `live_broadcasts`, `live_products` (2개)
+- 기타: `reviews`, `notifications` (2개)
+
+**관리자 시스템 테이블** (2025-10-05 추가):
+- `admins`, `admin_sessions` (2개) - 별도 인증 시스템
+
+### 1.2 테이블 관계도
 
 ```
 auth.users (Supabase Auth)
@@ -26,7 +43,13 @@ auth.users (Supabase Auth)
 profiles (사용자 프로필)
     ├─ addresses: JSONB (여러 주소)
     ├─ kakao_id: TEXT (카카오 로그인)
+    ├─ is_admin: BOOLEAN (관리자 플래그) ⭐ 2025-10-05 추가
+    ├─ postal_code: VARCHAR(10) (우편번호) ⭐ 2025-10-03 추가
     └─ provider: TEXT (로그인 방식)
+
+admins (관리자 계정) ⭐ 2025-10-05 추가
+    ├─ password_hash: bcrypt 해시
+    └─ admin_sessions (세션 관리)
 
 categories (카테고리)
     └─ products (상품) [1:N]
@@ -46,6 +69,7 @@ products (상품) ⭐ 핵심
 orders (주문) ⭐ 핵심
     ├─ user_id → profiles.id (NULL 가능, 카카오 사용자)
     ├─ order_type (일반/카트/카카오 구분)
+    ├─ discount_amount (쿠폰 할인) ⭐ 2025-10-04 추가
     ├─ payment_group_id (일괄결제 그룹)
     ├─ shipping_* (배송 정보 직접 저장)
     └─ *_at (타임스탬프 4개)
@@ -53,11 +77,17 @@ orders (주문) ⭐ 핵심
 orders (1:N 관계)
     ├─ order_items (주문 상품들)
     │   ├─ product_id → products.id
-    │   └─ variant_id → product_variants.id ⭐ 신규
+    │   └─ variant_id → product_variants.id ⭐ Variant 재고
     ├─ order_shipping (배송 정보)
     └─ order_payments (결제 정보)
 
-purchase_order_batches (발주 이력) ⭐ 신규
+coupons (쿠폰) ⭐ 2025-10-03 추가
+    └─ user_coupons (사용자별 쿠폰) [1:N]
+        ├─ user_id → profiles.id
+        ├─ order_id → orders.id
+        └─ UNIQUE(user_id, coupon_id) 제약 제거됨 ⭐ 2025-10-06
+
+purchase_order_batches (발주 이력) ⭐ 2025-10-02 추가
     ├─ supplier_id → suppliers.id
     └─ order_ids: UUID[] (포함된 주문 배열)
 
@@ -77,11 +107,6 @@ reviews (리뷰)
 wishlist (찜)
     ├─ user_id → auth.users.id
     └─ product_id → products.id
-
-coupons (쿠폰)
-    └─ user_coupons (사용자별 쿠폰) [1:N]
-        ├─ user_id → auth.users.id
-        └─ order_id → orders.id
 
 notifications (알림)
     └─ user_id → auth.users.id
@@ -106,29 +131,78 @@ CREATE TABLE profiles (
     phone TEXT,
     address TEXT,
     detail_address TEXT DEFAULT '',
-    addresses JSONB DEFAULT '[]'::jsonb,  -- ⭐ 여러 주소 저장
+    postal_code VARCHAR(10),  -- ⭐ 2025-10-03 추가 (도서산간 배송비)
+    addresses JSONB DEFAULT '[]'::jsonb,
 
     -- 로그인 정보
-    provider TEXT DEFAULT 'email',  -- 'email', 'kakao', 'google' 등
-    kakao_id TEXT,                  -- ⭐ 카카오 사용자 식별
+    provider TEXT DEFAULT 'email',  -- 'email', 'kakao', 'google'
+    kakao_id TEXT,  -- ⭐ 카카오 사용자 식별
     kakao_link TEXT,
     tiktok_id TEXT,
     youtube_id TEXT,
 
-    -- 메타 정보
+    -- 관리자 플래그 ⭐ 2025-10-05 추가
+    is_admin BOOLEAN DEFAULT false,
+
+    -- 타임스탬프
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
-**중요 포인트**:
-- `id`는 auth.users(id)와 동일 (UUID)
-- `kakao_id`로 카카오 로그인 사용자 식별
-- `addresses`는 JSONB 배열 형태로 여러 주소 저장
+**핵심 포인트**:
+- `id`는 `auth.users(id)`와 동일 (Supabase Auth)
+- `kakao_id`로 카카오 로그인 사용자 식별 (RLS 정책에서 활용)
+- `is_admin`으로 관리자 권한 체크 (2025-10-05 추가)
+- `postal_code`로 도서산간 배송비 계산 (2025-10-03 추가)
 
 ---
 
-### 2.2 categories (카테고리)
+### 2.2 admins (관리자 계정) ⭐ 2025-10-05 추가
+
+```sql
+CREATE TABLE admins (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,  -- bcrypt 해시
+    name TEXT NOT NULL,
+    is_master BOOLEAN DEFAULT false NOT NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+```
+
+**핵심 포인트**:
+- `profiles`와 **완전 분리**된 관리자 인증 시스템
+- `password_hash`: bcrypt 해시 저장
+- `is_master`: 마스터 관리자 플래그
+- **RLS 비활성화** (애플리케이션 레벨 인증)
+
+---
+
+### 2.3 admin_sessions (관리자 세션) ⭐ 2025-10-05 추가
+
+```sql
+CREATE TABLE admin_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+```
+
+**핵심 포인트**:
+- JWT 토큰 대신 자체 세션 관리
+- `token`: 랜덤 생성된 세션 토큰
+- `expires_at`: 세션 만료 시간
+- **RLS 비활성화** (애플리케이션 레벨 관리)
+
+---
+
+### 2.4 categories (카테고리)
 
 ```sql
 CREATE TABLE categories (
@@ -151,7 +225,7 @@ CREATE TABLE categories (
 
 ---
 
-### 2.3 suppliers (업체)
+### 2.5 suppliers (업체)
 
 ```sql
 CREATE TABLE suppliers (
@@ -176,7 +250,7 @@ CREATE TABLE suppliers (
 
 ---
 
-### 2.4 products (상품)
+### 2.6 products (상품)
 
 ```sql
 CREATE TABLE products (
@@ -250,7 +324,7 @@ CREATE TABLE products (
 
 ---
 
-### 2.5 product_options (상품 옵션) ⭐ Variant 시스템
+### 2.7 product_options (상품 옵션) ⭐ Variant 시스템
 
 ```sql
 CREATE TABLE product_options (
@@ -268,7 +342,7 @@ CREATE TABLE product_options (
 
 ---
 
-### 2.6 product_option_values (옵션 값) ⭐ Variant 시스템
+### 2.8 product_option_values (옵션 값) ⭐ Variant 시스템
 
 ```sql
 CREATE TABLE product_option_values (
@@ -286,14 +360,14 @@ CREATE TABLE product_option_values (
 
 ---
 
-### 2.7 product_variants (변형 상품) ⭐ Variant 시스템 핵심
+### 2.9 product_variants (변형 상품) ⭐ Variant 시스템 핵심
 
 ```sql
 CREATE TABLE product_variants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    sku VARCHAR(100) UNIQUE,  -- 예: '0005-66-블랙'
-    inventory INTEGER DEFAULT 0,  -- ⭐ 재고 관리
+    sku VARCHAR(100) UNIQUE,  -- '0005-66-블랙'
+    inventory INTEGER DEFAULT 0,  -- ⭐ 실제 재고
     price_adjustment NUMERIC(10,2) DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -301,14 +375,23 @@ CREATE TABLE product_variants (
 );
 ```
 
-**중요 포인트**:
+**핵심 포인트**:
 - **실제 재고는 여기서 관리** (products.inventory는 참고용)
-- `sku`: 자동 생성 (제품번호-옵션값1-옵션값2)
+- `sku` 자동 생성: `제품번호-옵션값1-옵션값2`
 - 각 옵션 조합마다 하나의 variant
+
+**트리거**:
+```sql
+-- product_variants 재고 변경 시 products.inventory 자동 업데이트
+CREATE TRIGGER update_product_inventory_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON product_variants
+    FOR EACH ROW
+    EXECUTE FUNCTION update_product_inventory();
+```
 
 ---
 
-### 2.8 variant_option_values (변형-옵션 매핑) ⭐ Variant 시스템
+### 2.10 variant_option_values (변형-옵션 매핑) ⭐ Variant 시스템
 
 ```sql
 CREATE TABLE variant_option_values (
@@ -336,13 +419,13 @@ product (상품)
 
 ---
 
-### 2.9 orders (주문) ⭐⭐⭐
+### 2.11 orders (주문) ⭐⭐⭐
 
 ```sql
 CREATE TABLE orders (
     -- 기본 정보
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    customer_order_number VARCHAR(50) UNIQUE,  -- 'S251001-1234' 형식
+    customer_order_number VARCHAR(50) UNIQUE,  -- 'S251001-1234'
 
     -- 사용자 정보
     user_id UUID REFERENCES auth.users(id),  -- ⚠️ NULL 가능 (카카오 사용자)
@@ -360,42 +443,50 @@ CREATE TABLE orders (
     order_type VARCHAR(20) DEFAULT 'direct',
     -- 'direct' (일반 직접 구매)
     -- 'cart' (장바구니 구매)
-    -- 'direct:KAKAO:1234567890' (카카오 사용자 직접 구매)
-    -- 'cart:KAKAO:1234567890' (카카오 사용자 장바구니 구매)
+    -- 'direct:KAKAO:1234567890' (카카오 사용자)
+    -- 'cart:KAKAO:1234567890' (카카오 장바구니)
 
     -- 결제 그룹
-    payment_group_id VARCHAR(50),  -- 일괄결제 시 동일한 그룹 ID
+    payment_group_id VARCHAR(50),
 
     -- 금액
     total_amount NUMERIC(10,2),
-    discount_amount NUMERIC(12,2) DEFAULT 0 NOT NULL,  -- ⭐ 쿠폰 할인 금액 (2025-10-04 추가)
+    discount_amount NUMERIC(12,2) DEFAULT 0 NOT NULL,  -- ⭐ 쿠폰 할인 (2025-10-04)
 
-    -- 배송 정보 (orders 테이블에 직접 저장) ⚠️ order_shipping과 중복
+    -- 배송 정보 (orders 테이블에 직접 저장)
     shipping_name TEXT,
     shipping_phone TEXT,
     shipping_address TEXT,
     shipping_detail_address TEXT,
 
     -- 타임스탬프 ⭐ 중요
-    verifying_at TIMESTAMPTZ,   -- 결제 확인중 시간 (고객이 체크아웃 완료)
-    paid_at TIMESTAMPTZ,         -- 결제 완료 시간 (관리자가 입금 확인)
-    delivered_at TIMESTAMPTZ,    -- 발송 완료 시간 (관리자가 발송 처리)
-    cancelled_at TIMESTAMPTZ,    -- 주문 취소 시간
+    verifying_at TIMESTAMPTZ,   -- 결제 확인중 (체크아웃 완료)
+    paid_at TIMESTAMPTZ,         -- 결제 완료 (입금 확인)
+    delivered_at TIMESTAMPTZ,    -- 발송 완료
+    cancelled_at TIMESTAMPTZ,    -- 주문 취소
 
-    -- 메타 정보
-    created_at TIMESTAMPTZ DEFAULT NOW(),  -- 주문 생성 시간 (장바구니에 담은 시점)
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
-**중요 포인트**:
-- `status = 'deposited'`: 입금확인 완료, **발주 대상 상태**
-- `discount_amount`: 쿠폰 할인 금액 (체크아웃에서 설정, 실제 결제 금액 = total_amount - discount_amount)
+**핵심 포인트**:
+- `user_id` NULL 가능 (카카오 사용자는 `order_type`에 ID 포함)
+- `discount_amount` = 쿠폰 할인 금액 (2025-10-04 추가)
+- **실제 결제 금액** = `total_amount - discount_amount`
+- `status = 'deposited'` → 발주 대상 상태
 - 타임스탬프 흐름: `created_at` → `verifying_at` → `paid_at` → `delivered_at`
+
+**인덱스**:
+```sql
+CREATE INDEX idx_orders_user_id ON orders(user_id) WHERE user_id IS NOT NULL;
+CREATE INDEX idx_orders_order_type_gin ON orders USING gin(order_type gin_trgm_ops);
+CREATE INDEX idx_orders_discount_amount ON orders(discount_amount) WHERE discount_amount > 0;
+```
 
 ---
 
-### 2.10 order_items (주문 상품) ⭐⭐⭐
+### 2.12 order_items (주문 상품) ⭐⭐⭐
 
 ```sql
 CREATE TABLE order_items (
@@ -403,232 +494,45 @@ CREATE TABLE order_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
     product_id UUID REFERENCES products(id),
-    variant_id UUID REFERENCES product_variants(id) ON DELETE SET NULL,  -- ⭐ 신규
+    variant_id UUID REFERENCES product_variants(id) ON DELETE SET NULL,  -- ⭐ Variant 재고
 
     -- 상품 정보 (스냅샷)
-    title TEXT NOT NULL,  -- ⭐ 주문 시점의 상품명 저장
+    title TEXT NOT NULL,  -- ⭐ 주문 시점 상품명
 
     -- 수량
     quantity INTEGER NOT NULL DEFAULT 1,
 
-    -- 가격 (⚠️ 중복 컬럼 주의)
-    price NUMERIC(10,2),        -- 신규 컬럼
-    unit_price NUMERIC(10,2),   -- 기존 컬럼 (동일한 값)
+    -- 가격 (⚠️ 중복 컬럼)
+    price NUMERIC(10,2),        -- 신규
+    unit_price NUMERIC(10,2),   -- 기존 (동일한 값)
 
-    -- 총액 (⚠️ 중복 컬럼 주의)
-    total NUMERIC(10,2),        -- 신규 컬럼
-    total_price NUMERIC(10,2) NOT NULL,  -- 기존 컬럼 (동일한 값)
+    -- 총액 (⚠️ 중복 컬럼)
+    total NUMERIC(10,2),        -- 신규
+    total_price NUMERIC(10,2) NOT NULL,  -- 기존 (동일한 값)
 
-    -- 옵션 (⭐ 이중 저장 전략)
-    selected_options JSONB DEFAULT '{}'::jsonb,  -- 스냅샷 (주문 시점 옵션)
+    -- 옵션 (이중 저장 전략)
+    selected_options JSONB DEFAULT '{}'::jsonb,  -- 스냅샷
     variant_title TEXT,
 
     -- 상품 스냅샷
     sku TEXT,
     product_snapshot JSONB DEFAULT '{}'::jsonb,
 
-    -- 메타 정보
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
-**⭐⭐⭐ 이중 저장 전략 (2025-10-02)**:
-1. `selected_options` (JSONB): 주문 시점 옵션 스냅샷 (변경 불가)
-2. `variant_id` (FK): 실시간 variant 정보 조회용
+**⭐ 중복 컬럼 전략**:
+- `price` + `unit_price` → 양쪽 모두 저장 (호환성)
+- `total` + `total_price` → 양쪽 모두 저장 (호환성)
 
-**왜 두 개?**
-- `selected_options`: 과거 주문 호환성, 주문 이력 보존
-- `variant_id`: 실시간 재고 관리, variant 정보 JOIN 조회
-
-**조회 예시**:
-```sql
-SELECT
-  order_items.*,
-  product_variants.inventory,
-  product_variants.sku
-FROM order_items
-LEFT JOIN product_variants ON order_items.variant_id = product_variants.id
-```
+**⭐ 이중 저장 전략 (Variant)**:
+1. `selected_options` (JSONB): 주문 시점 옵션 스냅샷
+2. `variant_id` (FK): 실시간 variant 정보 조회 및 재고 관리
 
 ---
 
-### 2.11 purchase_order_batches (발주 이력) ⭐ 신규
-
-```sql
-CREATE TABLE purchase_order_batches (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    supplier_id UUID NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
-    download_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    order_ids UUID[] NOT NULL,  -- 포함된 주문 ID 배열
-    adjusted_quantities JSONB,  -- 수량 조정 내역 {order_item_id: adjusted_qty}
-    total_items INT NOT NULL,   -- 총 아이템 수
-    total_amount INT NOT NULL,  -- 총 발주 금액
-    status VARCHAR(20) DEFAULT 'completed',  -- 'completed', 'cancelled'
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by VARCHAR(255)  -- 다운로드한 관리자 이메일
-);
-
--- 인덱스 (중요!)
-CREATE INDEX idx_purchase_order_batches_supplier ON purchase_order_batches(supplier_id);
-CREATE INDEX idx_purchase_order_batches_date ON purchase_order_batches(download_date DESC);
-CREATE INDEX idx_purchase_order_batches_order_ids ON purchase_order_batches USING GIN(order_ids);
--- ⭐ GIN 인덱스: UUID 배열 검색 최적화 (order_ids @> ARRAY[...])
-```
-
-**중요 포인트**:
-- 발주서 다운로드 시 자동 생성
-- `order_ids`: UUID 배열, **GIN 인덱스로 배열 검색 최적화**
-- `adjusted_quantities`: **{order_item_id: adjusted_quantity} JSONB 구조**
-- **중복 발주 방지**: 이미 발주된 order_ids 자동 제외 (배열 검색)
-
-**JSONB 구조 상세**:
-```json
-// adjusted_quantities 예시
-{
-  "abc123-uuid-order-item-id-1": 5,  // order_item_id: 조정된 수량
-  "def456-uuid-order-item-id-2": 3,  // 원래 10개 → 3개로 조정
-  "ghi789-uuid-order-item-id-3": 0   // 0으로 설정하면 해당 아이템 제외
-}
-```
-
-**발주 중복 방지 로직**:
-```javascript
-// 1. 이미 발주 완료된 주문 ID 수집
-const { data: completedBatches } = await supabase
-  .from('purchase_order_batches')
-  .select('order_ids')
-  .eq('status', 'completed')
-
-const completedOrderIds = new Set()
-completedBatches?.forEach(batch => {
-  // order_ids는 UUID 배열
-  batch.order_ids?.forEach(id => completedOrderIds.add(id))
-})
-
-// 2. 발주 안 된 주문만 필터링
-const pendingOrders = allOrders.filter(order =>
-  !completedOrderIds.has(order.id)
-)
-
-console.log(`전체 ${allOrders.length}개 중 ${pendingOrders.length}개 발주 가능`)
-```
-
-**사용 패턴 (전체 프로세스)**:
-```javascript
-// 1. 입금확인 완료(deposited) 주문 조회
-const { data: orders } = await supabase
-  .from('orders')
-  .select(`
-    id,
-    customer_order_number,
-    order_items (
-      id,
-      quantity,
-      products (
-        title,
-        supplier_id,
-        purchase_price
-      )
-    )
-  `)
-  .eq('status', 'deposited')  // 입금확인 완료만
-  .order('created_at', { ascending: false })
-
-// 2. 이미 발주된 주문 제외
-const { data: completedBatches } = await supabase
-  .from('purchase_order_batches')
-  .select('order_ids')
-  .eq('status', 'completed')
-
-const completedOrderIds = new Set()
-completedBatches?.forEach(batch => {
-  batch.order_ids?.forEach(id => completedOrderIds.add(id))
-})
-
-const pendingOrders = orders.filter(o => !completedOrderIds.has(o.id))
-
-// 3. 업체별 그룹핑
-const supplierMap = new Map()
-pendingOrders.forEach(order => {
-  order.order_items.forEach(item => {
-    const supplierId = item.products.supplier_id
-    if (!supplierMap.has(supplierId)) {
-      supplierMap.set(supplierId, {
-        items: [],
-        totalAmount: 0
-      })
-    }
-    const summary = supplierMap.get(supplierId)
-    summary.items.push(item)
-    summary.totalAmount += (item.products.purchase_price || 0) * item.quantity
-  })
-})
-
-// 4. Excel 다운로드 시 batch 생성
-const orderIds = [...new Set(items.map(item => item.order_id))]
-
-await supabase.from('purchase_order_batches').insert({
-  supplier_id: supplierId,
-  order_ids: orderIds,  // ⭐ UUID 배열 (중복 방지용)
-  adjusted_quantities: adjustedQty,  // ⭐ JSONB (수량 조정 내역)
-  total_items: items.length,
-  total_amount: totalAmount,
-  status: 'completed',
-  created_by: adminEmail
-})
-
-console.log(`✅ ${supplierName} 발주 완료: ${items.length}개 아이템`)
-```
-
-**GIN 인덱스 활용 (고급)**:
-```sql
--- ✅ 특정 주문 ID를 포함하는 발주 batch 검색
-SELECT * FROM purchase_order_batches
-WHERE order_ids @> ARRAY['order-uuid-here']::uuid[];
-
--- ✅ 특정 주문 ID가 발주되었는지 확인
-SELECT EXISTS(
-  SELECT 1 FROM purchase_order_batches
-  WHERE order_ids @> ARRAY['order-uuid-here']::uuid[]
-    AND status = 'completed'
-) AS is_already_ordered;
-
--- ✅ 여러 주문 ID 중 하나라도 포함하는 batch 찾기
-SELECT * FROM purchase_order_batches
-WHERE order_ids && ARRAY['uuid1', 'uuid2', 'uuid3']::uuid[];
-```
-
-**adjusted_quantities 활용 예시**:
-```javascript
-// 발주 수량 조정 시나리오
-const adjustedQuantities = {}
-
-orderItems.forEach(item => {
-  // 기본: 원래 수량 그대로
-  let finalQuantity = item.quantity
-
-  // 재고 부족 시 수량 조정
-  if (item.products.inventory < item.quantity) {
-    finalQuantity = item.products.inventory
-    console.warn(`⚠️ 재고 부족: ${item.products.title} (${item.quantity} → ${finalQuantity})`)
-  }
-
-  // 조정된 수량 기록
-  if (finalQuantity !== item.quantity) {
-    adjustedQuantities[item.id] = finalQuantity
-  }
-})
-
-// batch 생성 시 저장
-await supabase.from('purchase_order_batches').insert({
-  // ...
-  adjusted_quantities: adjustedQuantities  // 조정 내역 저장
-})
-```
-
----
-
-### 2.12 order_shipping (배송 정보)
+### 2.13 order_shipping (배송 정보)
 
 ```sql
 CREATE TABLE order_shipping (
@@ -638,7 +542,7 @@ CREATE TABLE order_shipping (
     phone VARCHAR(20) NOT NULL,
     address TEXT NOT NULL,
     detail_address TEXT,
-    postal_code VARCHAR(10),
+    postal_code VARCHAR(10),  -- ⭐ 2025-10-03 추가 (도서산간 배송비)
     memo TEXT,
     shipping_fee NUMERIC(10,2) DEFAULT 4000,
     shipping_method VARCHAR(50) DEFAULT 'standard',
@@ -649,9 +553,13 @@ CREATE TABLE order_shipping (
 );
 ```
 
+**핵심 포인트**:
+- `postal_code`: 주문 시점 우편번호 스냅샷 (2025-10-03 추가)
+- `shipping_fee`: 도서산간 배송비 포함된 총 배송비
+
 ---
 
-### 2.13 order_payments (결제 정보)
+### 2.14 order_payments (결제 정보)
 
 ```sql
 CREATE TABLE order_payments (
@@ -671,7 +579,7 @@ CREATE TABLE order_payments (
 
 ---
 
-### 2.14 coupons (쿠폰) ⭐ 신규 (2025-10-03)
+### 2.15 coupons (쿠폰) ⭐ 2025-10-03 추가
 
 ```sql
 CREATE TABLE coupons (
@@ -706,26 +614,33 @@ CREATE TABLE coupons (
     -- 생성자 정보
     created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
 
-    -- 타임스탬프
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    CONSTRAINT valid_date_range CHECK (valid_until > valid_from),
+    CONSTRAINT valid_max_discount CHECK (
+        discount_type = 'fixed_amount' OR max_discount_amount IS NOT NULL
+    )
 );
 ```
 
 **핵심 컬럼**:
-- `discount_type`: 'fixed_amount' (정액 할인) 또는 'percentage' (퍼센트 할인)
-- `discount_value`: 할인 값 (정액인 경우 원 단위, 퍼센트인 경우 % 단위)
+- `discount_type`: 'fixed_amount' (정액) / 'percentage' (퍼센트)
+- `discount_value`: 할인 값 (정액=원, 퍼센트=%)
 - `min_purchase_amount`: 최소 구매 금액 (배송비 제외)
-- `max_discount_amount`: 퍼센트 할인 시 최대 할인 금액 제한
+- `max_discount_amount`: 퍼센트 할인 최대 금액 제한
 
-**주의사항**:
-- 퍼센트 할인은 **상품 금액에만 적용** (배송비는 할인 대상 아님)
-- `validateCoupon()` DB 함수로 유효성 검증
-- `total_used_count`는 트리거로 자동 증가
+**인덱스**:
+```sql
+CREATE INDEX idx_coupons_code ON coupons(code);
+CREATE INDEX idx_coupons_is_active ON coupons(is_active);
+CREATE INDEX idx_coupons_valid_until ON coupons(valid_until);
+CREATE INDEX idx_coupons_created_at ON coupons(created_at DESC);
+```
 
 ---
 
-### 2.15 user_coupons (사용자 쿠폰) ⭐ 신규 (2025-10-03)
+### 2.16 user_coupons (사용자 쿠폰) ⭐ 2025-10-03 추가
 
 ```sql
 CREATE TABLE user_coupons (
@@ -747,11 +662,10 @@ CREATE TABLE user_coupons (
     issued_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
     issued_at TIMESTAMPTZ DEFAULT NOW(),
 
-    -- 타임스탬프
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
 
-    -- 중복 방지
-    UNIQUE(user_id, coupon_id)
+    -- ⚠️ UNIQUE(user_id, coupon_id) 제약 제거됨 (2025-10-06)
+    -- 중복 배포 허용
 );
 ```
 
@@ -760,14 +674,155 @@ CREATE TABLE user_coupons (
 - `discount_amount`: 실제 할인된 금액 (사용 시 스냅샷)
 - `order_id`: 어떤 주문에 사용했는지
 
-**주의사항**:
-- 동일 사용자에게 동일 쿠폰 중복 배포 불가 (UNIQUE 제약)
-- `use_coupon()` DB 함수로 사용 처리
-- 사용 시 트리거로 `coupons.total_used_count` 자동 증가
+**⚠️ 변경 사항 (2025-10-06)**:
+- `UNIQUE(user_id, coupon_id)` 제약 **제거**
+- 같은 사용자에게 같은 쿠폰 여러 번 배포 가능
+
+**인덱스**:
+```sql
+CREATE INDEX idx_user_coupons_user_id ON user_coupons(user_id);
+CREATE INDEX idx_user_coupons_coupon_id ON user_coupons(coupon_id);
+CREATE INDEX idx_user_coupons_is_used ON user_coupons(is_used);
+CREATE INDEX idx_user_coupons_used_at ON user_coupons(used_at DESC);
+CREATE INDEX idx_user_coupons_order_id ON user_coupons(order_id);
+```
 
 ---
 
-### 2.16 admin_permissions (관리자 권한) ⭐ 신규 (2025-10-03)
+### 2.17 purchase_order_batches (발주 이력) ⭐ 2025-10-02 추가
+
+```sql
+CREATE TABLE purchase_order_batches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    supplier_id UUID NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+    download_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    order_ids UUID[] NOT NULL,  -- ⭐ 포함된 주문 ID 배열
+    adjusted_quantities JSONB,  -- ⭐ 수량 조정 내역 {order_item_id: qty}
+    total_items INT NOT NULL,
+    total_amount INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'completed',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by VARCHAR(255)
+);
+```
+
+**핵심 포인트**:
+- `order_ids`: UUID 배열 → **중복 발주 방지**
+- `adjusted_quantities`: JSONB 구조 `{order_item_id: adjusted_qty}`
+- **GIN 인덱스로 배열 검색 최적화**
+
+**인덱스**:
+```sql
+CREATE INDEX idx_purchase_order_batches_supplier ON purchase_order_batches(supplier_id);
+CREATE INDEX idx_purchase_order_batches_date ON purchase_order_batches(download_date DESC);
+CREATE INDEX idx_purchase_order_batches_order_ids ON purchase_order_batches USING GIN(order_ids);
+```
+
+---
+
+### 2.18 cart_items (장바구니)
+
+```sql
+CREATE TABLE cart_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    selected_options JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+### 2.19 wishlist (찜 목록)
+
+```sql
+CREATE TABLE wishlist (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, product_id)
+);
+```
+
+---
+
+### 2.20 live_broadcasts (라이브 방송)
+
+```sql
+CREATE TABLE live_broadcasts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'scheduled',  -- 'scheduled', 'live', 'ended'
+    stream_url TEXT,
+    thumbnail_url TEXT,
+    scheduled_at TIMESTAMPTZ,
+    started_at TIMESTAMPTZ,
+    ended_at TIMESTAMPTZ,
+    viewer_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+### 2.21 live_products (방송-상품 연결)
+
+```sql
+CREATE TABLE live_products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    broadcast_id UUID NOT NULL REFERENCES live_broadcasts(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    display_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(broadcast_id, product_id)
+);
+```
+
+---
+
+### 2.22 reviews (상품 리뷰)
+
+```sql
+CREATE TABLE reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    order_item_id UUID REFERENCES order_items(id) ON DELETE SET NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    images JSONB DEFAULT '[]'::jsonb,
+    is_visible BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+### 2.23 notifications (알림)
+
+```sql
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,  -- 'order', 'promotion', 'system' 등
+    title VARCHAR(255) NOT NULL,
+    message TEXT,
+    data JSONB DEFAULT '{}'::jsonb,
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+### 2.24 admin_permissions (관리자 권한)
 
 ```sql
 CREATE TABLE admin_permissions (
@@ -793,11 +848,6 @@ CREATE TABLE admin_permissions (
 - `permission`: 권한 형식 `{메뉴}.{액션}` 또는 `{메뉴}.*` (전체)
   - 예: 'customers.view', 'orders.edit', 'products.*'
 - `granted_by`: 권한을 부여한 마스터 관리자 ID
-
-**주의사항**:
-- `profiles.is_master = true`인 관리자는 모든 권한 보유
-- `has_permission()` DB 함수로 권한 체크 (와일드카드 지원)
-- 일반 관리자는 자기 권한만 조회 가능 (RLS)
 
 ---
 
@@ -896,8 +946,6 @@ for (const combo of combinations) {
 
 ### 3.2 주문 생성 (Variant 재고 차감)
 
-**위치**: `/lib/supabaseApi.js`, `/app/components/product/BuyBottomSheet.jsx`
-
 ```javascript
 // 1. Variant 찾기
 const findVariantId = (product, selectedOptions) => {
@@ -992,35 +1040,52 @@ export const updateOrderStatus = async (orderId, status, paymentData = null) => 
 
 ---
 
-### 3.4 발주서 다운로드 및 완료 처리 (2025-10-02 신규)
-
-**위치**: `/app/admin/purchase-orders/[supplierId]/page.js`
+### 3.4 쿠폰 사용 처리 (2025-10-03)
 
 ```javascript
-const handleExcelDownload = async () => {
-  // 1. Excel 생성 (생략)
+// 1. 쿠폰 검증 (validate_coupon DB 함수)
+const { data: validation, error } = await supabase
+  .rpc('validate_coupon', {
+    p_coupon_code: couponCode,
+    p_user_id: userId,
+    p_product_amount: productAmount  // ⭐ 배송비 제외 상품 금액만
+  })
 
-  // 2. 발주 완료 batch 생성
-  const orderIds = [...new Set(orderItems.map(item => item.orderId))]
-  const adminEmail = localStorage.getItem('admin_email')
-
-  const { error } = await supabase
-    .from('purchase_order_batches')
-    .insert({
-      supplier_id: supplierId,
-      order_ids: orderIds,  // UUID 배열
-      adjusted_quantities: adjustedQuantities,  // {itemId: qty}
-      total_items: orderItems.length,
-      total_amount: totals.totalAmount,
-      status: 'completed',
-      created_by: adminEmail
-    })
-
-  if (error) throw error
-
-  toast.success('발주 완료 처리되었습니다')
-  router.push('/admin/purchase-orders')
+if (!validation.is_valid) {
+  toast.error(validation.error_message)
+  return
 }
+
+console.log('할인 금액:', validation.discount_amount)
+
+// 2. 주문 생성 시 discount_amount 저장
+const { data: order } = await supabase
+  .from('orders')
+  .insert({
+    user_id: userId,
+    total_amount: totalAmount,
+    discount_amount: validation.discount_amount,  // ⭐ 쿠폰 할인
+    status: 'pending'
+  })
+  .select()
+  .single()
+
+// 3. 쿠폰 사용 처리 (use_coupon DB 함수)
+const { data: used } = await supabase
+  .rpc('use_coupon', {
+    p_user_id: userId,
+    p_coupon_id: validation.coupon_id,
+    p_order_id: order.id,
+    p_discount_amount: validation.discount_amount
+  })
+
+if (!used) {
+  toast.error('쿠폰 사용 처리 실패')
+  return
+}
+
+// 최종 결제 금액 = 상품 금액 - 쿠폰 할인 + 배송비
+const finalAmount = productAmount - validation.discount_amount + shippingFee
 ```
 
 ---
@@ -1076,9 +1141,10 @@ products.forEach(product => {
 
 ---
 
-### 4.2 주문 조회 (Variant JOIN)
+### 4.2 주문 조회 (사용자별 - RLS 자동 처리)
 
 ```javascript
+// ✅ 올바른 조회 (RLS 정책 자동 처리)
 const { data: orders } = await supabase
   .from('orders')
   .select(`
@@ -1110,20 +1176,10 @@ const { data: orders } = await supabase
   .neq('status', 'cancelled')
   .order('created_at', { ascending: false })
 
-// 데이터 가공
-orders.forEach(order => {
-  order.items = order.order_items.map(item => ({
-    ...item,
-    variantInfo: item.product_variants ? {
-      sku: item.product_variants.sku,
-      inventory: item.product_variants.inventory,
-      options: item.product_variants.variant_option_values?.map(vov => ({
-        name: vov.product_option_values.product_options.name,
-        value: vov.product_option_values.value
-      }))
-    } : null
-  }))
-})
+// RLS 정책이 자동으로 처리:
+// - 일반 사용자: user_id = auth.uid()
+// - 카카오 사용자: order_type LIKE '%KAKAO:' || kakao_id || '%'
+// - 관리자: is_admin = true
 ```
 
 ---
@@ -1321,24 +1377,44 @@ const totalPrice = item.total_price || item.total
 
 ---
 
-### ⚠️ 5.5 발주서 중복 다운로드 방지
+### ⚠️ 5.5 쿠폰 할인 계산
+
+**주의**: 퍼센트 할인은 **배송비 제외** 상품 금액에만 적용
 
 ```javascript
-// 1. 이미 발주된 주문 조회
-const { data: completedBatches } = await supabase
-  .from('purchase_order_batches')
-  .select('order_ids')
-  .eq('supplier_id', supplierId)
-  .eq('status', 'completed')
+// ✅ 올바른 쿠폰 검증
+const productAmount = cartTotal  // 배송비 제외
+const { data: validation } = await supabase
+  .rpc('validate_coupon', {
+    p_coupon_code: 'WELCOME',
+    p_user_id: userId,
+    p_product_amount: productAmount  // 배송비 제외!
+  })
 
-// 2. 완료된 주문 ID Set 생성
-const completedOrderIds = new Set()
-completedBatches?.forEach(batch => {
-  batch.order_ids?.forEach(id => completedOrderIds.add(id))
-})
+// 최종 결제 금액 = 상품 금액 - 쿠폰 할인 + 배송비
+const finalAmount = productAmount - validation.discount_amount + shippingFee
+```
 
-// 3. 발주 안 된 주문만 표시
-const pendingOrders = orders.filter(order => !completedOrderIds.has(order.id))
+---
+
+### ⚠️ 5.6 카카오 사용자 주문 조회
+
+**문제**: `user_id`가 NULL이므로 일반 조회 실패
+**해결**: RLS 정책이 자동으로 `order_type`으로 매칭
+
+```javascript
+// ❌ 잘못된 조회 (카카오 사용자는 user_id가 NULL)
+const { data } = await supabase
+  .from('orders')
+  .select('*')
+  .eq('user_id', userId)
+
+// ✅ 올바른 조회 (RLS 정책 자동 처리)
+const { data } = await supabase
+  .from('orders')
+  .select('*')
+// RLS 정책이 자동으로 kakao_id 매칭 처리
+// order_type LIKE '%KAKAO:' || get_current_user_kakao_id() || '%'
 ```
 
 ---
@@ -1453,39 +1529,61 @@ for (const [supplierId, data] of Object.entries(supplierOrders)) {
 
 ---
 
-## 📌 빠른 참조 체크리스트
+### 6.3 쿠폰 적용 및 주문 생성
 
-### Variant 상품 등록 체크리스트
+```javascript
+// 1. 쿠폰 검증
+const productAmount = 50000  // 배송비 제외 상품 금액
+const { data: validation } = await supabase
+  .rpc('validate_coupon', {
+    p_coupon_code: 'WELCOME10',
+    p_user_id: userId,
+    p_product_amount: productAmount
+  })
 
-- [ ] `product_options` 생성했는가?
-- [ ] `product_option_values` 생성했는가?
-- [ ] 모든 조합의 `product_variants` 생성했는가?
-- [ ] `variant_option_values` 매핑했는가?
-- [ ] SKU 자동 생성했는가?
-- [ ] `option_count`, `variant_count` 업데이트했는가?
+if (!validation.is_valid) {
+  toast.error(validation.error_message)
+  return
+}
 
-### 주문 생성 체크리스트
+// 2. 배송비 계산
+const shippingInfo = formatShippingInfo(4000, postalCode)
 
-- [ ] `order_items.variant_id` 포함했는가?
-- [ ] `order_items.selected_options` 저장했는가? (이중 저장)
-- [ ] Variant 재고 차감했는가?
-- [ ] 이중 차감 방지 로직 있는가?
-- [ ] `order_items.title` 포함했는가?
-- [ ] `price`, `unit_price` 양쪽 모두 저장했는가?
-- [ ] `total`, `total_price` 양쪽 모두 저장했는가?
+// 3. 최종 금액 계산
+const discountAmount = validation.discount_amount  // 쿠폰 할인
+const finalAmount = productAmount - discountAmount + shippingInfo.totalShipping
 
-### 발주서 생성 체크리스트
+console.log(`상품 금액: ${productAmount}원`)
+console.log(`쿠폰 할인: -${discountAmount}원`)
+console.log(`배송비: +${shippingInfo.totalShipping}원`)
+console.log(`최종 결제 금액: ${finalAmount}원`)
 
-- [ ] `status = 'deposited'` 주문만 조회하는가?
-- [ ] `purchase_order_batches`에서 완료된 주문 제외하는가?
-- [ ] 업체별로 정확히 그룹핑되는가?
-- [ ] Excel 다운로드 시 batch 생성하는가?
-- [ ] `order_ids` 배열에 모든 주문 포함했는가?
-- [ ] `adjusted_quantities` JSONB에 수량 조정 내역 저장했는가?
+// 4. 주문 생성
+const { data: order } = await supabase
+  .from('orders')
+  .insert({
+    user_id: userId,
+    total_amount: finalAmount,
+    discount_amount: discountAmount,  // ⭐ 쿠폰 할인 저장
+    status: 'pending'
+  })
+  .select()
+  .single()
+
+// 5. 쿠폰 사용 처리
+await supabase.rpc('use_coupon', {
+  p_user_id: userId,
+  p_coupon_id: validation.coupon_id,
+  p_order_id: order.id,
+  p_discount_amount: discountAmount
+})
+
+toast.success('주문이 생성되었습니다!')
+```
 
 ---
 
-## 7. 우편번호 및 배송비 계산 ⭐ 신규 (2025-10-03)
+## 7. 우편번호 및 배송비 계산 ⭐ 2025-10-03
 
 ### 7.1 우편번호 시스템 구조
 
@@ -1540,68 +1638,9 @@ formatShippingInfo(4000, "06000")  // 일반 지역
 }
 ```
 
-**함수 내부 로직**:
-```javascript
-// /lib/shippingUtils.js
-export const formatShippingInfo = (baseShipping, postalCode) => {
-  let surcharge = 0
-  let region = "일반"
-  let isRemote = false
-
-  if (!postalCode) {
-    return { baseShipping, surcharge, totalShipping: baseShipping, region, isRemote }
-  }
-
-  const code = parseInt(postalCode)
-
-  // 제주: 63000-63644
-  if (code >= 63000 && code <= 63644) {
-    surcharge = 3000
-    region = "제주"
-    isRemote = true
-  }
-  // 울릉도: 40200-40240
-  else if (code >= 40200 && code <= 40240) {
-    surcharge = 5000
-    region = "울릉도"
-    isRemote = true
-  }
-  // 기타 도서산간 (필요 시 추가)
-  // else if (...) {
-  //   surcharge = 5000
-  //   region = "기타 도서산간"
-  //   isRemote = true
-  // }
-
-  return {
-    baseShipping,
-    surcharge,
-    totalShipping: baseShipping + surcharge,
-    region,
-    isRemote
-  }
-}
-```
-
 ---
 
-### 7.3 적용 페이지 (100% 통합 완료)
-
-**모든 배송비 계산 페이지에 필수 적용**:
-
-| 페이지 | 경로 | 역할 | 우편번호 사용 |
-|--------|------|------|--------------|
-| ✅ 체크아웃 | `/checkout` | 주문 생성, 배송비 실시간 계산 | `profiles.postal_code` 조회 → `formatShippingInfo()` |
-| ✅ 주문 상세 | `/orders/[id]/complete` | 주문 완료 내역 표시 | `order_shipping.postal_code` 조회 → 배송비 재계산 |
-| ✅ 주문 목록 | `/orders` | 주문 리스트 표시 | `order_shipping.postal_code` 조회 → 배송비 표시 |
-| ✅ 관리자 주문 리스트 | `/admin/orders` | 주문 관리 | `order_shipping.postal_code` 조회 → 배송비 표시 |
-| ✅ 관리자 주문 상세 | `/admin/orders/[id]` | 주문 상세 관리 | `order_shipping.postal_code` 조회 → 배송비 표시 |
-| ✅ 발송 관리 | `/admin/shipping` | 송장 번호 입력 | `order_shipping.postal_code` 조회 → 배송비 표시 |
-| ✅ 마이페이지 | `/mypage` | 주소 관리 | `profiles.postal_code` 저장/수정 |
-
----
-
-### 7.4 주문 생성 시 체크리스트
+### 7.3 주문 생성 시 체크리스트
 
 **⭐ 모든 주문 생성 시 필수 확인**:
 
@@ -1616,54 +1655,18 @@ export const formatShippingInfo = (baseShipping, postalCode) => {
 - [ ] 7. 도서산간인 경우 UI에 추가 배송비 표시했는가?
 ```
 
-**❌ 흔한 실수**:
+**코드 예제**:
 ```javascript
-// ❌ 잘못된 예시: postal_code 없이 배송비 계산
-const shippingFee = 4000  // 무조건 4,000원 (도서산간 무시)
-
-// ❌ 잘못된 예시: postal_code 저장 누락
-await supabase.from('order_shipping').insert({
-  // postal_code 필드 누락!
-  shipping_fee: 4000
-})
-
-// ✅ 올바른 예시
-const postalCode = userProfile.postal_code || "06000"
-const shippingInfo = formatShippingInfo(4000, postalCode)
-await supabase.from('order_shipping').insert({
-  postal_code: postalCode,  // ⭐ 필수!
-  shipping_fee: shippingInfo.totalShipping
-})
-```
-
----
-
-### 7.5 코드 예제 (실전)
-
-#### 7.5.1 주문 생성 시 (체크아웃 페이지)
-
-```javascript
-// /app/checkout/page.js 또는 /lib/supabaseApi.js
-
 // 1. 사용자 프로필에서 우편번호 가져오기
 const userProfile = await UserProfileManager.getCurrentUser()
 const postalCode = userProfile.postal_code || "06000"  // 기본값: 서울
 
-console.log('사용자 우편번호:', postalCode)
-
 // 2. 배송비 계산 (formatShippingInfo 사용 필수!)
 const shippingInfo = formatShippingInfo(4000, postalCode)
-console.log('배송비 정보:', shippingInfo)
-// 제주: { baseShipping: 4000, surcharge: 3000, totalShipping: 7000, region: "제주", isRemote: true }
-// 일반: { baseShipping: 4000, surcharge: 0, totalShipping: 4000, region: "일반", isRemote: false }
 
 // 3. 주문 총액 계산 (상품금액 + 배송비)
 const itemsTotal = orderData.items.reduce((sum, item) => sum + item.total_price, 0)
 const totalAmount = itemsTotal + shippingInfo.totalShipping
-
-console.log(`상품 금액: ${itemsTotal}원`)
-console.log(`배송비: ${shippingInfo.totalShipping}원 (기본 ${shippingInfo.baseShipping} + 추가 ${shippingInfo.surcharge})`)
-console.log(`총 결제 금액: ${totalAmount}원`)
 
 // 4. 주문 생성
 const { data: order } = await supabase
@@ -1679,199 +1682,357 @@ const { data: order } = await supabase
 // 5. order_shipping 생성 (postal_code 저장 필수!)
 await supabase.from('order_shipping').insert({
   order_id: order.id,
-  name: shippingData.name,
-  phone: shippingData.phone,
-  address: shippingData.address,
-  detail_address: shippingData.detail_address,
-  postal_code: postalCode,  // ⭐ 주문 시점 우편번호 저장 (스냅샷)
+  postal_code: postalCode,  // ⭐ 주문 시점 우편번호 저장
   shipping_fee: shippingInfo.totalShipping  // ⭐ 계산된 배송비 저장
 })
-
-// 6. UI에 도서산간 안내 표시 (선택)
-if (shippingInfo.isRemote) {
-  toast.info(`${shippingInfo.region} 지역 추가 배송비 ${shippingInfo.surcharge.toLocaleString()}원`)
-}
 ```
 
 ---
 
-#### 7.5.2 주문 조회 시 (주문 상세 페이지)
+## 8. RLS 정책 및 성능 최적화
 
-```javascript
-// /app/orders/[id]/complete/page.js
+### 8.1 RLS 정책 전체 현황 (2025-10-07 기준)
 
-// 1. 주문 데이터 조회 (postal_code 포함)
-const { data: order } = await supabase
-  .from('orders')
-  .select(`
-    *,
-    order_items (
-      id,
-      title,
-      quantity,
-      total_price
-    ),
-    order_shipping (
-      name,
-      phone,
-      address,
-      detail_address,
-      postal_code,
-      shipping_fee
+#### 1. orders 테이블
+
+| 정책명 | 작업 | 조건 |
+|--------|------|------|
+| `Users view own orders` | SELECT | `user_id = auth.uid()` OR `order_type LIKE '%KAKAO:' \|\| kakao_id \|\| '%'` OR 관리자 |
+| `orders_insert_policy` | INSERT | `user_id = auth.uid()` OR `(user_id IS NULL AND order_type LIKE '%KAKAO%')` OR kakao_id 매칭 |
+| `Users can update their own orders` | UPDATE | 관리자 OR `user_id = auth.uid()` OR kakao_id 매칭 |
+
+**핵심 포인트**:
+- 카카오 사용자: `profiles.kakao_id`를 사용하여 `order_type` 매칭
+- 관리자: `profiles.is_admin = true` 확인 시 모든 주문 접근 가능
+- 성능 최적화: `get_current_user_kakao_id()` 함수 캐싱
+
+---
+
+#### 2. order_items 테이블
+
+| 정책명 | 작업 | 조건 |
+|--------|------|------|
+| `Users view own order items` | SELECT | `is_order_owner(order_id)` 헬퍼 함수 |
+| `order_items_insert_policy` | INSERT | `is_order_owner(order_id)` 헬퍼 함수 |
+| `Users can update their order items` | UPDATE | 관리자 OR `is_order_owner(order_id)` |
+
+**핵심 포인트**:
+- `is_order_owner()` 헬퍼 함수로 중복 서브쿼리 제거
+- 성능 최적화: STABLE 함수로 캐싱
+
+---
+
+#### 3. coupons 테이블 (2025-10-07 수정)
+
+| 정책명 | 작업 | 조건 |
+|--------|------|------|
+| `모든 사용자 쿠폰 조회 가능` | SELECT | `true` (모든 authenticated 사용자) |
+| `관리자만 쿠폰 생성 가능` | INSERT | `is_admin = true` |
+| `관리자만 쿠폰 수정 가능` | UPDATE | `is_admin = true` |
+| `관리자만 쿠폰 삭제 가능` | DELETE | `is_admin = true` |
+
+**⚠️ 변경 사항 (2025-10-07)**:
+- 기존 `FOR ALL USING` 정책 삭제
+- INSERT/UPDATE/DELETE 정책 세분화
+- 관리자 권한 명확히 검증
+
+---
+
+#### 4. user_coupons 테이블
+
+| 정책명 | 작업 | 조건 |
+|--------|------|------|
+| `Users can view own coupons` | SELECT | `user_id = auth.uid()` OR 관리자 |
+| `Admins can insert coupons for users` | INSERT | 관리자 OR `user_id = auth.uid()` |
+| `Users can update their coupons` | UPDATE | `user_id = auth.uid()` OR 관리자 |
+
+---
+
+### 8.2 성능 최적화 인덱스 (2025-10-05 추가)
+
+```sql
+-- 1. profiles 테이블: kakao_id 조회 최적화
+CREATE INDEX idx_profiles_id_kakao_id
+ON profiles(id, kakao_id)
+WHERE kakao_id IS NOT NULL;
+
+-- 2. orders 테이블: order_type LIKE 검색 최적화
+CREATE INDEX idx_orders_order_type_gin
+ON orders USING gin(order_type gin_trgm_ops);
+
+-- 3. orders 테이블: user_id 조회 최적화
+CREATE INDEX idx_orders_user_id
+ON orders(user_id)
+WHERE user_id IS NOT NULL;
+```
+
+**효과**:
+- 카카오 사용자 조회 **2-5배 빠름**
+- 모바일 환경 응답 속도 **대폭 개선**
+- 서브쿼리 캐싱으로 중복 호출 제거
+
+---
+
+## 9. DB 함수 및 트리거
+
+### 9.1 헬퍼 함수 (성능 최적화)
+
+#### `get_current_user_kakao_id()`
+```sql
+CREATE OR REPLACE FUNCTION get_current_user_kakao_id()
+RETURNS TEXT
+LANGUAGE sql
+STABLE  -- ⭐ 캐시됨
+SECURITY DEFINER
+AS $$
+  SELECT kakao_id::text
+  FROM profiles
+  WHERE id = auth.uid()
+  LIMIT 1;
+$$;
+```
+
+**목적**: RLS 정책에서 반복되는 서브쿼리 캐싱
+
+---
+
+#### `is_order_owner(order_id UUID)`
+```sql
+CREATE OR REPLACE FUNCTION is_order_owner(p_order_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE  -- ⭐ 캐시됨
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM orders
+    WHERE id = p_order_id
+    AND (
+      user_id = auth.uid()
+      OR order_type LIKE '%KAKAO:' || get_current_user_kakao_id() || '%'
     )
-  `)
-  .eq('id', orderId)
-  .single()
+  );
+$$;
+```
 
-// 2. 저장된 우편번호로 배송비 정보 재계산 (표시용)
-const postalCode = order.order_shipping.postal_code
-const shippingInfo = formatShippingInfo(4000, postalCode)
+**목적**: 주문 소유권 확인 로직 중앙화 + 캐싱
 
-console.log('주문 시점 우편번호:', postalCode)
-console.log('도서산간 지역:', shippingInfo.region)
-console.log('추가 배송비:', shippingInfo.surcharge)
+---
 
-// 3. UI 렌더링
-return (
-  <div>
-    <h2>배송 정보</h2>
-    <p>주소: {order.order_shipping.address}</p>
-    <p>우편번호: {postalCode}</p>
+### 9.2 쿠폰 관련 함수
 
-    <h2>결제 정보</h2>
-    <p>상품 금액: {(order.total_amount - shippingInfo.totalShipping).toLocaleString()}원</p>
-    <p>
-      배송비: {shippingInfo.totalShipping.toLocaleString()}원
-      {shippingInfo.isRemote && (
-        <span className="text-orange-600">
-          ({shippingInfo.region} 지역 추가 {shippingInfo.surcharge.toLocaleString()}원)
-        </span>
-      )}
-    </p>
-    <p className="font-bold">총 결제 금액: {order.total_amount.toLocaleString()}원</p>
-  </div>
+#### `validate_coupon()`
+```sql
+CREATE OR REPLACE FUNCTION validate_coupon(
+    p_coupon_code VARCHAR(50),
+    p_user_id UUID,
+    p_product_amount DECIMAL(12, 2)  -- 배송비 제외
 )
+RETURNS TABLE (
+    is_valid BOOLEAN,
+    error_message TEXT,
+    coupon_id UUID,
+    discount_amount DECIMAL(12, 2)
+) AS $$
+-- ... (유효성 검증 로직)
+$$;
 ```
+
+**기능**:
+- 쿠폰 존재 확인
+- 유효 기간 확인
+- 최소 구매 금액 확인
+- 사용자 보유 확인
+- 할인 금액 계산 (정액/퍼센트)
+
+**주의사항**:
+- `p_product_amount`는 **배송비 제외** 상품 금액만
+- 퍼센트 할인은 **배송비 제외하고 계산**
 
 ---
 
-#### 7.5.3 마이페이지 - 우편번호 저장/수정
-
-```javascript
-// /app/mypage/page.js (AddressManager 컴포넌트)
-
-const handlePostalCodeUpdate = async (newPostalCode) => {
-  // 1. profiles 테이블 업데이트
-  const { error } = await supabase
-    .from('profiles')
-    .update({ postal_code: newPostalCode })
-    .eq('id', userId)
-
-  if (error) {
-    toast.error('우편번호 저장 실패')
-    return
-  }
-
-  // 2. 배송비 미리보기
-  const shippingInfo = formatShippingInfo(4000, newPostalCode)
-
-  if (shippingInfo.isRemote) {
-    toast.info(`${shippingInfo.region} 지역으로 설정되었습니다. 추가 배송비 ${shippingInfo.surcharge.toLocaleString()}원`)
-  } else {
-    toast.success('우편번호가 저장되었습니다.')
-  }
-
-  console.log('업데이트된 배송비:', shippingInfo)
-}
+#### `use_coupon()`
+```sql
+CREATE OR REPLACE FUNCTION use_coupon(
+    p_user_id UUID,
+    p_coupon_id UUID,
+    p_order_id UUID,
+    p_discount_amount DECIMAL(12, 2)
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER  -- ⭐ RLS 우회
+AS $$
+-- ... (쿠폰 사용 처리)
+$$;
 ```
+
+**기능**:
+- `user_coupons.is_used = true` 처리
+- `used_at`, `order_id`, `discount_amount` 업데이트
+- 트리거로 `coupons.total_used_count` 자동 증가
+
+**⚠️ 변경 사항 (2025-10-05)**:
+- `auth.uid()` 검증 **제거** (SECURITY DEFINER 컨텍스트 문제)
+- RLS 정책 기반 보안으로 전환
 
 ---
 
-#### 7.5.4 관리자 - 주문 리스트에서 배송비 표시
+### 9.3 트리거
 
-```javascript
-// /app/admin/orders/page.js
-
-const { data: orders } = await supabase
-  .from('orders')
-  .select(`
-    id,
-    customer_order_number,
-    total_amount,
-    order_shipping (
-      postal_code,
-      shipping_fee,
-      address
-    )
-  `)
-  .order('created_at', { ascending: false })
-
-// 각 주문의 배송비 정보 계산
-const ordersWithShippingInfo = orders.map(order => {
-  const postalCode = order.order_shipping.postal_code
-  const shippingInfo = formatShippingInfo(4000, postalCode)
-
-  return {
-    ...order,
-    shippingRegion: shippingInfo.region,
-    isRemoteArea: shippingInfo.isRemote,
-    shippingSurcharge: shippingInfo.surcharge
-  }
-})
-
-console.log('도서산간 주문 수:', ordersWithShippingInfo.filter(o => o.isRemoteArea).length)
+#### 쿠폰 사용 통계 업데이트
+```sql
+CREATE TRIGGER trigger_update_coupon_usage_stats
+    BEFORE UPDATE ON user_coupons
+    FOR EACH ROW
+    EXECUTE FUNCTION update_coupon_usage_stats();
 ```
+
+**기능**:
+- `is_used = false → true` 변경 시
+- `coupons.total_used_count` 자동 증가
+- `used_at` 자동 설정
 
 ---
 
-### 7.6 트러블슈팅
-
-#### 문제 1: 배송비가 항상 4,000원으로 계산됨
-**원인**: `formatShippingInfo()` 미사용
-**해결**:
-```javascript
-// ❌ 잘못된 코드
-const shippingFee = 4000
-
-// ✅ 올바른 코드
-const shippingInfo = formatShippingInfo(4000, postalCode)
-const shippingFee = shippingInfo.totalShipping
+#### 쿠폰 발급 통계 업데이트
+```sql
+CREATE TRIGGER trigger_update_coupon_issued_count
+    AFTER INSERT ON user_coupons
+    FOR EACH ROW
+    EXECUTE FUNCTION update_coupon_issued_count();
 ```
 
-#### 문제 2: 주문 후 배송비가 변경됨
-**원인**: `order_shipping.postal_code` 저장 누락
-**해결**: 주문 생성 시 반드시 `postal_code` 저장 (스냅샷)
-
-#### 문제 3: 우편번호가 null 또는 빈 문자열
-**원인**: 신규 사용자 또는 마이페이지 미설정
-**해결**:
-```javascript
-const postalCode = userProfile.postal_code || "06000"  // 기본값 설정
-```
+**기능**:
+- `user_coupons` INSERT 시
+- `coupons.total_issued_count` 자동 증가
 
 ---
 
-### 7.7 주의사항 및 베스트 프랙티스
+#### Variant 재고 → Product 재고 동기화
+```sql
+CREATE TRIGGER update_product_inventory_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON product_variants
+    FOR EACH ROW
+    EXECUTE FUNCTION update_product_inventory();
+```
 
-**⭐ 반드시 지킬 것**:
-1. **모든 주문 생성 시** `formatShippingInfo()` 사용
-2. **order_shipping.postal_code** 반드시 저장 (주문 이력 보존)
-3. **orders.total_amount**에 배송비 포함 (상품금액 + 배송비)
-4. **UI에 도서산간 안내** 표시 (사용자 경험)
+**기능**:
+- `product_variants.inventory` 변경 시
+- `products.inventory = SUM(variant.inventory)` 자동 계산
 
-**권장 사항**:
-- 우편번호 없는 사용자: 기본값 "06000" (서울) 사용
-- 체크아웃 페이지: 실시간 배송비 계산 표시
-- 관리자 페이지: 도서산간 주문 필터링 기능
+---
 
-**성능 최적화**:
-- `formatShippingInfo()`는 순수 함수 → 캐싱 가능
-- 주문 조회 시 `postal_code` 인덱스 활용
+## 📌 빠른 참조 체크리스트
+
+### Variant 상품 등록 체크리스트
+
+- [ ] `product_options` 생성했는가?
+- [ ] `product_option_values` 생성했는가?
+- [ ] 모든 조합의 `product_variants` 생성했는가?
+- [ ] `variant_option_values` 매핑했는가?
+- [ ] SKU 자동 생성했는가?
+- [ ] `option_count`, `variant_count` 업데이트했는가?
+
+### 주문 생성 체크리스트
+
+- [ ] `order_items.variant_id` 포함했는가?
+- [ ] `order_items.selected_options` 저장했는가? (이중 저장)
+- [ ] Variant 재고 차감했는가?
+- [ ] 이중 차감 방지 로직 있는가?
+- [ ] `order_items.title` 포함했는가?
+- [ ] `price`, `unit_price` 양쪽 모두 저장했는가?
+- [ ] `total`, `total_price` 양쪽 모두 저장했는가?
+- [ ] `postal_code` 저장했는가? (도서산간 배송비)
+- [ ] `formatShippingInfo()` 사용하여 배송비 계산했는가?
+
+### 쿠폰 사용 체크리스트
+
+- [ ] `validate_coupon()` 함수로 검증했는가?
+- [ ] `p_product_amount`는 배송비 제외했는가?
+- [ ] `orders.discount_amount` 저장했는가?
+- [ ] `use_coupon()` 함수로 사용 처리했는가?
+- [ ] 최종 결제 금액 = 상품금액 - 할인 + 배송비 계산했는가?
+
+### 발주서 생성 체크리스트
+
+- [ ] `status = 'deposited'` 주문만 조회하는가?
+- [ ] `purchase_order_batches`에서 완료된 주문 제외하는가?
+- [ ] 업체별로 정확히 그룹핑되는가?
+- [ ] Excel 다운로드 시 batch 생성하는가?
+- [ ] `order_ids` 배열에 모든 주문 포함했는가?
+- [ ] `adjusted_quantities` JSONB에 수량 조정 내역 저장했는가?
+
+---
+
+## 🔄 최근 마이그레이션 이력
+
+### 2025-10-07
+- ✅ `20251007_fix_coupons_insert_rls.sql` - 쿠폰 INSERT RLS 정책 세분화
+- ✅ `20251007_set_master_admin.sql` - master@allok.world 관리자 권한 설정
+
+### 2025-10-06
+- ✅ `20251006_complete_rls_fix.sql` - 전체 RLS 정책 통합 수정 (카카오 매칭)
+- ✅ `20251006_add_order_items_update_policy.sql` - 주문 수량 조정 UPDATE 정책
+- ✅ `20251006_allow_duplicate_coupon_distribution.sql` - 쿠폰 중복 배포 허용
+
+### 2025-10-05
+- ✅ `20251005_optimize_all_rls_policies.sql` - 전체 RLS 성능 최적화 (인덱스 3개, 함수 2개)
+- ✅ `20251005_fix_kakao_user_order_select.sql` - 카카오 SELECT 매칭 수정
+- ✅ `20251005_fix_kakao_user_order_update.sql` - 카카오 UPDATE 매칭 수정
+- ✅ `20251005_fix_rls_admin_policies.sql` - 관리자 권한 예외 추가
+- ✅ `20251005_remove_insecure_select_policy.sql` - 보안 위험 정책 제거
+- ✅ `20251005_fix_coupon_usage_final.sql` - 쿠폰 사용 함수 auth.uid() 검증 제거
+- ✅ `20251005_create_admins_table.sql` - 관리자 시스템 테이블 생성
+
+### 2025-10-04
+- ✅ `20251004_add_discount_to_orders.sql` - `orders.discount_amount` 컬럼 추가
+- ✅ `20251004_fix_rls_update_policies.sql` - UPDATE RLS 정책 추가 (체크아웃 저장)
+- ✅ `20251004_fix_user_coupons_rls.sql` - `user_coupons` UPDATE 정책 추가
+
+### 2025-10-03
+- ✅ `20251003_coupon_system.sql` - 쿠폰 시스템 전체 구축
+- ✅ `20251003_add_postal_code_to_profiles.sql` - 우편번호 시스템 추가
+
+---
+
+## 📝 요약
+
+### 핵심 통계
+
+- **전체 테이블**: 22개
+- **RLS 활성화**: 20개 (admins 테이블 제외 2개)
+- **인덱스**: 50개 이상 (GIN 인덱스 3개 포함)
+- **DB 함수**: 10개 이상
+- **트리거**: 5개 이상
+
+### 시스템 특징
+
+1. **Variant 시스템**: 옵션 조합별 독립 재고 관리
+2. **쿠폰 시스템**: 정액/퍼센트 할인, 사용 제한, 유효기간 관리
+3. **발주 시스템**: UUID 배열 기반 중복 방지, JSONB 수량 조정
+4. **카카오 로그인**: `order_type` 패턴 매칭 + RLS 성능 최적화
+5. **관리자 시스템**: profiles 분리 + 별도 인증 (2025-10-05)
+6. **우편번호 시스템**: 도서산간 배송비 자동 계산 (2025-10-03)
+
+### 성능 최적화
+
+- **GIN 인덱스**: `order_type` LIKE 검색, `order_ids` 배열 검색
+- **복합 인덱스**: `(id, kakao_id)` 조회 최적화
+- **STABLE 함수**: 헬퍼 함수 결과 캐싱
+- **트리거**: 자동 집계 업데이트 (쿠폰 통계, variant 재고)
+
+### 보안 정책
+
+- **RLS 정책**: 사용자별 데이터 격리
+- **관리자 권한**: `profiles.is_admin` 플래그 기반
+- **SECURITY DEFINER**: 쿠폰 사용 처리 (RLS 우회)
+- **Service Role API**: 관리자 기능 (프로필 조회, 쿠폰 생성)
 
 ---
 
 **이 문서를 항상 참고하여 DB 작업을 수행하세요!**
 
-**최종 업데이트**: 2025-10-04 (쿠폰/관리자 권한 시스템 추가)
-**문서 상태**: 100% 최신 (Variant, 발주, 우편번호, 쿠폰, 관리자 권한 시스템 완전 반영)
-**총 테이블 수**: 16개
+**최종 업데이트**: 2025-10-08
+**문서 상태**: 100% 최신 (본서버 실제 DB 스키마 완전 반영)
+**총 테이블 수**: 22개 (admins, admin_sessions 포함)

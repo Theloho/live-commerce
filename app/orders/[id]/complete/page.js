@@ -778,32 +778,30 @@ export default function OrderCompletePage() {
                       </div>
                     ))}
 
-                    {/* 총 결제 금액 표시 */}
+                    {/* 총 결제 금액 표시 (OrderCalculations 사용) */}
                     <div className="border-t pt-3 mt-3">
                       <div className="space-y-2">
                         {(() => {
-                          // 올바른 총 상품금액 계산
-                          const correctTotalProductAmount = orderData.items.reduce((sum, item) => {
-                            // totalPrice가 있으면 사용, 없으면 price * quantity 사용
-                            const itemTotal = item.totalPrice || (item.price * item.quantity)
-                            return sum + itemTotal
-                          }, 0)
-
-                          // 실제 저장된 결제 금액에서 배송비 역산
-                          const actualPaymentAmount = orderData.payment?.amount || 0
                           const shippingInfo = formatShippingInfo(4000, orderData.shipping?.postal_code)
-                          const shippingFee = shippingInfo.totalShipping
 
-                          // 쿠폰 할인 금액 (DB에서 저장된 값)
-                          const couponDiscount = orderData.discount_amount || 0
+                          // 🧮 중앙화된 계산 모듈 사용 (정확한 금액 계산)
+                          const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
+                            region: shippingInfo.region,
+                            coupon: orderData.discount_amount > 0 ? {
+                              type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
+                              value: orderData.discount_amount
+                            } : null,
+                            paymentMethod: orderData.payment?.method || 'transfer'
+                          })
 
-                          console.log('💰 주문 상세 금액 계산:', {
-                            correctTotalProductAmount,
-                            shippingFee,
-                            couponDiscount,
-                            actualPaymentAmount,
+                          console.log('💰 주문 상세 금액 계산 (OrderCalculations):', {
+                            itemsTotal: orderCalc.itemsTotal,
+                            shippingFee: orderCalc.shippingFee,
+                            couponDiscount: orderCalc.couponDiscount,
+                            finalAmount: orderCalc.finalAmount,
                             postalCode: orderData.shipping?.postal_code,
-                            shippingInfo
+                            shippingInfo,
+                            breakdown: orderCalc.breakdown
                           })
 
                           return (
@@ -811,7 +809,7 @@ export default function OrderCompletePage() {
                               <div className="flex justify-between items-center">
                                 <span className="text-sm text-gray-600">총 상품금액</span>
                                 <span className="font-medium text-gray-900">
-                                  ₩{correctTotalProductAmount.toLocaleString()}
+                                  ₩{orderCalc.itemsTotal.toLocaleString()}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
@@ -820,21 +818,21 @@ export default function OrderCompletePage() {
                                   {shippingInfo.isRemote && <span className="text-orange-600"> (+{shippingInfo.region})</span>}
                                 </span>
                                 <span className="font-medium text-gray-900">
-                                  ₩{shippingFee.toLocaleString()}
+                                  ₩{orderCalc.shippingFee.toLocaleString()}
                                 </span>
                               </div>
-                              {couponDiscount > 0 && (
+                              {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                                 <div className="flex justify-between items-center">
                                   <span className="text-sm text-blue-600">쿠폰 할인</span>
                                   <span className="font-medium text-blue-600">
-                                    -₩{couponDiscount.toLocaleString()}
+                                    -₩{orderCalc.couponDiscount.toLocaleString()}
                                   </span>
                                 </div>
                               )}
                               <div className="flex justify-between items-center border-t pt-2">
                                 <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
                                 <span className="font-bold text-lg text-gray-900">
-                                  ₩{actualPaymentAmount.toLocaleString()}
+                                  ₩{orderCalc.finalAmount.toLocaleString()}
                                 </span>
                               </div>
                             </>

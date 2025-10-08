@@ -10,6 +10,10 @@
 - 내용 추가 시 파일 크기 확인 필수
 - 25,000 토큰 근접 시 → **새로운 기능을 PART4/PART5로 분리**하고 인덱스 파일 업데이트
 
+**업데이트**: 2025-10-08
+**기준**: 본서버 코드 (main 브랜치) - CODEBASE_STRUCTURE_REPORT.md, DB_SCHEMA_ANALYSIS_COMPLETE.md 반영
+**버전**: 2.0
+
 ---
 
 ## 7. 배송 관련 기능
@@ -329,25 +333,35 @@ orders.status
 **총 기능**: 77개 (주요: 21개, 일반: 56개)
 ## 8. 쿠폰 관련 기능
 
-### 8.1 쿠폰 발행 ⭐ [주요]
+### 8.1 쿠폰 발행 ⭐ [주요] (2025-10-07 업데이트)
 
 #### 📍 영향받는 페이지
 1. `/admin/coupons` - 쿠폰 목록 (새 쿠폰 표시)
 2. `/admin/coupons/new` - 쿠폰 발행 페이지
 3. `/admin/coupons/[id]` - 쿠폰 상세/배포 페이지
 
-#### 🔧 핵심 함수 체인
+#### 🔧 핵심 함수 체인 (Service Role API 기반)
 ```javascript
+// 프론트엔드 (lib/couponApi.js)
 createCoupon(couponData)
-  ↓ validates
+  ↓ calls API Route
+  POST /api/admin/coupons/create
+  ↓ validates (서버 사이드)
+  - 관리자 권한 확인 (verifyAdminAuth)
   - 쿠폰 코드 중복 확인
   - 할인 타입별 필수 필드 검증 (max_discount_amount)
   - 날짜 범위 검증 (valid_until > valid_from)
-  ↓ creates
-  coupons (INSERT)
+  ↓ creates (Service Role Key 사용)
+  coupons (INSERT with RLS 우회)
   ↓ returns
   새로 생성된 쿠폰 객체
 ```
+
+#### 🗄️ 관련 파일
+- **프론트엔드**: `lib/couponApi.js` - createCoupon()
+- **API Route**: `app/api/admin/coupons/create/route.js` (2025-10-07 생성)
+- **Admin Client**: `lib/supabaseAdmin.js` - Service Role 클라이언트
+- **RLS 정책**: `supabase/migrations/20251006_add_order_items_update_policy.sql`
 
 #### 🗄️ 관련 테이블
 - `coupons` (main)
@@ -362,11 +376,34 @@ createCoupon(couponData)
 - `usage_limit_per_user`: 사용자당 사용 횟수 (기본 1)
 - `total_usage_limit`: 전체 사용 한도 (선착순, NULL=무제한)
 
+#### 🔒 보안 구조 (2025-10-07 업데이트)
+```
+관리자 UI (/admin/coupons/new)
+  ↓ localStorage (admin_email)
+  ↓
+API Route (서버 사이드)
+  ↓ verifyAdminAuth(adminEmail)
+  ↓ process.env.ADMIN_EMAILS 확인
+  ↓
+supabaseAdmin (Service Role)
+  ↓ SUPABASE_SERVICE_ROLE_KEY
+  ↓ RLS 정책 우회
+  ↓
+coupons 테이블 INSERT
+```
+
 #### ✅ 필수 체크리스트
-- [ ] 쿠폰 코드 영문+숫자만 사용
-- [ ] percentage 타입은 max_discount_amount 필수
-- [ ] valid_until > valid_from 검증
-- [ ] discount_value > 0 검증
+- [x] 쿠폰 코드 영문+숫자만 사용
+- [x] percentage 타입은 max_discount_amount 필수
+- [x] valid_until > valid_from 검증
+- [x] discount_value > 0 검증
+- [x] 관리자 권한 검증 (Service Role API)
+- [x] RLS 정책 우회 (클라이언트 Anon Key로는 403)
+
+#### 📝 최근 수정 이력
+- 2025-10-07: Service Role API 전환 (커밋: 10ef437)
+  - 클라이언트 Supabase (Anon Key) → Service Role API
+  - RLS INSERT 정책 차단 문제 해결
 
 ---
 

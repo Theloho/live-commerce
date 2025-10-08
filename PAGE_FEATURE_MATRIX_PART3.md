@@ -5,20 +5,22 @@
 - **PART2**: 관리자 운영 페이지 (주문 관리, 입금, 발송, 발주, 쿠폰)
 - **PART3**: 관리자 시스템 페이지 (상품, 방송, 공급업체, 설정) ← **현재 파일**
 
-**업데이트**: 2025-10-08
+**업데이트**: 2025-10-08 (오후)
 **기준**: 실제 프로덕션 코드 (main 브랜치)
-**버전**: 1.0
+**버전**: 1.1
+**변경사항**: `/admin/products/new` 페이지 추가 (빠른 등록)
 
 ---
 
 ## ⚙️ 관리자 시스템 페이지 목록
 
-### 상품 관리 (5개)
+### 상품 관리 (6개)
 1. `/admin/products` - 라이브 상품 관리
-2. `/admin/products/catalog` - 전체 상품 목록
-3. `/admin/products/catalog/new` - 신규 상품 등록
-4. `/admin/products/catalog/[id]` - 상품 상세
-5. `/admin/products/catalog/[id]/edit` - 상품 수정
+2. `/admin/products/new` - 빠른 상품 등록 ⚡
+3. `/admin/products/catalog` - 전체 상품 목록
+4. `/admin/products/catalog/new` - 상세 상품 등록 📋
+5. `/admin/products/catalog/[id]` - 상품 상세
+6. `/admin/products/catalog/[id]/edit` - 상품 수정
 
 ### 방송 관리 (1개)
 6. `/admin/broadcasts` - 라이브 방송 관리
@@ -79,7 +81,60 @@
 
 ---
 
-## 2. `/admin/products/catalog` - 전체 상품 목록
+## 2. `/admin/products/new` - 빠른 상품 등록 ⚡
+
+### 📋 주요 기능
+1. ✅ 라이브 방송용 빠른 상품 등록
+2. ✅ 제품번호 자동 생성 (`generateProductNumber()`)
+3. ✅ 제품명 선택적 (없어도 등록 가능)
+4. ✅ 카메라 직접 촬영 (cameraInputRef)
+5. ✅ 옵션 간단 설정 (none/size/color/both)
+6. ✅ 천원 단위 입력 (useThousandUnit)
+7. ✅ 최소 정보만 입력 (이미지 + 가격 + 재고)
+
+### 🔧 사용 컴포넌트
+- NewProductPage (커스텀 폼)
+- 카메라 촬영 input
+- 옵션 템플릿 선택기
+- 천원 단위 토글
+
+### 📞 호출 함수/API
+- `generateProductNumber()` - 제품번호 자동 생성
+- `supabase.storage.upload()` - 이미지 업로드
+- Direct INSERT to `products` - 직접 삽입 (간단 버전)
+
+### 💾 사용 DB 테이블
+- **INSERT**:
+  - `products` - 상품 기본 정보 (최소 필드)
+  - `product_options` - 옵션 타입 (선택적)
+  - `product_option_values` - 옵션값 (선택적)
+  - `product_variants` - Variant (옵션 있을 때)
+
+### 🔗 연결된 페이지
+- **이전**: `/admin/products` (라이브 상품 관리)
+- **대안**: `/admin/products/catalog/new` (상세 등록)
+
+### 📚 관련 기능 (FEATURE_REFERENCE_MAP)
+- 2.1 상품 등록 (PART1)
+- 3.1 Variant 생성 (PART2)
+
+### 🐛 알려진 이슈
+- 없음 (2025-10-08 기준)
+
+### 📝 체크리스트 (Claude용)
+- [ ] 제품번호 자동 생성 확인
+- [ ] 제품명 선택적 (빈값 허용)
+- [ ] 이미지 필수 검증
+- [ ] 가격 필수 검증
+- [ ] 옵션별 재고 합계 검증
+- [ ] 천원 단위 계산 정확도
+- [ ] 카메라 촬영 권한 확인
+
+**🎯 용도**: 라이브 방송 직전 급하게 상품 등록할 때 사용 (간단 버전)
+
+---
+
+## 3. `/admin/products/catalog` - 전체 상품 목록
 
 ### 📋 주요 기능
 1. ✅ 전체 상품 조회 (활성/비활성/삭제)
@@ -123,16 +178,19 @@
 
 ---
 
-## 3. `/admin/products/catalog/new` - 신규 상품 등록
+## 4. `/admin/products/catalog/new` - 상세 상품 등록 📋
 
 ### 📋 주요 기능
-1. ✅ 상품 기본 정보 입력 (제목, 설명, 가격)
+1. ✅ 상품 완전한 정보 입력 (제목 필수, 상세 설명, 가격)
 2. ✅ 이미지 업로드 (Supabase Storage)
-3. ✅ 카테고리 선택
-4. ✅ 공급업체 선택
-5. ✅ 옵션 추가 (색상, 사이즈 등)
-6. ✅ Variant 자동 생성 (옵션 조합)
-7. ✅ 초기 재고 설정 (Variant별)
+3. ✅ 카테고리 선택 (category, sub_category)
+4. ✅ 공급업체 선택 (supplier_id 필수)
+5. ✅ 모델번호, 매입가, 매입일자
+6. ✅ 비교 가격 (compare_price)
+7. ✅ 옵션 추가 (색상, 사이즈 등)
+8. ✅ Variant 자동 생성 (옵션 조합)
+9. ✅ 초기 재고 설정 (Variant별)
+10. ✅ 태그 관리
 
 ### 🔧 사용 컴포넌트
 - 상품 등록 폼 (커스텀)
@@ -175,7 +233,7 @@
 
 ---
 
-## 4. `/admin/products/catalog/[id]` - 상품 상세
+## 5. `/admin/products/catalog/[id]` - 상품 상세
 
 ### 📋 주요 기능
 1. ✅ 상품 상세 정보 표시
@@ -218,7 +276,7 @@
 
 ---
 
-## 5. `/admin/products/catalog/[id]/edit` - 상품 수정
+## 6. `/admin/products/catalog/[id]/edit` - 상품 수정
 
 ### 📋 주요 기능
 1. ✅ 상품 정보 수정 (제목, 설명, 가격)
@@ -257,7 +315,7 @@
 
 ---
 
-## 6. `/admin/broadcasts` - 라이브 방송 관리
+## 7. `/admin/broadcasts` - 라이브 방송 관리
 
 ### 📋 주요 기능
 1. ✅ 라이브 방송 생성/수정/종료
@@ -301,7 +359,7 @@
 
 ---
 
-## 7. `/admin/suppliers` - 공급업체 관리
+## 8. `/admin/suppliers` - 공급업체 관리
 
 ### 📋 주요 기능
 1. ✅ 공급업체 목록 조회
@@ -342,7 +400,7 @@
 
 ---
 
-## 8. `/admin/categories` - 카테고리 관리
+## 9. `/admin/categories` - 카테고리 관리
 
 ### 📋 주요 기능
 1. ✅ 카테고리 생성/수정/삭제
@@ -382,7 +440,7 @@
 
 ---
 
-## 9. `/admin/admins` - 관리자 계정 관리
+## 10. `/admin/admins` - 관리자 계정 관리
 
 ### 📋 주요 기능
 1. ✅ 관리자 계정 조회
@@ -410,7 +468,7 @@
 
 ---
 
-## 10. `/admin/settings` - 시스템 설정
+## 11. `/admin/settings` - 시스템 설정
 
 ### 📋 주요 기능
 1. ✅ 배송비 설정 (기본 배송비)
@@ -437,7 +495,7 @@
 
 ---
 
-## 11. `/admin/login` - 관리자 로그인
+## 12. `/admin/login` - 관리자 로그인
 
 ### 📋 주요 기능
 1. ✅ 이메일/비밀번호 로그인 (bcrypt 검증)
