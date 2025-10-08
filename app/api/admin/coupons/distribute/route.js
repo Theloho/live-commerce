@@ -131,12 +131,16 @@ export async function POST(request) {
     console.log(`✅ Step 6: DB INSERT 완료 (${data?.length}개 성공)`)
 
     // 7. 결과 반환
+    const distributedCount = data?.length || 0
+    const duplicates = userIds.length - distributedCount
+
     const result = {
       success: true,
-      distributedCount: data?.length || 0,
+      distributedCount,
+      duplicates, // 중복 또는 실패 건수
       requestedCount: userIds.length,
       couponCode: coupon.code,
-      message: '쿠폰이 성공적으로 배포되었습니다 (중복 배포 가능)'
+      message: `쿠폰이 성공적으로 배포되었습니다 (${distributedCount}/${userIds.length})`
     }
 
     console.log('✅ Step 7: 쿠폰 배포 완료:', result)
