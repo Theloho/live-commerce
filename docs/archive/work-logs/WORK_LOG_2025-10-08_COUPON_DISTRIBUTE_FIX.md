@@ -327,6 +327,102 @@ git push origin main
 
 ---
 
-**마지막 업데이트**: 2025-10-08 (오후)
+## 🐛 추가 문제 발견 및 해결 (배포 후)
+
+### 문제 2: 잘못된 useAdminAuth import
+
+**증상** (배포 후 발견):
+```
+토스트 메시지: "관리자 인증 정보를 확인할 수 없습니다"
+브라우저 콘솔:
+✅ 관리자 세션 확인 완료: master@allok.world
+✅ Layout에서 인증 확인됨
+✅ 고객 5명 조회 완료
+```
+
+**근본 원인**:
+- 시스템에 **2개의 useAdminAuth 파일** 존재:
+  1. `/hooks/useAdminAuth.js` - 구버전 (Supabase Auth 기반) ❌
+  2. `/hooks/useAdminAuthNew.js` - 신버전 (localStorage + 커스텀 토큰) ✅
+- `/app/admin/layout.js`는 `useAdminAuthNew` 사용 (정상)
+- `/app/admin/coupons/[id]/page.js`에서 **구버전** import (문제!)
+
+**왜 발생했는가?**:
+```javascript
+// AdminLayout.js (정상)
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
+
+// 쿠폰 페이지 (문제 - 첫 번째 배포)
+import { useAdminAuth } from '@/hooks/useAdminAuth'  // ❌ 구버전!
+```
+
+- 두 개의 다른 Context를 사용
+- AdminAuthProvider(New)로 감싸져 있지만, 구버전 hook을 호출
+- `adminUser`가 undefined → "관리자 인증 정보를 확인할 수 없습니다"
+
+**해결**:
+```javascript
+// 쿠폰 페이지 (수정)
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'  // ✅ 신버전!
+```
+
+**변경 파일**:
+- `/app/admin/coupons/[id]/page.js:30` - import 경로 수정
+
+---
+
+## 📚 시스템 아키텍처 이해
+
+### 관리자 인증 시스템 구조
+
+**구버전 (사용 안 함)**:
+- 파일: `/hooks/useAdminAuth.js`
+- 방식: Supabase Auth 기반 (`supabase.auth.getSession()`)
+- 문제: RLS 정책 충돌, 세션 불안정
+
+**신버전 (현재 사용 중)**:
+- 파일: `/hooks/useAdminAuthNew.js`
+- 방식: localStorage + 커스텀 토큰 기반
+- 장점: Supabase와 완전 분리, 안정적
+- API:
+  - `POST /api/admin/login` - 로그인 (토큰 발급)
+  - `POST /api/admin/verify` - 토큰 검증
+  - `POST /api/admin/logout` - 로그아웃
+
+**Context 구조**:
+```javascript
+// AdminLayout.js
+<AdminAuthProvider>  // useAdminAuthNew.js의 Provider
+  <AdminLayoutContent>
+    {children}  // 모든 관리자 페이지
+  </AdminLayoutContent>
+</AdminAuthProvider>
+```
+
+**올바른 사용법**:
+```javascript
+// 모든 관리자 페이지에서
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
+
+const { adminUser, isAdminAuthenticated } = useAdminAuth()
+```
+
+---
+
+## 🎯 최종 해결 요약
+
+### 문제 1: adminEmail 전달 방식 (첫 번째 배포)
+- **원인**: `supabase.auth.getSession()` 불안정
+- **해결**: useAdminAuth hook에서 adminEmail 전달
+- **커밋**: `fe05c7f`
+
+### 문제 2: 잘못된 import (두 번째 배포)
+- **원인**: 구버전 `useAdminAuth.js` import
+- **해결**: `useAdminAuthNew.js`로 변경
+- **커밋**: 다음 배포 예정
+
+---
+
+**마지막 업데이트**: 2025-10-08 (오후 - 최종)
 **작성자**: Claude (AI Assistant)
-**상태**: ✅ 해결 완료 (배포 대기)
+**상태**: ✅ 완전 해결 (두 번째 배포 대기)

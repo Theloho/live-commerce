@@ -27,7 +27,7 @@ import {
   getCouponStats
 } from '@/lib/couponApi'
 import { getAllCustomers } from '@/lib/supabaseApi'
-import { useAdminAuth } from '@/hooks/useAdminAuth'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 export default function AdminCouponDetailPage() {
   const params = useParams()
