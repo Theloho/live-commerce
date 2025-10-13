@@ -48,23 +48,10 @@ export default function AdminShippingPage() {
       const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
       const { orders: allOrders } = await response.json()
 
-      console.log('✅ [발송관리] 전체 주문 조회:', allOrders?.length)
-
       // 결제완료, 배송중, 배송완료 주문만 필터링
-      const paidOrders = allOrders.filter(order => {
-        const status = order.status
-        const match = status === 'paid' || status === 'shipping' || status === 'delivered'
-
-        console.log('🔍 [발송관리] 주문 필터링:', {
-          orderId: order.id,
-          status,
-          match
-        })
-
-        return match
-      })
-
-      console.log('✅ [발송관리] 필터링된 주문:', paidOrders.length)
+      const paidOrders = allOrders.filter(order =>
+        order.status === 'paid' || order.status === 'shipping' || order.status === 'delivered'
+      )
 
       const ordersWithUserInfo = paidOrders.map(order => {
         // shipping_* 컬럼을 우선으로 배송 정보 추출
