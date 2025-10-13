@@ -57,6 +57,7 @@ export async function POST(request) {
         description: description || '',
         status: 'active',
         is_featured: false,
+        is_live: true,  // ✅ 라이브 상품 목록에 표시
         tags: ['NEW']
       })
       .select()
