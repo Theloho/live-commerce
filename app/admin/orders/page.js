@@ -14,12 +14,13 @@ import {
   AtSymbolIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { getAllOrders } from '@/lib/supabaseApi'
 import { formatShippingInfo } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
+import useAdminAuthNew from '@/hooks/useAdminAuthNew'
 
 export default function AdminOrdersPage() {
   const router = useRouter()
+  const { adminUser, loading: authLoading } = useAdminAuthNew()
   const [orders, setOrders] = useState([])
   const [filteredOrders, setFilteredOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -29,8 +30,10 @@ export default function AdminOrdersPage() {
   const [enableCardPayment, setEnableCardPayment] = useState(false) // 카드결제 활성화 여부
 
   useEffect(() => {
-    loadOrders()
-  }, [])
+    if (adminUser?.email) {
+      loadOrders()
+    }
+  }, [adminUser])
 
   // 관리자 설정 로드
   useEffect(() => {
@@ -75,15 +78,62 @@ export default function AdminOrdersPage() {
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const allOrders = await getAllOrders()
-      console.log('Supabase에서 가져온 주문 데이터:', allOrders.map(order => ({
-        id: order.id,
-        userId: order.userId,
-        userName: order.userName,
-        userNickname: order.userNickname,
-        shipping: order.shipping,
-        status: order.status
-      })))
+
+      if (!adminUser?.email) {
+        console.error('관리자 이메일이 없습니다')
+        setLoading(false)
+        return
+      }
+
+      // Service Role API 호출
+      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '주문 조회 실패')
+      }
+
+      const { orders: rawOrders } = await response.json()
+
+      // 기존 포맷으로 변환
+      const allOrders = rawOrders.map(order => {
+        const profileInfo = order.userProfile || {}
+        const shipping = order.order_shipping || {}
+        const payment = order.order_payments || {}
+
+        return {
+          id: order.id,
+          userId: order.user_id || null,
+          userName: profileInfo.name || shipping.name || '알 수 없음',
+          userNickname: profileInfo.nickname || profileInfo.name || '알 수 없음',
+          userEmail: profileInfo.email || null,
+          userPhone: profileInfo.phone || shipping.phone || null,
+          status: order.status,
+          totalPrice: order.total_price || 0,
+          customer_order_number: order.customer_order_number,
+          created_at: order.created_at,
+          deposited_at: order.deposited_at,
+          shipped_at: order.shipped_at,
+          delivered_at: order.delivered_at,
+          order_type: order.order_type,
+          items: order.order_items || [],
+          shipping: {
+            name: shipping.name,
+            phone: shipping.phone,
+            address: shipping.address,
+            detail_address: shipping.detail_address,
+            postal_code: shipping.postal_code,
+            shipping_request: shipping.shipping_request
+          },
+          payment: {
+            method: payment.method,
+            depositor_name: payment.depositor_name,
+            amount: payment.amount
+          }
+        }
+      })
+
+      console.log('API에서 가져온 주문 데이터:', allOrders.length, '개')
 
       // pending 주문들만 별도 로깅
       const pendingOrders = allOrders.filter(order => order.status === 'pending')
@@ -95,10 +145,12 @@ export default function AdminOrdersPage() {
         주문번호: order.customer_order_number,
         생성일: order.created_at
       })))
+
       setOrders(allOrders)
       setLoading(false)
     } catch (error) {
       console.error('주문 로딩 오류:', error)
+      toast.error('주문 목록을 불러오는데 실패했습니다')
       setLoading(false)
     }
   }
@@ -203,10 +255,18 @@ export default function AdminOrdersPage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
+
+  if (!adminUser) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-gray-600">관리자 권한이 필요합니다</p>
       </div>
     )
   }
