@@ -50,29 +50,62 @@ export default function AdminDepositsPage() {
 
   const loadPendingOrders = async () => {
     try {
-      if (!adminUser?.email) return
+      console.log('🔍 [입금확인] loadPendingOrders 시작:', { adminUser })
+
+      if (!adminUser?.email) {
+        console.warn('⚠️ [입금확인] adminUser.email 없음')
+        return
+      }
+
+      console.log('🔍 [입금확인] API 호출 시작:', adminUser.email)
 
       // Service Role API로 전체 주문 조회
       const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
+
+      console.log('🔍 [입금확인] API 응답:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ [입금확인] API 에러:', errorData)
+        throw new Error(errorData.error || 'API 호출 실패')
+      }
+
       const { orders } = await response.json()
+      console.log('✅ [입금확인] 전체 주문 조회:', orders?.length)
 
       // 계좌이체 결제대기/확인중 주문만 필터링
       const bankTransferOrders = orders.filter(order => {
         const paymentMethod = order.order_payments?.method || order.payment?.method
         const orderStatus = order.status
 
+        console.log('🔍 [입금확인] 주문 필터링:', {
+          orderId: order.id,
+          paymentMethod,
+          orderStatus,
+          order_payments: order.order_payments,
+          payment: order.payment
+        })
+
         return paymentMethod === 'bank_transfer' &&
                (orderStatus === 'pending' || orderStatus === 'verifying')
       })
+
+      console.log('✅ [입금확인] 필터링된 주문:', bankTransferOrders.length)
 
       // 사용자 정보는 이미 userProfile로 포함되어 있음
       const ordersWithUsers = bankTransferOrders.map(order => ({
         ...order,
         user: order.userProfile || null,
         payment: order.order_payments || order.payment,
-        shipping: order.order_shipping || order.shipping
+        shipping: order.order_shipping || order.shipping,
+        depositName: order.deposit_name || order.depositor_name || order.order_payments?.depositor_name
       }))
 
+      console.log('✅ [입금확인] 최종 데이터:', ordersWithUsers.length)
       setPendingOrders(ordersWithUsers)
     } catch (error) {
       console.error('주문 로딩 오류:', error)
