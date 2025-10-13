@@ -5,10 +5,12 @@
 - **PART2**: 관리자 운영 페이지 (주문 관리, 입금, 발송, 발주, 쿠폰)
 - **PART3**: 관리자 시스템 페이지 (상품, 방송, 공급업체, 설정) ← **현재 파일**
 
-**업데이트**: 2025-10-08 (오후)
+**업데이트**: 2025-10-14
 **기준**: 실제 프로덕션 코드 (main 브랜치)
-**버전**: 1.1
-**변경사항**: `/admin/products/new` 페이지 추가 (빠른 등록)
+**버전**: 1.2
+**변경사항**:
+- `/admin/products/new` 페이지 추가 (빠른 등록) - 2025-10-08
+- `/admin/suppliers` Service Role API 전환 - 2025-10-14
 
 ---
 
@@ -374,15 +376,42 @@
 - SupplierManageSheet (관리 모달)
 
 ### 📞 호출 함수/API
-- `getSuppliers()` - 공급업체 목록
-- `createSupplier(supplierData)` - 공급업체 등록
-- `updateSupplier(supplierId, supplierData)` - 공급업체 수정
+- ✅ **Service Role API** (2025-10-14 전환)
+  - `GET /api/admin/suppliers?adminEmail={email}` - 공급업체 목록 조회
+  - `POST /api/admin/suppliers` - 공급업체 등록
+  - `PUT /api/admin/suppliers` - 공급업체 수정 및 활성화 토글
+  - `useAdminAuth` hook - 관리자 인증 상태
+
+**보안 패턴**:
+```javascript
+const { adminUser } = useAdminAuth()
+
+// 목록 조회
+const response = await fetch(`/api/admin/suppliers?adminEmail=${adminUser.email}`)
+const { suppliers: suppliersData } = await response.json()
+
+// 생성
+await fetch('/api/admin/suppliers', {
+  method: 'POST',
+  body: JSON.stringify({ adminEmail: adminUser.email, ...formData })
+})
+
+// 수정/활성화 토글
+await fetch('/api/admin/suppliers', {
+  method: 'PUT',
+  body: JSON.stringify({ adminEmail: adminUser.email, id, ...updates })
+})
+// 서버: verifyAdminAuth(adminEmail) → supabaseAdmin (Service Role)
+```
 
 ### 💾 사용 DB 테이블
 - **SELECT**:
   - `suppliers` - 공급업체 정보
+  - `products` - 상품 개수 집계 (COUNT)
 - **INSERT/UPDATE**:
-  - `suppliers` - 공급업체 등록/수정
+  - `suppliers` - 공급업체 등록/수정 (API 사용)
+
+**특이사항**: API에서 각 업체의 상품 개수를 병렬로 집계하여 반환
 
 ### 🔗 연결된 페이지
 - **다음**: `/admin/purchase-orders` (발주 관리)
@@ -391,12 +420,18 @@
 ### 📚 관련 기능 (FEATURE_REFERENCE_MAP)
 - 6.3 업체 관리 (PART2)
 
+### 🐛 알려진 이슈
+- ✅ 모바일에서 데이터 표시 안 됨 해결 (2025-10-14 Service Role API 전환)
+- ✅ CRUD 모든 작업이 Service Role API로 전환
+
 ### 📝 체크리스트 (Claude용)
+- [ ] adminEmail 파라미터로 Service Role API 호출
 - [ ] 업체명, 연락처, 주소 필수
 - [ ] 담당자 정보
-- [ ] 업체 코드 (code) 고유성
-- [ ] is_active 상태 관리
+- [ ] 업체 코드 (code) 고유성 또는 자동 생성
+- [ ] is_active 상태 관리 (활성화/비활성화 토글)
 - [ ] 메모 기능
+- [ ] 상품 개수 표시 (API에서 처리)
 
 ---
 

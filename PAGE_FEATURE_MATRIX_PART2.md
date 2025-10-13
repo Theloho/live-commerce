@@ -5,9 +5,10 @@
 - **PART2**: 관리자 운영 페이지 (주문 관리, 입금, 발송, 발주, 쿠폰) ← **현재 파일**
 - **PART3**: 관리자 시스템 페이지 (상품, 방송, 공급업체, 설정)
 
-**업데이트**: 2025-10-08
+**업데이트**: 2025-10-14
 **기준**: 실제 프로덕션 코드 (main 브랜치)
-**버전**: 1.0
+**버전**: 1.1
+**변경사항**: 5개 관리자 페이지 Service Role API 전환 (모바일 RLS 문제 해결)
 
 ---
 
@@ -192,15 +193,25 @@
 - 검색 필터
 
 ### 📞 호출 함수/API
-- `getAllOrders()` - 입금 대기 주문 조회
+- ✅ **Service Role API** (2025-10-14 전환)
+  - `GET /api/admin/orders?adminEmail={email}` - 전체 주문 조회
+  - `useAdminAuth` hook - 관리자 인증 상태
 - `updateOrderStatus(orderId, 'verifying')` - 입금 확인
 - `updateOrderStatus(orderId, 'paid')` - 결제 확인
 - XLSX.js - 엑셀 파싱
+
+**보안 패턴**:
+```javascript
+const { adminUser } = useAdminAuth()
+const response = await fetch(`/api/admin/orders?adminEmail=${adminUser.email}`)
+// 서버: verifyAdminAuth(adminEmail) → supabaseAdmin (Service Role)
+```
 
 ### 💾 사용 DB 테이블
 - **SELECT**:
   - `orders` - 입금 대기 (status='pending')
   - `order_payments` - 결제 정보 (depositor_name)
+  - `profiles` - 사용자 정보 (API에서 JOIN)
 - **UPDATE**:
   - `orders` - 상태 변경 (verifying, paid)
   - `order_payments` - 결제 정보 업데이트
@@ -211,10 +222,15 @@
 ### 📚 관련 기능 (FEATURE_REFERENCE_MAP)
 - 1.12 입금 확인 (PART1)
 
+### 🐛 알려진 이슈
+- ✅ 모바일에서 데이터 표시 안 됨 해결 (2025-10-14 Service Role API 전환)
+- ✅ depositName 필드 매핑 추가 (deposit_name, depositor_name, order_payments.depositor_name)
+
 ### 📝 체크리스트 (Claude용)
-- [ ] status='pending' 필터링
+- [ ] adminEmail 파라미터로 Service Role API 호출
+- [ ] status='pending' 또는 'verifying' 필터링
 - [ ] 엑셀 파일 파싱 (XLSX.js)
-- [ ] 입금자명 매칭 (depositor_name)
+- [ ] 입금자명 매칭 (depositName 다중 fallback)
 - [ ] 금액 검증 (order.total_amount)
 - [ ] 타임스탬프 기록 (verifying_at, paid_at)
 
@@ -234,13 +250,23 @@
 - 일괄 발송 버튼
 
 ### 📞 호출 함수/API
-- `getAllOrders()` - 발송 대기 주문 조회
+- ✅ **Service Role API** (2025-10-14 전환)
+  - `GET /api/admin/orders?adminEmail={email}` - 전체 주문 조회
+  - `useAdminAuth` hook - 관리자 인증 상태
 - `updateOrderStatus(orderId, 'delivered', { tracking_number })` - 발송 처리
+
+**보안 패턴**:
+```javascript
+const { adminUser } = useAdminAuth()
+const response = await fetch(`/api/admin/orders?adminEmail=${adminUser.email}`)
+// 서버: verifyAdminAuth(adminEmail) → supabaseAdmin (Service Role)
+```
 
 ### 💾 사용 DB 테이블
 - **SELECT**:
-  - `orders` - 발송 대기 (status='paid')
-  - `order_shipping` - 배송 정보
+  - `orders` - 발송 대기 (status='paid', 'shipping', 'delivered')
+  - `order_shipping` - 배송 정보 (name, phone, address)
+  - `profiles` - 사용자 정보 (API에서 JOIN)
 - **UPDATE**:
   - `orders` - 상태 변경 (delivered)
   - `order_shipping` - 송장번호 (tracking_number)
@@ -251,10 +277,15 @@
 ### 📚 관련 기능 (FEATURE_REFERENCE_MAP)
 - 1.13 배송 처리 (PART1)
 
+### 🐛 알려진 이슈
+- ✅ 모바일에서 데이터 표시 안 됨 해결 (2025-10-14 Service Role API 전환)
+- ✅ 배송 정보 필드 매핑 추가 (shipping_*, order_shipping.* 우선순위 처리)
+
 ### 📝 체크리스트 (Claude용)
-- [ ] status='paid' 필터링
+- [ ] adminEmail 파라미터로 Service Role API 호출
+- [ ] status='paid', 'shipping', 'delivered' 필터링
 - [ ] 송장번호 입력 (optional)
-- [ ] 배송지 정보 확인
+- [ ] 배송지 정보 확인 (name, phone, address, detail_address)
 - [ ] 타임스탬프 기록 (delivered_at)
 - [ ] 고객 알림 (이메일/SMS) (선택적)
 
@@ -275,19 +306,31 @@
 - 발주 완료 플래그
 
 ### 📞 호출 함수/API
-- `getAllOrders()` - 입금 완료 주문
-- `getPurchaseOrderBySupplier(supplierId, startDate, endDate)` - 업체별 발주 조회
+- ✅ **Service Role API** (2025-10-14 전환)
+  - `GET /api/admin/purchase-orders?adminEmail={email}&showCompleted={bool}` - 발주 데이터 조회
+  - `useAdminAuth` hook - 관리자 인증 상태
 - XLSX.js - Excel 생성
+
+**보안 패턴**:
+```javascript
+const { adminUser } = useAdminAuth()
+const response = await fetch(
+  `/api/admin/purchase-orders?adminEmail=${adminUser.email}&showCompleted=${showCompleted}`
+)
+const { orders, completedBatches } = await response.json()
+// 서버: verifyAdminAuth(adminEmail) → supabaseAdmin (Service Role)
+```
 
 ### 💾 사용 DB 테이블
 - **SELECT**:
   - `orders` - 입금 완료 (status='deposited')
-  - `order_items` - 주문 항목
-  - `products` - 상품 정보
-  - `suppliers` - 공급업체 정보
-  - `purchase_order_batches` - 발주 완료 이력
+  - `order_items` - 주문 항목 (variant_id 포함)
+  - `products` - 상품 정보 (supplier_id, purchase_price)
+  - `suppliers` - 공급업체 정보 (name, code, contact_person)
+  - `product_variants` - Variant 정보 (sku, option_values)
+  - `purchase_order_batches` - 발주 완료 이력 (order_ids)
 - **INSERT**:
-  - `purchase_order_batches` - 발주 완료 기록 (Excel 다운로드 시)
+  - `purchase_order_batches` - 발주 완료 기록 (Excel 다운로드 시) → API 사용
 
 ### 🔗 연결된 페이지
 - **다음**: `/admin/purchase-orders/[supplierId]` (업체별 발주 상세)
@@ -297,11 +340,16 @@
 - 6.4 업체별 주문 조회 (PART2)
 - 6.6 중복 발주 방지 (PART2)
 
+### 🐛 알려진 이슈
+- ✅ 모바일에서 데이터 표시 안 됨 해결 (2025-10-14 Service Role API 전환)
+- ✅ 복잡한 nested query도 Service Role API에서 정상 처리
+
 ### 📝 체크리스트 (Claude용)
+- [ ] adminEmail 파라미터로 Service Role API 호출
 - [ ] status='deposited' 필터링
 - [ ] 공급업체별 그룹핑
 - [ ] 완료된 발주 제외 (GIN 인덱스 활용)
-- [ ] Excel 다운로드 시 batch 생성
+- [ ] Excel 다운로드는 클라이언트에서 생성
 - [ ] order_ids 배열 저장 (purchase_order_batches)
 
 ---
@@ -321,17 +369,47 @@
 - Excel 다운로드 버튼
 
 ### 📞 호출 함수/API
-- `getPurchaseOrderBySupplier(supplierId, startDate, endDate)` - 업체별 발주
+- ✅ **Service Role API** (2025-10-14 전환)
+  - `GET /api/admin/purchase-orders/{supplierId}?adminEmail={email}` - 업체별 발주 상세 조회
+  - `POST /api/admin/purchase-orders/batch` - 발주 배치 생성
+  - `useAdminAuth` hook - 관리자 인증 상태
 - XLSX.js - Excel 생성
+
+**보안 패턴**:
+```javascript
+const { adminUser } = useAdminAuth()
+
+// 데이터 조회
+const response = await fetch(
+  `/api/admin/purchase-orders/${supplierId}?adminEmail=${adminUser.email}`
+)
+const { supplier, orders, completedBatches } = await response.json()
+
+// 배치 생성 (Excel 다운로드 시)
+const batchResponse = await fetch('/api/admin/purchase-orders/batch', {
+  method: 'POST',
+  body: JSON.stringify({
+    adminEmail: adminUser.email,
+    supplierId,
+    orderIds,
+    adjustedQuantities,
+    totalItems,
+    totalAmount
+  })
+})
+// 서버: verifyAdminAuth(adminEmail) → supabaseAdmin (Service Role)
+```
 
 ### 💾 사용 DB 테이블
 - **SELECT**:
-  - `orders` - 업체별 주문
-  - `order_items` - 주문 항목
+  - `orders` - 업체별 주문 (status='deposited')
+  - `order_items` - 주문 항목 (variant_id 포함)
   - `products` - 상품 정보 (supplier_id)
   - `suppliers` - 공급업체 정보
+  - `product_variants` - Variant 정보
+  - `purchase_order_batches` - 완료된 발주 이력
 - **INSERT**:
-  - `purchase_order_batches` - 발주 완료 기록
+  - `purchase_order_batches` - 발주 완료 기록 (API 사용)
 
 ### 🔗 연결된 페이지
 - **이전**: `/admin/purchase-orders` (발주 관리)
@@ -339,11 +417,16 @@
 ### 📚 관련 기능 (FEATURE_REFERENCE_MAP)
 - 6.2 발주서 다운로드 (PART2)
 
+### 🐛 알려진 이슈
+- ✅ 모바일에서 데이터 표시 안 됨 해결 (2025-10-14 Service Role API 전환)
+- ✅ Excel 다운로드 후 batch 생성도 Service Role API로 전환
+
 ### 📝 체크리스트 (Claude용)
+- [ ] adminEmail 파라미터로 Service Role API 호출
 - [ ] 상품별 수량 집계
 - [ ] 수량 조정 내역 저장 (adjusted_quantities)
-- [ ] Excel 파일 생성 (발주서 형식)
-- [ ] batch 생성 (order_ids, total_items, total_amount)
+- [ ] Excel 파일 생성 (발주서 형식) - 클라이언트
+- [ ] batch 생성 API 호출 (order_ids, total_items, total_amount)
 
 ---
 
@@ -361,13 +444,26 @@
 - 검색 필터
 
 ### 📞 호출 함수/API
-- `getAllCustomers()` - 전체 고객 조회
+- ✅ **Service Role API** (2025-10-14 전환)
+  - `GET /api/admin/customers?adminEmail={email}` - 전체 고객 조회
+  - `useAdminAuth` hook - 관리자 인증 상태
+
+**보안 패턴**:
+```javascript
+const { adminUser } = useAdminAuth()
+const response = await fetch(`/api/admin/customers?adminEmail=${adminUser.email}`)
+const { customers: customersData } = await response.json()
+// 서버: verifyAdminAuth(adminEmail) → supabaseAdmin (Service Role)
+// API에서 주문 통계 집계 (orderCount, totalSpent) 포함
+```
 
 ### 💾 사용 DB 테이블
 - **SELECT**:
-  - `profiles` - 고객 정보
-  - `auth.users` - 인증 정보 (JOIN - optional)
-  - `orders` - 주문 횟수 계산 (COUNT)
+  - `profiles` - 고객 정보 (name, nickname, phone, email, kakao_id)
+  - `orders` - 주문 횟수 + 총 구매 금액 집계
+  - `order_payments` - 결제 금액 (amount)
+
+**특이사항**: API에서 각 고객의 주문 통계를 병렬로 집계하여 반환
 
 ### 🔗 연결된 페이지
 - **다음**: `/admin/customers/[id]` (고객 상세)
@@ -376,11 +472,16 @@
 - 4.8 고객 목록 조회 (PART2)
 - 4.9 고객 검색 (PART2)
 
+### 🐛 알려진 이슈
+- ✅ 모바일에서 데이터 표시 안 됨 해결 (2025-10-14 Service Role API 전환)
+- ✅ 카카오 사용자 주문 매칭 (order_type LIKE %KAKAO:{kakao_id}%)
+
 ### 📝 체크리스트 (Claude용)
+- [ ] adminEmail 파라미터로 Service Role API 호출
 - [ ] 카카오/일반 사용자 구분 (kakao_id 존재 여부)
-- [ ] 주문 횟수 집계 (COUNT)
-- [ ] 검색 필터 (이름, 전화번호, 이메일)
-- [ ] 총 구매 금액 계산 (선택적)
+- [ ] 주문 횟수 집계 (API에서 처리)
+- [ ] 검색 필터 (이름, 전화번호, 이메일) - 클라이언트
+- [ ] 총 구매 금액 계산 (API에서 처리)
 
 ---
 
@@ -579,6 +680,6 @@
 
 ---
 
-**마지막 업데이트**: 2025-10-08
-**상태**: 완료 (12개 페이지 상세 문서화)
+**마지막 업데이트**: 2025-10-14
+**상태**: 완료 (12개 페이지 상세 문서화, 5개 페이지 Service Role API 전환 반영)
 **다음**: PART3 (관리자 시스템 페이지)

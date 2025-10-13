@@ -2,7 +2,7 @@
 
 **분석 기준**: main 브랜치 (프로덕션)
 **최초 분석**: 2025-10-03
-**최근 업데이트**: 2025-10-13 (장바구니 결제 금액 계산 버그 수정)
+**최근 업데이트**: 2025-10-14 (관리자 페이지 Service Role API 전환)
 **분석 도구**: Claude Code (Automated Analysis)
 
 ---
@@ -23,8 +23,8 @@
   - couponApi.js: 15개 함수
   - orderCalculations.js: 11개 메서드
   - 기타: validation.js(8), adminAuthNew.js(4), logger.js(4) 등
-- **총 API 엔드포인트**: 67개
-  - 관리자 API: 15개
+- **총 API 엔드포인트**: 72개
+  - 관리자 API: 20개 (2025-10-14 업데이트: 5개 추가)
   - 사용자 인증 API: 6개
   - 테스트/디버그 API: 40+ 개
 - **총 테이블**: 16개 (핵심 테이블)
@@ -776,6 +776,59 @@
 #### 데이터 관리
 - `/api/admin/reset-data` - 테스트 데이터 리셋
 - `/api/admin/migrate-coupon-fix` - 쿠폰 마이그레이션
+
+#### 고객 & 공급업체 관리 ⭐ NEW (2025-10-14)
+1. **`/api/admin/customers` ⭐ Service Role API**
+   - `GET /api/admin/customers?adminEmail={email}`
+   - 전체 고객 조회 + 주문 통계 집계
+   - 카카오 사용자 주문 매칭 (order_type LIKE %KAKAO:{kakao_id}%)
+   - 반환: `{ success, customers: [{ id, name, orderCount, totalSpent }] }`
+
+2. **`/api/admin/suppliers` ⭐ Service Role API**
+   - `GET /api/admin/suppliers?adminEmail={email}` - 공급업체 목록 + 상품 개수
+   - `POST /api/admin/suppliers` - 공급업체 생성 (코드 자동 생성)
+   - `PUT /api/admin/suppliers` - 공급업체 수정 또는 활성화 토글
+   - 반환: `{ success, suppliers: [{ ...supplier, product_count }] }`
+
+#### 발주 시스템 ⭐ NEW (2025-10-14)
+1. **`/api/admin/purchase-orders` ⭐ Service Role API**
+   - `GET /api/admin/purchase-orders?adminEmail={email}&showCompleted={bool}`
+   - 입금 완료 주문 조회 (status='deposited')
+   - 복잡한 nested query (orders → order_items → products → suppliers → variants)
+   - 완료된 발주 이력 (purchase_order_batches)
+   - 반환: `{ success, orders, completedBatches }`
+
+2. **`/api/admin/purchase-orders/[supplierId]` ⭐ Service Role API**
+   - `GET /api/admin/purchase-orders/{supplierId}?adminEmail={email}`
+   - 특정 공급업체 발주 상세 조회
+   - 공급업체 정보 + 업체별 주문 + 완료된 발주 이력
+   - 반환: `{ success, supplier, orders, completedBatches }`
+
+3. **`/api/admin/purchase-orders/batch` ⭐ Service Role API**
+   - `POST /api/admin/purchase-orders/batch`
+   - 발주 배치 생성 (Excel 다운로드 후)
+   - 파라미터: `{ adminEmail, supplierId, orderIds, adjustedQuantities, totalItems, totalAmount }`
+   - INSERT into `purchase_order_batches` 테이블
+   - 반환: `{ success, batch }`
+
+**보안 패턴 (모든 API 공통)**:
+```javascript
+// 1. adminEmail 파라미터로 관리자 식별
+const adminEmail = searchParams.get('adminEmail') // GET
+const { adminEmail } = await request.json()        // POST/PUT
+
+// 2. 서버 사이드 권한 확인
+const isAdmin = await verifyAdminAuth(adminEmail)
+if (!isAdmin) return NextResponse.json({ error: '관리자 권한이 없습니다' }, { status: 403 })
+
+// 3. Service Role (supabaseAdmin)으로 RLS 우회
+const { data } = await supabaseAdmin.from('table').select(...)
+```
+
+**장점**:
+- ✅ 클라이언트 세션 토큰 독립적
+- ✅ 웹/모바일 동일하게 작동
+- ✅ RLS 정책과 무관하게 안정적
 
 ---
 

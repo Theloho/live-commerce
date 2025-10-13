@@ -1005,31 +1005,76 @@ XLSX.utils.book_new()
 
 ---
 
-### 6.3 업체 관리 [일반]
+### 6.3 업체 관리 ⭐ [Service Role API] (2025-10-14 전환)
 
 #### 📍 영향받는 페이지
 1. `/admin/suppliers` - 공급업체 관리 페이지
 
-#### 🔧 핵심 함수
+#### 🔧 핵심 함수 체인
 ```javascript
-getSuppliers() - 목록 조회
-createSupplier(supplierData) - 생성
-updateSupplier(supplierId, supplierData) - 수정
+// ✅ Service Role API (2025-10-14 전환)
+const { adminUser } = useAdminAuth()
+
+// 목록 조회
+fetch(`/api/admin/suppliers?adminEmail=${adminUser.email}`)
+  ↓ API
+  verifyAdminAuth(adminEmail)
+  ↓
+  supabaseAdmin.from('suppliers').select('*')
+  ↓
+  Promise.all(suppliers.map(supplier =>
+    supabaseAdmin.from('products').select('id', { count: 'exact' }).eq('supplier_id', supplier.id)
+  ))
+  ↓ returns
+  { success: true, suppliers: [{ ...supplier, product_count }] }
+
+// 생성
+fetch('/api/admin/suppliers', {
+  method: 'POST',
+  body: JSON.stringify({ adminEmail, ...supplierData })
+})
+  ↓ API
+  verifyAdminAuth(adminEmail)
+  ↓
+  supabaseAdmin.from('suppliers').insert({
+    ...supplierData,
+    code: supplierData.code || `SUP${Date.now().toString().slice(-8)}`,
+    is_active: true
+  })
+
+// 수정 및 활성화 토글
+fetch('/api/admin/suppliers', {
+  method: 'PUT',
+  body: JSON.stringify({ adminEmail, id, ...updates })
+})
+  ↓ API
+  verifyAdminAuth(adminEmail)
+  ↓
+  supabaseAdmin.from('suppliers').update({ ...updates }).eq('id', id)
 ```
 
 #### 🗄️ DB 작업
-- `suppliers` (SELECT, INSERT, UPDATE)
+- `suppliers` (SELECT, INSERT, UPDATE) - Service Role API 사용
+- `products` (SELECT) - 상품 개수 집계
 
 #### ⚠️ 필수 체크리스트
+- [ ] adminEmail 파라미터로 Service Role API 호출
 - [ ] 업체명, 연락처, 주소
 - [ ] 담당자 정보
-- [ ] 업체 코드 (code) 고유성
-- [ ] is_active 상태 관리
+- [ ] 업체 코드 (code) 고유성 또는 자동 생성
+- [ ] is_active 상태 관리 (활성화/비활성화 토글)
 - [ ] 메모 기능
+- [ ] 상품 개수 표시 (API에서 병렬 집계)
+
+#### 📝 최근 수정 이력
+- 2025-10-14: Service Role API로 전환 (모바일 RLS 문제 해결)
+- 2025-10-14: CRUD 모든 작업 API로 전환
+- 2025-10-14: 상품 개수 자동 집계 추가
 
 #### 🎓 상세 문서 위치
-- **코드**: lib/supabaseApi.js - getSuppliers(), createSupplier(), updateSupplier()
+- **API**: app/api/admin/suppliers/route.js (GET, POST, PUT)
 - **페이지**: app/admin/suppliers/page.js
+- **보안**: lib/supabaseAdmin.js - verifyAdminAuth()
 
 ---
 
