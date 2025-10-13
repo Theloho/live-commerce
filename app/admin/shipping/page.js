@@ -16,9 +16,11 @@ import {
 } from '@heroicons/react/24/outline'
 import { ShippingDataManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 export default function AdminShippingPage() {
   const router = useRouter()
+  const { adminUser, loading: authLoading } = useAdminAuth()
   const [orders, setOrders] = useState([])
   const [filteredOrders, setFilteredOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -27,8 +29,10 @@ export default function AdminShippingPage() {
   const [selectedOrders, setSelectedOrders] = useState([])
 
   useEffect(() => {
-    loadPaidOrders()
-  }, [])
+    if (adminUser?.email) {
+      loadPaidOrders()
+    }
+  }, [adminUser])
 
   useEffect(() => {
     filterOrders()
@@ -38,9 +42,11 @@ export default function AdminShippingPage() {
     try {
       setLoading(true)
 
-      // DB에서 결제 완료된 주문들 가져오기
-      const { getAllOrders } = await import('@/lib/supabaseApi')
-      const allOrders = await getAllOrders()
+      if (!adminUser?.email) return
+
+      // Service Role API로 전체 주문 조회
+      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
+      const { orders: allOrders } = await response.json()
 
       // 결제완료, 배송중, 배송완료 주문만 필터링
       const paidOrders = allOrders.filter(order =>
@@ -49,15 +55,18 @@ export default function AdminShippingPage() {
 
       const ordersWithUserInfo = paidOrders.map(order => {
         // shipping_* 컬럼을 우선으로 배송 정보 추출
+        const orderShipping = order.order_shipping || order.shipping
         const shippingInfo = {
-          name: order.shipping_name || order.order_shipping?.[0]?.name || order.shipping?.name || '',
-          phone: order.shipping_phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || '',
-          address: order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '',
-          detail_address: order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
+          name: order.shipping_name || orderShipping?.name || '',
+          phone: order.shipping_phone || orderShipping?.phone || '',
+          address: order.shipping_address || orderShipping?.address || '',
+          detail_address: order.shipping_detail_address || orderShipping?.detail_address || ''
         }
 
         return {
           ...order,
+          payment: order.order_payments || order.payment,
+          shipping: orderShipping,
           user: {
             name: shippingInfo?.name || '배송 정보 없음',
             phone: shippingInfo?.phone || '연락처 없음',

@@ -12,12 +12,11 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
-import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 export default function SuppliersPage() {
   const router = useRouter()
-  const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
+  const { adminUser, isAdminAuthenticated, loading: authLoading } = useAdminAuth()
 
   const [loading, setLoading] = useState(true)
   const [suppliers, setSuppliers] = useState([])
@@ -52,31 +51,19 @@ export default function SuppliersPage() {
     try {
       setLoading(true)
 
-      // 공급업체와 각각의 상품 개수 로드
-      const { data: suppliersData, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .order('created_at', { ascending: false })
+      if (!adminUser?.email) return
 
-      if (error) throw error
+      // Service Role API로 공급업체 조회
+      const response = await fetch(`/api/admin/suppliers?adminEmail=${encodeURIComponent(adminUser.email)}`)
 
-      // 각 업체의 상품 개수 가져오기
-      const suppliersWithCount = await Promise.all(
-        (suppliersData || []).map(async (supplier) => {
-          const { count, error: countError } = await supabase
-            .from('products')
-            .select('id', { count: 'exact', head: true })
-            .eq('supplier_id', supplier.id)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '공급업체 조회 실패')
+      }
 
-          return {
-            ...supplier,
-            product_count: countError ? 0 : (count || 0)
-          }
-        })
-      )
-
-      setSuppliers(suppliersWithCount)
-      console.log('📋 공급업체 로드:', suppliersWithCount.length)
+      const { suppliers: suppliersData } = await response.json()
+      setSuppliers(suppliersData)
+      console.log('📋 공급업체 로드:', suppliersData.length)
     } catch (error) {
       console.error('공급업체 로딩 오류:', error)
       toast.error('공급업체를 불러오는데 실패했습니다')
@@ -123,29 +110,38 @@ export default function SuppliersPage() {
     try {
       if (editingSupplier) {
         // 수정
-        const { error } = await supabase
-          .from('suppliers')
-          .update({
-            ...formData,
-            updated_at: new Date().toISOString()
+        const response = await fetch('/api/admin/suppliers', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            adminEmail: adminUser.email,
+            id: editingSupplier.id,
+            ...formData
           })
-          .eq('id', editingSupplier.id)
+        })
 
-        if (error) throw error
-        toast.success('업체 정보가 수정되었습니다')
-      } else {
-        // 추가 - code가 비어있으면 자동 생성
-        const supplierData = {
-          ...formData,
-          code: formData.code || `SUP${Date.now().toString().slice(-8)}`,
-          is_active: true
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error)
         }
 
-        const { error } = await supabase
-          .from('suppliers')
-          .insert(supplierData)
+        toast.success('업체 정보가 수정되었습니다')
+      } else {
+        // 추가
+        const response = await fetch('/api/admin/suppliers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            adminEmail: adminUser.email,
+            ...formData
+          })
+        })
 
-        if (error) throw error
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error)
+        }
+
         toast.success('업체가 추가되었습니다')
       }
 
@@ -153,7 +149,7 @@ export default function SuppliersPage() {
       loadSuppliers()
     } catch (error) {
       console.error('저장 오류:', error)
-      if (error.code === '23505') {
+      if (error.message?.includes('duplicate') || error.message?.includes('23505')) {
         toast.error('이미 존재하는 업체 코드입니다')
       } else {
         toast.error('저장에 실패했습니다')
@@ -164,15 +160,20 @@ export default function SuppliersPage() {
   // 비활성화/활성화
   const handleToggleActive = async (supplier) => {
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .update({
-          is_active: !supplier.is_active,
-          updated_at: new Date().toISOString()
+      const response = await fetch('/api/admin/suppliers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminEmail: adminUser.email,
+          id: supplier.id,
+          is_active: !supplier.is_active
         })
-        .eq('id', supplier.id)
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error)
+      }
 
       toast.success(supplier.is_active ? '업체가 비활성화되었습니다' : '업체가 활성화되었습니다')
       loadSuppliers()

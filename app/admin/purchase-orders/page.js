@@ -12,11 +12,10 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
 
 export default function PurchaseOrdersPage() {
   const router = useRouter()
-  const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
+  const { adminUser, isAdminAuthenticated, loading: authLoading } = useAdminAuth()
 
   const [loading, setLoading] = useState(true)
   const [supplierSummaries, setSupplierSummaries] = useState([])
@@ -41,63 +40,21 @@ export default function PurchaseOrdersPage() {
     try {
       setLoading(true)
 
-      // 1. 입금확인 완료된 주문 조회
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          customer_order_number,
-          created_at,
-          order_items (
-            id,
-            product_id,
-            variant_id,
-            title,
-            quantity,
-            price,
-            selected_options,
-            products (
-              id,
-              title,
-              model_number,
-              supplier_id,
-              purchase_price,
-              suppliers (
-                id,
-                name,
-                code,
-                contact_person,
-                phone
-              )
-            ),
-            product_variants (
-              id,
-              sku,
-              variant_option_values (
-                product_option_values (
-                  value,
-                  product_options (
-                    name
-                  )
-                )
-              )
-            )
-          )
-        `)
-        .eq('status', 'deposited')
-        .order('created_at', { ascending: false })
+      if (!adminUser?.email) return
 
-      if (ordersError) throw ordersError
+      // Service Role API로 발주 데이터 조회
+      const response = await fetch(
+        `/api/admin/purchase-orders?adminEmail=${encodeURIComponent(adminUser.email)}&showCompleted=${showCompleted}`
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '데이터 조회 실패')
+      }
+
+      const { orders, completedBatches } = await response.json()
 
       console.log('📋 입금확인 완료 주문:', orders?.length || 0)
-
-      // 2. 이미 발주 완료된 주문 ID 조회
-      const { data: completedBatches, error: batchesError } = await supabase
-        .from('purchase_order_batches')
-        .select('order_ids, supplier_id, download_date, total_items, total_amount')
-        .eq('status', 'completed')
-
-      if (batchesError) throw batchesError
 
       // 완료된 주문 ID 세트 생성
       const completedOrderIds = new Set()

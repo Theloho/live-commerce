@@ -14,10 +14,12 @@ import {
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { getAllOrders, updateOrderStatus, getUserById } from '@/lib/supabaseApi'
+import { updateOrderStatus } from '@/lib/supabaseApi'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 export default function AdminDepositsPage() {
   const router = useRouter()
+  const { adminUser, loading: authLoading } = useAdminAuth()
   const [pendingOrders, setPendingOrders] = useState([])
   const [bankTransactions, setBankTransactions] = useState([])
   const [matchedTransactions, setMatchedTransactions] = useState([])
@@ -28,8 +30,10 @@ export default function AdminDepositsPage() {
   const [quickSearchTerm, setQuickSearchTerm] = useState('')
 
   useEffect(() => {
-    loadPendingOrders()
-  }, [])
+    if (adminUser?.email) {
+      loadPendingOrders()
+    }
+  }, [adminUser])
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -46,31 +50,33 @@ export default function AdminDepositsPage() {
 
   const loadPendingOrders = async () => {
     try {
-      const orders = await getAllOrders()
+      if (!adminUser?.email) return
+
+      // Service Role API로 전체 주문 조회
+      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
+      const { orders } = await response.json()
+
       // 계좌이체 결제대기/확인중 주문만 필터링
-      const bankTransferOrders = orders.filter(order =>
-        order.payment?.method === 'bank_transfer' &&
-        (order.status === 'pending' || order.status === 'verifying')
-      )
+      const bankTransferOrders = orders.filter(order => {
+        const paymentMethod = order.order_payments?.method || order.payment?.method
+        const orderStatus = order.status
 
-      // 사용자 정보를 각 주문에 추가
-      const ordersWithUsers = await Promise.all(
-        bankTransferOrders.map(async (order) => {
-          try {
-            const user = order.userId ? await getUserById(order.userId) : null
+        return paymentMethod === 'bank_transfer' &&
+               (orderStatus === 'pending' || orderStatus === 'verifying')
+      })
 
-
-            return { ...order, user }
-          } catch (error) {
-            console.error(`사용자 정보 로딩 실패 (${order.userId}):`, error)
-            return { ...order, user: null }
-          }
-        })
-      )
+      // 사용자 정보는 이미 userProfile로 포함되어 있음
+      const ordersWithUsers = bankTransferOrders.map(order => ({
+        ...order,
+        user: order.userProfile || null,
+        payment: order.order_payments || order.payment,
+        shipping: order.order_shipping || order.shipping
+      }))
 
       setPendingOrders(ordersWithUsers)
     } catch (error) {
       console.error('주문 로딩 오류:', error)
+      toast.error('주문 데이터를 불러오는데 실패했습니다')
     }
   }
 

@@ -16,10 +16,11 @@ import {
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { getAllCustomers } from '@/lib/supabaseApi'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 export default function AdminCustomersPage() {
   const router = useRouter()
+  const { adminUser, loading: authLoading } = useAdminAuth()
   const [customers, setCustomers] = useState([])
   const [filteredCustomers, setFilteredCustomers] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -27,8 +28,10 @@ export default function AdminCustomersPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadCustomers()
-  }, [])
+    if (adminUser?.email) {
+      loadCustomers()
+    }
+  }, [adminUser])
 
   useEffect(() => {
     filterCustomers()
@@ -39,8 +42,17 @@ export default function AdminCustomersPage() {
       console.log('📋 고객 데이터 로딩 시작')
       setLoading(true)
 
-      // 실제 DB에서 고객 데이터 가져오기
-      const customersData = await getAllCustomers()
+      if (!adminUser?.email) return
+
+      // Service Role API로 고객 데이터 조회
+      const response = await fetch(`/api/admin/customers?adminEmail=${encodeURIComponent(adminUser.email)}`)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '고객 데이터 조회 실패')
+      }
+
+      const { customers: customersData } = await response.json()
       console.log('✅ DB 고객 데이터:', customersData)
 
       setCustomers(customersData)

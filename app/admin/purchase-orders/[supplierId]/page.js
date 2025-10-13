@@ -13,14 +13,13 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 
 export default function SupplierPurchaseOrderDetailPage() {
   const router = useRouter()
   const params = useParams()
   const supplierId = params.supplierId
-  const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
+  const { adminUser, isAdminAuthenticated, loading: authLoading } = useAdminAuth()
 
   const [loading, setLoading] = useState(true)
   const [supplier, setSupplier] = useState(null)
@@ -46,67 +45,21 @@ export default function SupplierPurchaseOrderDetailPage() {
     try {
       setLoading(true)
 
-      // 1. 업체 정보 조회
-      const { data: supplierData, error: supplierError } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('id', supplierId)
-        .single()
+      if (!adminUser?.email) return
 
-      if (supplierError) throw supplierError
+      // Service Role API로 발주 상세 데이터 조회
+      const response = await fetch(
+        `/api/admin/purchase-orders/${supplierId}?adminEmail=${encodeURIComponent(adminUser.email)}`
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '데이터 조회 실패')
+      }
+
+      const { supplier: supplierData, orders, completedBatches } = await response.json()
 
       setSupplier(supplierData)
-
-      // 2. 입금확인 완료된 주문의 order_items 조회
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          customer_order_number,
-          created_at,
-          order_items (
-            id,
-            product_id,
-            variant_id,
-            title,
-            quantity,
-            price,
-            selected_options,
-            products (
-              id,
-              title,
-              model_number,
-              supplier_id,
-              purchase_price,
-              supplier_sku
-            ),
-            product_variants (
-              id,
-              sku,
-              variant_option_values (
-                product_option_values (
-                  value,
-                  product_options (
-                    name
-                  )
-                )
-              )
-            )
-          )
-        `)
-        .eq('status', 'deposited')
-        .order('created_at', { ascending: false })
-
-      if (ordersError) throw ordersError
-
-      // 3. 발주 완료된 주문 제외
-      const { data: completedBatches, error: batchesError } = await supabase
-        .from('purchase_order_batches')
-        .select('order_ids')
-        .eq('status', 'completed')
-        .eq('supplier_id', supplierId)
-
-      if (batchesError) throw batchesError
 
       const completedOrderIds = new Set()
       completedBatches?.forEach(batch => {
@@ -268,23 +221,24 @@ export default function SupplierPurchaseOrderDetailPage() {
       // 2. 발주 완료 처리 (DB에 기록)
       const orderIds = [...new Set(orderItems.map(item => item.orderId))]
 
-      // Supabase Auth에서 관리자 이메일 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      const adminEmail = session?.user?.email || 'unknown'
-
-      const { error: batchError } = await supabase
-        .from('purchase_order_batches')
-        .insert({
-          supplier_id: supplierId,
-          order_ids: orderIds,
-          adjusted_quantities: adjustedQuantities,
-          total_items: orderItems.length,
-          total_amount: totals.totalAmount,
-          status: 'completed',
-          created_by: adminEmail
+      // Service Role API로 발주 배치 생성
+      const batchResponse = await fetch('/api/admin/purchase-orders/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminEmail: adminUser.email,
+          supplierId,
+          orderIds,
+          adjustedQuantities,
+          totalItems: orderItems.length,
+          totalAmount: totals.totalAmount
         })
+      })
 
-      if (batchError) throw batchError
+      if (!batchResponse.ok) {
+        const errorData = await batchResponse.json()
+        throw new Error(errorData.error || '발주 배치 생성 실패')
+      }
 
       toast.success('발주서가 다운로드되고 발주 완료 처리되었습니다')
 
