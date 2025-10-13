@@ -57,7 +57,7 @@
 - 1.19 일괄결제 처리 ⭐ [주요]
 - 1.20 결제 수단 변경 [일반]
 
-### 2. 상품 관련 (18개 기능)
+### 2. 상품 관련 (19개 기능)
 - 2.1 상품 등록 ⭐ [주요]
 - 2.2 상품 수정 ⭐ [주요]
 - 2.3 상품 삭제 [일반]
@@ -260,6 +260,10 @@ getUserOrders(userId)
 getUserOrdersByOrderType(orderType)
   ↓ joins
   orders + order_items + products + order_shipping
+  ↓ groups (2025-10-13 신규)
+  groupOrderItems(items)
+    → 동일 상품 + 동일 옵션 = 수량 병합
+    → 동일 상품 + 다른 옵션 = 별도 카드
   ↓ calculates
   formatShippingInfo(baseShipping, postalCode)
 ```
@@ -512,53 +516,53 @@ cancelOrder(orderId)
 
 ---
 
-### 1.9 주문 아이템 수량 변경 ⭐ [주요] (2025-10-07 업데이트)
+### 1.9 주문 아이템 수량 변경 ⭐❌ [제거됨] (2025-10-13)
 
-#### 📍 영향받는 페이지
-1. `/orders` - 주문 내역 페이지 (수량 조절 버튼)
+#### 🚨 기능 제거 이유
+**동시성 문제 및 라이브커머스 특성으로 인해 완전 제거됨**
 
-#### 🔧 핵심 함수 체인
+#### 💡 제거 배경
+1. **동시성 제어 복잡도**: 100-500명 동시 구매 시 Race Condition 발생 가능
+2. **라이브커머스 특성**: 결제대기 = 재고 이미 확보 (수량 변경 불필요)
+3. **대안**: 수량 변경 원하면 주문 취소 → 재주문
+4. **시스템 안정성**: 동시성 버그 원천 차단
+
+#### 📍 현재 동작 (2025-10-13 이후)
+1. `/orders` - 주문 내역 페이지
+   - ✅ 수량 표시 (읽기 전용)
+   - ❌ 수량 조절 버튼 제거 (+/- 버튼 없음)
+   - ✅ 장바구니(BuyBottomSheet)에서만 수량 조절 가능 (구매 전)
+
+#### 🗑️ 제거된 코드 (2025-10-13)
 ```javascript
-updateOrderItemQuantity(itemId, newQuantity)
-  ↓ selects
-  order_items (variant_id 포함) - 현재 수량 조회
-  ↓ validates (2025-10-07 추가)
-  variant 재고 확인 (variant_id가 있는 경우)
-  ↓ calculates
-  quantityDifference = newQuantity - currentQuantity
-  ↓ updates (variant가 있는 경우)
-  product_variants.inventory -= quantityDifference
-  ↓ updates
-  order_items.quantity, total, total_price
+// app/orders/page.js
+handleQuantityChange() - 제거됨 (106줄)
+updateOrderItemQuantity import - 제거됨
+MinusIcon, PlusIcon import - 제거됨
+
+// UI
+수량 조절 버튼 (+/-) - 제거됨 (140줄)
 ```
 
-#### 🗄️ DB 작업 순서
-1. `order_items` (SELECT) - 현재 수량 및 variant_id 조회
-2. `product_variants` (SELECT) - Variant 재고 확인 (있는 경우)
-3. `product_variants` (UPDATE) - 재고 차감 또는 복구
-4. `order_items` (UPDATE) - quantity, total, total_price
+#### 💡 새로운 사용자 흐름
+```
+장바구니 담기 → 수량 조절 ✅ (BuyBottomSheet)
+    ↓
+주문 생성 (재고 차감)
+    ↓
+결제대기 → 수량 표시만 ✅ (읽기 전용)
+    ↓
+수량 변경 원하면? → 주문 취소 + 재주문
+```
 
-#### ⚠️ 필수 체크리스트
-- [ ] pending 상태에서만 수량 변경 가능
-- [ ] **variant_id가 있으면 variant 재고 검증 필수** (2025-10-07 추가)
-- [ ] 재고 부족 시 에러 처리 및 사용자 알림
-- [ ] price 기준으로 total_price 재계산
-- [ ] total, total_price 양쪽 모두 업데이트
-- [ ] 옵티미스틱 업데이트 (UI 즉시 반영)
-- [ ] 수량 1 미만 방지
+#### 📝 수정 이력
+- **2025-10-13**: 기능 완전 제거 (커밋: 4652408) - 동시성 문제 예방
+- **2025-10-07**: Variant 재고 검증 추가 (커밋: 0c1d41a) - 제거 전 최종 버전
 
-#### 💡 특이사항
-- **Variant 재고 검증**: variant_id가 있으면 재고 확인 후 수량 변경
-- **재고 복구/차감**: 수량 감소 시 재고 복구, 수량 증가 시 재고 차감
-- **옵티미스틱 업데이트**: UI 먼저 업데이트, 서버 동기화
-- **총 금액 자동 재계산**: quantity × price
-
-#### 📝 최근 수정 이력
-- 2025-10-07: Variant 재고 검증 추가 (커밋: 0c1d41a)
-
-#### 🎓 상세 문서 위치
-- **코드**: lib/supabaseApi.js - updateOrderItemQuantity() (lines 2416, 2465-2491)
-- **페이지**: app/orders/page.js (lines 311-364)
+#### 🎓 참고 문서
+- **제거 이유**: 동시성 문제 (Race Condition)
+- **대안**: BuyBottomSheet에서 수량 조절 (구매 전)
+- **Variant 시스템**: FOR UPDATE 락으로 동시성 보장
 
 ---
 
@@ -913,6 +917,7 @@ updateMultipleOrderStatus(originalOrderIds, 'verifying', paymentData)
 
 #### 🔧 핵심 함수 체인
 ```javascript
+// 클라이언트 (2025-10-13 이전)
 addProduct(productData)
   ↓ inserts
   products (INSERT)
@@ -922,7 +927,22 @@ addProduct(productData)
   product_variants (createVariant)
   ↓ maps
   variant_option_values (매핑 테이블 INSERT)
+
+// Service Role API (2025-10-13 신규 - 빠른 등록)
+POST /api/admin/products/create
+  → verifyAdminAuth(adminEmail)
+  → supabaseAdmin.insert(product)
+  → supabaseAdmin.insert(product_options, product_option_values)
+  → supabaseAdmin.insert(product_variants, variant_option_values)
 ```
+
+#### 📞 API 엔드포인트
+**POST** `/api/admin/products/create`
+- **Input**: `{ title, product_number, price, inventory, thumbnail_url, description, optionType, sizeOptions, colorOptions, optionInventories, combinations, adminEmail }`
+- **Output**: `{ product }`
+- **인증**: Service Role (관리자 검증 필수)
+- **파일**: `/app/api/admin/products/create/route.js`
+- **기본 설정**: `is_live: true`, `is_live_active: true`, `live_start_time: now()`
 
 #### 🗄️ DB 작업 순서
 1. `products` (INSERT) - 상품 기본 정보 생성
@@ -1235,23 +1255,40 @@ supabase.storage
 
 #### 🔧 핵심 함수
 ```javascript
+// 클라이언트 (2025-10-13 이전 - 사용 중단)
 updateProductLiveStatus(productId, isLiveActive)
   ↓ updates
   products.is_live_active = true/false
+
+// Service Role API (2025-10-13 신규)
+POST /api/admin/products/toggle-visibility
+  → verifyAdminAuth(adminEmail)
+  → supabaseAdmin.update({ is_live_active, live_start_time, live_end_time })
 ```
 
+#### 📞 API 엔드포인트
+**POST** `/api/admin/products/toggle-visibility`
+- **Input**: `{ productId, currentStatus, adminEmail }`
+- **Output**: `{ success, product, message }`
+- **인증**: Service Role (관리자 검증 필수)
+- **파일**: `/app/api/admin/products/toggle-visibility/route.js`
+
 #### 🗄️ DB 작업
-- `products` (UPDATE) - is_live_active
+- `products` (UPDATE) - is_live_active, live_start_time, live_end_time
 
 #### ⚠️ 필수 체크리스트
 - [ ] is_live와 is_live_active 구분
 - [ ] 토글 버튼 UI
 - [ ] 즉시 반영 (홈 페이지)
+- [ ] **관리자 이메일 전달** (adminEmail)
+- [ ] **Service Role API 호출**
 
 #### 💡 특이사항
 - **is_live**: 라이브 목록 등록 여부
 - **is_live_active**: 사용자 노출 활성화 여부
 - **조합**: is_live=true AND is_live_active=true → 홈 페이지 표시
+- **RLS 우회**: Service Role Key 사용 (서버 사이드에서만)
+- **타임스탬프**: 노출 시작/종료 시간 자동 기록
 
 ---
 
@@ -1468,6 +1505,48 @@ createProductWithOptions(productData, optionsData)
 
 #### 🎓 상세 문서 위치
 - **코드**: lib/supabaseApi.js - createProductWithOptions()
+
+---
+
+### 2.19 관리자 상품 일괄 업데이트 ⭐ [주요] (2025-10-13 신규)
+
+#### 📍 영향받는 페이지
+1. `/admin/products` - 관리자 상품 목록
+
+#### 🔧 핵심 기능
+```javascript
+// Service Role API
+POST /api/admin/products/bulk-update
+  → verifyAdminAuth(adminEmail)
+  → supabaseAdmin.update(updates).in('id', productIds)
+```
+
+#### 📞 API 엔드포인트
+**POST** `/api/admin/products/bulk-update`
+- **Input**: `{ productIds: string[], updates: object, adminEmail: string }`
+- **Output**: `{ success: true, count: number, products: [] }`
+- **인증**: Service Role (관리자 검증 필수)
+- **파일**: `/app/api/admin/products/bulk-update/route.js`
+
+#### 🗄️ DB 작업
+- `products` (UPDATE) - 복수 행 동시 업데이트
+
+#### 💡 사용 사례
+1. **선택 항목 제거**: `{ is_live: false, is_live_active: false, live_end_time: now() }`
+2. **검색으로 추가**: `{ is_live: true, is_live_active: false, live_start_time: null }`
+3. **가격 일괄 변경**: `{ price: newPrice }`
+4. **재고 일괄 설정**: `{ inventory: newInventory }`
+
+#### ⚠️ 필수 체크리스트
+- [ ] productIds 배열 검증
+- [ ] updates 객체 검증
+- [ ] 관리자 이메일 전달
+- [ ] Service Role API 호출
+- [ ] 변경 결과 count 확인
+
+#### 🔗 연관 기능
+- **2.11 상품 노출 설정**
+- **2.13 라이브 상태 변경**
 
 ---
 

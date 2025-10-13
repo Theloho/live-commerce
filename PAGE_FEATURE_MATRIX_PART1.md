@@ -153,19 +153,21 @@
 1. ✅ 사용자별 주문 리스트 (카카오 사용자 포함)
 2. ✅ 주문 상태별 필터 (전체/결제대기/결제완료/발송완료)
 3. ✅ 주문 취소 (pending 상태만)
-4. ✅ 주문 수량 변경 (pending 상태 + Variant 재고 검증)
-5. ✅ 일괄결제 처리 (여러 pending 주문 → 체크아웃)
-6. ✅ 배송비 계산 표시 (도서산간 포함)
+4. ✅ **주문 아이템 그룹화** (2025-10-13 신규) - 동일 상품+옵션 수량 병합
+5. ❌ ~~주문 수량 변경~~ (2025-10-13 제거 - 동시성 문제)
+6. ✅ 일괄결제 처리 (여러 pending 주문 → 체크아웃)
+7. ✅ 배송비 계산 표시 (도서산간 포함)
 
 ### 🔧 사용 컴포넌트
 - 주문 카드 (커스텀)
-- 수량 조절 버튼 (+/-)
+- ~~수량 조절 버튼 (+/-)~~ (2025-10-13 제거)
 - 일괄결제 버튼
 
 ### 📞 호출 함수/API
 - `getOrders(userId)` - 주문 조회 (카카오 매칭 자동)
 - `cancelOrder(orderId)` - 주문 취소 + 재고 복원
-- `updateOrderItemQuantity(itemId, newQuantity)` - 수량 변경 + Variant 재고 검증
+- `groupOrderItems(items)` - 상품 그룹화 (2025-10-13 신규)
+- ~~`updateOrderItemQuantity(itemId, newQuantity)`~~ (2025-10-13 제거)
 - `OrderCalculations.calculateFinalOrderAmount()` - 금액 재계산
 - `formatShippingInfo(baseShipping, postalCode)` - 배송비 계산
 
@@ -176,11 +178,11 @@
   - `products` - 상품 정보 (title, thumbnail_url)
   - `order_shipping` - 배송 정보 (postal_code)
   - `order_payments` - 결제 정보 (depositor_name)
-  - `product_variants` - Variant 재고 확인 (수량 변경 시)
+  - ~~`product_variants` - Variant 재고 확인~~ (2025-10-13 제거 - 수량 변경 기능 없음)
 - **UPDATE**:
   - `orders` - 주문 취소 (status='cancelled', cancelled_at)
-  - `order_items` - 수량 변경 (quantity, total, total_price)
-  - `product_variants` - 재고 복원/차감 (inventory)
+  - ~~`order_items` - 수량 변경~~ (2025-10-13 제거)
+  - ~~`product_variants` - 재고 복원/차감~~ (2025-10-13 제거)
 
 ### 🔗 연결된 페이지
 - **다음**: `/checkout?mode=bulk` (일괄결제)
@@ -199,16 +201,18 @@
   - **증상**: ₩1,476,000 표시 (실제 입금 필요 금액: ₩1,485,000)
   - **해결**: OrderCalculations + formatShippingInfo 사용
   - **영향**: `/app/orders/page.js:600-610, 719`
-- ⚠️ 주문 수량 조정 실패 ("주문 아이템을 찾을 수 없습니다") (2025-10-06 미해결)
+- ~~⚠️ 주문 수량 조정 실패 ("주문 아이템을 찾을 수 없습니다") (2025-10-06 미해결)~~
+  - **해결**: 2025-10-13 - 동시성 문제로 기능 완전 제거 (140줄 코드 삭제)
 
 ### 📝 체크리스트 (Claude용)
 - [x] ✅ OrderCalculations로 배송비 포함 총액 계산 (필수! 2025-10-08 적용)
 - [x] ✅ formatShippingInfo로 도서산간 배송비 정확히 계산
 - [x] ✅ shipping.postal_code 데이터 포함 확인 (getOrders)
+- [x] ✅ groupOrderItems로 상품 그룹화 (2025-10-13 적용)
 - [ ] 카카오 사용자 주문 조회 (order_type LIKE '%KAKAO:%')
-- [ ] pending 상태만 수량 변경/취소 가능
-- [ ] 수량 변경 시 variant_id 확인 → 재고 검증
-- [ ] 재고 부족 시 에러 처리 및 사용자 알림
+- [ ] pending 상태만 취소 가능
+- ~~[ ] 수량 변경 시 variant_id 확인 → 재고 검증~~ (2025-10-13 제거)
+- ~~[ ] 재고 부족 시 에러 처리 및 사용자 알림~~ (2025-10-13 제거)
 - [ ] 일괄결제 시 sessionStorage 용량 초과 주의 (간소화 데이터)
 - [ ] payment_group_id 생성 및 저장
 
