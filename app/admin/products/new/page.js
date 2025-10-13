@@ -350,7 +350,7 @@ export default function NewProductPage() {
         totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
       }
 
-      // Service Role API 호출 (RLS 우회)
+      // Service Role API 호출 (관리자 권한 검증 포함)
       const response = await fetch('/api/admin/products/create', {
         method: 'POST',
         headers: {
@@ -367,7 +367,8 @@ export default function NewProductPage() {
           sizeOptions: productData.sizeOptions,
           colorOptions: productData.colorOptions,
           optionInventories: productData.optionInventories,
-          combinations: combinations
+          combinations: combinations,
+          adminEmail: 'master@allok.world' // ⚠️ TODO: useAdminAuth hook에서 가져오도록 개선 필요
         })
       })
 

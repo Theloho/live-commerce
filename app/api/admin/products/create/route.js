@@ -1,17 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-
-// Service Role 클라이언트 (RLS 우회)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
 
 export async function POST(request) {
   try {
@@ -26,10 +14,30 @@ export async function POST(request) {
       sizeOptions,
       colorOptions,
       optionInventories,
-      combinations
+      combinations,
+      adminEmail // ⭐ 관리자 이메일 추가
     } = await request.json()
 
     console.log('🚀 [빠른등록 API] 상품 저장 시작:', product_number)
+
+    // 🔐 1. 관리자 권한 확인
+    if (!adminEmail) {
+      console.error('❌ adminEmail 누락')
+      return NextResponse.json(
+        { error: '관리자 인증 정보가 필요합니다' },
+        { status: 401 }
+      )
+    }
+
+    const isAdmin = await verifyAdminAuth(adminEmail)
+    if (!isAdmin) {
+      console.warn(`⚠️ 권한 없는 상품 생성 시도: ${adminEmail}`)
+      return NextResponse.json(
+        { error: '관리자 권한이 없습니다' },
+        { status: 403 }
+      )
+    }
+    console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
     // 총 재고 계산
     let totalInventory = inventory
