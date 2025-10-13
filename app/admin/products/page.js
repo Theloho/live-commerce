@@ -206,17 +206,30 @@ export default function AdminProductsPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({
-          is_live: true,
-          is_live_active: false  // 기본값은 비활성
+      // Service Role API 호출 (관리자 권한 검증 포함)
+      const response = await fetch('/api/admin/products/bulk-update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          productIds: searchSelectedIds,
+          updates: {
+            is_live: true,
+            is_live_active: false,  // 기본값은 비활성 (수동으로 노출 토글)
+            live_start_time: null
+          },
+          adminEmail: 'master@allok.world' // ⚠️ TODO: useAdminAuth hook에서 가져오도록 개선 필요
         })
-        .in('id', searchSelectedIds)
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '라이브 추가 실패')
+      }
 
-      toast.success(`${searchSelectedIds.length}개 상품이 라이브에 추가되었습니다`)
+      const { count } = await response.json()
+      toast.success(`${count}개 상품이 라이브에 추가되었습니다`)
       setShowSearchModal(false)
       setSearchText('')
       setSelectedSupplier('')
