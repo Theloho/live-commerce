@@ -593,7 +593,7 @@ function OrdersContent() {
                 const groupOrderItems = (items) => {
                   const groups = {}
 
-                  items.forEach(item => {
+                  items.forEach((item, originalIndex) => {
                     // 키 생성: product_number + 옵션 조합
                     const optionsKey = JSON.stringify(item.selectedOptions || {})
                     const groupKey = `${item.product_number || item.product_id || item.title}_${optionsKey}`
@@ -602,12 +602,16 @@ function OrdersContent() {
                       groups[groupKey] = {
                         ...item,
                         quantity: 0,
-                        totalPrice: 0
+                        totalPrice: 0,
+                        originalIndices: [],  // 원본 아이템 인덱스 추적
+                        originalItems: []     // 원본 아이템 저장
                       }
                     }
 
                     groups[groupKey].quantity += item.quantity || 1
                     groups[groupKey].totalPrice += ((item.price || 0) * (item.quantity || 1))
+                    groups[groupKey].originalIndices.push(originalIndex)
+                    groups[groupKey].originalItems.push(item)
                   })
 
                   return Object.values(groups)
@@ -688,10 +692,41 @@ function OrdersContent() {
                               단가: ₩{groupedItem.price?.toLocaleString() || '0'}
                             </p>
 
-                            {/* 수량 표시 (그룹화된 수량) */}
-                            <p className="text-xs text-gray-700 font-medium">
-                              수량: {groupedItem.quantity}개
-                            </p>
+                            {/* 수량 표시 - 결제대기일 때는 조절 가능 */}
+                            {order.status === 'pending' ? (
+                              <div className="flex items-center gap-2 mb-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    // 그룹의 첫 번째 원본 아이템 수량 감소
+                                    const firstIndex = groupedItem.originalIndices[0]
+                                    handleQuantityChange(order.id, firstIndex, -1)
+                                  }}
+                                  className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  disabled={groupedItem.originalItems[0]?.quantity <= 1}
+                                >
+                                  <MinusIcon className="h-3 w-3 text-gray-600" />
+                                </button>
+                                <span className="text-xs text-gray-700 font-medium min-w-[50px] text-center">
+                                  {groupedItem.quantity}개
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    // 그룹의 첫 번째 원본 아이템 수량 증가
+                                    const firstIndex = groupedItem.originalIndices[0]
+                                    handleQuantityChange(order.id, firstIndex, 1)
+                                  }}
+                                  className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                                >
+                                  <PlusIcon className="h-3 w-3 text-gray-600" />
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-700 font-medium mb-1">
+                                수량: {groupedItem.quantity}개
+                              </p>
+                            )}
 
                             {/* 소계 표시 */}
                             <p className="text-xs text-gray-900 font-semibold mt-1">
