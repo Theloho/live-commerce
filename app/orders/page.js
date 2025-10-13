@@ -588,14 +588,32 @@ function OrdersContent() {
                 const paymentMethod = order.payment?.method || null
                 const statusInfo = getStatusInfo(order.status, paymentMethod)
                 const StatusIcon = statusInfo.icon
-                const orderItem = order.items?.[0] || {
-                  title: '상품명 없음',
-                  thumbnail_url: '/placeholder.png',
-                  price: 0,
-                  quantity: 1,
-                  totalPrice: 0,
-                  selectedOptions: {}
-                } // 첫 번째 상품만 표시, 없으면 기본값
+
+                // 🔀 상품 그룹핑 로직 (제품번호 + 옵션 조합으로 그룹화)
+                const groupOrderItems = (items) => {
+                  const groups = {}
+
+                  items.forEach(item => {
+                    // 키 생성: product_number + 옵션 조합
+                    const optionsKey = JSON.stringify(item.selectedOptions || {})
+                    const groupKey = `${item.product_number || item.product_id || item.title}_${optionsKey}`
+
+                    if (!groups[groupKey]) {
+                      groups[groupKey] = {
+                        ...item,
+                        quantity: 0,
+                        totalPrice: 0
+                      }
+                    }
+
+                    groups[groupKey].quantity += item.quantity || 1
+                    groups[groupKey].totalPrice += ((item.price || 0) * (item.quantity || 1))
+                  })
+
+                  return Object.values(groups)
+                }
+
+                const groupedItems = groupOrderItems(order.items || [])
 
                 // 🧮 배송비 포함 총 결제금액 계산 (OrderCalculations 사용)
                 const shippingInfo = formatShippingInfo(4000, order.shipping?.postal_code)
@@ -633,78 +651,55 @@ function OrdersContent() {
                       </div>
                     </div>
 
-                    {/* 상품 정보 */}
-                    <div className="flex gap-3 mb-3">
-                      <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                        <Image
-                          src={orderItem.thumbnail_url || '/placeholder.png'}
-                          alt={orderItem.title}
-                          fill
-                          sizes="64px"
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm">
-                          {order.isGroup ? `${order.groupOrderCount}개 상품 일괄결제` : orderItem.title}
-                        </h3>
-
-                        {/* 선택된 옵션 표시 */}
-                        {orderItem.selectedOptions && Object.keys(orderItem.selectedOptions).length > 0 && (
-                          <div className="mb-1">
-                            {Object.entries(orderItem.selectedOptions).map(([optionId, value]) => (
-                              <span
-                                key={optionId}
-                                className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1 mb-1"
-                              >
-                                {value}
-                              </span>
-                            ))}
+                    {/* 상품 정보 - 그룹화된 아이템들을 모두 표시 */}
+                    <div className="space-y-3 mb-3">
+                      {groupedItems.map((groupedItem, itemIndex) => (
+                        <div key={itemIndex} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                          <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                            <Image
+                              src={groupedItem.thumbnail_url || '/placeholder.png'}
+                              alt={groupedItem.title}
+                              fill
+                              sizes="64px"
+                              className="object-cover"
+                            />
                           </div>
-                        )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm">
+                              {groupedItem.title}
+                            </h3>
 
-                        {/* 단가 표시 */}
-                        <p className="text-xs text-gray-500 mb-1">
-                          단가: ₩{orderItem.price?.toLocaleString() || '0'}
-                        </p>
+                            {/* 선택된 옵션 표시 */}
+                            {groupedItem.selectedOptions && Object.keys(groupedItem.selectedOptions).length > 0 && (
+                              <div className="mb-1">
+                                {Object.entries(groupedItem.selectedOptions).map(([optionId, value]) => (
+                                  <span
+                                    key={optionId}
+                                    className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1 mb-1"
+                                  >
+                                    {value}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
 
-                        {/* 수량 조절 UI - 결제대기 상태에서만 표시 */}
-                        {order.status === 'pending' ? (
-                          <div className="flex items-center gap-2 mb-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleQuantityChange(order.id, 0, -1)
-                              }}
-                              className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                              disabled={orderItem.quantity <= 1}
-                            >
-                              <MinusIcon className="h-3 w-3 text-gray-600" />
-                            </button>
-                            <span className="text-xs text-gray-700 min-w-[40px] text-center">
-                              {orderItem.quantity}개
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleQuantityChange(order.id, 0, 1)
-                              }}
-                              className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                            >
-                              <PlusIcon className="h-3 w-3 text-gray-600" />
-                            </button>
+                            {/* 단가 표시 */}
+                            <p className="text-xs text-gray-500 mb-1">
+                              단가: ₩{groupedItem.price?.toLocaleString() || '0'}
+                            </p>
+
+                            {/* 수량 표시 (그룹화된 수량) */}
+                            <p className="text-xs text-gray-700 font-medium">
+                              수량: {groupedItem.quantity}개
+                            </p>
+
+                            {/* 소계 표시 */}
+                            <p className="text-xs text-gray-900 font-semibold mt-1">
+                              소계: ₩{groupedItem.totalPrice?.toLocaleString() || '0'}
+                            </p>
                           </div>
-                        ) : (
-                          <p className="text-xs text-gray-500 mb-1">
-                            수량: {orderItem.quantity}개
-                          </p>
-                        )}
-                        {order.items.length > 1 && (
-                          <p className="text-xs text-gray-500">
-                            외 {order.items.length - 1}개 상품
-                          </p>
-                        )}
-                      </div>
+                        </div>
+                      ))}
                     </div>
 
                     {/* 주문 정보 */}
