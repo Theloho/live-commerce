@@ -256,30 +256,29 @@ export default function CheckoutPage() {
               migrationDone.current = true // 완료 표시
             }
 
-              if (addresses && addresses.length > 0) {
-                // 기본 배송지 자동 선택
-                const defaultAddress = addresses.find(addr => addr.is_default)
-                if (defaultAddress) {
-                  setSelectedAddress(defaultAddress)
-                  // userProfile에도 주소 정보 반영 (우편번호 포함)
-                  setUserProfile(prev => ({
-                    ...prev,
-                    address: defaultAddress.address,
-                    detail_address: defaultAddress.detail_address || '',
-                    postal_code: defaultAddress.postal_code || ''
-                  }))
-                } else if (addresses.length > 0) {
-                  // 기본 배송지가 없으면 첫 번째 주소 선택
-                  const firstAddress = addresses[0]
-                  setSelectedAddress(firstAddress)
-                  // userProfile에도 주소 정보 반영 (우편번호 포함)
-                  setUserProfile(prev => ({
-                    ...prev,
-                    address: firstAddress.address,
-                    detail_address: firstAddress.detail_address || '',
-                    postal_code: firstAddress.postal_code || ''
-                  }))
-                }
+            if (addresses && addresses.length > 0) {
+              // 기본 배송지 자동 선택
+              const defaultAddress = addresses.find(addr => addr.is_default)
+              if (defaultAddress) {
+                setSelectedAddress(defaultAddress)
+                // userProfile에도 주소 정보 반영 (우편번호 포함)
+                setUserProfile(prev => ({
+                  ...prev,
+                  address: defaultAddress.address,
+                  detail_address: defaultAddress.detail_address || '',
+                  postal_code: defaultAddress.postal_code || ''
+                }))
+              } else if (addresses.length > 0) {
+                // 기본 배송지가 없으면 첫 번째 주소 선택
+                const firstAddress = addresses[0]
+                setSelectedAddress(firstAddress)
+                // userProfile에도 주소 정보 반영 (우편번호 포함)
+                setUserProfile(prev => ({
+                  ...prev,
+                  address: firstAddress.address,
+                  detail_address: firstAddress.detail_address || '',
+                  postal_code: firstAddress.postal_code || ''
+                }))
               }
             }
           }
