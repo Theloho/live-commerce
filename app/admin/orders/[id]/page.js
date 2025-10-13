@@ -744,9 +744,9 @@ export default function AdminOrderDetailPage() {
                     <span>총 결제 금액</span>
                     <span className="text-red-600">₩{orderCalc.finalAmount.toLocaleString()}</span>
                   </div>
-                  {order.payment?.amount && order.payment.amount !== orderCalc.finalAmount && (
+                  {order.payment?.amount && Math.abs(order.payment.amount - orderCalc.finalAmount) > 1 && (
                     <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                      ⚠️ DB 저장값(₩{order.payment?.amount?.toLocaleString()})과 계산값이 다릅니다
+                      ⚠️ DB 저장값(₩{order.payment?.amount?.toLocaleString()})과 계산값(₩{orderCalc.finalAmount.toLocaleString()})이 다릅니다
                     </div>
                   )}
                 </>
