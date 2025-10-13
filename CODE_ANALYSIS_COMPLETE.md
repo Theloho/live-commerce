@@ -2,7 +2,7 @@
 
 **분석 기준**: main 브랜치 (프로덕션)
 **최초 분석**: 2025-10-03
-**최근 업데이트**: 2025-10-08 (실제 코드베이스 구조 반영)
+**최근 업데이트**: 2025-10-13 (장바구니 결제 금액 계산 버그 수정)
 **분석 도구**: Claude Code (Automated Analysis)
 
 ---
@@ -603,6 +603,7 @@
    - orders, order_items, order_payments, order_shipping 삽입
    - 재고 차감 (Variant 또는 Product)
    - 쿠폰 사용 처리 (`applyCouponUsage`)
+   - **2025-10-13 정리**: 중복 코드 제거 (UserProfileManager 통합으로 불필요)
 
 2. `createOrderWithOptions(orderData, userProfile, depositName)` - 옵션 포함 주문 생성
 
@@ -620,7 +621,13 @@
    - 타임스탬프 자동 기록 (deposited_at, shipped_at, delivered_at)
    - 로그: 🕐, 💰, 🚚 이모지
 
-8. `updateMultipleOrderStatus(orderIds, status, paymentData)` - 일괄 상태 변경
+8. **`updateMultipleOrderStatus(orderIds, status, paymentData)` ⭐ 장바구니 일괄 상태 변경**
+   - **2025-10-13 수정**: 각 주문별 정확한 결제 금액 계산
+   - OrderCalculations 중앙화 모듈 사용
+   - order_items + order_shipping 조회 → 배송비 정확히 계산
+   - 쿠폰 할인 포함한 실제 입금액을 payment.amount에 저장
+   - 입금 확인 시 금액 불일치 방지
+   - 로그: 🔵 [결제금액 계산] 이모지
 
 9. **`updateOrderItemQuantity(orderItemId, newQuantity)` ⭐ 주문 수량 변경**
    - Variant 재고 검증 추가 (2025-10-07)
