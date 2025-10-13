@@ -16,11 +16,11 @@ import {
 import toast from 'react-hot-toast'
 import { formatShippingInfo } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
-import useAdminAuthNew from '@/hooks/useAdminAuthNew'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 export default function AdminOrdersPage() {
   const router = useRouter()
-  const { adminUser, loading: authLoading } = useAdminAuthNew()
+  const { adminUser, loading: authLoading } = useAdminAuth()
   const [orders, setOrders] = useState([])
   const [filteredOrders, setFilteredOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
