@@ -10,14 +10,12 @@ import {
   CheckCircleIcon,
   TruckIcon,
   HomeIcon,
-  MinusIcon,
-  PlusIcon,
   ClipboardDocumentIcon,
   ExclamationCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
-import { getOrders, cancelOrder, updateOrderItemQuantity } from '@/lib/supabaseApi'
+import { getOrders, cancelOrder } from '@/lib/supabaseApi'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -294,113 +292,6 @@ function OrdersContent() {
     }
   }
 
-  // 수량 조절 (Supabase 연동)
-  const handleQuantityChange = async (orderId, item, change) => {
-    const order = orders.find(o => o.id === orderId)
-    if (!order) return
-
-    if (!item) return
-
-    const newQuantity = (item.quantity || 1) + change
-
-    // 최소 수량 체크
-    if (newQuantity < 1) {
-      toast.error('최소 수량은 1개입니다')
-      return
-    }
-
-    // ✅ 재고 검증 추가 (증가 시에만)
-    if (change > 0) {
-      try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
-
-        let availableInventory = 0
-
-        // Variant 재고 확인 (우선순위)
-        if (item.variant_id) {
-          const variantResponse = await fetch(`${supabaseUrl}/rest/v1/product_variants?id=eq.${item.variant_id}&select=inventory`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
-            }
-          })
-
-          if (variantResponse.ok) {
-            const variants = await variantResponse.json()
-            if (variants.length > 0) {
-              availableInventory = variants[0].inventory || 0
-              if (newQuantity > availableInventory) {
-                toast.error(`재고가 부족합니다. (옵션 재고: ${availableInventory}개)`)
-                return
-              }
-            }
-          }
-        } else if (item.product_id) {
-          // 일반 상품 재고 확인
-          const productResponse = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${item.product_id}&select=inventory`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
-            }
-          })
-
-          if (productResponse.ok) {
-            const products = await productResponse.json()
-            if (products.length > 0) {
-              availableInventory = products[0].inventory || 0
-              if (newQuantity > availableInventory) {
-                toast.error(`재고가 부족합니다. (재고: ${availableInventory}개)`)
-                return
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('재고 확인 실패:', error)
-        // 재고 확인 실패 시에도 계속 진행 (UX 우선)
-      }
-    }
-
-    try {
-      // 1. 로컬 상태 즉시 업데이트 (옵티미스틱 업데이트)
-      const updatedOrders = orders.map(o => {
-        if (o.id === orderId) {
-          const updatedItems = o.items.map((itm) => {
-            if (itm.id === item.id) {
-              // 🔧 수정: price 기준으로 정확히 계산 (totalPrice 역계산 금지)
-              const unitPrice = itm.price || (itm.totalPrice / itm.quantity)
-              return {
-                ...itm,
-                quantity: newQuantity,
-                totalPrice: unitPrice * newQuantity
-              }
-            }
-            return itm
-          })
-          return { ...o, items: updatedItems }
-        }
-        return o
-      })
-      setOrders(updatedOrders)
-
-      // 2. 서버 업데이트
-      await updateOrderItemQuantity(item.id, newQuantity)
-      // ✨ 토스트 제거: 수량 변경은 시각적으로 이미 확인 가능
-
-      // 3. 서버에서 최신 데이터 가져와서 동기화
-      setTimeout(() => {
-        refreshOrders()  // ✅ loadOrdersDataFast 대신 refreshOrders 사용
-      }, 500)
-    } catch (error) {
-      console.error('수량 변경 중 오류:', error)
-      toast.error('수량 변경에 실패했습니다')
-      // 오류 발생 시 서버에서 다시 가져와서 복구
-      refreshOrders()  // ✅ loadOrdersDataFast 대신 refreshOrders 사용
-    }
-  }
 
   // 전체 결제 (결제대기 상품들을 모두 합산하여 결제)
   const handlePayAllPending = () => {
@@ -691,41 +582,10 @@ function OrdersContent() {
                               단가: ₩{groupedItem.price?.toLocaleString() || '0'}
                             </p>
 
-                            {/* 수량 표시 - 결제대기일 때는 조절 가능 */}
-                            {order.status === 'pending' ? (
-                              <div className="flex items-center gap-2 mb-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    // 그룹의 첫 번째 원본 아이템 수량 감소
-                                    const firstItem = groupedItem.originalItems[0]
-                                    handleQuantityChange(order.id, firstItem, -1)
-                                  }}
-                                  className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={groupedItem.originalItems[0]?.quantity <= 1}
-                                >
-                                  <MinusIcon className="h-3 w-3 text-gray-600" />
-                                </button>
-                                <span className="text-xs text-gray-700 font-medium min-w-[50px] text-center">
-                                  {groupedItem.quantity}개
-                                </span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    // 그룹의 첫 번째 원본 아이템 수량 증가
-                                    const firstItem = groupedItem.originalItems[0]
-                                    handleQuantityChange(order.id, firstItem, 1)
-                                  }}
-                                  className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                                >
-                                  <PlusIcon className="h-3 w-3 text-gray-600" />
-                                </button>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-gray-700 font-medium mb-1">
-                                수량: {groupedItem.quantity}개
-                              </p>
-                            )}
+                            {/* 수량 표시 - 읽기 전용 */}
+                            <p className="text-xs text-gray-700 font-medium mb-1">
+                              수량: {groupedItem.quantity}개
+                            </p>
 
                             {/* 소계 표시 */}
                             <p className="text-xs text-gray-900 font-semibold mt-1">
