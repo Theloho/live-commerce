@@ -58,6 +58,8 @@ export async function POST(request) {
         status: 'active',
         is_featured: false,
         is_live: true,  // ✅ 라이브 상품 목록에 표시
+        is_live_active: true,  // ✅ 기본적으로 노출 상태
+        live_start_time: new Date().toISOString(),  // ✅ 노출 시작 시간
         tags: ['NEW']
       })
       .select()

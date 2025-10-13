@@ -264,18 +264,26 @@ export default function AdminProductsPage() {
   // 개별 상품 노출 토글
   const toggleLiveActive = async (productId, currentStatus) => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({
-          is_live_active: !currentStatus,
-          live_start_time: !currentStatus ? new Date().toISOString() : null,
-          live_end_time: !currentStatus ? null : new Date().toISOString()
+      // Service Role API 호출 (관리자 권한 검증 포함)
+      const response = await fetch('/api/admin/products/toggle-visibility', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          productId,
+          currentStatus,
+          adminEmail: 'master@allok.world' // ⚠️ TODO: useAdminAuth hook에서 가져오도록 개선 필요
         })
-        .eq('id', productId)
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '노출 상태 변경 실패')
+      }
 
-      toast.success(!currentStatus ? '사용자 페이지에 노출됩니다' : '사용자 페이지에서 숨김 처리되었습니다')
+      const { message } = await response.json()
+      toast.success(message)
       loadLiveProducts()
     } catch (error) {
       console.error('노출 토글 오류:', error)
