@@ -295,11 +295,10 @@ function OrdersContent() {
   }
 
   // 수량 조절 (Supabase 연동)
-  const handleQuantityChange = async (orderId, itemIndex, change) => {
+  const handleQuantityChange = async (orderId, item, change) => {
     const order = orders.find(o => o.id === orderId)
     if (!order) return
 
-    const item = order.items[itemIndex]
     if (!item) return
 
     const newQuantity = (item.quantity || 1) + change
@@ -369,8 +368,8 @@ function OrdersContent() {
       // 1. 로컬 상태 즉시 업데이트 (옵티미스틱 업데이트)
       const updatedOrders = orders.map(o => {
         if (o.id === orderId) {
-          const updatedItems = o.items.map((itm, idx) => {
-            if (idx === itemIndex) {
+          const updatedItems = o.items.map((itm) => {
+            if (itm.id === item.id) {
               // 🔧 수정: price 기준으로 정확히 계산 (totalPrice 역계산 금지)
               const unitPrice = itm.price || (itm.totalPrice / itm.quantity)
               return {
@@ -699,8 +698,8 @@ function OrdersContent() {
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     // 그룹의 첫 번째 원본 아이템 수량 감소
-                                    const firstIndex = groupedItem.originalIndices[0]
-                                    handleQuantityChange(order.id, firstIndex, -1)
+                                    const firstItem = groupedItem.originalItems[0]
+                                    handleQuantityChange(order.id, firstItem, -1)
                                   }}
                                   className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   disabled={groupedItem.originalItems[0]?.quantity <= 1}
@@ -714,8 +713,8 @@ function OrdersContent() {
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     // 그룹의 첫 번째 원본 아이템 수량 증가
-                                    const firstIndex = groupedItem.originalIndices[0]
-                                    handleQuantityChange(order.id, firstIndex, 1)
+                                    const firstItem = groupedItem.originalItems[0]
+                                    handleQuantityChange(order.id, firstItem, 1)
                                   }}
                                   className="p-1 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
                                 >
