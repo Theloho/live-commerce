@@ -342,7 +342,7 @@ export default function NewProductPage() {
     setLoading(true)
 
     try {
-      console.log('🚀 [빠른등록] 상품 저장 시작')
+      console.log('🚀 [빠른등록] 상품 저장 시작 (Service Role API)')
 
       // 총 재고 계산
       let totalInventory = productData.inventory
@@ -350,146 +350,34 @@ export default function NewProductPage() {
         totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
       }
 
-      // 1. 제품 생성 (번호와 이름 분리)
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .insert({
-          title: productData.title.trim() || productNumber, // 이름 없으면 번호를 이름으로
+      // Service Role API 호출 (RLS 우회)
+      const response = await fetch('/api/admin/products/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: productData.title,
           product_number: productNumber,
-          price: parseInt(productData.price),
+          price: productData.price,
           inventory: totalInventory,
           thumbnail_url: imagePreview,
-          description: productData.description || '',
-          status: 'active',
-          is_featured: false,
-          tags: ['NEW']
+          description: productData.description,
+          optionType: productData.optionType,
+          sizeOptions: productData.sizeOptions,
+          colorOptions: productData.colorOptions,
+          optionInventories: productData.optionInventories,
+          combinations: combinations
         })
-        .select()
-        .single()
+      })
 
-      if (productError) throw productError
-      console.log('✅ [빠른등록] 상품 생성 완료:', product.id)
-
-      // 2. 옵션이 있는 경우 Variant 시스템으로 저장
-      if (productData.optionType !== 'none' && combinations.length > 0) {
-        console.log('📦 [빠른등록] 옵션 저장 시작')
-
-        // 2-1. product_options 생성
-        const optionsToCreate = []
-
-        if (productData.optionType === 'size' || productData.optionType === 'both') {
-          optionsToCreate.push({ name: '사이즈', values: productData.sizeOptions })
-        }
-        if (productData.optionType === 'color' || productData.optionType === 'both') {
-          optionsToCreate.push({ name: '색상', values: productData.colorOptions })
-        }
-
-        const createdOptionValues = {} // { '사이즈': { '55': 'uuid', '66': 'uuid' }, '색상': { '블랙': 'uuid' } }
-
-        for (const option of optionsToCreate) {
-          // product_options INSERT
-          const { data: createdOption, error: optionError } = await supabase
-            .from('product_options')
-            .insert({
-              product_id: product.id,
-              name: option.name,
-              display_order: 0,
-              is_required: false
-            })
-            .select()
-            .single()
-
-          if (optionError) throw optionError
-          console.log(`  ✅ 옵션 생성: ${option.name}`)
-
-          // product_option_values INSERT
-          const valuesToInsert = option.values.map((value, index) => ({
-            option_id: createdOption.id,
-            value: value,
-            display_order: index
-          }))
-
-          const { data: createdValues, error: valuesError } = await supabase
-            .from('product_option_values')
-            .insert(valuesToInsert)
-            .select()
-
-          if (valuesError) throw valuesError
-
-          // 매핑 저장
-          createdOptionValues[option.name] = {}
-          createdValues.forEach(val => {
-            createdOptionValues[option.name][val.value] = val.id
-          })
-          console.log(`  ✅ 옵션값 ${createdValues.length}개 생성`)
-        }
-
-        // 2-2. product_variants 생성 (조합별로)
-        console.log('🔀 [빠른등록] Variant 생성 시작')
-
-        for (const combo of combinations) {
-          // SKU 생성
-          let sku = productNumber
-          if (combo.type === 'size') {
-            sku = `${productNumber}-${combo.size}`
-          } else if (combo.type === 'color') {
-            sku = `${productNumber}-${combo.color}`
-          } else if (combo.type === 'both') {
-            sku = `${productNumber}-${combo.size}-${combo.color}`
-          }
-
-          // 재고
-          const inventory = productData.optionInventories[combo.key] || 0
-
-          // product_variants INSERT
-          const { data: variant, error: variantError } = await supabase
-            .from('product_variants')
-            .insert({
-              product_id: product.id,
-              sku: sku,
-              inventory: inventory,
-              price_adjustment: 0,
-              is_active: true
-            })
-            .select()
-            .single()
-
-          if (variantError) throw variantError
-
-          // 2-3. variant_option_values 매핑
-          const mappings = []
-          if (combo.type === 'size') {
-            mappings.push({
-              variant_id: variant.id,
-              option_value_id: createdOptionValues['사이즈'][combo.size]
-            })
-          } else if (combo.type === 'color') {
-            mappings.push({
-              variant_id: variant.id,
-              option_value_id: createdOptionValues['색상'][combo.color]
-            })
-          } else if (combo.type === 'both') {
-            mappings.push({
-              variant_id: variant.id,
-              option_value_id: createdOptionValues['사이즈'][combo.size]
-            })
-            mappings.push({
-              variant_id: variant.id,
-              option_value_id: createdOptionValues['색상'][combo.color]
-            })
-          }
-
-          const { error: mappingError } = await supabase
-            .from('variant_option_values')
-            .insert(mappings)
-
-          if (mappingError) throw mappingError
-
-          console.log(`  ✅ Variant 생성: ${sku} (재고: ${inventory})`)
-        }
-
-        console.log(`✅ [빠른등록] 총 ${combinations.length}개 Variant 생성 완료`)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '상품 등록 실패')
       }
+
+      const { product } = await response.json()
+      console.log('✅ [빠른등록] 상품 등록 완료:', product.id)
 
       toast.success(`제품 ${productNumber}이 등록되었습니다!`)
       router.push('/admin/products')
