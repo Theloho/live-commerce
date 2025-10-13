@@ -700,6 +700,113 @@ getCouponStats(couponId)
 
 ---
 
+### 8.11 웰컴 쿠폰 자동 지급 ⭐ [주요] (2025-10-08 신규)
+
+#### 📍 영향받는 페이지
+1. `/signup` - 회원가입 페이지
+2. `/auth/callback` - 카카오 OAuth 콜백
+3. `/auth/complete-profile` - 프로필 완성
+4. `/mypage/coupons` - 쿠폰함 (자동 발급된 쿠폰 표시)
+5. `/admin/coupons/new` - 쿠폰 생성 (웰컴 쿠폰 설정)
+6. `/admin/coupons` - 쿠폰 목록 (🎁 웰컴 배지 표시)
+
+#### 🔧 핵심 함수 체인 (DB 트리거)
+```sql
+-- 신규 회원가입 (profiles INSERT)
+INSERT INTO profiles (id, email, name, ...) VALUES (...)
+  ↓ trigger
+handle_new_user_signup()
+  ↓ finds
+  SELECT * FROM coupons
+    WHERE is_welcome_coupon = true
+      AND is_active = true
+      AND (valid_from IS NULL OR valid_from <= NOW())
+      AND (valid_until IS NULL OR valid_until > NOW())
+    ORDER BY created_at DESC
+  ↓ validates
+  total_usage_limit 확인 (NULL이면 무제한, 아니면 선착순)
+  ↓ issues
+  INSERT INTO user_coupons (user_id, coupon_id, issued_by)
+    VALUES (NEW.id, welcome_coupon.id, 'system')
+    ON CONFLICT DO NOTHING
+  ↓ updates
+  UPDATE coupons
+    SET total_issued_count = total_issued_count + 1
+    WHERE id = welcome_coupon.id
+  ↓ logs
+  RAISE NOTICE '✅ 웰컴 쿠폰 자동 발급: user_id=%, coupon_id=%'
+```
+
+#### 📊 데이터 흐름
+```
+사용자 회원가입 (이메일 or 카카오)
+  ↓
+profiles 테이블 INSERT
+  ↓ (트리거 자동 실행)
+handle_new_user_signup() 함수 실행
+  ↓
+is_welcome_coupon = true인 활성 쿠폰 조회
+  ↓
+유효기간 확인 + 발급 제한 확인
+  ↓ (조건 만족 시)
+user_coupons INSERT (issued_by = 'system')
+  ↓
+coupons.total_issued_count 증가
+  ↓
+마이페이지 쿠폰함에서 자동 발급된 쿠폰 확인
+```
+
+#### 🗄️ DB 작업 순서
+1. **트리거 실행**: profiles INSERT → `trigger_new_user_signup`
+2. **쿠폰 조회**: `is_welcome_coupon = true` AND `is_active = true`
+3. **유효기간 검증**: `valid_from <= NOW()` AND `valid_until > NOW()`
+4. **발급 제한 검증**: `total_usage_limit IS NULL` OR `total_issued_count < total_usage_limit`
+5. **쿠폰 발급**: `user_coupons` INSERT
+6. **통계 업데이트**: `coupons.total_issued_count++`
+
+#### ⚠️ 필수 체크리스트
+- [ ] coupons.is_welcome_coupon = true 설정
+- [ ] coupons.is_active = true 확인
+- [ ] valid_from, valid_until 유효기간 설정
+- [ ] total_usage_limit 설정 (선착순, NULL이면 무제한)
+- [ ] trigger_new_user_signup 트리거 활성화 확인
+- [ ] 회원가입 시 user_coupons 자동 INSERT 확인
+- [ ] 중복 발급 방지 (ON CONFLICT DO NOTHING)
+- [ ] 관리자 UI: 웰컴 쿠폰 설정 체크박스
+- [ ] 관리자 UI: 쿠폰 목록에 🎁 웰컴 배지 표시
+
+#### 🔗 연관 기능
+- **회원가입** (profiles INSERT)
+- **쿠폰 발행** (관리자가 웰컴 쿠폰 생성)
+- **쿠폰 목록 조회** (사용자가 마이페이지에서 확인)
+- **쿠폰 사용** (체크아웃에서 웰컴 쿠폰 적용)
+
+#### 💡 특이사항
+- **자동 발급**: 회원가입 시 DB 트리거로 자동 실행
+- **선착순**: `total_usage_limit` 설정 시 선착순 적용
+- **무제한**: `total_usage_limit = NULL`이면 무제한 발급
+- **중복 방지**: `ON CONFLICT DO NOTHING` (같은 사용자에게 중복 발급 방지)
+- **issued_by**: 'system' (자동 발급 표시)
+- **트리거 조건**: profiles INSERT 시 (이메일/카카오 공통)
+
+#### 📝 최근 수정 이력
+- 2025-10-08: 웰컴 쿠폰 자동 지급 기능 완성
+  - DB: `coupons.is_welcome_coupon` 컬럼 추가
+  - DB: `handle_new_user_signup()` 함수 생성
+  - DB: `trigger_new_user_signup` 트리거 생성
+  - DB: 인덱스 추가 (`idx_coupons_welcome`)
+  - UI: 관리자 쿠폰 생성 페이지 체크박스
+  - UI: 관리자 쿠폰 목록 🎁 웰컴 배지
+
+#### 🎓 상세 문서 위치
+- **DB 함수**: supabase/migrations/20251008_welcome_coupon_auto_issue.sql
+- **DB 스키마**: DB_REFERENCE_GUIDE.md § 2.15 coupons, § 9.2 handle_new_user_signup()
+- **관리자 UI**: app/admin/coupons/new/page.js (line 26, 92, 374-386)
+- **쿠폰 목록 UI**: app/admin/coupons/page.js (🎁 웰컴 배지)
+- **트리거 실행**: profiles INSERT 시 자동
+
+---
+
 ## 📊 쿠폰 시스템 전체 흐름
 
 ### 1. 쿠폰 발행 (관리자)
@@ -765,3 +872,5 @@ coupons.total_used_count 증가
 ---
 
 **문서화 완료율**: 100%
+**최종 업데이트**: 2025-10-08 (오후 - 웰컴 쿠폰 자동 지급 기능 추가)
+**총 기능 수**: 쿠폰 관련 11개 (8.11 웰컴 쿠폰 자동 지급 추가)

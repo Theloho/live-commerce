@@ -174,55 +174,30 @@ export default function CheckoutPage() {
         // 먼저 사용자 프로필 로드
         let loadedProfile = null
 
-        // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기
+        // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기 (중앙화 모듈 사용)
         if (currentUser.provider === 'kakao') {
           try {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-            const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+            const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
 
-            const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-              method: 'GET',
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json'
-              }
-            })
+            if (dbProfile) {
+              console.log('✅ 체크아웃: 카카오 사용자 프로필 로드 성공:', {
+                name: dbProfile.name,
+                phone: dbProfile.phone,
+                hasAddress: !!dbProfile.address
+              })
 
-            if (response.ok) {
-              const profiles = await response.json()
-              if (profiles && profiles.length > 0) {
-                const dbProfile = profiles[0]
-                console.log('✅ 체크아웃: 카카오 사용자 프로필 로드 성공:', {
-                  name: dbProfile.name,
-                  phone: dbProfile.phone,
-                  hasAddress: !!dbProfile.address
-                })
-
-                // ✅ MyPage와 동일한 방식으로 프로필 객체 생성 (normalizeProfile 사용 안 함)
-                loadedProfile = {
-                  name: dbProfile.name || currentUser.name || '',
-                  phone: dbProfile.phone || currentUser.phone || '',
-                  nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || '',
-                  address: dbProfile.address || '',
-                  detail_address: dbProfile.detail_address || '',
-                  addresses: dbProfile.addresses || [],
-                  postal_code: dbProfile.postal_code || ''
-                }
-              } else {
-                console.warn('⚠️ 데이터베이스에서 프로필을 찾을 수 없음, currentUser 사용')
-                loadedProfile = {
-                  name: currentUser.name || '',
-                  phone: currentUser.phone || '',
-                  nickname: currentUser.nickname || currentUser.name || '',
-                  address: currentUser.address || '',
-                  detail_address: currentUser.detail_address || '',
-                  addresses: currentUser.addresses || [],
-                  postal_code: currentUser.postal_code || ''
-                }
+              // ✅ MyPage와 동일한 방식으로 프로필 객체 생성
+              loadedProfile = {
+                name: dbProfile.name || currentUser.name || '',
+                phone: dbProfile.phone || currentUser.phone || '',
+                nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || '',
+                address: dbProfile.address || '',
+                detail_address: dbProfile.detail_address || '',
+                addresses: dbProfile.addresses || [],
+                postal_code: dbProfile.postal_code || ''
               }
             } else {
-              console.error('❌ 프로필 조회 HTTP 오류:', response.status)
+              console.warn('⚠️ 데이터베이스에서 프로필을 찾을 수 없음, currentUser 사용')
               loadedProfile = {
                 name: currentUser.name || '',
                 phone: currentUser.phone || '',
@@ -255,52 +230,31 @@ export default function CheckoutPage() {
         console.log('🎯 체크아웃: 최종 로드된 프로필:', loadedProfile)
         setUserProfile(loadedProfile)
 
-        // AddressManager와 동일한 방식으로 직접 Supabase API 호출하여 주소 목록 불러오기
+        // 주소 목록 불러오기 (중앙화 모듈 사용)
         try {
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+          const profile = await UserProfileManager.loadUserProfile(currentUser.id)
 
-          const addressResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=addresses,address,detail_address,postal_code`, {
-            method: 'GET',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
-            }
-          })
+          if (profile) {
+            let addresses = profile?.addresses || []
 
-          if (addressResponse.ok) {
-            const profiles = await addressResponse.json()
-            if (profiles && profiles.length > 0) {
-              const profile = profiles[0]
-              let addresses = profile?.addresses || []
-
-              // 📥 legacy address 마이그레이션 (addresses 배열이 비어있고, legacy 주소가 있을 때만 실행)
-              if (!migrationDone.current && addresses.length === 0 && profile?.address) {
-                const legacyAddress = {
-                  id: Date.now(),
-                  label: '기본 배송지',
-                  address: profile.address,
-                  detail_address: profile.detail_address || '',
-                  postal_code: profile.postal_code || '',
-                  is_default: true,
-                  created_at: new Date().toISOString()
-                }
-                addresses = [legacyAddress]
-
-                // 마이그레이션된 주소를 데이터베이스에 저장
-                await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-                  method: 'PATCH',
-                  headers: {
-                    'apikey': supabaseKey,
-                    'Authorization': `Bearer ${supabaseKey}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ addresses })
-                })
-
-                migrationDone.current = true // 완료 표시
+            // 📥 legacy address 마이그레이션 (addresses 배열이 비어있고, legacy 주소가 있을 때만 실행)
+            if (!migrationDone.current && addresses.length === 0 && profile?.address) {
+              const legacyAddress = {
+                id: Date.now(),
+                label: '기본 배송지',
+                address: profile.address,
+                detail_address: profile.detail_address || '',
+                postal_code: profile.postal_code || '',
+                is_default: true,
+                created_at: new Date().toISOString()
               }
+              addresses = [legacyAddress]
+
+              // 마이그레이션된 주소를 데이터베이스에 저장 (중앙화 모듈 사용)
+              await UserProfileManager.updateProfile(currentUser.id, { addresses })
+
+              migrationDone.current = true // 완료 표시
+            }
 
               if (addresses && addresses.length > 0) {
                 // 기본 배송지 자동 선택
@@ -504,29 +458,12 @@ export default function CheckoutPage() {
       return UserProfileManager.normalizeProfile(currentUser)
     }
 
-    // ⚡ 최적화된 사용자 주소 로드
+    // ⚡ 최적화된 사용자 주소 로드 (중앙화 모듈 사용)
     const loadUserAddressesOptimized = async (currentUser) => {
       try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+        const profile = await UserProfileManager.loadUserProfile(currentUser.id)
+        if (!profile) return []
 
-        const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=addresses,address,detail_address`, {
-          method: 'GET',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
-          }
-        })
-
-        if (!response.ok) {
-          throw new Error(`주소 조회 실패: ${response.status}`)
-        }
-
-        const profiles = await response.json()
-        if (!profiles?.length) return []
-
-        const profile = profiles[0]
         let addresses = profile?.addresses || []
 
         // 주소 마이그레이션 (한 번만 실행)
@@ -541,15 +478,8 @@ export default function CheckoutPage() {
           addresses = [defaultAddress]
 
           // 백그라운드에서 마이그레이션 저장 (blocking 하지 않음)
-          fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ addresses })
-          }).catch(console.warn) // 실패해도 진행
+          UserProfileManager.updateProfile(currentUser.id, { addresses })
+            .catch(console.warn) // 실패해도 진행
         }
 
         return addresses

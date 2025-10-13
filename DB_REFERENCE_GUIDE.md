@@ -610,6 +610,7 @@ CREATE TABLE coupons (
 
     -- 상태
     is_active BOOLEAN DEFAULT true,
+    is_welcome_coupon BOOLEAN DEFAULT false,  -- ⭐ 2025-10-08 추가 (회원가입 자동 지급)
 
     -- 생성자 정보
     created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -636,6 +637,7 @@ CREATE INDEX idx_coupons_code ON coupons(code);
 CREATE INDEX idx_coupons_is_active ON coupons(is_active);
 CREATE INDEX idx_coupons_valid_until ON coupons(valid_until);
 CREATE INDEX idx_coupons_created_at ON coupons(created_at DESC);
+CREATE INDEX idx_coupons_welcome ON coupons(is_welcome_coupon, is_active) WHERE is_welcome_coupon = true;  -- ⭐ 2025-10-08 추가
 ```
 
 ---
@@ -1821,6 +1823,33 @@ $$;
 
 ### 9.2 쿠폰 관련 함수
 
+#### `handle_new_user_signup()` ⭐ 2025-10-08 추가
+```sql
+CREATE OR REPLACE FUNCTION handle_new_user_signup()
+RETURNS TRIGGER AS $$
+-- 회원가입 시 웰컴 쿠폰 자동 발급
+-- profiles INSERT 시 실행
+-- is_welcome_coupon = true인 활성 쿠폰을 자동으로 발급
+$$;
+```
+
+**기능**:
+- 신규 회원가입 시 자동 실행
+- `is_welcome_coupon = true` AND `is_active = true` 쿠폰 찾기
+- 유효기간 내 쿠폰만 발급
+- `total_usage_limit` 확인 (선착순)
+- `user_coupons` INSERT + `coupons.total_issued_count` 증가
+
+**트리거**:
+```sql
+CREATE TRIGGER trigger_new_user_signup
+  AFTER INSERT ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_new_user_signup();
+```
+
+---
+
 #### `validate_coupon()`
 ```sql
 CREATE OR REPLACE FUNCTION validate_coupon(
@@ -1967,6 +1996,13 @@ CREATE TRIGGER update_product_inventory_trigger
 
 ## 🔄 최근 마이그레이션 이력
 
+### 2025-10-08
+- ✅ `20251008_welcome_coupon_auto_issue.sql` - 웰컴 쿠폰 자동 지급 기능 추가
+  - `coupons.is_welcome_coupon` 컬럼 추가
+  - `handle_new_user_signup()` 함수 생성
+  - `trigger_new_user_signup` 트리거 생성 (profiles INSERT)
+  - 인덱스: `idx_coupons_welcome`
+
 ### 2025-10-07
 - ✅ `20251007_fix_coupons_insert_rls.sql` - 쿠폰 INSERT RLS 정책 세분화
 - ✅ `20251007_set_master_admin.sql` - master@allok.world 관리자 권한 설정
@@ -2033,6 +2069,9 @@ CREATE TRIGGER update_product_inventory_trigger
 
 **이 문서를 항상 참고하여 DB 작업을 수행하세요!**
 
-**최종 업데이트**: 2025-10-08
+**최종 업데이트**: 2025-10-08 (오후 - 웰컴 쿠폰 자동 지급 기능 반영)
 **문서 상태**: 100% 최신 (본서버 실제 DB 스키마 완전 반영)
 **총 테이블 수**: 22개 (admins, admin_sessions 포함)
+**최신 변경사항**:
+- ✅ coupons.is_welcome_coupon 컬럼 추가
+- ✅ handle_new_user_signup() 함수 및 트리거 추가

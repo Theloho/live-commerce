@@ -88,70 +88,43 @@ export default function MyPage() {
     try {
       setProfileLoading(true)
 
-      // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기
+      // 카카오 사용자인 경우 데이터베이스에서 최신 정보 가져오기 (중앙화 모듈 사용)
       if (currentUser.provider === 'kakao') {
         try {
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+          const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
 
-          const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-            method: 'GET',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
+          if (dbProfile) {
+            console.log('데이터베이스에서 카카오 사용자 프로필 로드:', dbProfile)
+            console.log('🏠 주소 정보 상세:', {
+              address: dbProfile.address,
+              detail_address: dbProfile.detail_address,
+              addresses: dbProfile.addresses,
+              hasAddress: !!dbProfile.address,
+              hasAddresses: !!(dbProfile.addresses && dbProfile.addresses.length > 0)
+            })
+            console.log('🔍 addresses 배열 상세:', JSON.stringify(dbProfile.addresses, null, 2))
+
+            const profile = {
+              name: dbProfile.name || currentUser.name || '',
+              phone: dbProfile.phone || currentUser.phone || '',
+              nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || '',
+              address: dbProfile.address || '',
+              detail_address: dbProfile.detail_address || '',
+              addresses: dbProfile.addresses || [],
+              postal_code: dbProfile.postal_code || ''
             }
-          })
+            console.log('마이페이지 프로필 로드:', { dbProfile, currentUser, profile })
+            setUserProfile(profile)
+            setEditValues(profile)
 
-          if (response.ok) {
-            const profiles = await response.json()
-            if (profiles && profiles.length > 0) {
-              const dbProfile = profiles[0]
-              console.log('데이터베이스에서 카카오 사용자 프로필 로드:', dbProfile)
-              console.log('🏠 주소 정보 상세:', {
-                address: dbProfile.address,
-                detail_address: dbProfile.detail_address,
-                addresses: dbProfile.addresses,
-                hasAddress: !!dbProfile.address,
-                hasAddresses: !!(dbProfile.addresses && dbProfile.addresses.length > 0)
-              })
-              console.log('🔍 addresses 배열 상세:', JSON.stringify(dbProfile.addresses, null, 2))
-
-              const profile = {
-                name: dbProfile.name || currentUser.name || '',
-                phone: dbProfile.phone || currentUser.phone || '',
-                nickname: dbProfile.nickname || currentUser.nickname || currentUser.name || '',
-                address: dbProfile.address || '',
-                detail_address: dbProfile.detail_address || '',
-                addresses: dbProfile.addresses || [],
-                postal_code: dbProfile.postal_code || ''
-              }
-              console.log('마이페이지 프로필 로드:', { dbProfile, currentUser, profile })
-              setUserProfile(profile)
-              setEditValues(profile)
-
-              // sessionStorage도 최신 정보로 업데이트
-              const updatedUser = {
-                ...currentUser,
-                ...profile
-              }
-              sessionStorage.setItem('user', JSON.stringify(updatedUser))
-            } else {
-              console.log('데이터베이스에서 프로필을 찾을 수 없음, sessionStorage 사용')
-              const profile = {
-                name: currentUser.name || '',
-                phone: currentUser.phone || '',
-                nickname: currentUser.nickname || currentUser.name || '',
-                address: currentUser.address || '',
-                detail_address: currentUser.detail_address || '',
-                addresses: currentUser.addresses || [],
-                postal_code: currentUser.postal_code || ''
-              }
-              setUserProfile(profile)
-              setEditValues(profile)
+            // sessionStorage도 최신 정보로 업데이트
+            const updatedUser = {
+              ...currentUser,
+              ...profile
             }
+            sessionStorage.setItem('user', JSON.stringify(updatedUser))
           } else {
-            console.error('데이터베이스 조회 실패, sessionStorage 사용')
+            console.log('데이터베이스에서 프로필을 찾을 수 없음, sessionStorage 사용')
             const profile = {
               name: currentUser.name || '',
               phone: currentUser.phone || '',
@@ -517,28 +490,18 @@ export default function MyPage() {
               userProfile={userProfile}
               onUpdate={async (updatedData) => {
                 // 💾 DB만 업데이트 (userProfile state 건드리지 않음 → 무한 루프 방지)
+                // 중앙화 모듈 사용
                 try {
                   const currentUser = userSession || user
                   if (!currentUser?.id) return
 
-                  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-                  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.replace(/\s/g, '')
+                  const result = await UserProfileManager.updateProfile(currentUser.id, updatedData)
 
-                  const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-                    method: 'PATCH',
-                    headers: {
-                      'apikey': supabaseKey,
-                      'Authorization': `Bearer ${supabaseKey}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updatedData)
-                  })
-
-                  if (response.ok) {
+                  if (result.success) {
                     console.log('✅ 주소 DB 업데이트 성공:', updatedData)
                     // setUserProfile 제거! → AddressManager는 독립적으로 작동
                   } else {
-                    console.error('주소 업데이트 실패:', response.status)
+                    console.error('주소 업데이트 실패')
                     toast.error('주소 저장에 실패했습니다')
                   }
                 } catch (error) {
