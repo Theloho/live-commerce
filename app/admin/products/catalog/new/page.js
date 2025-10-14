@@ -444,22 +444,42 @@ export default function DetailedProductNewPage() {
             <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">상품 이미지</h2>
               {imagePreview ? (
-                <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                  <Image
-                    src={imagePreview}
-                    alt="상품 이미지"
-                    fill
-                    className="object-cover"
-                  />
-                  <button
-                    onClick={() => setImagePreview('')}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
+                <div className="space-y-4">
+                  {/* 이미지 미리보기 - 작게 */}
+                  <div className="relative aspect-[4/3] max-w-xs mx-auto bg-gray-100 rounded-lg overflow-hidden">
+                    <Image
+                      src={imagePreview}
+                      alt="상품 이미지"
+                      fill
+                      className="object-cover"
+                    />
+                    <button
+                      onClick={() => setImagePreview('')}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {/* 이미지 변경 버튼들 - 가로 배치 */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center justify-center gap-1.5 py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <PhotoIcon className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700">사진보관함</span>
+                    </button>
+                    <button
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex items-center justify-center gap-1.5 py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <CameraIcon className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700">사진촬영</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div>
                   {/* Camera input */}
                   <input
                     ref={cameraInputRef}
@@ -478,21 +498,23 @@ export default function DetailedProductNewPage() {
                     className="hidden"
                   />
 
-                  <button
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="w-full py-12 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors flex flex-col items-center gap-3"
-                  >
-                    <CameraIcon className="w-8 h-8 text-blue-600" />
-                    <span className="font-medium text-blue-600">사진 촬영</span>
-                  </button>
-
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors flex flex-col items-center gap-3"
-                  >
-                    <PhotoIcon className="w-8 h-8 text-gray-600" />
-                    <span className="font-medium text-gray-600">사진 보관함</span>
-                  </button>
+                  {/* 업로드 버튼들 - 가로 배치, 작게 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 py-4 px-3 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
+                    >
+                      <PhotoIcon className="w-6 h-6 text-green-600" />
+                      <span className="text-sm font-medium text-green-700">사진보관함</span>
+                    </button>
+                    <button
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-2 py-4 px-3 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <CameraIcon className="w-6 h-6 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-700">사진촬영</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
