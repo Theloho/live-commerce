@@ -276,8 +276,7 @@ export async function POST(request) {
       const { error: paymentUpdateError } = await supabaseAdmin
         .from('order_payments')
         .update({
-          amount: newPaymentAmount,
-          updated_at: new Date().toISOString()
+          amount: newPaymentAmount
         })
         .eq('order_id', orderId)
 
