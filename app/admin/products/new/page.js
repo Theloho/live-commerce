@@ -642,7 +642,7 @@ export default function NewProductPage() {
           <div className="space-y-6">
 
             {/* 사이즈 옵션 */}
-            <div className="bg-white rounded-lg shadow-sm">
+            <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">사이즈 옵션</h2>
                 {productData.sizeOptions.length > 0 && (
@@ -734,7 +734,7 @@ export default function NewProductPage() {
             </div>
 
             {/* 컬러 옵션 */}
-            <div className="bg-white rounded-lg shadow-sm">
+            <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">컬러 옵션</h2>
                 {productData.colorOptions.length > 0 && (
@@ -785,7 +785,7 @@ export default function NewProductPage() {
 
             {/* 옵션별 재고 설정 */}
             {combinations.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm">
+              <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-medium">옵션별 재고 설정</h2>
                   <div className="flex items-center gap-2">
