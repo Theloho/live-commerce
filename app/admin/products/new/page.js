@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeftIcon, CameraIcon, PlusIcon, MinusIcon, PhotoIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, CameraIcon, PlusIcon, MinusIcon, PhotoIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
+import { getSuppliers } from '@/lib/supabaseApi'
 import { generateProductNumber } from '@/lib/productNumberGenerator'
 import toast from 'react-hot-toast'
+import SupplierManageSheet from '@/app/components/SupplierManageSheet'
 
 export default function NewProductPage() {
   const router = useRouter()
@@ -25,6 +27,8 @@ export default function NewProductPage() {
     price: '',
     inventory: 10,
     description: '',
+    supplier_id: null, // 업체 (선택사항)
+    model_number: '', // 모델번호 (선택사항)
     optionType: 'none', // 'none', 'size', 'color', 'both'
     sizeOptions: [],
     colorOptions: [],
@@ -33,6 +37,8 @@ export default function NewProductPage() {
 
   const [showSizeTemplateSelector, setShowSizeTemplateSelector] = useState(false)
   const [useThousandUnit, setUseThousandUnit] = useState(true) // 천원단위 입력 기본값 true
+  const [suppliers, setSuppliers] = useState([])
+  const [showSupplierSheet, setShowSupplierSheet] = useState(false)
 
   // 필수값 검증 함수
   const validateRequiredFields = () => {
@@ -183,7 +189,7 @@ export default function NewProductPage() {
     }
   }, [authLoading, isAdminAuthenticated, router])
 
-  // 페이지 로드 시 제품번호 자동 생성
+  // 페이지 로드 시 제품번호 자동 생성 & 업체 데이터 로드
   useEffect(() => {
     if (isAdminAuthenticated) {
       const autoGenerate = async () => {
@@ -196,7 +202,18 @@ export default function NewProductPage() {
           setProductNumber('0001')
         }
       }
+
+      const loadSuppliers = async () => {
+        try {
+          const data = await getSuppliers()
+          setSuppliers(data || [])
+        } catch (error) {
+          console.error('업체 로드 오류:', error)
+        }
+      }
+
       autoGenerate()
+      loadSuppliers()
     }
   }, [isAdminAuthenticated])
 
@@ -363,6 +380,8 @@ export default function NewProductPage() {
           inventory: totalInventory,
           thumbnail_url: imagePreview,
           description: productData.description,
+          supplier_id: productData.supplier_id || null,
+          model_number: productData.model_number || null,
           optionType: productData.optionType,
           sizeOptions: productData.sizeOptions,
           colorOptions: productData.colorOptions,
@@ -432,12 +451,12 @@ export default function NewProductPage() {
       <div className="max-w-4xl mx-auto py-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* 왼쪽: 기본 정보 */}
+          {/* 왼쪽: 필수 정보 */}
           <div className="space-y-6">
 
             {/* 제품 이미지 */}
             <div className="bg-white rounded-lg shadow-sm">
-              <h2 className="text-lg font-medium mb-4 p-6 pb-4">제품 이미지</h2>
+              <h2 className="text-lg font-medium mb-4 p-6 pb-4">제품 이미지 *</h2>
 
               {imagePreview ? (
                 <div className="space-y-6 px-6 pb-6">
@@ -517,14 +536,14 @@ export default function NewProductPage() {
               />
             </div>
 
-            {/* 기본 정보 */}
+            {/* 필수 정보 */}
             <div className="bg-white rounded-lg shadow-sm">
-              <h2 className="text-lg font-medium mb-4 p-6 pb-4">기본 정보</h2>
+              <h2 className="text-lg font-medium mb-4 p-6 pb-4">필수 정보</h2>
 
               <div className="space-y-6 px-6 pb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    제품번호
+                    제품번호 *
                   </label>
                   <input
                     type="text"
@@ -533,23 +552,6 @@ export default function NewProductPage() {
                     className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600"
                   />
                   <p className="text-xs text-gray-500 mt-1">자동으로 생성됩니다</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    제품명 (선택사항)
-                  </label>
-                  <input
-                    type="text"
-                    value={productData.title}
-                    onChange={(e) => setProductData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="예: 밍크자켓"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    maxLength={20}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    입력 시: {productNumber}/밍크자켓, 미입력 시: {productNumber}
-                  </p>
                 </div>
 
                 <div>
@@ -601,7 +603,7 @@ export default function NewProductPage() {
                 {productData.optionType === 'none' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      재고 수량
+                      재고 수량 *
                     </label>
                     <div className="flex items-center gap-3">
                       <button
@@ -632,19 +634,6 @@ export default function NewProductPage() {
                     </div>
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상세 설명 (선택사항)
-                  </label>
-                  <textarea
-                    value={productData.description}
-                    onChange={(e) => setProductData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="제품에 대한 간단한 설명을 입력하세요"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  />
-                </div>
               </div>
             </div>
           </div>
@@ -857,6 +846,87 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {/* 선택 정보 (전체 폭) */}
+        <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-medium mb-6">선택 정보</h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 업체 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                업체 (선택사항)
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={productData.supplier_id || ''}
+                  onChange={(e) => setProductData(prev => ({ ...prev, supplier_id: e.target.value || null }))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                >
+                  <option value="">선택 안 함</option>
+                  {suppliers.map(supplier => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setShowSupplierSheet(true)}
+                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  title="업체 관리"
+                >
+                  <Cog6ToothIcon className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+            </div>
+
+            {/* 모델번호 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                모델번호 (선택사항)
+              </label>
+              <input
+                type="text"
+                value={productData.model_number}
+                onChange={(e) => setProductData(prev => ({ ...prev, model_number: e.target.value }))}
+                placeholder="예: MK-2024-001"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+
+            {/* 제품명 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                제품명 (선택사항)
+              </label>
+              <input
+                type="text"
+                value={productData.title}
+                onChange={(e) => setProductData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="예: 밍크자켓"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                maxLength={20}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                입력 시: {productNumber}/밍크자켓, 미입력 시: {productNumber}
+              </p>
+            </div>
+
+            {/* 상세 설명 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                상세 설명 (선택사항)
+              </label>
+              <textarea
+                value={productData.description}
+                onChange={(e) => setProductData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="제품에 대한 간단한 설명을 입력하세요"
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* 하단 여백 (고정 네비바 공간 확보) */}
         <div className="pb-20"></div>
       </div>
@@ -911,6 +981,18 @@ export default function NewProductPage() {
           </div>
         </div>
       </div>
+
+      {/* 업체 관리 시트 */}
+      {showSupplierSheet && (
+        <SupplierManageSheet
+          isOpen={showSupplierSheet}
+          onClose={() => setShowSupplierSheet(false)}
+          onSuppliersUpdate={async () => {
+            const data = await getSuppliers()
+            setSuppliers(data || [])
+          }}
+        />
+      )}
     </div>
   )
 }
