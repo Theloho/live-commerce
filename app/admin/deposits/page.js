@@ -28,6 +28,7 @@ export default function AdminDepositsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [quickSearchResults, setQuickSearchResults] = useState(null)
   const [quickSearchTerm, setQuickSearchTerm] = useState('')
+  const [showAllPending, setShowAllPending] = useState(false) // 전체 보기 상태
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -1114,7 +1115,7 @@ export default function AdminDepositsPage() {
           </div>
 
           <div className="divide-y divide-gray-200">
-            {pendingOrders.slice(0, 10).map((order, index) => (
+            {pendingOrders.slice(0, showAllPending ? pendingOrders.length : 10).map((order, index) => (
               <motion.div
                 key={order.id}
                 initial={{ opacity: 0 }}
@@ -1227,9 +1228,24 @@ export default function AdminDepositsPage() {
               </motion.div>
             ))}
 
-            {pendingOrders.length > 10 && (
-              <div className="p-4 text-center text-gray-500 text-sm">
-                외 {pendingOrders.length - 10}건 더...
+            {pendingOrders.length > 10 && !showAllPending && (
+              <div className="p-4 text-center">
+                <button
+                  onClick={() => setShowAllPending(true)}
+                  className="px-6 py-3 bg-yellow-500 text-white font-medium rounded-lg hover:bg-yellow-600 transition-colors"
+                >
+                  외 {pendingOrders.length - 10}건 더 보기
+                </button>
+              </div>
+            )}
+            {pendingOrders.length > 10 && showAllPending && (
+              <div className="p-4 text-center">
+                <button
+                  onClick={() => setShowAllPending(false)}
+                  className="px-6 py-3 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  접기
+                </button>
               </div>
             )}
           </div>
