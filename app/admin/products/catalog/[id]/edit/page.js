@@ -298,59 +298,18 @@ export default function ProductEditPage() {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  상품번호
+                  상품번호 (수정 불가)
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={formData.product_number}
-                    onChange={(e) => handleChange('product_number', e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="P-0001"
-                  />
-                  {!formData.product_number && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          const { data: products, error } = await supabase
-                            .from('products')
-                            .select('product_number')
-                            .not('product_number', 'is', null)
-
-                          if (error) {
-                            console.error('상품번호 조회 오류:', error)
-                            toast.error('상품번호 조회 실패')
-                            return
-                          }
-
-                          const usedNumbers = (products || [])
-                            .map(p => {
-                              const match = p.product_number?.match(/^P-(\d{4})$/)
-                              return match ? parseInt(match[1]) : null
-                            })
-                            .filter(num => num !== null)
-
-                          for (let i = 1; i <= 9999; i++) {
-                            if (!usedNumbers.includes(i)) {
-                              handleChange('product_number', `P-${String(i).padStart(4, '0')}`)
-                              toast.success(`상품번호 P-${String(i).padStart(4, '0')} 생성됨`)
-                              return
-                            }
-                          }
-                          handleChange('product_number', `P-${String(Math.max(...usedNumbers, 0) + 1).padStart(4, '0')}`)
-                          toast.success('상품번호 생성됨')
-                        } catch (err) {
-                          console.error('상품번호 생성 오류:', err)
-                          toast.error('상품번호 생성 실패')
-                        }
-                      }}
-                      className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm whitespace-nowrap"
-                    >
-                      자동생성
-                    </button>
-                  )}
-                </div>
+                <input
+                  type="text"
+                  value={formData.product_number}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                  placeholder="P-0001"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  상품번호는 등록 후 변경할 수 없습니다
+                </p>
               </div>
 
               <div>
