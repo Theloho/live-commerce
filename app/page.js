@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-// import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import useAuth from '@/hooks/useAuth'
 import useRealtimeProducts from '@/hooks/useRealtimeProducts'
 import Header from './components/layout/Header'
@@ -23,12 +23,53 @@ export default function Home() {
     checkUserSession()
   }, [])
 
-  // 직접 세션 확인
-  const checkUserSession = () => {
+  // 직접 세션 확인 (DB 조회 포함)
+  const checkUserSession = async () => {
     try {
       const storedUser = sessionStorage.getItem('user')
+
       if (storedUser) {
         const userData = JSON.parse(storedUser)
+
+        // ⚠️ 이름이 없으면 DB에서 재조회
+        if (!userData.name || userData.name === '사용자') {
+          console.log('⚠️ sessionStorage에 name 없음, DB 조회 시작')
+
+          // Supabase Auth 세션 확인
+          const { data: { session } } = await supabase.auth.getSession()
+
+          if (session?.user?.id) {
+            // DB에서 프로필 조회
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+
+            if (profile && !error) {
+              console.log('✅ DB에서 프로필 재조회 성공:', profile.name)
+
+              // sessionStorage 업데이트
+              const updatedUser = {
+                ...userData,
+                name: profile.name,
+                nickname: profile.nickname,
+                phone: profile.phone || '',
+                address: profile.address || '',
+                detail_address: profile.detail_address || '',
+                postal_code: profile.postal_code || '',
+                avatar_url: profile.avatar_url
+              }
+
+              sessionStorage.setItem('user', JSON.stringify(updatedUser))
+              setUserSession(updatedUser)
+              return
+            } else {
+              console.error('❌ DB 프로필 조회 실패:', error)
+            }
+          }
+        }
+
         setUserSession(userData)
       } else {
         setUserSession(null)
