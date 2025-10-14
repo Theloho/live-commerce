@@ -464,29 +464,23 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       const createdOrders = []
 
       for (const cartItem of cartItems) {
-        // Variant 재고 검증 및 차감
+        // ✅ 재고 검증만 수행 (차감은 API에서 처리)
         if (cartItem.variantId) {
-          console.log(`🔍 Variant 재고 확인: ${cartItem.variantId}`)
-
-          // variant 재고 차감 시도
-          const { updateVariantInventory } = await import('@/lib/supabaseApi')
-
-          try {
-            await updateVariantInventory(cartItem.variantId, -cartItem.quantity)
-            console.log(`✅ Variant 재고 차감 완료: ${cartItem.variantId} (-${cartItem.quantity}개)`)
-          } catch (error) {
-            console.error('❌ Variant 재고 차감 실패:', error)
-
-            // 재고 부족 에러
-            if (error.message && error.message.includes('Insufficient inventory')) {
-              toast.error(`"${cartItem.optionLabel}" 옵션 재고가 부족합니다`)
-            } else {
-              toast.error(`재고 업데이트에 실패했습니다: ${error.message}`)
-            }
-
+          // Variant 재고 확인
+          const variant = product.variants?.find(v => v.id === cartItem.variantId)
+          if (!variant) {
+            toast.error('옵션 정보를 찾을 수 없습니다')
             setIsLoading(false)
             return false
           }
+
+          if (variant.inventory < cartItem.quantity) {
+            toast.error(`"${cartItem.optionLabel}" 옵션 재고가 부족합니다. (재고: ${variant.inventory}개)`)
+            setIsLoading(false)
+            return false
+          }
+
+          console.log(`✅ Variant 재고 확인 통과: ${cartItem.variantId} (재고: ${variant.inventory}개, 주문: ${cartItem.quantity}개)`)
         } else {
           // Variant가 없는 경우 기존 옵션 재고 검증
           if (cartItem.selectedOptions && Object.keys(cartItem.selectedOptions).length > 0) {

@@ -208,7 +208,11 @@ export async function POST(request) {
         thumbnail_url: item.thumbnail_url || item.products?.thumbnail_url || '/placeholder.png',
         title: item.title || item.products?.title || '상품명 없음',
         price: item.price || item.unit_price || item.products?.price || 0,
-        totalPrice: item.total_price || item.total || 0
+        totalPrice: item.total_price || item.total || 0,
+        // ✅ selectedOptions 추가 (결제대기 페이지 옵션별 분리 표시용)
+        selectedOptions: item.selected_options || {},
+        product_number: item.product_id,
+        variant_id: item.variant_id
       })),
       shipping: Array.isArray(order.order_shipping) && order.order_shipping.length > 0
         ? order.order_shipping[0]
