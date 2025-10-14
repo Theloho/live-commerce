@@ -353,6 +353,13 @@ export default function ProductCatalogPage() {
                   {/* 액션 버튼 (그리드 뷰) */}
                   <div className="flex gap-1 mt-2">
                     <button
+                      onClick={(e) => handleDeleteProduct(product, e)}
+                      className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 border border-red-300 rounded transition-colors"
+                      title="삭제"
+                    >
+                      <TrashIcon className="w-3 h-3" />
+                    </button>
+                    <button
                       onClick={(e) => {
                         e.stopPropagation()
                         router.push(`/admin/products/catalog/${product.id}`)
@@ -369,13 +376,6 @@ export default function ProductCatalogPage() {
                       className="flex-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 border border-gray-300 rounded transition-colors"
                     >
                       편집
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteProduct(product, e)}
-                      className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 border border-red-300 rounded transition-colors"
-                      title="삭제"
-                    >
-                      <TrashIcon className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -480,6 +480,13 @@ export default function ProductCatalogPage() {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
+                          onClick={(e) => handleDeleteProduct(product, e)}
+                          className="px-2.5 py-1 text-xs text-red-600 hover:text-white hover:bg-red-600 border border-red-600 rounded transition-colors whitespace-nowrap"
+                          title="상품 삭제 (Soft Delete)"
+                        >
+                          삭제
+                        </button>
+                        <button
                           onClick={(e) => {
                             e.stopPropagation()
                             router.push(`/admin/products/catalog/${product.id}`)
@@ -496,13 +503,6 @@ export default function ProductCatalogPage() {
                           className="px-2.5 py-1 text-xs text-gray-600 hover:text-white hover:bg-gray-600 border border-gray-600 rounded transition-colors whitespace-nowrap"
                         >
                           편집
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteProduct(product, e)}
-                          className="px-2.5 py-1 text-xs text-red-600 hover:text-white hover:bg-red-600 border border-red-600 rounded transition-colors whitespace-nowrap"
-                          title="상품 삭제 (Soft Delete)"
-                        >
-                          삭제
                         </button>
                       </div>
                     </td>
