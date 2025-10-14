@@ -207,35 +207,33 @@ export default function ProductEditPage() {
     try {
       setSaving(true)
 
-      const updateData = {
-        ...formData,
-        updated_at: new Date().toISOString()
+      console.log('🔍 저장할 데이터:', formData)
+
+      // Service Role API 사용 (RLS 우회)
+      const response = await fetch('/api/admin/products/update', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productId,
+          updateData: formData
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || '상품 수정에 실패했습니다')
       }
 
-      console.log('🔍 저장할 데이터:', updateData)
-
-      const { data, error } = await supabase
-        .from('products')
-        .update(updateData)
-        .eq('id', productId)
-        .select()
-
-      if (error) throw error
-
-      console.log('✅ 저장 결과:', data)
-      console.log('📊 업데이트된 row 수:', data?.length || 0)
-
-      if (!data || data.length === 0) {
-        console.error('⚠️ 경고: 업데이트된 row가 없습니다')
-        toast.error('데이터가 저장되지 않았습니다. 관리자 권한을 확인해주세요.')
-        return
-      }
+      console.log('✅ 저장 성공:', result.data)
 
       toast.success('상품 정보가 수정되었습니다')
       router.push(`/admin/products/catalog/${productId}`)
     } catch (error) {
       console.error('상품 수정 오류:', error)
-      toast.error('상품 수정에 실패했습니다')
+      toast.error(error.message || '상품 수정에 실패했습니다')
     } finally {
       setSaving(false)
     }
