@@ -61,23 +61,15 @@ export default function AdminDepositsPage() {
       setLoading(true)
       const offset = (page - 1) * ITEMS_PER_PAGE
 
-      // Service Role API로 페이지네이션 적용하여 주문 조회
+      // ✅ Service Role API로 서버 사이드 필터링 + 페이지네이션
       const response = await fetch(
-        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${ITEMS_PER_PAGE}&offset=${offset}`
+        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${ITEMS_PER_PAGE}&offset=${offset}&status=pending,verifying&paymentMethod=bank_transfer`
       )
       const { orders, totalCount: apiTotalCount, hasMore: apiHasMore } = await response.json()
 
-      // 계좌이체 결제대기/확인중 주문만 필터링
-      const bankTransferOrders = orders.filter(order => {
-        const paymentMethod = order.order_payments?.method || order.payment?.method
-        const orderStatus = order.status
-
-        return paymentMethod === 'bank_transfer' &&
-               (orderStatus === 'pending' || orderStatus === 'verifying')
-      })
-
+      // ✅ 서버에서 이미 필터링되어 왔으므로 클라이언트 필터링 제거
       // 사용자 정보는 이미 userProfile로 포함되어 있음
-      const ordersWithUsers = bankTransferOrders.map(order => ({
+      const ordersWithUsers = (orders || []).map(order => ({
         ...order,
         user: order.userProfile || null,
         payment: order.order_payments || order.payment,
