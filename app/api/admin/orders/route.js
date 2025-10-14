@@ -41,6 +41,9 @@ export async function GET(request) {
     console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
     // 2. Service Role로 전체 주문 조회 (RLS 우회) + 필터 + 페이지네이션
+    // ⚠️ paymentMethodFilter가 있을 때만 !inner 사용 (없으면 order_payments 없는 주문도 조회)
+    const useInnerJoin = !!paymentMethodFilter
+
     let query = supabaseAdmin
       .from('orders')
       .select(`
@@ -54,7 +57,7 @@ export async function GET(request) {
           )
         ),
         order_shipping (*),
-        order_payments!inner (*)
+        order_payments${useInnerJoin ? '!inner' : ''} (*)
       `, { count: 'exact' })
       .neq('status', 'cancelled')
 
