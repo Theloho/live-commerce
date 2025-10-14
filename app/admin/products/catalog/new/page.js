@@ -29,9 +29,11 @@ export default function DetailedProductNewPage() {
   const [loading, setLoading] = useState(false)
   const [suppliers, setSuppliers] = useState([])
   const [categories, setCategories] = useState([])
+  const [subCategories, setSubCategories] = useState([])
   const [imagePreview, setImagePreview] = useState('')
   const [showSupplierSheet, setShowSupplierSheet] = useState(false)
-  const [showCategorySheet, setShowCategorySheet] = useState(false)
+  const [showMainCategorySheet, setShowMainCategorySheet] = useState(false)
+  const [showSubCategorySheet, setShowSubCategorySheet] = useState(false)
 
   // ⭐ 천 단위 가격 입력
   const [useThousandUnit, setUseThousandUnit] = useState(true)
@@ -111,6 +113,53 @@ export default function DetailedProductNewPage() {
     } catch (error) {
       console.error('초기 데이터 로딩 오류:', error)
       toast.error('데이터를 불러오는데 실패했습니다')
+    }
+  }
+
+  // 서브 카테고리 로드
+  const loadSubCategories = async (categoryName) => {
+    try {
+      const { data: mainCategoryData } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', categoryName)
+        .is('parent_id', null)
+        .single()
+
+      if (!mainCategoryData) return
+
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('parent_id', mainCategoryData.id)
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+      setSubCategories(data || [])
+    } catch (error) {
+      console.error('서브 카테고리 로딩 오류:', error)
+    }
+  }
+
+  // 카테고리 선택 핸들러
+  const handleCategorySelect = async (mainCategory, subCategory) => {
+    setProductData(prev => ({
+      ...prev,
+      category: mainCategory,
+      sub_category: subCategory
+    }))
+
+    const { data: updatedCategories } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
+
+    setCategories(updatedCategories || [])
+
+    if (mainCategory) {
+      loadSubCategories(mainCategory)
     }
   }
 
