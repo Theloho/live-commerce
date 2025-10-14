@@ -417,13 +417,17 @@ function OrdersContent() {
                 const totalProductPrice = pendingOrders.reduce((sum, order) => {
                   return sum + order.items.reduce((itemSum, item) => itemSum + item.totalPrice, 0)
                 }, 0)
+                // ✅ 전체 상품 수량 계산 (주문 개수가 아닌 아이템 수량 합계)
+                const totalItemCount = pendingOrders.reduce((sum, order) => {
+                  return sum + order.items.reduce((itemSum, item) => itemSum + (item.quantity || 1), 0)
+                }, 0)
                 const shippingFee = 4000
                 const finalTotal = totalProductPrice + shippingFee
 
                 return (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">상품금액 ({pendingOrders.length}개)</span>
+                      <span className="text-gray-600">상품금액 ({totalItemCount}개)</span>
                       <span className="text-gray-900">₩{totalProductPrice.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
