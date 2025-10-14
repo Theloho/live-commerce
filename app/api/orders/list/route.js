@@ -242,6 +242,19 @@ export async function POST(request) {
 
     console.log(`✅ [Service Role API] 주문 조회 완료: ${normalizedOrders.length}건`)
 
+    // 🔍 디버깅: G251015-8418 주문 찾기
+    const targetOrder = normalizedOrders.find(o => o.customer_order_number === 'G251015-8418')
+    if (targetOrder) {
+      console.log('🎯 [고객 API] G251015-8418 주문 발견:', {
+        id: targetOrder.id,
+        status: targetOrder.status,
+        user_id: targetOrder.user_id,
+        order_type: targetOrder.order_type,
+        payment_group_id: targetOrder.payment_group_id,
+        created_at: targetOrder.created_at
+      })
+    }
+
     return NextResponse.json({
       success: true,
       orders: normalizedOrders

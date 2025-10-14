@@ -89,6 +89,21 @@ export async function GET(request) {
 
     console.log(`✅ 조회된 주문 수: ${data?.length || 0} / 전체: ${count || 0} (필터: status=${statusFilter}, method=${paymentMethodFilter})`)
 
+    // 🔍 디버깅: G251015-8418 주문 찾기
+    const targetOrder = data?.find(o => o.customer_order_number === 'G251015-8418')
+    if (targetOrder) {
+      console.log('🎯 G251015-8418 주문 발견:', {
+        id: targetOrder.id,
+        status: targetOrder.status,
+        user_id: targetOrder.user_id,
+        order_type: targetOrder.order_type,
+        payment_group_id: targetOrder.payment_group_id,
+        created_at: targetOrder.created_at
+      })
+    } else {
+      console.log('❌ G251015-8418 주문 DB 조회 결과에 없음')
+    }
+
     // 3. 사용자 정보 조회 및 데이터 포맷팅
     const ordersWithUserInfo = await Promise.all(data.map(async order => {
       const shipping = order.order_shipping[0] || {}
