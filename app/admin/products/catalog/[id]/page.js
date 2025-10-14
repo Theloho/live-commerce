@@ -149,8 +149,8 @@ export default function ProductDetailPage() {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-6xl mx-auto py-6 px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-6xl mx-auto py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4">
 
           {/* 왼쪽: 상품 기본 정보 */}
           <div className="lg:col-span-1 space-y-6">
