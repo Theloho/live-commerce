@@ -19,6 +19,7 @@ export default function ProductEditPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [product, setProduct] = useState(null) // 상품 원본 데이터 (variant_count 등)
   const [suppliers, setSuppliers] = useState([])
   const [categories, setCategories] = useState([])
   const [subCategories, setSubCategories] = useState([])
@@ -77,6 +78,7 @@ export default function ProductEditPage() {
       if (productData.error) throw productData.error
       if (categoriesData.error) throw categoriesData.error
 
+      setProduct(productData.data) // 원본 데이터 저장 (variant_count 등)
       setFormData({
         title: productData.data.title || '',
         product_number: productData.data.product_number || '',
@@ -494,18 +496,44 @@ export default function ProductEditPage() {
         <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">추가 정보</h2>
           <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                SKU
-              </label>
-              <input
-                type="text"
-                value={formData.sku}
-                onChange={(e) => handleChange('sku', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="SKU"
-              />
-            </div>
+            {/* SKU 필드 - Variant 유무에 따라 조건부 표시 */}
+            {product?.variant_count > 0 ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  SKU
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                  <div className="flex items-center justify-between">
+                    <span>Variant별로 관리됨 (총 {product.variant_count}개)</span>
+                    <button
+                      onClick={() => router.push(`/admin/products/catalog/${productId}`)}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      재고 관리 →
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  각 Variant는 자동 생성된 SKU를 가지고 있습니다 (예: P-0001-66-블랙-a3f27b8c)
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  SKU (자동 생성)
+                </label>
+                <input
+                  type="text"
+                  value={formData.product_number || ''}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                  placeholder="상품번호가 SKU로 사용됩니다"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  옵션이 없는 상품은 상품번호가 SKU로 사용됩니다
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

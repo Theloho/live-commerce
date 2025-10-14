@@ -20,7 +20,7 @@ import {
   ListBulletIcon
 } from '@heroicons/react/24/outline'
 import { PlayIcon, StopIcon } from '@heroicons/react/24/solid'
-import { getAllProducts, getCategories, addToLive, removeFromLive } from '@/lib/supabaseApi'
+import { getAllProducts, getCategories, addToLive, removeFromLive, deleteProduct } from '@/lib/supabaseApi'
 import toast from 'react-hot-toast'
 
 export default function ProductCatalogPage() {
@@ -111,6 +111,32 @@ export default function ProductCatalogPage() {
     } catch (error) {
       console.error('라이브 상태 변경 오류:', error)
       toast.error('라이브 상태 변경에 실패했습니다')
+    }
+  }
+
+  // 상품 삭제 (Soft Delete)
+  const handleDeleteProduct = async (product, e) => {
+    e.stopPropagation() // 카드 클릭 이벤트 전파 방지
+
+    // 확인 다이얼로그
+    const confirmed = window.confirm(
+      `정말로 "${product.title}" 상품을 삭제하시겠습니까?\n\n` +
+      `⚠️ 이 작업은 Soft Delete입니다:\n` +
+      `- 상품 목록에서 숨겨집니다\n` +
+      `- 기존 주문 내역은 유지됩니다\n` +
+      `- SKU는 재사용할 수 없습니다\n` +
+      `- 데이터베이스에서는 삭제되지 않습니다`
+    )
+
+    if (!confirmed) return
+
+    try {
+      await deleteProduct(product.id)
+      toast.success(`${product.title}을(를) 삭제했습니다`)
+      loadData() // 데이터 새로고침
+    } catch (error) {
+      console.error('상품 삭제 오류:', error)
+      toast.error('상품 삭제에 실패했습니다')
     }
   }
 
@@ -317,11 +343,40 @@ export default function ProductCatalogPage() {
                   </div>
 
                   {/* 카테고리 & 상태 */}
-                  <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                     <span className="truncate">{product.category || '미분류'}</span>
                     <span className={`px-1 py-0.5 rounded text-xs ${getStatusColor(product.status)}`}>
                       {getStatusText(product.status)}
                     </span>
+                  </div>
+
+                  {/* 액션 버튼 (그리드 뷰) */}
+                  <div className="flex gap-1 mt-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        router.push(`/admin/products/catalog/${product.id}`)
+                      }}
+                      className="flex-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 border border-blue-300 rounded transition-colors"
+                    >
+                      상세
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        router.push(`/admin/products/catalog/${product.id}/edit`)
+                      }}
+                      className="flex-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 border border-gray-300 rounded transition-colors"
+                    >
+                      편집
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteProduct(product, e)}
+                      className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 border border-red-300 rounded transition-colors"
+                      title="삭제"
+                    >
+                      <TrashIcon className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -441,6 +496,13 @@ export default function ProductCatalogPage() {
                           className="px-2.5 py-1 text-xs text-gray-600 hover:text-white hover:bg-gray-600 border border-gray-600 rounded transition-colors whitespace-nowrap"
                         >
                           편집
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteProduct(product, e)}
+                          className="px-2.5 py-1 text-xs text-red-600 hover:text-white hover:bg-red-600 border border-red-600 rounded transition-colors whitespace-nowrap"
+                          title="상품 삭제 (Soft Delete)"
+                        >
+                          삭제
                         </button>
                       </div>
                     </td>

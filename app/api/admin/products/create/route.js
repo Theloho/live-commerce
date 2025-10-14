@@ -169,15 +169,18 @@ export async function POST(request) {
       // 2-2. product_variants 생성 (조합별로)
       console.log(`🔀 [${registrationType} API] Variant 생성 시작`)
 
+      // Product ID 앞 8자리 추출 (SKU 유니크 보장)
+      const productIdShort = product.id.substring(0, 8)
+
       for (const combo of combinations) {
-        // SKU 생성
-        let sku = product_number
+        // SKU 생성 (제품번호-옵션값-ProductID)
+        let sku = `${product_number}-${productIdShort}`
         if (combo.type === 'size') {
-          sku = `${product_number}-${combo.size}`
+          sku = `${product_number}-${combo.size}-${productIdShort}`
         } else if (combo.type === 'color') {
-          sku = `${product_number}-${combo.color}`
+          sku = `${product_number}-${combo.color}-${productIdShort}`
         } else if (combo.type === 'both') {
-          sku = `${product_number}-${combo.size}-${combo.color}`
+          sku = `${product_number}-${combo.size}-${combo.color}-${productIdShort}`
         }
 
         // 재고
