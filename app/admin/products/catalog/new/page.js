@@ -51,18 +51,16 @@ export default function DetailedProductNewPage() {
     category: '',
     sub_category: '',
     status: 'active',
-    tags: []
+    tags: [],
+    // ⭐ 빠른등록 방식: 옵션 데이터
+    sizeOptions: [],
+    colorOptions: [],
+    optionInventories: {}
   })
 
-  // 옵션 관리
-  const [options, setOptions] = useState([
-    { name: '사이즈', values: [] },
-    { name: '색상', values: [] }
-  ])
-
-  // Variant 관리 (옵션 조합)
-  const [variants, setVariants] = useState([])
-  const [showVariantGenerator, setShowVariantGenerator] = useState(false)
+  // ⚠️ 더 이상 사용하지 않음 (빠른등록 방식으로 통일)
+  // const [options, setOptions] = useState([...])
+  // const [variants, setVariants] = useState([])
 
   // ⭐ 사이즈/색상 템플릿
   const SIZE_TEMPLATES = {
@@ -143,123 +141,156 @@ export default function DetailedProductNewPage() {
     }
   }
 
-  // ⭐ 사이즈 템플릿 적용
+  // ⭐ 사이즈 템플릿 적용 (빠른등록 방식)
   const applySizeTemplate = (templateKey) => {
-    const newOptions = [...options]
-    newOptions[0].values = SIZE_TEMPLATES[templateKey].map(size => ({ value: size, color_code: '', image_url: '' }))
-    setOptions(newOptions)
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: [...SIZE_TEMPLATES[templateKey]]
+    }))
     toast.success(`${SIZE_TEMPLATES[templateKey].length}개의 사이즈가 추가되었습니다`)
   }
 
-  // ⭐ 색상 프리셋 적용
+  // ⭐ 색상 프리셋 적용 (빠른등록 방식)
   const applyColorPresets = () => {
-    const newOptions = [...options]
-    newOptions[1].values = COLOR_PRESETS.map(color => ({ value: color, color_code: '', image_url: '' }))
-    setOptions(newOptions)
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: [...COLOR_PRESETS]
+    }))
     toast.success(`${COLOR_PRESETS.length}개의 색상이 추가되었습니다`)
   }
 
-  // 옵션값 추가
-  const addOptionValue = (optionIndex) => {
-    const newOptions = [...options]
-    newOptions[optionIndex].values.push({ value: '', color_code: '', image_url: '' })
-    setOptions(newOptions)
+  // 사이즈 옵션 추가
+  const addSizeOption = () => {
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: [...prev.sizeOptions, '']
+    }))
   }
 
-  // 옵션값 제거
-  const removeOptionValue = (optionIndex, valueIndex) => {
-    const newOptions = [...options]
-    newOptions[optionIndex].values.splice(valueIndex, 1)
-    setOptions(newOptions)
+  // 사이즈 옵션 제거
+  const removeSizeOption = (index) => {
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: prev.sizeOptions.filter((_, i) => i !== index)
+    }))
   }
 
-  // 옵션값 업데이트
-  const updateOptionValue = (optionIndex, valueIndex, field, value) => {
-    const newOptions = [...options]
-    newOptions[optionIndex].values[valueIndex][field] = value
-    setOptions(newOptions)
+  // 사이즈 옵션 수정
+  const updateSizeOption = (index, value) => {
+    const newSizeOptions = [...productData.sizeOptions]
+    newSizeOptions[index] = value
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: newSizeOptions
+    }))
   }
 
-  // Variant 자동 생성 (옵션 조합)
-  const generateVariants = () => {
-    const sizeOptions = options[0].values.filter(v => v.value.trim())
-    const colorOptions = options[1].values.filter(v => v.value.trim())
+  // 색상 옵션 추가
+  const addColorOption = () => {
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: [...prev.colorOptions, '']
+    }))
+  }
+
+  // 색상 옵션 제거
+  const removeColorOption = (index) => {
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: prev.colorOptions.filter((_, i) => i !== index)
+    }))
+  }
+
+  // 색상 옵션 수정
+  const updateColorOption = (index, value) => {
+    const newColorOptions = [...productData.colorOptions]
+    newColorOptions[index] = value
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: newColorOptions
+    }))
+  }
+
+  // 모든 사이즈 제거
+  const removeAllSizeOptions = () => {
+    setProductData(prev => ({
+      ...prev,
+      sizeOptions: []
+    }))
+    toast.success('모든 사이즈 옵션이 제거되었습니다')
+  }
+
+  // 모든 색상 제거
+  const removeAllColorOptions = () => {
+    setProductData(prev => ({
+      ...prev,
+      colorOptions: []
+    }))
+    toast.success('모든 색상 옵션이 제거되었습니다')
+  }
+
+  // ⭐ 옵션 조합 자동 생성 (빠른등록 방식)
+  const generateOptionCombinations = () => {
+    const { sizeOptions, colorOptions } = productData
 
     if (sizeOptions.length === 0 && colorOptions.length === 0) {
-      toast.error('최소 하나 이상의 옵션값을 입력해주세요')
-      return
+      return []
     }
 
-    const newVariants = []
+    const combinations = []
 
     if (sizeOptions.length > 0 && colorOptions.length > 0) {
-      // 사이즈와 색상 조합
+      // 사이즈 × 색상 조합
       sizeOptions.forEach(size => {
         colorOptions.forEach(color => {
-          const sku = `${productData.model_number || 'PROD'}-${size.value}-${color.value}`.toUpperCase()
-          newVariants.push({
-            sku,
-            options: [
-              { name: '사이즈', value: size.value },
-              { name: '색상', value: color.value }
-            ],
-            inventory: 0,
-            supplier_sku: ''
+          combinations.push({
+            key: `size:${size}|color:${color}`,
+            label: `${size} × ${color}`,
+            type: 'both',
+            size,
+            color
           })
         })
       })
     } else if (sizeOptions.length > 0) {
       // 사이즈만
       sizeOptions.forEach(size => {
-        const sku = `${productData.model_number || 'PROD'}-${size.value}`.toUpperCase()
-        newVariants.push({
-          sku,
-          options: [{ name: '사이즈', value: size.value }],
-          inventory: 0,
-          supplier_sku: ''
+        combinations.push({
+          key: `size:${size}`,
+          label: size,
+          type: 'size',
+          size
         })
       })
-    } else {
+    } else if (colorOptions.length > 0) {
       // 색상만
       colorOptions.forEach(color => {
-        const sku = `${productData.model_number || 'PROD'}-${color.value}`.toUpperCase()
-        newVariants.push({
-          sku,
-          options: [{ name: '색상', value: color.value }],
-          inventory: 0,
-          supplier_sku: ''
+        combinations.push({
+          key: `color:${color}`,
+          label: color,
+          type: 'color',
+          color
         })
       })
     }
 
-    setVariants(newVariants)
-    setShowVariantGenerator(false)
-    toast.success(`${newVariants.length}개의 Variant가 생성되었습니다`)
+    return combinations
   }
 
-  // Variant 재고 업데이트
-  const updateVariantInventory = (index, inventory) => {
-    const newVariants = [...variants]
-    newVariants[index].inventory = parseInt(inventory) || 0
-    setVariants(newVariants)
+  const combinations = generateOptionCombinations()
+
+  // 옵션별 재고 변경
+  const handleOptionInventoryChange = (comboKey, inventory) => {
+    setProductData(prev => ({
+      ...prev,
+      optionInventories: {
+        ...prev.optionInventories,
+        [comboKey]: parseInt(inventory) || 0
+      }
+    }))
   }
 
-  // Variant SKU 업데이트
-  const updateVariantSKU = (index, sku) => {
-    const newVariants = [...variants]
-    newVariants[index].sku = sku
-    setVariants(newVariants)
-  }
-
-  // ⭐ 일괄 재고 적용
-  const applyBulkInventory = (bulkValue) => {
-    const inventory = parseInt(bulkValue) || 0
-    const newVariants = variants.map(v => ({ ...v, inventory }))
-    setVariants(newVariants)
-    toast.success(`모든 Variant에 재고 ${inventory}개가 적용되었습니다`)
-  }
-
-  // ⭐ 상품 저장 (Service Role API 사용)
+  // ⭐ 상품 저장 (Service Role API 사용 - 빠른등록 방식)
   const handleSaveProduct = async () => {
     // 유효성 검증
     if (!productData.price || productData.price <= 0) {
@@ -272,9 +303,12 @@ export default function DetailedProductNewPage() {
       return
     }
 
-    if (variants.length === 0) {
-      toast.error('최소 하나 이상의 Variant를 생성해주세요')
-      return
+    if (combinations.length > 0) {
+      const totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
+      if (totalInventory === 0) {
+        toast.error('옵션별 재고를 입력해주세요')
+        return
+      }
     }
 
     if (!adminUser?.email) {
@@ -285,67 +319,40 @@ export default function DetailedProductNewPage() {
     setLoading(true)
 
     try {
-      // 1. 옵션 데이터 준비 (빠른등록 형식으로)
-      const sizeOptions = options[0].values.filter(v => v.value.trim()).map(v => v.value.trim())
-      const colorOptions = options[1].values.filter(v => v.value.trim()).map(v => v.value.trim())
+      console.log('🚀 [상세등록] 상품 저장 시작 (빠른등록 방식)')
 
+      // 총 재고 계산
+      let totalInventory = 0
+      if (combinations.length > 0) {
+        totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
+      }
+
+      // 옵션 타입 결정
       let optionType = 'none'
-      if (sizeOptions.length > 0 && colorOptions.length > 0) {
+      if (productData.sizeOptions.length > 0 && productData.colorOptions.length > 0) {
         optionType = 'both'
-      } else if (sizeOptions.length > 0) {
+      } else if (productData.sizeOptions.length > 0) {
         optionType = 'size'
-      } else if (colorOptions.length > 0) {
+      } else if (productData.colorOptions.length > 0) {
         optionType = 'color'
       }
 
-      // 2. Variant 재고 매핑 (빠른등록 형식으로)
-      const optionInventories = {}
-      const combinations = []
-
-      variants.forEach(variant => {
-        // key 생성
-        let key = ''
-        let combo = { type: optionType }
-
-        if (optionType === 'size') {
-          const sizeValue = variant.options.find(opt => opt.name === '사이즈')?.value
-          key = `size:${sizeValue}`
-          combo.size = sizeValue
-        } else if (optionType === 'color') {
-          const colorValue = variant.options.find(opt => opt.name === '색상')?.value
-          key = `color:${colorValue}`
-          combo.color = colorValue
-        } else if (optionType === 'both') {
-          const sizeValue = variant.options.find(opt => opt.name === '사이즈')?.value
-          const colorValue = variant.options.find(opt => opt.name === '색상')?.value
-          key = `size:${sizeValue}|color:${colorValue}`
-          combo.size = sizeValue
-          combo.color = colorValue
-        }
-
-        combo.key = key
-        combo.label = variant.options.map(opt => opt.value).join(' × ')
-
-        optionInventories[key] = variant.inventory
-        combinations.push(combo)
-      })
-
-      // 3. API 호출 (Service Role API)
+      // API 호출 (Service Role API)
       const requestData = {
         // 기본 필드
         title: productData.title.trim() || productData.product_number,
         product_number: productData.product_number,
         price: parseInt(productData.price),
-        inventory: variants.reduce((sum, v) => sum + v.inventory, 0),
+        inventory: totalInventory,
         thumbnail_url: imagePreview,
         description: productData.description.trim(),
 
         // 옵션 필드
         optionType,
-        sizeOptions,
-        colorOptions,
-        optionInventories,
-        combinations,
+        sizeOptions: productData.sizeOptions,
+        colorOptions: productData.colorOptions,
+        optionInventories: productData.optionInventories,
+        combinations: combinations,
 
         // ⭐ 상세등록 추가 필드
         supplier_id: productData.supplier_id || null,
@@ -712,156 +719,174 @@ export default function DetailedProductNewPage() {
             </div>
           </div>
 
-          {/* 오른쪽: 옵션 및 Variant */}
+          {/* 오른쪽: 옵션 설정 (빠른등록 방식) */}
           <div className="space-y-6">
 
-            {/* ⭐ 옵션 설정 (템플릿 추가) */}
+            {/* 사이즈 옵션 */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium mb-4">옵션 설정</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium">사이즈 옵션</h2>
+                {productData.sizeOptions.length > 0 && (
+                  <button
+                    onClick={removeAllSizeOptions}
+                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                  >
+                    전체 삭제
+                  </button>
+                )}
+              </div>
 
-              {options.map((option, optionIndex) => (
-                <div key={optionIndex} className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {option.name}
-                    </label>
-                    {/* ⭐ 템플릿 버튼 */}
-                    {optionIndex === 0 && (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => applySizeTemplate('number')}
-                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-                        >
-                          숫자(55-99)
-                        </button>
-                        <button
-                          onClick={() => applySizeTemplate('alpha')}
-                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-                        >
-                          영문(S-XXL)
-                        </button>
-                        <button
-                          onClick={() => applySizeTemplate('free')}
-                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-                        >
-                          FREE
-                        </button>
-                      </div>
-                    )}
-                    {optionIndex === 1 && (
-                      <button
-                        onClick={applyColorPresets}
-                        className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-                      >
-                        프리셋 (10색)
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    {option.values.map((value, valueIndex) => (
-                      <div key={valueIndex} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={value.value}
-                          onChange={(e) => updateOptionValue(optionIndex, valueIndex, 'value', e.target.value)}
-                          placeholder={option.name === '사이즈' ? '예: 66' : '예: 핑크'}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <button
-                          onClick={() => removeOptionValue(optionIndex, valueIndex)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <MinusIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-
+              {productData.sizeOptions.length === 0 ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => addOptionValue(optionIndex)}
-                      className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                      onClick={() => applySizeTemplate('number')}
+                      className="flex-1 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
                     >
-                      + {option.name} 추가
+                      <div className="font-medium text-sm">숫자(55-99)</div>
+                    </button>
+                    <button
+                      onClick={() => applySizeTemplate('alpha')}
+                      className="flex-1 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="font-medium text-sm">영문(S-XXL)</div>
+                    </button>
+                    <button
+                      onClick={() => applySizeTemplate('free')}
+                      className="flex-1 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="font-medium text-sm">FREE</div>
                     </button>
                   </div>
                 </div>
-              ))}
-
-              <button
-                onClick={() => setShowVariantGenerator(true)}
-                className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Variant 자동 생성
-              </button>
+              ) : (
+                <div className="space-y-3">
+                  {productData.sizeOptions.map((size, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={size}
+                        onChange={(e) => updateSizeOption(index, e.target.value)}
+                        placeholder="사이즈명"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        onClick={() => removeSizeOption(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <MinusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={addSizeOption}
+                    className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                  >
+                    + 사이즈 추가
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* ⭐ Variant 관리 (일괄 재고 입력 추가) */}
-            {variants.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-medium mb-4">
-                  Variant 재고 관리 ({variants.length}개)
-                </h2>
+            {/* 색상 옵션 */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium">색상 옵션</h2>
+                {productData.colorOptions.length > 0 && (
+                  <button
+                    onClick={removeAllColorOptions}
+                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                  >
+                    전체 삭제
+                  </button>
+                )}
+              </div>
 
-                {/* ⭐ 일괄 재고 입력 */}
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <label className="block text-sm font-medium text-green-800 mb-2">
-                    일괄 재고 적용
-                  </label>
-                  <div className="flex gap-2">
+              {productData.colorOptions.length === 0 ? (
+                <button
+                  onClick={applyColorPresets}
+                  className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  + 색상 프리셋 (10색)
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  {productData.colorOptions.map((color, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={color}
+                        onChange={(e) => updateColorOption(index, e.target.value)}
+                        placeholder="색상명"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        onClick={() => removeColorOption(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <MinusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={addColorOption}
+                    className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                  >
+                    + 색상 추가
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ⭐ 옵션별 재고 설정 (자동 생성) */}
+            {combinations.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-medium">옵션별 재고 설정</h2>
+                  <div className="flex items-center gap-2">
                     <input
                       type="number"
                       id="bulkInventory"
+                      placeholder="일괄 입력"
                       min="0"
-                      placeholder="재고 수량 (예: 10)"
-                      className="flex-1 px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      className="w-24 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <button
                       onClick={() => {
-                        const value = document.getElementById('bulkInventory').value
-                        if (value) {
-                          applyBulkInventory(value)
+                        const bulkValue = document.getElementById('bulkInventory').value
+                        if (bulkValue) {
+                          const newInventories = {}
+                          combinations.forEach(combo => {
+                            newInventories[combo.key] = parseInt(bulkValue) || 0
+                          })
+                          setProductData(prev => ({
+                            ...prev,
+                            optionInventories: newInventories
+                          }))
+                          document.getElementById('bulkInventory').value = ''
+                          toast.success(`모든 옵션에 재고 ${bulkValue}개가 적용되었습니다`)
                         }
                       }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       일괄 적용
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-green-700">
-                    모든 Variant에 동일한 재고를 적용합니다
-                  </p>
                 </div>
 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {variants.map((variant, index) => (
-                    <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-sm">
-                          {variant.options.map(opt => opt.value).join(' / ')}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">SKU</label>
-                          <input
-                            type="text"
-                            value={variant.sku}
-                            onChange={(e) => updateVariantSKU(index, e.target.value)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">재고</label>
-                          <input
-                            type="number"
-                            value={variant.inventory}
-                            onChange={(e) => updateVariantInventory(index, e.target.value)}
-                            min="0"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
+                  {combinations.map((combo) => (
+                    <div key={combo.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium">{combo.label}</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={productData.optionInventories[combo.key] || 0}
+                          onChange={(e) => handleOptionInventoryChange(combo.key, e.target.value)}
+                          min="0"
+                          className="w-20 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <span className="text-sm text-gray-500">개</span>
                       </div>
                     </div>
                   ))}
@@ -869,41 +894,13 @@ export default function DetailedProductNewPage() {
 
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    💡 총 재고: {variants.reduce((sum, v) => sum + v.inventory, 0)}개
+                    💡 총 재고: {Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)}개
                   </p>
                 </div>
               </div>
             )}
           </div>
         </div>
-
-        {/* Variant 생성 확인 모달 */}
-        {showVariantGenerator && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-              <h3 className="text-lg font-medium mb-4">Variant 자동 생성</h3>
-              <p className="text-gray-600 mb-6">
-                입력한 옵션값을 조합하여 Variant를 자동으로 생성합니다.
-                <br />
-                기존 Variant는 삭제됩니다.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowVariantGenerator(false)}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={generateVariants}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  생성
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* 하단 고정 네비게이션 바 */}
