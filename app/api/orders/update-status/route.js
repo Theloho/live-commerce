@@ -96,19 +96,36 @@ export async function POST(request) {
           phone: shippingData.shipping_phone,
           address: shippingData.shipping_address,
           detail_address: shippingData.shipping_detail_address || '',
-          postal_code: shippingData.shipping_postal_code || null
+          postal_code: shippingData.shipping_postal_code || null,
+          shipping_fee: 4000
         }
 
-        // UPSERT 시도 (있으면 UPDATE, 없으면 INSERT)
-        const { error: shippingError } = await supabaseAdmin
+        // 먼저 기존 레코드 확인
+        const { data: existingShipping } = await supabaseAdmin
           .from('order_shipping')
-          .upsert({
-            order_id: orderId,
-            ...shippingUpdate,
-            shipping_fee: 4000
-          }, {
-            onConflict: 'order_id'
-          })
+          .select('id')
+          .eq('order_id', orderId)
+          .single()
+
+        let shippingError = null
+
+        if (existingShipping) {
+          // 있으면 UPDATE
+          const { error } = await supabaseAdmin
+            .from('order_shipping')
+            .update(shippingUpdate)
+            .eq('order_id', orderId)
+          shippingError = error
+        } else {
+          // 없으면 INSERT
+          const { error } = await supabaseAdmin
+            .from('order_shipping')
+            .insert({
+              order_id: orderId,
+              ...shippingUpdate
+            })
+          shippingError = error
+        }
 
         if (shippingError) {
           console.error('❌ order_shipping 업데이트 오류:', shippingError)
@@ -159,9 +176,8 @@ export async function POST(request) {
           finalAmount
         })
 
-        // 결제 정보 UPSERT
+        // 결제 정보 업데이트
         const paymentUpdate = {
-          order_id: orderId,
           method: paymentData.method || 'bank_transfer',
           amount: finalAmount,
           status: status,
@@ -172,11 +188,32 @@ export async function POST(request) {
           paymentUpdate.payment_group_id = paymentGroupId
         }
 
-        const { error: paymentError } = await supabaseAdmin
+        // 먼저 기존 레코드 확인
+        const { data: existingPayment } = await supabaseAdmin
           .from('order_payments')
-          .upsert(paymentUpdate, {
-            onConflict: 'order_id'
-          })
+          .select('id')
+          .eq('order_id', orderId)
+          .single()
+
+        let paymentError = null
+
+        if (existingPayment) {
+          // 있으면 UPDATE
+          const { error } = await supabaseAdmin
+            .from('order_payments')
+            .update(paymentUpdate)
+            .eq('order_id', orderId)
+          paymentError = error
+        } else {
+          // 없으면 INSERT
+          const { error } = await supabaseAdmin
+            .from('order_payments')
+            .insert({
+              order_id: orderId,
+              ...paymentUpdate
+            })
+          paymentError = error
+        }
 
         if (paymentError) {
           console.error('❌ order_payments 업데이트 오류:', paymentError)
