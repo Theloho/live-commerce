@@ -96,6 +96,73 @@ function AdminLayoutContent({ children }) {
     },
   ]
 
+  // 사이드바 메뉴 컴포넌트 (중복 제거)
+  const SidebarContent = ({ onLinkClick }) => (
+    <>
+      {/* Logo */}
+      <div className="flex items-center justify-between px-6 py-4 border-b">
+        <h1 className="text-xl font-bold text-red-600">allok 관리자</h1>
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
+        >
+          <XMarkIcon className="w-5 h-5 text-gray-500" />
+        </button>
+      </div>
+
+      {/* Menu */}
+      <nav className="flex-1 px-4 py-6 overflow-y-auto">
+        <div className="space-y-6">
+          {menuGroups.map((group, groupIndex) => (
+            <div key={groupIndex}>
+              <h3 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                {group.title}
+              </h3>
+              <ul className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  const isActive = pathname === item.href ||
+                    (item.href === '/admin/products/catalog' && pathname.startsWith('/admin/products/catalog')) ||
+                    (item.href === '/admin/coupons' && pathname.startsWith('/admin/coupons')) ||
+                    (item.href === '/admin/suppliers' && pathname.startsWith('/admin/suppliers')) ||
+                    (item.href === '/admin/categories' && pathname.startsWith('/admin/categories')) ||
+                    (item.href === '/admin/admins' && pathname.startsWith('/admin/admins'))
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={onLinkClick}
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
+                          isActive
+                            ? 'bg-red-50 text-red-600 border border-red-200'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-sm">{item.label}</span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </nav>
+
+      {/* Logout */}
+      <div className="p-4 border-t">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+        >
+          <ArrowRightOnRectangleIcon className="w-5 h-5" />
+          로그아웃
+        </button>
+      </div>
+    </>
+  )
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -131,78 +198,25 @@ function AdminLayoutContent({ children }) {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
+      {/* Mobile Sidebar */}
       <motion.div
         initial={false}
         animate={{
           x: sidebarOpen ? 0 : -280
         }}
-        className="fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50 md:translate-x-0 md:static md:z-auto"
+        className="md:hidden fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50"
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-between px-6 py-4 border-b">
-            <h1 className="text-xl font-bold text-red-600">allok 관리자</h1>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <XMarkIcon className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-
-          {/* Menu */}
-          <nav className="flex-1 px-4 py-6 overflow-y-auto">
-            <div className="space-y-6">
-              {menuGroups.map((group, groupIndex) => (
-                <div key={groupIndex}>
-                  <h3 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    {group.title}
-                  </h3>
-                  <ul className="space-y-1">
-                    {group.items.map((item) => {
-                      const Icon = item.icon
-                      const isActive = pathname === item.href ||
-                        (item.href === '/admin/products/catalog' && pathname.startsWith('/admin/products/catalog')) ||
-                        (item.href === '/admin/coupons' && pathname.startsWith('/admin/coupons')) ||
-                        (item.href === '/admin/suppliers' && pathname.startsWith('/admin/suppliers')) ||
-                        (item.href === '/admin/categories' && pathname.startsWith('/admin/categories')) ||
-                        (item.href === '/admin/admins' && pathname.startsWith('/admin/admins'))
-                      return (
-                        <li key={item.href}>
-                          <Link
-                            href={item.href}
-                            onClick={() => setSidebarOpen(false)}
-                            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                              isActive
-                                ? 'bg-red-50 text-red-600 border border-red-200'
-                                : 'text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            <Icon className="w-5 h-5" />
-                            <span className="text-sm">{item.label}</span>
-                          </Link>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </nav>
-
-          {/* Logout */}
-          <div className="p-4 border-t">
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
-            >
-              <ArrowRightOnRectangleIcon className="w-5 h-5" />
-              로그아웃
-            </button>
-          </div>
+          <SidebarContent onLinkClick={() => setSidebarOpen(false)} />
         </div>
       </motion.div>
+
+      {/* Desktop Sidebar - 항상 고정 */}
+      <div className="hidden md:block fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-30">
+        <div className="flex flex-col h-full">
+          <SidebarContent onLinkClick={() => {}} />
+        </div>
+      </div>
 
       {/* Main content */}
       <div className="md:ml-64">
@@ -229,7 +243,7 @@ function AdminLayoutContent({ children }) {
         </header>
 
         {/* Page content */}
-        <main className="p-3 md:p-4">
+        <main className="p-6 md:p-4">
           {children}
         </main>
       </div>
