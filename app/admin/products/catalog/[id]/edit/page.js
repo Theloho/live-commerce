@@ -353,7 +353,7 @@ export default function ProductEditPage() {
               </label>
               <input
                 type="number"
-                value={formData.price}
+                value={formData.price || ''}
                 onChange={(e) => handleChange('price', parseInt(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="10000"
@@ -366,11 +366,14 @@ export default function ProductEditPage() {
               </label>
               <input
                 type="number"
-                value={formData.compare_price}
+                value={formData.compare_price || ''}
                 onChange={(e) => handleChange('compare_price', parseInt(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="15000"
               />
+              <p className="mt-1 text-xs text-gray-500">
+                정가보다 낮은 판매가격을 설정하면 할인율이 표시됩니다
+              </p>
             </div>
           </div>
         </div>
