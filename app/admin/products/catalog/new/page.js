@@ -552,7 +552,7 @@ export default function DetailedProductNewPage() {
                       }`}
                     >
                       {useThousandUnit ? '천 단위 입력' : '일반 입력'}
-                    </label>
+                    </button>
                   </div>
                   <div className="flex items-center gap-2">
                     <input
