@@ -100,7 +100,7 @@ export async function POST(request) {
 
       // 대체 조회 (cart:KAKAO:kakao_id)
       const cartPattern = `cart:KAKAO:${user.kakao_id}`
-      const { data: cartData, error: cartError } = await supabaseAdmin
+      let cartQuery = supabaseAdmin
         .from('orders')
         .select(`
           *,
@@ -128,9 +128,18 @@ export async function POST(request) {
           order_shipping (*),
           order_payments (*)
         `)
-        .neq('status', 'cancelled')
+
+      // ✅ orderId가 제공된 경우 특정 주문만 조회
+      if (orderId) {
+        cartQuery = cartQuery.eq('id', orderId)
+      } else {
+        cartQuery = cartQuery
+          .neq('status', 'cancelled')
+          .order('created_at', { ascending: false })
+      }
+
+      const { data: cartData, error: cartError } = await cartQuery
         .like('order_type', `${cartPattern}%`)
-        .order('created_at', { ascending: false })
 
       if (cartError) {
         console.warn('⚠️ 장바구니 조회 오류:', cartError)
@@ -144,7 +153,7 @@ export async function POST(request) {
 
       // 추가 대체 조회 (user.id 기반)
       const idPattern = `%KAKAO:${user.id}%`
-      const { data: idData, error: idError } = await supabaseAdmin
+      let idQuery = supabaseAdmin
         .from('orders')
         .select(`
           *,
@@ -172,9 +181,18 @@ export async function POST(request) {
           order_shipping (*),
           order_payments (*)
         `)
-        .neq('status', 'cancelled')
+
+      // ✅ orderId가 제공된 경우 특정 주문만 조회
+      if (orderId) {
+        idQuery = idQuery.eq('id', orderId)
+      } else {
+        idQuery = idQuery
+          .neq('status', 'cancelled')
+          .order('created_at', { ascending: false })
+      }
+
+      const { data: idData, error: idError } = await idQuery
         .like('order_type', idPattern)
-        .order('created_at', { ascending: false })
 
       if (idError) {
         console.warn('⚠️ ID 기반 조회 오류:', idError)
