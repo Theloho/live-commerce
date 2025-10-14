@@ -233,7 +233,7 @@ export default function ProductCatalogPage() {
               >
                 <option value="">모든 카테고리</option>
                 {categories.map(category => (
-                  <option key={category.id} value={category.id}>
+                  <option key={category.id} value={category.name}>
                     {category.name}
                   </option>
                 ))}
