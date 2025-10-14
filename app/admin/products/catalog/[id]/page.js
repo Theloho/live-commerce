@@ -159,7 +159,7 @@ export default function ProductDetailPage() {
             <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">상품 이미지</h2>
               {product.thumbnail_url ? (
-                <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                <div className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
                   <Image
                     src={product.thumbnail_url}
                     alt={product.title}
@@ -168,7 +168,7 @@ export default function ProductDetailPage() {
                   />
                 </div>
               ) : (
-                <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center">
                   <span className="text-gray-400">이미지 없음</span>
                 </div>
               )}

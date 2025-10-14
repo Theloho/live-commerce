@@ -270,7 +270,7 @@ export default function ProductCatalogPage() {
                 className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-all cursor-pointer overflow-hidden group"
               >
                 {/* 상품 이미지 */}
-                <div className="relative aspect-square overflow-hidden bg-gray-100">
+                <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                   {product.thumbnail_url ? (
                     <Image
                       src={product.thumbnail_url}

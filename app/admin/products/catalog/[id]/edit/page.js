@@ -295,7 +295,7 @@ export default function ProductEditPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   상품번호
@@ -385,7 +385,7 @@ export default function ProductEditPage() {
         {/* 가격 정보 */}
         <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">가격 정보</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 판매가격 *
@@ -417,7 +417,7 @@ export default function ProductEditPage() {
         {/* 카테고리 */}
         <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">카테고리</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 대분류
@@ -487,7 +487,7 @@ export default function ProductEditPage() {
         {/* 업체 정보 */}
         <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">업체 정보</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 공급업체
@@ -534,7 +534,7 @@ export default function ProductEditPage() {
         {/* 추가 정보 */}
         <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">추가 정보</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 SKU
