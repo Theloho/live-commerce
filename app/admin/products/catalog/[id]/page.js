@@ -150,13 +150,13 @@ export default function ProductDetailPage() {
 
       {/* 메인 컨텐츠 */}
       <div className="max-w-6xl mx-auto py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* 왼쪽: 상품 기본 정보 */}
           <div className="lg:col-span-1 space-y-6">
 
             {/* 상품 이미지 */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">상품 이미지</h2>
               {product.thumbnail_url ? (
                 <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
@@ -175,7 +175,7 @@ export default function ProductDetailPage() {
             </div>
 
             {/* 기본 정보 */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">기본 정보</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
@@ -214,7 +214,7 @@ export default function ProductDetailPage() {
 
             {/* 업체 및 구매 정보 */}
             {(product.suppliers || product.purchase_price || product.purchase_date) && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white rounded-lg shadow-sm py-6 px-4">
                 <h2 className="text-lg font-medium mb-4">업체 및 구매 정보</h2>
                 <div className="space-y-3 text-sm">
                   {product.suppliers && (
@@ -261,7 +261,7 @@ export default function ProductDetailPage() {
             )}
 
             {product.detailed_description && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white rounded-lg shadow-sm py-6 px-4">
                 <h2 className="text-lg font-medium mb-4">상세 설명</h2>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">
                   {product.detailed_description}
@@ -272,7 +272,7 @@ export default function ProductDetailPage() {
 
           {/* 오른쪽: Variant 재고 관리 */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-lg font-medium">Variant 재고 관리</h2>

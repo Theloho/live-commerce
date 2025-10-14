@@ -276,10 +276,10 @@ export default function ProductEditPage() {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">
+      <div className="max-w-4xl mx-auto py-6 space-y-6">
 
         {/* 기본 정보 */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">기본 정보</h2>
           <div className="space-y-4">
             <div>
@@ -383,7 +383,7 @@ export default function ProductEditPage() {
         </div>
 
         {/* 가격 정보 */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">가격 정보</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -415,7 +415,7 @@ export default function ProductEditPage() {
         </div>
 
         {/* 카테고리 */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">카테고리</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -485,7 +485,7 @@ export default function ProductEditPage() {
         </div>
 
         {/* 업체 정보 */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">업체 정보</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -532,7 +532,7 @@ export default function ProductEditPage() {
         </div>
 
         {/* 추가 정보 */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-lg shadow-sm py-6 px-4">
           <h2 className="text-lg font-semibold mb-4">추가 정보</h2>
           <div className="grid grid-cols-3 gap-4">
             <div>

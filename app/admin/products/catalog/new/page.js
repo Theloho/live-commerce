@@ -435,13 +435,13 @@ export default function DetailedProductNewPage() {
 
       {/* 메인 컨텐츠 */}
       <div className="max-w-6xl mx-auto py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* 왼쪽: 기본 정보 */}
           <div className="space-y-6">
 
             {/* ⭐ 상품 이미지 (카메라 + 갤러리) */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">상품 이미지</h2>
               {imagePreview ? (
                 <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
@@ -498,7 +498,7 @@ export default function DetailedProductNewPage() {
             </div>
 
             {/* 기본 정보 */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">기본 정보</h2>
               <div className="space-y-4">
                 {/* ⭐ 상품명 (선택사항) */}
@@ -630,7 +630,7 @@ export default function DetailedProductNewPage() {
             </div>
 
             {/* 업체 및 구매 정보 */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">업체 및 구매 정보</h2>
               <div className="space-y-4">
                 <div>
@@ -723,7 +723,7 @@ export default function DetailedProductNewPage() {
           <div className="space-y-6">
 
             {/* 사이즈 옵션 */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">사이즈 옵션</h2>
                 {productData.sizeOptions.length > 0 && (
@@ -789,7 +789,7 @@ export default function DetailedProductNewPage() {
             </div>
 
             {/* 색상 옵션 */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">색상 옵션</h2>
                 {productData.colorOptions.length > 0 && (
@@ -840,7 +840,7 @@ export default function DetailedProductNewPage() {
 
             {/* ⭐ 옵션별 재고 설정 (자동 생성) */}
             {combinations.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="bg-white rounded-lg shadow-sm py-6 px-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-medium">옵션별 재고 설정</h2>
                   <div className="flex items-center gap-2">
