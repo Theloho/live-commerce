@@ -405,7 +405,8 @@ export default function DetailedProductNewPage() {
 
         // ⭐ 상세등록 추가 필드
         supplier_id: productData.supplier_id || null,
-        category_id: productData.category_id || null,
+        category: productData.category || null,
+        sub_category: productData.sub_category || null,
         model_number: productData.model_number.trim() || null,
         purchase_price: productData.purchase_price ? parseFloat(productData.purchase_price) : null,
         purchase_date: productData.purchase_date || null,
@@ -572,6 +573,20 @@ export default function DetailedProductNewPage() {
             <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">기본 정보</h2>
               <div className="space-y-4">
+                {/* ⭐ 상품번호 (최상위 배치) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    상품번호
+                  </label>
+                  <input
+                    type="text"
+                    value={productData.product_number}
+                    readOnly
+                    placeholder="0001"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                  />
+                </div>
+
                 {/* ⭐ 상품명 (선택사항) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -665,22 +680,74 @@ export default function DetailedProductNewPage() {
                   />
                 </div>
 
+                {/* ⭐ 대분류 카테고리 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    카테고리
+                    대분류 카테고리
                   </label>
-                  <select
-                    value={productData.category_id}
-                    onChange={(e) => setProductData(prev => ({ ...prev, category_id: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">카테고리 선택</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowMainCategorySheet(true)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {productData.category || '카테고리 선택'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMainCategorySheet(true)}
+                      className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200"
+                      title="카테고리 관리"
+                    >
+                      <Cog6ToothIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* ⭐ 소분류 카테고리 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    소분류 카테고리 (선택사항)
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!productData.category) {
+                          toast.error('먼저 대분류 카테고리를 선택해주세요')
+                          return
+                        }
+                        setShowSubCategorySheet(true)
+                      }}
+                      disabled={!productData.category}
+                      className={`flex-1 px-3 py-2 border border-gray-300 rounded-lg text-left focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        !productData.category
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {productData.sub_category || '소분류 선택'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!productData.category) {
+                          toast.error('먼저 대분류 카테고리를 선택해주세요')
+                          return
+                        }
+                        setShowSubCategorySheet(true)
+                      }}
+                      disabled={!productData.category}
+                      className={`px-3 py-2 border border-gray-300 rounded-lg ${
+                        !productData.category
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      title="소분류 관리"
+                    >
+                      <Cog6ToothIcon className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -704,21 +771,6 @@ export default function DetailedProductNewPage() {
             <div className="bg-white rounded-lg shadow-sm py-6 px-4">
               <h2 className="text-lg font-medium mb-4">업체 및 구매 정보</h2>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상품번호
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={productData.product_number}
-                      readOnly
-                      placeholder="0001"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     업체 (Supplier)
@@ -1011,6 +1063,31 @@ export default function DetailedProductNewPage() {
           setSuppliers(updatedSuppliers)
         }}
         currentSupplierId={productData.supplier_id}
+      />
+
+      {/* 대분류 카테고리 관리 버텀시트 */}
+      <CategoryManageSheet
+        isOpen={showMainCategorySheet}
+        onClose={() => setShowMainCategorySheet(false)}
+        onSelect={(categoryName) => {
+          handleCategorySelect(categoryName, '')
+          setShowMainCategorySheet(false)
+        }}
+        currentCategory={productData.category}
+        isMainCategory={true}
+      />
+
+      {/* 소분류 카테고리 관리 버텀시트 */}
+      <CategoryManageSheet
+        isOpen={showSubCategorySheet}
+        onClose={() => setShowSubCategorySheet(false)}
+        onSelect={(subCategoryName) => {
+          handleCategorySelect(productData.category, subCategoryName)
+          setShowSubCategorySheet(false)
+        }}
+        currentCategory={productData.sub_category}
+        parentCategory={productData.category}
+        isMainCategory={false}
       />
     </div>
   )
