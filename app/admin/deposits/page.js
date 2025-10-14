@@ -1255,7 +1255,8 @@ export default function AdminDepositsPage() {
             {/* 페이지네이션 컨트롤 */}
             {totalCount > ITEMS_PER_PAGE && (
               <div className="p-4 bg-gray-50 border-t">
-                <div className="flex items-center justify-between">
+                {/* 데스크톱 페이지네이션 */}
+                <div className="hidden md:flex items-center justify-between">
                   {/* 왼쪽: 페이지 정보 */}
                   <div className="text-sm text-gray-600">
                     전체 {totalCount}건 중 {((currentPage - 1) * ITEMS_PER_PAGE) + 1} ~ {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}건 표시
@@ -1344,6 +1345,32 @@ export default function AdminDepositsPage() {
 
                   {/* 오른쪽: 빈 공간 (균형 잡기) */}
                   <div className="w-32"></div>
+                </div>
+
+                {/* 모바일 페이지네이션 - 간단한 UI */}
+                <div className="flex md:hidden items-center justify-between gap-2">
+                  {/* 이전 버튼 */}
+                  <button
+                    onClick={() => loadPendingOrders(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    ← 이전
+                  </button>
+
+                  {/* 페이지 정보 */}
+                  <div className="px-4 py-3 bg-yellow-500 text-white rounded-lg font-bold whitespace-nowrap">
+                    {currentPage} / {Math.ceil(totalCount / ITEMS_PER_PAGE)}
+                  </div>
+
+                  {/* 다음 버튼 */}
+                  <button
+                    onClick={() => loadPendingOrders(currentPage + 1)}
+                    disabled={!hasMore}
+                    className="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    다음 →
+                  </button>
                 </div>
               </div>
             )}
