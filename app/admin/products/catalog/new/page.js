@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeftIcon, PlusIcon, MinusIcon, XMarkIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, PlusIcon, MinusIcon, XMarkIcon, Cog6ToothIcon, CameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import {
   getSuppliers,
@@ -20,7 +20,11 @@ import CategoryManageSheet from '@/app/components/CategoryManageSheet'
 
 export default function DetailedProductNewPage() {
   const router = useRouter()
-  const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
+  const { isAdminAuthenticated, loading: authLoading, adminUser } = useAdminAuth()
+
+  // ⭐ 이미지 입력 refs
+  const cameraInputRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   const [loading, setLoading] = useState(false)
   const [suppliers, setSuppliers] = useState([])
@@ -28,6 +32,9 @@ export default function DetailedProductNewPage() {
   const [imagePreview, setImagePreview] = useState('')
   const [showSupplierSheet, setShowSupplierSheet] = useState(false)
   const [showCategorySheet, setShowCategorySheet] = useState(false)
+
+  // ⭐ 천 단위 가격 입력
+  const [useThousandUnit, setUseThousandUnit] = useState(true)
 
   // 상품 기본 정보
   const [productData, setProductData] = useState({
@@ -56,6 +63,18 @@ export default function DetailedProductNewPage() {
   // Variant 관리 (옵션 조합)
   const [variants, setVariants] = useState([])
   const [showVariantGenerator, setShowVariantGenerator] = useState(false)
+
+  // ⭐ 사이즈/색상 템플릿
+  const SIZE_TEMPLATES = {
+    number: ['55', '66', '77', '88', '99'],
+    alpha: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    free: ['FREE']
+  }
+
+  const COLOR_PRESETS = [
+    '블랙', '화이트', '그레이', '베이지', '네이비',
+    '브라운', '카키', '핑크', '레드', '블루'
+  ]
 
   // 권한 체크
   useEffect(() => {
@@ -107,6 +126,37 @@ export default function DetailedProductNewPage() {
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  // ⭐ 천 단위 가격 입력 핸들러
+  const handlePriceChange = (value) => {
+    if (useThousandUnit) {
+      const numValue = parseFloat(value)
+      if (!isNaN(numValue)) {
+        const actualPrice = Math.floor(numValue * 1000)
+        setProductData(prev => ({ ...prev, price: actualPrice }))
+      } else {
+        setProductData(prev => ({ ...prev, price: '' }))
+      }
+    } else {
+      setProductData(prev => ({ ...prev, price: value }))
+    }
+  }
+
+  // ⭐ 사이즈 템플릿 적용
+  const applySizeTemplate = (templateKey) => {
+    const newOptions = [...options]
+    newOptions[0].values = SIZE_TEMPLATES[templateKey].map(size => ({ value: size, color_code: '', image_url: '' }))
+    setOptions(newOptions)
+    toast.success(`${SIZE_TEMPLATES[templateKey].length}개의 사이즈가 추가되었습니다`)
+  }
+
+  // ⭐ 색상 프리셋 적용
+  const applyColorPresets = () => {
+    const newOptions = [...options]
+    newOptions[1].values = COLOR_PRESETS.map(color => ({ value: color, color_code: '', image_url: '' }))
+    setOptions(newOptions)
+    toast.success(`${COLOR_PRESETS.length}개의 색상이 추가되었습니다`)
   }
 
   // 옵션값 추가
@@ -201,14 +251,17 @@ export default function DetailedProductNewPage() {
     setVariants(newVariants)
   }
 
-  // 상품 저장
+  // ⭐ 일괄 재고 적용
+  const applyBulkInventory = (bulkValue) => {
+    const inventory = parseInt(bulkValue) || 0
+    const newVariants = variants.map(v => ({ ...v, inventory }))
+    setVariants(newVariants)
+    toast.success(`모든 Variant에 재고 ${inventory}개가 적용되었습니다`)
+  }
+
+  // ⭐ 상품 저장 (Service Role API 사용)
   const handleSaveProduct = async () => {
     // 유효성 검증
-    if (!productData.title.trim()) {
-      toast.error('상품명을 입력해주세요')
-      return
-    }
-
     if (!productData.price || productData.price <= 0) {
       toast.error('판매가격을 입력해주세요')
       return
@@ -224,96 +277,114 @@ export default function DetailedProductNewPage() {
       return
     }
 
+    if (!adminUser?.email) {
+      toast.error('관리자 인증 정보가 없습니다')
+      return
+    }
+
     setLoading(true)
 
     try {
-      // 1. 상품 생성
-      const newProductData = {
-        title: productData.title.trim() || productData.product_number, // 이름 없으면 번호를 이름으로
+      // 1. 옵션 데이터 준비 (빠른등록 형식으로)
+      const sizeOptions = options[0].values.filter(v => v.value.trim()).map(v => v.value.trim())
+      const colorOptions = options[1].values.filter(v => v.value.trim()).map(v => v.value.trim())
+
+      let optionType = 'none'
+      if (sizeOptions.length > 0 && colorOptions.length > 0) {
+        optionType = 'both'
+      } else if (sizeOptions.length > 0) {
+        optionType = 'size'
+      } else if (colorOptions.length > 0) {
+        optionType = 'color'
+      }
+
+      // 2. Variant 재고 매핑 (빠른등록 형식으로)
+      const optionInventories = {}
+      const combinations = []
+
+      variants.forEach(variant => {
+        // key 생성
+        let key = ''
+        let combo = { type: optionType }
+
+        if (optionType === 'size') {
+          const sizeValue = variant.options.find(opt => opt.name === '사이즈')?.value
+          key = `size:${sizeValue}`
+          combo.size = sizeValue
+        } else if (optionType === 'color') {
+          const colorValue = variant.options.find(opt => opt.name === '색상')?.value
+          key = `color:${colorValue}`
+          combo.color = colorValue
+        } else if (optionType === 'both') {
+          const sizeValue = variant.options.find(opt => opt.name === '사이즈')?.value
+          const colorValue = variant.options.find(opt => opt.name === '색상')?.value
+          key = `size:${sizeValue}|color:${colorValue}`
+          combo.size = sizeValue
+          combo.color = colorValue
+        }
+
+        combo.key = key
+        combo.label = variant.options.map(opt => opt.value).join(' × ')
+
+        optionInventories[key] = variant.inventory
+        combinations.push(combo)
+      })
+
+      // 3. API 호출 (Service Role API)
+      const requestData = {
+        // 기본 필드
+        title: productData.title.trim() || productData.product_number,
         product_number: productData.product_number,
-        description: productData.description.trim(),
-        detailed_description: productData.detailed_description.trim(),
         price: parseInt(productData.price),
-        compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
-        inventory: variants.reduce((sum, v) => sum + v.inventory, 0), // 총 재고
+        inventory: variants.reduce((sum, v) => sum + v.inventory, 0),
         thumbnail_url: imagePreview,
+        description: productData.description.trim(),
+
+        // 옵션 필드
+        optionType,
+        sizeOptions,
+        colorOptions,
+        optionInventories,
+        combinations,
+
+        // ⭐ 상세등록 추가 필드
         supplier_id: productData.supplier_id || null,
+        category_id: productData.category_id || null,
         model_number: productData.model_number.trim() || null,
         purchase_price: productData.purchase_price ? parseFloat(productData.purchase_price) : null,
         purchase_date: productData.purchase_date || null,
-        category_id: productData.category_id || null,
+        compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
+        detailed_description: productData.detailed_description.trim(),
         status: productData.status,
-        tags: productData.tags
+        is_live: false, // ⭐ 상세등록은 라이브 상품이 아님
+
+        // 관리자 인증
+        adminEmail: adminUser.email
       }
 
-      // 2. 옵션 데이터 준비
-      console.log('🔍 [디버깅] 원본 options:', JSON.stringify(options, null, 2))
+      console.log('🚀 [상세등록] API 호출:', requestData)
 
-      const optionsData = options
-        .filter(opt => {
-          const hasValues = opt.values.length > 0
-          const hasValidValues = opt.values.some(v => v.value && v.value.trim())
-          console.log(`🔍 [필터] 옵션 "${opt.name}": values=${opt.values.length}, hasValidValues=${hasValidValues}`)
-          return hasValues && hasValidValues
-        })
-        .map((opt, index) => ({
-          name: opt.name,
-          display_order: index,
-          values: opt.values
-            .filter(v => v.value && v.value.trim())
-            .map((v, vIndex) => ({
-              value: v.value.trim(),
-              display_order: vIndex,
-              color_code: v.color_code || null,
-              image_url: v.image_url || null
-            }))
-        }))
+      const response = await fetch('/api/admin/products/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      })
 
-      console.log('🔍 [디버깅] 필터링된 optionsData:', JSON.stringify(optionsData, null, 2))
-      console.log('🔍 [디버깅] 전달할 옵션 개수:', optionsData.length)
-
-      if (optionsData.length === 0) {
-        console.warn('⚠️ [경고] 옵션 데이터가 비어있습니다!')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '상품 등록 실패')
       }
 
-      // 3. 상품과 옵션 생성
-      const product = await createProductWithOptions(newProductData, optionsData)
-      console.log('✅ [디버깅] 상품 생성 완료:', product.id)
-
-      // 4. Variant 생성
-      const createdOptions = await getProductOptions(product.id)
-
-      for (const variant of variants) {
-        // 각 variant의 옵션값 ID 찾기
-        const optionValueIds = []
-
-        for (const variantOption of variant.options) {
-          const matchedOption = createdOptions.find(opt => opt.name === variantOption.name)
-          if (matchedOption) {
-            const matchedValue = matchedOption.product_option_values.find(
-              val => val.value === variantOption.value
-            )
-            if (matchedValue) {
-              optionValueIds.push(matchedValue.id)
-            }
-          }
-        }
-
-        // Variant 생성
-        await createVariant({
-          product_id: product.id,
-          sku: variant.sku,
-          inventory: variant.inventory,
-          supplier_sku: variant.supplier_sku || null,
-          is_active: true
-        }, optionValueIds)
-      }
+      const result = await response.json()
+      console.log('✅ [상세등록] 상품 생성 완료:', result.product.id)
 
       toast.success('상품이 등록되었습니다!')
       router.push('/admin/products/catalog')
 
     } catch (error) {
-      console.error('상품 저장 오류:', error)
+      console.error('❌ [상세등록] 상품 저장 오류:', error)
       toast.error('상품 등록에 실패했습니다: ' + error.message)
     } finally {
       setLoading(false)
@@ -362,7 +433,7 @@ export default function DetailedProductNewPage() {
           {/* 왼쪽: 기본 정보 */}
           <div className="space-y-6">
 
-            {/* 상품 이미지 */}
+            {/* ⭐ 상품 이미지 (카메라 + 갤러리) */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-medium mb-4">상품 이미지</h2>
               {imagePreview ? (
@@ -381,20 +452,40 @@ export default function DetailedProductNewPage() {
                   </button>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <div className="space-y-3">
+                  {/* Camera input */}
                   <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  {/* File input */}
+                  <input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="hidden"
-                    id="image-upload"
                   />
-                  <label
-                    htmlFor="image-upload"
-                    className="cursor-pointer text-gray-600 hover:text-gray-800"
+
+                  <button
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="w-full py-12 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors flex flex-col items-center gap-3"
                   >
-                    이미지를 선택하거나 드래그하세요
-                  </label>
+                    <CameraIcon className="w-8 h-8 text-blue-600" />
+                    <span className="font-medium text-blue-600">사진 촬영</span>
+                  </button>
+
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors flex flex-col items-center gap-3"
+                  >
+                    <PhotoIcon className="w-8 h-8 text-gray-600" />
+                    <span className="font-medium text-gray-600">사진 보관함</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -403,17 +494,21 @@ export default function DetailedProductNewPage() {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-medium mb-4">기본 정보</h2>
               <div className="space-y-4">
+                {/* ⭐ 상품명 (선택사항) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상품명 *
+                    상품명 (선택사항)
                   </label>
                   <input
                     type="text"
                     value={productData.title}
                     onChange={(e) => setProductData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="상품명을 입력하세요"
+                    placeholder="입력 시: 0001/밍크자켓, 미입력 시: 0001"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
+                  <p className="mt-1 text-xs text-gray-600">
+                    입력하지 않으면 상품번호가 자동으로 제품명이 됩니다
+                  </p>
                 </div>
 
                 <div>
@@ -442,32 +537,54 @@ export default function DetailedProductNewPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                {/* ⭐ 판매가격 (천 단위 토글) */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
                       판매가격 *
                     </label>
-                    <input
-                      type="number"
-                      value={productData.price}
-                      onChange={(e) => setProductData(prev => ({ ...prev, price: e.target.value }))}
-                      placeholder="19000"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      정가 (할인 표시용)
+                    <button
+                      onClick={() => setUseThousandUnit(!useThousandUnit)}
+                      className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+                        useThousandUnit
+                          ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                          : 'bg-gray-100 text-gray-600 border border-gray-300'
+                      }`}
+                    >
+                      {useThousandUnit ? '천 단위 입력' : '일반 입력'}
                     </label>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <input
                       type="number"
-                      value={productData.compare_price}
-                      onChange={(e) => setProductData(prev => ({ ...prev, compare_price: e.target.value }))}
-                      placeholder="29000"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      step={useThousandUnit ? "0.5" : "1"}
+                      value={useThousandUnit && productData.price ? (productData.price / 1000).toFixed(1) : productData.price}
+                      onChange={(e) => handlePriceChange(e.target.value)}
+                      placeholder={useThousandUnit ? "19.5" : "19000"}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
+                    {useThousandUnit && (
+                      <span className="text-sm text-gray-600">천원</span>
+                    )}
                   </div>
+                  {useThousandUnit && productData.price && (
+                    <p className="mt-1 text-xs text-blue-600">
+                      실제 가격: ₩{parseInt(productData.price).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    정가 (할인 표시용)
+                  </label>
+                  <input
+                    type="number"
+                    value={productData.compare_price}
+                    onChange={(e) => setProductData(prev => ({ ...prev, compare_price: e.target.value }))}
+                    placeholder="29000"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
                 </div>
 
                 <div>
@@ -598,15 +715,48 @@ export default function DetailedProductNewPage() {
           {/* 오른쪽: 옵션 및 Variant */}
           <div className="space-y-6">
 
-            {/* 옵션 설정 */}
+            {/* ⭐ 옵션 설정 (템플릿 추가) */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-medium mb-4">옵션 설정</h2>
 
               {options.map((option, optionIndex) => (
                 <div key={optionIndex} className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {option.name}
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {option.name}
+                    </label>
+                    {/* ⭐ 템플릿 버튼 */}
+                    {optionIndex === 0 && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => applySizeTemplate('number')}
+                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                        >
+                          숫자(55-99)
+                        </button>
+                        <button
+                          onClick={() => applySizeTemplate('alpha')}
+                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                        >
+                          영문(S-XXL)
+                        </button>
+                        <button
+                          onClick={() => applySizeTemplate('free')}
+                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                        >
+                          FREE
+                        </button>
+                      </div>
+                    )}
+                    {optionIndex === 1 && (
+                      <button
+                        onClick={applyColorPresets}
+                        className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                      >
+                        프리셋 (10색)
+                      </button>
+                    )}
+                  </div>
 
                   <div className="space-y-2">
                     {option.values.map((value, valueIndex) => (
@@ -645,12 +795,42 @@ export default function DetailedProductNewPage() {
               </button>
             </div>
 
-            {/* Variant 관리 */}
+            {/* ⭐ Variant 관리 (일괄 재고 입력 추가) */}
             {variants.length > 0 && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-medium mb-4">
                   Variant 재고 관리 ({variants.length}개)
                 </h2>
+
+                {/* ⭐ 일괄 재고 입력 */}
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <label className="block text-sm font-medium text-green-800 mb-2">
+                    일괄 재고 적용
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      id="bulkInventory"
+                      min="0"
+                      placeholder="재고 수량 (예: 10)"
+                      className="flex-1 px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                    <button
+                      onClick={() => {
+                        const value = document.getElementById('bulkInventory').value
+                        if (value) {
+                          applyBulkInventory(value)
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+                    >
+                      일괄 적용
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-green-700">
+                    모든 Variant에 동일한 재고를 적용합니다
+                  </p>
+                </div>
 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {variants.map((variant, index) => (

@@ -4,21 +4,37 @@ import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
 export async function POST(request) {
   try {
     const {
+      // 기본 필드
       title,
       product_number,
       price,
       inventory,
       thumbnail_url,
       description,
+
+      // 옵션 필드
       optionType,
       sizeOptions,
       colorOptions,
       optionInventories,
       combinations,
-      adminEmail // ⭐ 관리자 이메일 추가
+
+      // ⭐ 상세등록 추가 필드
+      supplier_id,
+      category_id,
+      model_number,
+      purchase_price,
+      purchase_date,
+      compare_price,
+      detailed_description,
+      status, // 상태 (기본값: 'active')
+      is_live, // 라이브 상품 여부 (기본값: true)
+
+      adminEmail // 관리자 이메일
     } = await request.json()
 
-    console.log('🚀 [빠른등록 API] 상품 저장 시작:', product_number)
+    const registrationType = is_live !== false ? '빠른등록' : '상세등록'
+    console.log(`🚀 [${registrationType} API] 상품 저장 시작:`, product_number)
 
     // 🔐 1. 관리자 권한 확인
     if (!adminEmail) {
@@ -46,22 +62,36 @@ export async function POST(request) {
     }
 
     // 1. 제품 생성
+    const productData = {
+      // 기본 필드
+      title: title.trim() || product_number,
+      product_number: product_number,
+      price: parseInt(price),
+      inventory: totalInventory,
+      thumbnail_url: thumbnail_url,
+      description: description || '',
+      status: status || 'active',
+      is_featured: false,
+      tags: ['NEW'],
+
+      // 라이브 설정 (빠른등록: true, 상세등록: false)
+      is_live: is_live !== undefined ? is_live : true,
+      is_live_active: is_live !== undefined ? is_live : true,
+      live_start_time: is_live !== false ? new Date().toISOString() : null
+    }
+
+    // ⭐ 상세등록 추가 필드 (있는 경우만)
+    if (supplier_id) productData.supplier_id = supplier_id
+    if (category_id) productData.category_id = category_id
+    if (model_number) productData.model_number = model_number
+    if (purchase_price) productData.purchase_price = parseFloat(purchase_price)
+    if (purchase_date) productData.purchase_date = purchase_date
+    if (compare_price) productData.compare_price = parseFloat(compare_price)
+    if (detailed_description) productData.detailed_description = detailed_description
+
     const { data: product, error: productError } = await supabaseAdmin
       .from('products')
-      .insert({
-        title: title.trim() || product_number,
-        product_number: product_number,
-        price: parseInt(price),
-        inventory: totalInventory,
-        thumbnail_url: thumbnail_url,
-        description: description || '',
-        status: 'active',
-        is_featured: false,
-        is_live: true,  // ✅ 라이브 상품 목록에 표시
-        is_live_active: true,  // ✅ 기본적으로 노출 상태
-        live_start_time: new Date().toISOString(),  // ✅ 노출 시작 시간
-        tags: ['NEW']
-      })
+      .insert(productData)
       .select()
       .single()
 
@@ -73,11 +103,11 @@ export async function POST(request) {
       )
     }
 
-    console.log('✅ [빠른등록 API] 상품 생성 완료:', product.id)
+    console.log(`✅ [${registrationType} API] 상품 생성 완료:`, product.id)
 
     // 2. 옵션이 있는 경우 Variant 시스템으로 저장
     if (optionType !== 'none' && combinations && combinations.length > 0) {
-      console.log('📦 [빠른등록 API] 옵션 저장 시작')
+      console.log(`📦 [${registrationType} API] 옵션 저장 시작`)
 
       // 2-1. product_options 생성
       const optionsToCreate = []
@@ -137,7 +167,7 @@ export async function POST(request) {
       }
 
       // 2-2. product_variants 생성 (조합별로)
-      console.log('🔀 [빠른등록 API] Variant 생성 시작')
+      console.log(`🔀 [${registrationType} API] Variant 생성 시작`)
 
       for (const combo of combinations) {
         // SKU 생성
@@ -206,14 +236,14 @@ export async function POST(request) {
         console.log(`  ✅ Variant 생성: ${sku} (재고: ${variantInventory})`)
       }
 
-      console.log('✅ [빠른등록 API] 모든 Variant 생성 완료')
+      console.log(`✅ [${registrationType} API] 모든 Variant 생성 완료`)
     }
 
-    console.log('✅ [빠른등록 API] 상품 저장 완료:', product.id)
+    console.log(`✅ [${registrationType} API] 상품 저장 완료:`, product.id)
 
     return NextResponse.json({ product })
   } catch (error) {
-    console.error('❌ [빠른등록 API] 에러:', error)
+    console.error('❌ [상품등록 API] 에러:', error)
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
