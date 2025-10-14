@@ -1638,6 +1638,26 @@ export const updateMultipleOrderStatus = async (orderIds, status, paymentData = 
   }
 }
 
+            }
+          } else {
+            console.error('🔵 [결제금액 계산] ❌ 주문 데이터 없음:', orderId)
+          }
+        }
+      }
+
+      console.log('🔵 [12] ✅ 주문 처리 완료 - orderId:', orderId)
+    }
+
+    console.log('🔵 [13] ✅ 모든 주문 업데이트 완료 - 총', orderIds.length, '개')
+    logger.info('모든 주문 상태 업데이트 완료:', orderIds.length, '개')
+    return { success: true, paymentGroupId }
+  } catch (error) {
+    console.error('🔵 ❌ 일괄 주문 상태 업데이트 오류:', error)
+    console.error('일괄 주문 상태 업데이트 오류:', error)
+    throw error
+  }
+}
+
 // 주문 아이템 수량 업데이트 및 재고 반영 (REST API 방식)
 export const updateOrderItemQuantity = async (orderItemId, newQuantity) => {
   try {

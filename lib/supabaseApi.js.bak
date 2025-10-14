@@ -1638,6 +1638,324 @@ export const updateMultipleOrderStatus = async (orderIds, status, paymentData = 
   }
 }
 
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase 환경변수가 설정되지 않았습니다')
+    }
+
+    // ✅ 사용자 세션 토큰 가져오기 (RLS 통과용)
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
+
+    if (!accessToken) {
+      throw new Error('사용자 세션이 없습니다. 로그인이 필요합니다.')
+    }
+
+    console.log('🔵 [1.5] 사용자 세션 토큰 확인:', {
+      hasToken: !!accessToken,
+      tokenLength: accessToken?.length
+    })
+
+    // 전체 결제인 경우 payment_group_id 생성 (2개 이상 주문일 때)
+    const paymentGroupId = orderIds.length > 1 ? `GROUP-${Date.now()}` : null
+    if (paymentGroupId) {
+      logger.info('🏷️ 전체결제 처리 - 주문 개수:', orderIds.length, '그룹 ID:', paymentGroupId)
+    }
+
+    console.log('🔵 [2] for 루프 시작 - orderIds:', orderIds)
+
+    // 각 주문 ID에 대해 순차적으로 업데이트
+    for (const orderId of orderIds) {
+      console.log('🔵 [3] 주문 처리 시작 - orderId:', orderId)
+
+      // 주문 테이블 업데이트 (payment_group_id 및 배송지 정보 포함)
+      const now = new Date().toISOString()
+      const updateData = {
+        status: status,
+        updated_at: now
+      }
+
+      // ✨ 상태별 타임스탬프 자동 기록
+      if (status === 'verifying') {
+        updateData.verifying_at = now
+      }
+      if (status === 'paid') {
+        updateData.paid_at = now
+      }
+      if (status === 'delivered') {
+        updateData.delivered_at = now
+      }
+      if (status === 'cancelled') {
+        updateData.cancelled_at = now
+      }
+
+      // payment_group_id가 있으면 추가 (데이터베이스에 컬럼이 있는 경우에만)
+      if (paymentGroupId) {
+        updateData.payment_group_id = paymentGroupId
+      }
+
+      // 배송지 정보가 있으면 추가 (orders 테이블)
+      if (paymentData && paymentData.shippingData) {
+        const shippingData = paymentData.shippingData
+
+        if (shippingData.shipping_name) {
+          updateData.shipping_name = shippingData.shipping_name
+        }
+        if (shippingData.shipping_phone) {
+          updateData.shipping_phone = shippingData.shipping_phone
+        }
+        if (shippingData.shipping_address) {
+          updateData.shipping_address = shippingData.shipping_address
+        }
+        if (shippingData.shipping_detail_address !== undefined) {
+          updateData.shipping_detail_address = shippingData.shipping_detail_address
+        }
+      }
+
+      // ✅ 쿠폰 할인이 있으면 추가
+      console.log('🔵 [4] 쿠폰 할인 체크:', {
+        orderId,
+        paymentData_exists: !!paymentData,
+        discountAmount: paymentData?.discountAmount,
+        condition_result: paymentData && paymentData.discountAmount !== undefined
+      })
+
+      if (paymentData && paymentData.discountAmount !== undefined) {
+        updateData.discount_amount = paymentData.discountAmount
+        console.log('🔵 [5] ✅ discount_amount 추가됨:', updateData.discount_amount)
+        logger.debug('💰 쿠폰 할인 업데이트:', { orderId, discountAmount: paymentData.discountAmount })
+      } else {
+        console.log('🔵 [5] ❌ discount_amount 추가 안됨')
+      }
+
+      console.log('🔵 [6] orders 테이블 PATCH 전 updateData:', JSON.stringify(updateData, null, 2))
+
+      const orderUpdateResponse = await fetch(`${supabaseUrl}/rest/v1/orders?id=eq.${orderId}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${accessToken}`,  // ✅ 사용자 토큰 사용
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(updateData)
+      })
+
+      console.log('🔵 [7] orders 테이블 PATCH 응답:', {
+        orderId,
+        status: orderUpdateResponse.status,
+        ok: orderUpdateResponse.ok
+      })
+
+      if (!orderUpdateResponse.ok) {
+        const errorText = await orderUpdateResponse.text()
+        console.error('🔵 [7] ❌ orders PATCH 실패:', errorText)
+        throw new Error(`주문 상태 업데이트 실패 (${orderId}): ${orderUpdateResponse.status}`)
+      }
+
+      // 🔧 order_shipping 테이블도 업데이트 (중요!)
+      console.log('🔵 [8] order_shipping 업데이트 체크:', {
+        orderId,
+        paymentData_exists: !!paymentData,
+        shippingData_exists: !!paymentData?.shippingData,
+        shipping_postal_code: paymentData?.shippingData?.shipping_postal_code
+      })
+
+      if (paymentData && paymentData.shippingData) {
+        const shippingData = paymentData.shippingData
+
+        const shippingUpdatePayload = {
+          name: shippingData.shipping_name,
+          phone: shippingData.shipping_phone,
+          address: shippingData.shipping_address,
+          detail_address: shippingData.shipping_detail_address || '',
+          postal_code: shippingData.shipping_postal_code || null
+        }
+
+        console.log('🔵 [9] order_shipping PATCH 전 payload:', JSON.stringify(shippingUpdatePayload, null, 2))
+
+        // 먼저 UPDATE 시도
+        const shippingUpdateResponse = await fetch(`${supabaseUrl}/rest/v1/order_shipping?order_id=eq.${orderId}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${accessToken}`,  // ✅ 사용자 토큰 사용
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(shippingUpdatePayload)
+        })
+
+        console.log('🔵 [10] order_shipping PATCH 응답:', {
+          orderId,
+          status: shippingUpdateResponse.status,
+          ok: shippingUpdateResponse.ok
+        })
+
+        if (!shippingUpdateResponse.ok) {
+          console.log('🔵 [10] ⚠️ order_shipping UPDATE 실패, INSERT 시도...')
+          logger.debug(`⚠️ order_shipping UPDATE 실패 (${orderId}), INSERT 시도...`)
+
+          // UPDATE 실패 시 INSERT 시도
+          const shippingInsertPayload = {
+            order_id: orderId,
+            ...shippingUpdatePayload,
+            shipping_fee: 4000
+          }
+
+          const shippingInsertResponse = await fetch(`${supabaseUrl}/rest/v1/order_shipping`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${accessToken}`,  // ✅ 사용자 토큰 사용
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(shippingInsertPayload)
+          })
+
+          if (!shippingInsertResponse.ok) {
+            const insertErrorText = await shippingInsertResponse.text()
+            console.error('🔵 [11] ❌ order_shipping INSERT 실패:', insertErrorText)
+            console.error(`❌ order_shipping INSERT도 실패 (${orderId}):`, shippingInsertResponse.status)
+          } else {
+            console.log('🔵 [11] ✅ order_shipping INSERT 성공')
+            logger.debug(`✅ order_shipping INSERT 성공 (${orderId})`)
+          }
+        } else {
+          console.log('🔵 [10] ✅ order_shipping UPDATE 성공')
+          logger.debug(`✅ order_shipping UPDATE 성공 (${orderId})`)
+        }
+      } else {
+        console.log('🔵 [8] ⚠️ paymentData 또는 shippingData 없음 - order_shipping 업데이트 스킵')
+      }
+
+      // 결제 정보가 있으면 결제 테이블도 업데이트/생성
+      if (paymentData) {
+        // 💰 각 주문의 정확한 금액 계산 (OrderCalculations 중앙화 모듈 사용)
+        console.log('🔵 [결제금액 계산] 주문 상세 조회 시작:', orderId)
+
+        // 1. 주문 상세 조회 (order_items + order_shipping)
+        const orderDetailResponse = await fetch(
+          `${supabaseUrl}/rest/v1/orders?id=eq.${orderId}&select=id,order_items(*),order_shipping(postal_code)`,
+          {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+
+        if (!orderDetailResponse.ok) {
+          console.error('🔵 [결제금액 계산] ❌ 주문 상세 조회 실패:', orderId)
+          logger.error(`주문 상세 조회 실패 (${orderId})`)
+        } else {
+          const orderDetails = await orderDetailResponse.json()
+
+          if (orderDetails && orderDetails.length > 0) {
+            const orderDetail = orderDetails[0]
+            const items = orderDetail.order_items || []
+            const postalCode = orderDetail.order_shipping?.[0]?.postal_code ||
+                              orderDetail.order_shipping?.postal_code ||
+                              paymentData.shippingData?.shipping_postal_code ||
+                              'normal'
+
+            console.log('🔵 [결제금액 계산] 주문 상세:', {
+              orderId,
+              itemsCount: items.length,
+              postalCode
+            })
+
+            // 2. OrderCalculations로 정확한 금액 계산 (쿠폰 포함 - 실제 입금액)
+            const { OrderCalculations } = await import('./orderCalculations')
+            const orderCalc = OrderCalculations.calculateFinalOrderAmount(items, {
+              region: postalCode,
+              coupon: paymentData.discountAmount > 0 ? {
+                type: 'fixed_amount',
+                value: paymentData.discountAmount
+              } : null,  // ✅ 쿠폰 포함한 실제 입금액 계산
+              paymentMethod: paymentData.method === 'card' ? 'card' : 'transfer'
+            })
+
+            console.log('🔵 [결제금액 계산] 계산 완료:', {
+              orderId,
+              itemsTotal: orderCalc.itemsTotal,
+              shippingFee: orderCalc.shippingFee,
+              finalAmount: orderCalc.finalAmount,
+              breakdown: orderCalc.breakdown
+            })
+
+            // 3. 결제 정보 업데이트 (정확한 금액 포함)
+            const updatePayload = {
+              method: paymentData.method,
+              amount: orderCalc.finalAmount,  // ✅ 정확히 계산된 금액
+              status: 'pending',
+              depositor_name: paymentData.depositorName || null
+            }
+
+            const paymentUpdateResponse = await fetch(`${supabaseUrl}/rest/v1/order_payments?order_id=eq.${orderId}`, {
+              method: 'PATCH',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify(updatePayload)
+            })
+
+            if (!paymentUpdateResponse.ok) {
+              const errorText = await paymentUpdateResponse.text()
+              console.error(`❌ PATCH 실패 응답 내용:`, errorText)
+              logger.debug(`⚠️ 결제 테이블 UPDATE 실패 (${orderId}), INSERT 시도...`)
+
+              // UPDATE 실패 시 INSERT 시도 (레코드가 없는 경우)
+              const insertPayload = {
+                order_id: orderId,
+                method: paymentData.method,
+                amount: orderCalc.finalAmount,  // ✅ 정확히 계산된 금액
+                status: 'pending',
+                depositor_name: paymentData.depositorName || null
+              }
+
+              const paymentInsertResponse = await fetch(`${supabaseUrl}/rest/v1/order_payments`, {
+                method: 'POST',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify(insertPayload)
+              })
+
+              if (!paymentInsertResponse.ok) {
+                console.error(`❌ 결제 테이블 INSERT도 실패 (${orderId}):`, paymentInsertResponse.status)
+              } else {
+                logger.debug(`✅ 결제 테이블 INSERT 성공 (${orderId}) - 금액: ₩${orderCalc.finalAmount.toLocaleString()}`)
+              }
+            } else {
+              logger.debug(`✅ 결제 테이블 UPDATE 성공 (${orderId}) - 금액: ₩${orderCalc.finalAmount.toLocaleString()}`)
+            }
+          } else {
+            console.error('🔵 [결제금액 계산] ❌ 주문 데이터 없음:', orderId)
+          }
+        }
+      }
+
+      console.log('🔵 [12] ✅ 주문 처리 완료 - orderId:', orderId)
+    }
+
+    console.log('🔵 [13] ✅ 모든 주문 업데이트 완료 - 총', orderIds.length, '개')
+    logger.info('모든 주문 상태 업데이트 완료:', orderIds.length, '개')
+    return { success: true, paymentGroupId }
+  } catch (error) {
+    console.error('🔵 ❌ 일괄 주문 상태 업데이트 오류:', error)
+    console.error('일괄 주문 상태 업데이트 오류:', error)
+    throw error
+  }
+}
+
 // 주문 아이템 수량 업데이트 및 재고 반영 (REST API 방식)
 export const updateOrderItemQuantity = async (orderItemId, newQuantity) => {
   try {
