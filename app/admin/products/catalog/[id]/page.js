@@ -179,10 +179,14 @@ export default function ProductDetailPage() {
               <h2 className="text-lg font-medium mb-4">기본 정보</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
+                  <span className="text-gray-600">상품번호</span>
+                  <span className="font-medium">{product.product_number || '-'}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-600">판매가격</span>
                   <span className="font-medium">₩{product.price?.toLocaleString()}</span>
                 </div>
-                {product.compare_price && (
+                {product.compare_price > 0 && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">정가</span>
                     <span className="text-gray-400 line-through">
@@ -195,9 +199,27 @@ export default function ProductDetailPage() {
                   <span className="font-medium">{product.inventory}개</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">카테고리</span>
-                  <span>{product.categories?.name || '미분류'}</span>
+                  <span className="text-gray-600">대분류</span>
+                  <span>{product.category || '미분류'}</span>
                 </div>
+                {product.sub_category && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">소분류</span>
+                    <span>{product.sub_category}</span>
+                  </div>
+                )}
+                {product.barcode && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">바코드</span>
+                    <span className="font-mono text-xs">{product.barcode}</span>
+                  </div>
+                )}
+                {product.supplier_product_code && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">업체 상품 코드</span>
+                    <span className="font-mono text-xs">{product.supplier_product_code}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">상태</span>
                   <span className={`px-2 py-1 rounded-full text-xs ${
@@ -257,6 +279,16 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* 상품 설명 */}
+            {product.description && (
+              <div className="bg-white rounded-lg shadow-sm py-6 px-4">
+                <h2 className="text-lg font-medium mb-4">상품 설명</h2>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {product.description}
+                </p>
               </div>
             )}
 
