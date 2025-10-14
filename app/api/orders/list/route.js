@@ -21,12 +21,13 @@ const supabaseAdmin = createClient(
  */
 export async function POST(request) {
   try {
-    const { user } = await request.json()
+    const { user, orderId } = await request.json()
 
     console.log('🚀 [Service Role API] 주문 조회 시작:', {
       userId: user?.id,
       userName: user?.name,
-      hasKakaoId: !!user?.kakao_id
+      hasKakaoId: !!user?.kakao_id,
+      specificOrderId: orderId || 'ALL'
     })
 
     // 1. 기본 유효성 검사
@@ -67,8 +68,16 @@ export async function POST(request) {
         order_shipping (*),
         order_payments (*)
       `)
-      .neq('status', 'cancelled')
-      .order('created_at', { ascending: false })
+
+    // 특정 주문 ID로 조회 (단일 조회)
+    if (orderId) {
+      query = query.eq('id', orderId)
+    } else {
+      // 전체 조회 시에만 cancelled 제외, 정렬
+      query = query
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+    }
 
     // 3. 사용자 타입별 필터링
     let data = []
