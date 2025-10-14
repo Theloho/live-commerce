@@ -361,10 +361,13 @@ export async function POST(request) {
   }
 }
 
-// 주문번호 생성 함수 (yyyyMMdd-XXXX 형식)
+// 단품 주문번호 생성 함수 (S + yyMMdd-XXXX 형식)
 function generateCustomerOrderNumber() {
   const now = new Date()
-  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
-  const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase()
-  return `${dateStr}-${randomStr}`
+  const year = now.getFullYear().toString().slice(-2)  // 25
+  const month = String(now.getMonth() + 1).padStart(2, '0')  // 10
+  const day = String(now.getDate()).padStart(2, '0')  // 15
+  const dateStr = `${year}${month}${day}`  // 251015
+  const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase()  // A1B2
+  return `S${dateStr}-${randomStr}`  // S251015-A1B2
 }
