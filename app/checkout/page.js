@@ -651,6 +651,12 @@ export default function CheckoutPage() {
   }
 
   const confirmBankTransfer = async () => {
+    // 📱 모바일 중복 실행 방지
+    if (processing) {
+      console.log('⚠️ 이미 처리 중입니다')
+      return
+    }
+
     if (!orderItem || !userProfile) {
       console.error('주문 정보 또는 사용자 정보가 없습니다')
       toast.error('주문 정보가 없습니다')
@@ -694,6 +700,9 @@ export default function CheckoutPage() {
       })
       return
     }
+
+    // 🔒 처리 시작
+    setProcessing(true)
 
     try {
       const bankInfo = '카카오뱅크 79421940478 하상윤'
@@ -895,20 +904,22 @@ export default function CheckoutPage() {
         toast.success('계좌번호: 79421940478')
       }
 
+      // 📱 모바일 호환성: 먼저 세션 정리 및 상태 업데이트
+      sessionStorage.removeItem('checkoutItem')
       setShowDepositModal(false)
 
-      // 체크아웃 세션 데이터 삭제
-      sessionStorage.removeItem('checkoutItem')
+      // 📱 모바일 호환성: 즉시 리다이렉트 (setTimeout 제거)
+      // 모바일 브라우저에서 setTimeout은 modal close animation과 충돌하여 실행되지 않을 수 있음
+      toast.success('주문이 접수되었습니다', { duration: 2000 })
 
-      toast.success('주문이 접수되었습니다')
-
-      // 주문 완료 페이지로 이동
-      setTimeout(() => {
-        router.replace(`/orders/${orderId}/complete`)
-      }, 1500)
+      // 🚀 즉시 페이지 이동 (모바일 환경에서 안정적)
+      router.replace(`/orders/${orderId}/complete`)
     } catch (error) {
       console.error('계좌이체 처리 중 오류:', error)
       toast.error('주문 처리 중 오류가 발생했습니다')
+      // 🔓 에러 시 processing 상태 해제
+      setProcessing(false)
+      setShowDepositModal(false)
     }
   }
 
@@ -1543,10 +1554,17 @@ export default function CheckoutPage() {
               </button>
               <button
                 onClick={confirmBankTransfer}
-                disabled={!depositName}
+                disabled={!depositName || processing}
                 className="flex-1 px-4 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                확인
+                {processing ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>처리 중...</span>
+                  </div>
+                ) : (
+                  '확인'
+                )}
               </button>
             </div>
           </motion.div>
