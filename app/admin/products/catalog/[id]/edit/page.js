@@ -276,7 +276,7 @@ export default function ProductEditPage() {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-4xl mx-auto py-6 px-6 space-y-6">
+      <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">
 
         {/* 기본 정보 */}
         <div className="bg-white rounded-lg shadow-sm p-6">

@@ -434,8 +434,8 @@ export default function DetailedProductNewPage() {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-6xl mx-auto py-6 px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="max-w-6xl mx-auto py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-4">
 
           {/* 왼쪽: 기본 정보 */}
           <div className="space-y-6">
