@@ -489,13 +489,7 @@ export default function NewProductPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-6 px-6 pb-6">
-                  {/* 이미지 업로드 안내 */}
-                  <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-                    <PhotoIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 font-medium">제품 이미지를 선택하세요</p>
-                  </div>
-
+                <div className="px-6 pb-6">
                   {/* 업로드 옵션 버튼들 - 사진보관함 좌측, 사진촬영 우측 */}
                   <div className="grid grid-cols-2 gap-3">
                     <button
