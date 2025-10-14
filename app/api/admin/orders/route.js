@@ -3,11 +3,13 @@ import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
 
 export async function GET(request) {
   try {
-    // URL에서 adminEmail 파라미터 추출
+    // URL에서 파라미터 추출
     const { searchParams } = new URL(request.url)
     const adminEmail = searchParams.get('adminEmail')
+    const limit = parseInt(searchParams.get('limit') || '1000') // 기본값: 전체
+    const offset = parseInt(searchParams.get('offset') || '0')
 
-    console.log('🔍 [관리자 주문 API] 전체 주문 조회 시작:', { adminEmail })
+    console.log('🔍 [관리자 주문 API] 전체 주문 조회 시작:', { adminEmail, limit, offset })
 
     // 1. 관리자 인증 확인
     if (!adminEmail) {
@@ -28,8 +30,8 @@ export async function GET(request) {
 
     console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
-    // 2. Service Role로 전체 주문 조회 (RLS 우회)
-    const { data, error } = await supabaseAdmin
+    // 2. Service Role로 전체 주문 조회 (RLS 우회) + 페이지네이션
+    const { data, error, count } = await supabaseAdmin
       .from('orders')
       .select(`
         *,
@@ -43,9 +45,10 @@ export async function GET(request) {
         ),
         order_shipping (*),
         order_payments (*)
-      `)
+      `, { count: 'exact' })
       .neq('status', 'cancelled')
       .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (error) {
       console.error('❌ 주문 조회 쿼리 오류:', error)
@@ -55,7 +58,7 @@ export async function GET(request) {
       )
     }
 
-    console.log(`✅ 조회된 주문 수: ${data?.length || 0}`)
+    console.log(`✅ 조회된 주문 수: ${data?.length || 0} / 전체: ${count || 0}`)
 
     // 3. 사용자 정보 조회 및 데이터 포맷팅
     const ordersWithUserInfo = await Promise.all(data.map(async order => {
@@ -120,7 +123,9 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       orders: ordersWithUserInfo,
-      count: ordersWithUserInfo.length
+      count: ordersWithUserInfo.length,
+      totalCount: count || 0,
+      hasMore: (offset + limit) < (count || 0)
     })
   } catch (error) {
     console.error('❌ [관리자 주문 API] 에러:', error)

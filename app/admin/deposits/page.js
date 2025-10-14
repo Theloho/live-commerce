@@ -28,7 +28,12 @@ export default function AdminDepositsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [quickSearchResults, setQuickSearchResults] = useState(null)
   const [quickSearchTerm, setQuickSearchTerm] = useState('')
-  const [showAllPending, setShowAllPending] = useState(false) // 전체 보기 상태
+
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const ITEMS_PER_PAGE = 10
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -49,13 +54,18 @@ export default function AdminDepositsPage() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [quickSearchResults])
 
-  const loadPendingOrders = async () => {
+  const loadPendingOrders = async (page = 1) => {
     try {
       if (!adminUser?.email) return
 
-      // Service Role API로 전체 주문 조회
-      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
-      const { orders } = await response.json()
+      setLoading(true)
+      const offset = (page - 1) * ITEMS_PER_PAGE
+
+      // Service Role API로 페이지네이션 적용하여 주문 조회
+      const response = await fetch(
+        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${ITEMS_PER_PAGE}&offset=${offset}`
+      )
+      const { orders, totalCount: apiTotalCount, hasMore: apiHasMore } = await response.json()
 
       // 계좌이체 결제대기/확인중 주문만 필터링
       const bankTransferOrders = orders.filter(order => {
@@ -76,9 +86,21 @@ export default function AdminDepositsPage() {
       }))
 
       setPendingOrders(ordersWithUsers)
+      setTotalCount(apiTotalCount || 0)
+      setHasMore(apiHasMore || false)
+      setCurrentPage(page)
+
+      console.log('📄 페이지네이션 정보:', {
+        currentPage: page,
+        itemsLoaded: ordersWithUsers.length,
+        totalCount: apiTotalCount,
+        hasMore: apiHasMore
+      })
     } catch (error) {
       console.error('주문 로딩 오류:', error)
       toast.error('주문 데이터를 불러오는데 실패했습니다')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1111,11 +1133,13 @@ export default function AdminDepositsPage() {
       {pendingOrders.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="bg-yellow-50 px-6 py-4 border-b">
-            <h2 className="text-lg font-semibold text-yellow-900">⏳ 입금 대기 주문 ({pendingOrders.length}건)</h2>
+            <h2 className="text-lg font-semibold text-yellow-900">
+              ⏳ 입금 대기 주문 (전체 {totalCount}건 / 현재 페이지 {pendingOrders.length}건)
+            </h2>
           </div>
 
           <div className="divide-y divide-gray-200">
-            {pendingOrders.slice(0, showAllPending ? pendingOrders.length : 10).map((order, index) => (
+            {pendingOrders.map((order, index) => (
               <motion.div
                 key={order.id}
                 initial={{ opacity: 0 }}
@@ -1228,24 +1252,99 @@ export default function AdminDepositsPage() {
               </motion.div>
             ))}
 
-            {pendingOrders.length > 10 && !showAllPending && (
-              <div className="p-4 text-center">
-                <button
-                  onClick={() => setShowAllPending(true)}
-                  className="px-6 py-3 bg-yellow-500 text-white font-medium rounded-lg hover:bg-yellow-600 transition-colors"
-                >
-                  외 {pendingOrders.length - 10}건 더 보기
-                </button>
-              </div>
-            )}
-            {pendingOrders.length > 10 && showAllPending && (
-              <div className="p-4 text-center">
-                <button
-                  onClick={() => setShowAllPending(false)}
-                  className="px-6 py-3 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  접기
-                </button>
+            {/* 페이지네이션 컨트롤 */}
+            {totalCount > ITEMS_PER_PAGE && (
+              <div className="p-4 bg-gray-50 border-t">
+                <div className="flex items-center justify-between">
+                  {/* 왼쪽: 페이지 정보 */}
+                  <div className="text-sm text-gray-600">
+                    전체 {totalCount}건 중 {((currentPage - 1) * ITEMS_PER_PAGE) + 1} ~ {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)}건 표시
+                  </div>
+
+                  {/* 가운데: 페이지 번호 */}
+                  <div className="flex items-center gap-2">
+                    {/* 이전 버튼 */}
+                    <button
+                      onClick={() => loadPendingOrders(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      이전
+                    </button>
+
+                    {/* 페이지 번호 */}
+                    {(() => {
+                      const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
+                      const pageNumbers = []
+                      const maxVisible = 5
+
+                      let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2))
+                      let endPage = Math.min(totalPages, startPage + maxVisible - 1)
+
+                      if (endPage - startPage < maxVisible - 1) {
+                        startPage = Math.max(1, endPage - maxVisible + 1)
+                      }
+
+                      for (let i = startPage; i <= endPage; i++) {
+                        pageNumbers.push(i)
+                      }
+
+                      return (
+                        <>
+                          {startPage > 1 && (
+                            <>
+                              <button
+                                onClick={() => loadPendingOrders(1)}
+                                className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                              >
+                                1
+                              </button>
+                              {startPage > 2 && <span className="text-gray-400">...</span>}
+                            </>
+                          )}
+
+                          {pageNumbers.map(page => (
+                            <button
+                              key={page}
+                              onClick={() => loadPendingOrders(page)}
+                              className={`px-3 py-2 rounded-lg transition-colors ${
+                                page === currentPage
+                                  ? 'bg-yellow-500 text-white font-medium'
+                                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+
+                          {endPage < totalPages && (
+                            <>
+                              {endPage < totalPages - 1 && <span className="text-gray-400">...</span>}
+                              <button
+                                onClick={() => loadPendingOrders(totalPages)}
+                                className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                              >
+                                {totalPages}
+                              </button>
+                            </>
+                          )}
+                        </>
+                      )
+                    })()}
+
+                    {/* 다음 버튼 */}
+                    <button
+                      onClick={() => loadPendingOrders(currentPage + 1)}
+                      disabled={!hasMore}
+                      className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      다음
+                    </button>
+                  </div>
+
+                  {/* 오른쪽: 빈 공간 (균형 잡기) */}
+                  <div className="w-32"></div>
+                </div>
               </div>
             )}
           </div>
