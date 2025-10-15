@@ -10,13 +10,12 @@ import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
  */
 export async function POST(request) {
   try {
-    const { adminEmail, orderId, trackingNumber, trackingCompany } = await request.json()
+    const { adminEmail, orderId, trackingNumber } = await request.json()
 
     console.log('🚚 [송장번호 업데이트 API] 시작:', {
       adminEmail,
       orderId,
-      trackingNumber,
-      trackingCompany
+      trackingNumber
     })
 
     // 1. 유효성 검사
@@ -42,19 +41,12 @@ export async function POST(request) {
     const now = new Date().toISOString()
 
     // 3. order_shipping 테이블 업데이트 (RLS 우회)
-    const shippingUpdate = {
-      tracking_number: trackingNumber,
-      shipped_at: now
-    }
-
-    // tracking_company는 선택적
-    if (trackingCompany) {
-      shippingUpdate.tracking_company = trackingCompany
-    }
-
     const { error: shippingError } = await supabaseAdmin
       .from('order_shipping')
-      .update(shippingUpdate)
+      .update({
+        tracking_number: trackingNumber,
+        shipped_at: now
+      })
       .eq('order_id', orderId)
 
     if (shippingError) {
@@ -84,7 +76,6 @@ export async function POST(request) {
       success: true,
       orderId,
       trackingNumber,
-      trackingCompany: trackingCompany || null,
       message: '송장번호가 저장되고 발송 중으로 변경되었습니다'
     })
   } catch (error) {

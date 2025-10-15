@@ -51,7 +51,7 @@ export async function POST(request) {
 
     for (const item of trackingData) {
       try {
-        const { customerOrderNumber, trackingNumber, trackingCompany } = item
+        const { customerOrderNumber, trackingNumber } = item
 
         // 필수 필드 검사
         if (!customerOrderNumber || !trackingNumber) {
@@ -89,18 +89,12 @@ export async function POST(request) {
         const now = new Date().toISOString()
 
         // 3-2. order_shipping 업데이트
-        const shippingUpdate = {
-          tracking_number: trackingNumber,
-          shipped_at: now
-        }
-
-        if (trackingCompany) {
-          shippingUpdate.tracking_company = trackingCompany
-        }
-
         const { error: shippingError } = await supabaseAdmin
           .from('order_shipping')
-          .update(shippingUpdate)
+          .update({
+            tracking_number: trackingNumber,
+            shipped_at: now
+          })
           .eq('order_id', order.id)
 
         if (shippingError) {
@@ -142,7 +136,6 @@ export async function POST(request) {
           customerOrderNumber,
           orderId: order.id,
           trackingNumber,
-          trackingCompany: trackingCompany || null,
           status: 'success'
         })
         matchedCount++

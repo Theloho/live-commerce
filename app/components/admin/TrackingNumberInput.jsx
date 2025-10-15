@@ -67,8 +67,8 @@ export default function TrackingNumberInput({
       const result = await updateTrackingNumber({
         adminEmail,
         orderId,
-        trackingNumber: trackingNumber.trim(),
-        trackingCompany: trackingCompany || null
+        trackingNumber: trackingNumber.trim()
+        // trackingCompany는 DB 컬럼 추가 후 사용 예정
       })
 
       toast.success(
