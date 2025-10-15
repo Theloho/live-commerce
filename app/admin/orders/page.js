@@ -173,6 +173,7 @@ export default function AdminOrdersPage() {
     // 검색어 필터
     if (searchTerm) {
       filtered = filtered.filter(order =>
+        order.customer_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.shipping?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.items.some(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
