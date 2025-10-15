@@ -1203,7 +1203,7 @@ export default function CheckoutPage() {
                   <p className="text-sm text-gray-500">2-3일 소요</p>
                 </div>
                 <p className="font-medium text-gray-900">
-                  {hasPendingOrders ? (
+                  {(hasPendingOrders && !orderItem.isBulkPayment) ? (
                     <span className="text-green-600">무료</span>
                   ) : (
                     `₩${shippingFee.toLocaleString()}`
@@ -1211,7 +1211,7 @@ export default function CheckoutPage() {
                 </p>
               </div>
             </div>
-            {hasPendingOrders ? (
+            {(hasPendingOrders && !orderItem.isBulkPayment) ? (
               <div className="mt-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
                 <p className="text-sm font-medium text-green-800 mb-1">
                   🎉 무료배송 혜택 적용!
@@ -1394,7 +1394,7 @@ export default function CheckoutPage() {
                 <span className="text-gray-600">상품 금액</span>
                 <span className="text-gray-900">₩{orderCalc.itemsTotal.toLocaleString()}</span>
               </div>
-              {hasPendingOrders ? (
+              {(hasPendingOrders && !orderItem.isBulkPayment) ? (
                 <div className="flex justify-between text-sm">
                   <span className="text-green-600">배송비 (무료배송 혜택)</span>
                   <span className="text-green-600 line-through">₩0</span>
