@@ -44,27 +44,19 @@ export async function POST(request) {
 
     console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
-    // 3. 각 송장번호 처리
-    const results = []
-    let matchedCount = 0
-    let failedCount = 0
-
-    for (const item of trackingData) {
+    // 3. 병렬 처리 함수 (배치 크기: 20개씩)
+    const processItem = async (item) => {
       try {
-        const { customerOrderNumber, trackingNumber } = item
+        const { customerOrderNumber, trackingNumber, trackingCompany = 'hanjin' } = item
 
         // 필수 필드 검사
         if (!customerOrderNumber || !trackingNumber) {
-          results.push({
+          return {
             customerOrderNumber: customerOrderNumber || 'UNKNOWN',
             status: 'error',
             error: '주문번호 또는 송장번호가 누락되었습니다'
-          })
-          failedCount++
-          continue
+          }
         }
-
-        console.log('🔍 주문 조회:', customerOrderNumber)
 
         // 3-1. customer_order_number로 주문 조회
         const { data: order, error: findError } = await supabaseAdmin
@@ -74,82 +66,84 @@ export async function POST(request) {
           .single()
 
         if (findError || !order) {
-          console.log('❌ 주문 찾기 실패:', customerOrderNumber)
-          results.push({
+          return {
             customerOrderNumber,
             status: 'not_found',
             error: '주문을 찾을 수 없습니다'
-          })
-          failedCount++
-          continue
+          }
         }
-
-        console.log('✅ 주문 발견:', order.id)
 
         const now = new Date().toISOString()
 
-        // 3-2. order_shipping 업데이트
-        const { error: shippingError } = await supabaseAdmin
-          .from('order_shipping')
-          .update({
-            tracking_number: trackingNumber,
-            shipped_at: now
-          })
-          .eq('order_id', order.id)
+        // 3-2. order_shipping + orders 동시 업데이트 (병렬)
+        const [shippingResult, orderResult] = await Promise.all([
+          supabaseAdmin
+            .from('order_shipping')
+            .update({
+              tracking_number: trackingNumber,
+              tracking_company: trackingCompany,
+              shipped_at: now
+            })
+            .eq('order_id', order.id),
+          supabaseAdmin
+            .from('orders')
+            .update({
+              status: 'delivered',
+              delivered_at: now,
+              updated_at: now
+            })
+            .eq('id', order.id)
+        ])
 
-        if (shippingError) {
-          console.error('❌ order_shipping 업데이트 오류:', shippingError)
-          results.push({
+        if (shippingResult.error) {
+          return {
             customerOrderNumber,
             orderId: order.id,
             status: 'error',
-            error: `배송 정보 업데이트 실패: ${shippingError.message}`
-          })
-          failedCount++
-          continue
+            error: `배송 정보 업데이트 실패: ${shippingResult.error.message}`
+          }
         }
 
-        // 3-3. orders.status = 'delivered' 자동 변경 (송장 입력 = 발송 완료)
-        const { error: orderError } = await supabaseAdmin
-          .from('orders')
-          .update({
-            status: 'delivered',
-            delivered_at: now,
-            updated_at: now
-          })
-          .eq('id', order.id)
-
-        if (orderError) {
-          console.error('❌ orders 상태 업데이트 오류:', orderError)
-          results.push({
+        if (orderResult.error) {
+          return {
             customerOrderNumber,
             orderId: order.id,
             status: 'error',
-            error: `주문 상태 변경 실패: ${orderError.message}`
-          })
-          failedCount++
-          continue
+            error: `주문 상태 변경 실패: ${orderResult.error.message}`
+          }
         }
 
-        // 3-4. 성공
-        console.log('✅ 업데이트 성공:', customerOrderNumber, '→', trackingNumber)
-        results.push({
+        // 3-3. 성공
+        return {
           customerOrderNumber,
           orderId: order.id,
           trackingNumber,
+          trackingCompany,
           status: 'success'
-        })
-        matchedCount++
+        }
       } catch (error) {
-        console.error('❌ 개별 처리 오류:', error)
-        results.push({
+        return {
           customerOrderNumber: item.customerOrderNumber || 'UNKNOWN',
           status: 'error',
           error: error.message
-        })
-        failedCount++
+        }
       }
     }
+
+    // 4. 배치 처리 (20개씩 병렬)
+    const BATCH_SIZE = 20
+    const results = []
+
+    for (let i = 0; i < trackingData.length; i += BATCH_SIZE) {
+      const batch = trackingData.slice(i, i + BATCH_SIZE)
+      const batchResults = await Promise.all(batch.map(processItem))
+      results.push(...batchResults)
+      console.log(`✅ 배치 ${Math.floor(i / BATCH_SIZE) + 1} 완료: ${batchResults.length}개`)
+    }
+
+    // 5. 결과 집계
+    const matchedCount = results.filter(r => r.status === 'success').length
+    const failedCount = results.filter(r => r.status !== 'success').length
 
     console.log('✅ [송장번호 대량 업데이트 API] 완료:', {
       total: trackingData.length,
