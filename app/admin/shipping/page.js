@@ -443,6 +443,13 @@ export default function AdminShippingPage() {
                         <div className="text-sm text-gray-500">
                           ₩{order.payment?.amount.toLocaleString()}
                         </div>
+                        <div className="text-xs text-gray-500">
+                          {(() => {
+                            const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+                            const uniqueProducts = order.order_items?.length || 0
+                            return uniqueProducts === 1 ? `${totalQuantity}개` : `${uniqueProducts}종 ${totalQuantity}개`
+                          })()}
+                        </div>
                         <div className="text-xs text-gray-400">
                           {new Date(order.created_at).toLocaleDateString('ko-KR')}
                         </div>
@@ -659,6 +666,13 @@ export default function AdminShippingPage() {
                   </div>
                   <div className="text-sm text-gray-600">
                     {order.user?.phone}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {(() => {
+                      const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+                      const uniqueProducts = order.order_items?.length || 0
+                      return uniqueProducts === 1 ? `${totalQuantity}개` : `${uniqueProducts}종 ${totalQuantity}개`
+                    })()}
                   </div>
                   <div className="text-sm text-gray-600">
                     {(() => {
