@@ -326,7 +326,7 @@ export default function CheckoutPage() {
           loadUserProfileOptimized(validationResult.currentUser),
           loadUserAddressesOptimized(validationResult.currentUser),
           loadUserCouponsOptimized(validationResult.currentUser),
-          checkPendingOrders(validationResult.currentUser)
+          checkPendingOrders(validationResult.currentUser, validationResult.orderItem)
         ]).then(([profileResult, addressResult, couponResult, pendingOrdersResult]) => {
           // 프로필 처리
           if (profileResult.status === 'fulfilled') {
@@ -512,7 +512,7 @@ export default function CheckoutPage() {
     }
 
     // ⚡ 사용자의 pending/verifying 주문 확인 (무료배송 조건)
-    const checkPendingOrders = async (currentUser) => {
+    const checkPendingOrders = async (currentUser, orderItem) => {
       try {
         if (!currentUser?.id) return false
 
@@ -534,14 +534,30 @@ export default function CheckoutPage() {
           return false
         }
 
-        console.log('🔍 무료배송 조건 확인:', {
-          userId: currentUser.id,
-          provider: currentUser.provider,
-          pendingOrders: data?.length || 0,
-          hasPendingOrders: (data?.length || 0) > 0
-        })
+        // ✅ 일괄결제인 경우: originalOrderIds에 포함된 주문 제외
+        let filteredOrders = data || []
+        if (orderItem?.isBulkPayment && orderItem?.originalOrderIds?.length > 0) {
+          const excludeIds = new Set(orderItem.originalOrderIds)
+          filteredOrders = data.filter(order => !excludeIds.has(order.id))
 
-        return (data?.length || 0) > 0
+          console.log('🔍 무료배송 조건 확인 (일괄결제):', {
+            userId: currentUser.id,
+            provider: currentUser.provider,
+            totalOrders: data?.length || 0,
+            excludedOrders: orderItem.originalOrderIds.length,
+            remainingOrders: filteredOrders.length,
+            hasPendingOrders: filteredOrders.length > 0
+          })
+        } else {
+          console.log('🔍 무료배송 조건 확인:', {
+            userId: currentUser.id,
+            provider: currentUser.provider,
+            pendingOrders: data?.length || 0,
+            hasPendingOrders: (data?.length || 0) > 0
+          })
+        }
+
+        return filteredOrders.length > 0
       } catch (error) {
         console.warn('주문 확인 중 오류:', error)
         return false
@@ -605,8 +621,8 @@ export default function CheckoutPage() {
   const postalCode = selectedAddress?.postal_code || userProfile.postal_code
 
   // ✅ 무료배송 조건: pending/verifying 주문이 있으면 배송비 무료 (도서산간 포함)
-  // ⚠️ 단, 일괄결제(isBulkPayment)일 때는 제외 (이미 생성된 주문을 결제하는 것)
-  const baseShippingFee = (hasPendingOrders && !orderItem.isBulkPayment) ? 0 : 4000
+  // ✅ checkPendingOrders()에서 일괄결제 주문 제외 완료 → hasPendingOrders 그대로 사용
+  const baseShippingFee = hasPendingOrders ? 0 : 4000
   const shippingInfo = formatShippingInfo(baseShippingFee, postalCode)  // ✅ 무료배송 조건 적용
 
   // OrderCalculations를 사용한 완전한 주문 계산
@@ -1203,7 +1219,7 @@ export default function CheckoutPage() {
                   <p className="text-sm text-gray-500">2-3일 소요</p>
                 </div>
                 <p className="font-medium text-gray-900">
-                  {(hasPendingOrders && !orderItem.isBulkPayment) ? (
+                  {hasPendingOrders ? (
                     <span className="text-green-600">무료</span>
                   ) : (
                     `₩${shippingFee.toLocaleString()}`
@@ -1211,7 +1227,7 @@ export default function CheckoutPage() {
                 </p>
               </div>
             </div>
-            {(hasPendingOrders && !orderItem.isBulkPayment) ? (
+            {hasPendingOrders ? (
               <div className="mt-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
                 <p className="text-sm font-medium text-green-800 mb-1">
                   🎉 무료배송 혜택 적용!
@@ -1394,7 +1410,7 @@ export default function CheckoutPage() {
                 <span className="text-gray-600">상품 금액</span>
                 <span className="text-gray-900">₩{orderCalc.itemsTotal.toLocaleString()}</span>
               </div>
-              {(hasPendingOrders && !orderItem.isBulkPayment) ? (
+              {hasPendingOrders ? (
                 <div className="flex justify-between text-sm">
                   <span className="text-green-600">배송비 (무료배송 혜택)</span>
                   <span className="text-green-600 line-through">₩0</span>
