@@ -969,7 +969,7 @@ function OrdersContent() {
                         </ul>
                       </div>
                     </>
-                    ) : null  // 무통장입금 종료
+                    )  // 삼항 연산자 종료
                   })()}
                 </div>
               </motion.div>
