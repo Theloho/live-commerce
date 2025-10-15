@@ -135,32 +135,6 @@ export default function AdminOrdersPage() {
 
       console.log('API에서 가져온 주문 데이터:', allOrders.length, '개')
 
-      // 🔍 G251015-8418 주문 찾기 (클라이언트 사이드)
-      const targetOrder = allOrders.find(o => o.customer_order_number === 'G251015-8418')
-      if (targetOrder) {
-        console.log('🎯 [클라이언트] G251015-8418 주문 발견:', {
-          id: targetOrder.id,
-          status: targetOrder.status,
-          customer_order_number: targetOrder.customer_order_number,
-          payment_method: targetOrder.payment?.method,
-          created_at: targetOrder.created_at
-        })
-      } else {
-        console.log('❌ [클라이언트] G251015-8418 주문이 API 응답에 없음 (총 ' + allOrders.length + '개 중)')
-        console.log('📋 모든 주문번호 목록:', allOrders.map(o => o.customer_order_number).filter(Boolean))
-      }
-
-      // pending 주문들만 별도 로깅
-      const pendingOrders = allOrders.filter(order => order.status === 'pending')
-      console.log('🔍 결제대기 주문들 상세 분석:', pendingOrders.map(order => ({
-        주문ID: order.id,
-        사용자ID: order.userId,
-        사용자명: order.userName || order.userNickname,
-        배송지명: order.shipping?.name,
-        주문번호: order.customer_order_number,
-        생성일: order.created_at
-      })))
-
       setOrders(allOrders)
       setLoading(false)
     } catch (error) {
