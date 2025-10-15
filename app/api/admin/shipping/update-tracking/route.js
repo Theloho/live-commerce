@@ -5,8 +5,8 @@ import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
  * 송장번호 단일 업데이트 API (Service Role)
  * - 관리자 전용
  * - order_shipping.tracking_number 업데이트
- * - 자동으로 orders.status = 'shipping' 변경
- * - shipped_at 타임스탬프 자동 기록
+ * - 자동으로 orders.status = 'delivered' 변경 (송장 입력 = 발송 완료)
+ * - shipped_at, delivered_at 타임스탬프 자동 기록
  */
 export async function POST(request) {
   try {
@@ -56,11 +56,12 @@ export async function POST(request) {
 
     console.log('✅ order_shipping 업데이트 완료:', orderId)
 
-    // 4. orders.status = 'shipping' 자동 변경
+    // 4. orders.status = 'delivered' 자동 변경 (송장 입력 = 발송 완료)
     const { error: orderError } = await supabaseAdmin
       .from('orders')
       .update({
-        status: 'shipping',
+        status: 'delivered',
+        delivered_at: now,
         updated_at: now
       })
       .eq('id', orderId)
@@ -70,13 +71,13 @@ export async function POST(request) {
       throw orderError
     }
 
-    console.log('✅ orders.status = shipping 업데이트 완료:', orderId)
+    console.log('✅ orders.status = delivered 업데이트 완료:', orderId)
 
     return NextResponse.json({
       success: true,
       orderId,
       trackingNumber,
-      message: '송장번호가 저장되고 발송 중으로 변경되었습니다'
+      message: '송장번호가 저장되고 발송 완료로 변경되었습니다'
     })
   } catch (error) {
     console.error('❌ [송장번호 업데이트 API] 에러:', error)

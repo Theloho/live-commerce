@@ -708,21 +708,21 @@ export default function AdminOrderDetailPage() {
 
               {order.status === 'paid' && (
                 <button
-                  onClick={() => updateOrderStatus('shipping')}
-                  className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                  onClick={() => updateOrderStatus('delivered')}
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
                 >
                   <TruckIcon className="w-5 h-5" />
-                  발송 시작
+                  발송 완료 처리
                 </button>
               )}
 
               {order.status === 'shipping' && (
                 <button
                   onClick={() => updateOrderStatus('delivered')}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium"
                 >
                   <CheckIcon className="w-5 h-5" />
-                  발송 완료
+                  발송 완료 처리
                 </button>
               )}
 

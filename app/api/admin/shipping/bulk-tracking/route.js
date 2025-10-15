@@ -6,7 +6,7 @@ import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
  * - 관리자 전용
  * - Excel에서 파싱된 여러 송장번호를 일괄 처리
  * - 주문번호(customer_order_number) 기준 자동 매칭
- * - 매칭된 주문은 자동으로 status = 'shipping' 변경
+ * - 매칭된 주문은 자동으로 status = 'delivered' 변경 (송장 입력 = 발송 완료)
  */
 export async function POST(request) {
   try {
@@ -109,11 +109,12 @@ export async function POST(request) {
           continue
         }
 
-        // 3-3. orders.status = 'shipping' 자동 변경
+        // 3-3. orders.status = 'delivered' 자동 변경 (송장 입력 = 발송 완료)
         const { error: orderError } = await supabaseAdmin
           .from('orders')
           .update({
-            status: 'shipping',
+            status: 'delivered',
+            delivered_at: now,
             updated_at: now
           })
           .eq('id', order.id)
@@ -162,7 +163,7 @@ export async function POST(request) {
       failed: failedCount,
       total: trackingData.length,
       results,
-      message: `${matchedCount}개 주문의 송장번호가 저장되고 발송 중으로 변경되었습니다`
+      message: `${matchedCount}개 주문의 송장번호가 저장되고 발송 완료로 변경되었습니다`
     })
   } catch (error) {
     console.error('❌ [송장번호 대량 업데이트 API] 에러:', error)
