@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { formatShippingInfo } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
-import { getTrackingUrl } from '@/lib/trackingNumberUtils'
+import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
 
@@ -344,16 +344,24 @@ export default function AdminOrderDetailPage() {
               )}
               {/* 송장번호 표시 (발송완료/발송중 상태인 경우) */}
               {(order.status === 'delivered' || order.status === 'shipping') && order.shipping?.tracking_number && (
-                <div className="pt-3 border-t">
-                  <p className="text-sm text-gray-500 mb-1">송장번호</p>
-                  <a
-                    href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline font-mono font-medium"
-                  >
-                    {order.shipping.tracking_number}
-                  </a>
+                <div className="pt-3 border-t space-y-2">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">택배사</p>
+                    <p className="font-medium text-gray-900">
+                      {getCarrierName(order.shipping?.tracking_company)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">송장번호</p>
+                    <a
+                      href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline font-mono font-medium"
+                    >
+                      {order.shipping.tracking_number}
+                    </a>
+                  </div>
                 </div>
               )}
             </div>

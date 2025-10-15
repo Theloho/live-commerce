@@ -22,7 +22,7 @@ import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
 import OrderCalculations from '@/lib/orderCalculations'
 import { formatShippingInfo } from '@/lib/shippingUtils'
-import { getTrackingUrl } from '@/lib/trackingNumberUtils'
+import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 
 function OrdersContent() {
   const router = useRouter()
@@ -604,16 +604,17 @@ function OrdersContent() {
                     {/* 송장번호 표시 (출고완료 상태인 경우) */}
                     {(order.status === 'delivered' || order.status === 'shipping') && order.shipping?.tracking_number && (
                       <div className="mb-2 pb-2 border-b border-gray-100">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">송장번호</span>
+                        <div className="flex items-center justify-between text-sm gap-2">
+                          <span className="text-gray-600">배송조회</span>
                           <a
                             href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline font-mono text-xs"
+                            className="text-blue-600 hover:underline text-xs flex items-center gap-1"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {order.shipping.tracking_number}
+                            <span className="font-medium">{getCarrierName(order.shipping?.tracking_company)}</span>
+                            <span className="font-mono">{order.shipping.tracking_number}</span>
                           </a>
                         </div>
                       </div>

@@ -20,7 +20,7 @@ import {
 import useAuth from '@/hooks/useAuth'
 import { formatShippingInfo } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
-import { getTrackingUrl } from '@/lib/trackingNumberUtils'
+import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import toast from 'react-hot-toast'
 
 export default function OrderCompletePage() {
@@ -626,16 +626,24 @@ export default function OrderCompletePage() {
               </div>
               {/* 송장번호 표시 (출고완료/배송중 상태인 경우) */}
               {(orderData.status === 'delivered' || orderData.status === 'shipping') && orderData.shipping?.tracking_number && (
-                <div className="flex justify-between text-sm pt-2 border-t">
-                  <span className="text-gray-600">송장번호</span>
-                  <a
-                    href={getTrackingUrl(orderData.shipping?.tracking_company, orderData.shipping?.tracking_number)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline font-mono"
-                  >
-                    {orderData.shipping.tracking_number}
-                  </a>
+                <div className="pt-2 border-t space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">택배사</span>
+                    <span className="font-medium text-gray-900">
+                      {getCarrierName(orderData.shipping?.tracking_company)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">송장번호</span>
+                    <a
+                      href={getTrackingUrl(orderData.shipping?.tracking_company, orderData.shipping?.tracking_number)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline font-mono"
+                    >
+                      {orderData.shipping.tracking_number}
+                    </a>
+                  </div>
                 </div>
               )}
             </div>
