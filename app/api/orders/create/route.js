@@ -102,6 +102,37 @@ export async function POST(request) {
       console.log('ℹ️ 프로필 확인 실패, user_id null로 설정 (Kakao 사용자)')
     }
 
+    // 3.5. 무료배송 조건 확인 (서버에서 실시간 확인)
+    let isFreeShipping = false
+    try {
+      let pendingQuery = supabaseAdmin
+        .from('orders')
+        .select('id')
+        .in('status', ['pending', 'verifying'])
+
+      if (user.kakao_id) {
+        // 카카오 사용자: order_type으로 조회
+        pendingQuery = pendingQuery.like('order_type', `%KAKAO:${user.kakao_id}%`)
+      } else if (validUserId) {
+        // 일반 사용자: user_id로 조회
+        pendingQuery = pendingQuery.eq('user_id', validUserId)
+      }
+
+      const { data: pendingOrders } = await pendingQuery.limit(1)
+
+      isFreeShipping = (pendingOrders && pendingOrders.length > 0)
+
+      console.log('📦 무료배송 조건 확인 (서버):', {
+        userId: validUserId || 'Kakao',
+        kakaoId: user.kakao_id || null,
+        pendingOrders: pendingOrders?.length || 0,
+        isFreeShipping
+      })
+    } catch (freeShippingError) {
+      console.warn('⚠️ 무료배송 조건 확인 실패, 기본값(유료) 사용:', freeShippingError)
+      isFreeShipping = false
+    }
+
     // 4. 주문 생성 또는 업데이트
     let order
 
@@ -142,7 +173,7 @@ export async function POST(request) {
           : (orderData.orderType || 'direct'),
         total_amount: orderData.totalPrice,
         discount_amount: orderData.couponDiscount || 0,
-        is_free_shipping: orderData.isFreeShipping || false  // ✅ 무료배송 플래그 저장
+        is_free_shipping: isFreeShipping  // ✅ 서버에서 확인한 무료배송 플래그 저장
       }
 
       console.log('💾 DB INSERT orders:', {
@@ -220,13 +251,13 @@ export async function POST(request) {
     if (!existingOrder) {
       // 새 주문: 결제 정보 생성
       // ✅ 무료배송 조건: is_free_shipping = true이면 배송비 0원
-      const baseShippingFee = orderData.isFreeShipping ? 0 : 4000
+      const baseShippingFee = isFreeShipping ? 0 : 4000
       const shippingInfo = formatShippingInfo(baseShippingFee, userProfile.postal_code)
       const shippingFee = shippingInfo.totalShipping
       const totalAmount = normalizedOrderData.totalPrice + shippingFee
 
       console.log('📦 배송비 계산:', {
-        isFreeShipping: orderData.isFreeShipping,
+        isFreeShipping: isFreeShipping,
         baseShipping: shippingInfo.baseShipping,
         surcharge: shippingInfo.surcharge,
         region: shippingInfo.region,
@@ -267,13 +298,13 @@ export async function POST(request) {
       }, 0)
 
       // ✅ 무료배송 조건: is_free_shipping = true이면 배송비 0원
-      const baseShippingFee = orderData.isFreeShipping ? 0 : 4000
+      const baseShippingFee = isFreeShipping ? 0 : 4000
       const shippingInfo = formatShippingInfo(baseShippingFee, userProfile.postal_code)
       const shippingFee = shippingInfo.totalShipping
       const newPaymentAmount = itemsTotal + shippingFee
 
       console.log('💰 장바구니 주문 결제 금액 업데이트:', {
-        isFreeShipping: orderData.isFreeShipping,
+        isFreeShipping: isFreeShipping,
         itemsCount: allItems.length,
         itemsTotal,
         shippingFee,
