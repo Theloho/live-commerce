@@ -582,6 +582,7 @@ export default function AdminShippingPage() {
                             </button>
                           )}
                         </div>
+                      </div>
                     </td>
                   </motion.tr>
                 )
