@@ -17,6 +17,9 @@ import {
 import { ShippingDataManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
+import TrackingNumberInput from '@/app/components/admin/TrackingNumberInput'
+import TrackingNumberBulkUpload from '@/app/components/admin/TrackingNumberBulkUpload'
+import { getTrackingUrl } from '@/lib/trackingNumberUtils'
 
 export default function AdminShippingPage() {
   const router = useRouter()
@@ -27,6 +30,9 @@ export default function AdminShippingPage() {
   const [activeTab, setActiveTab] = useState('pending') // pending, completed
   const [loading, setLoading] = useState(true)
   const [selectedOrders, setSelectedOrders] = useState([])
+  const [showTrackingInput, setShowTrackingInput] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -265,6 +271,25 @@ export default function AdminShippingPage() {
     setSelectedOrders([])
   }
 
+  // 송장번호 입력 모달 열기
+  const openTrackingInput = (order) => {
+    setSelectedOrder(order)
+    setShowTrackingInput(true)
+  }
+
+  // 송장번호 저장 성공 처리
+  const handleTrackingSuccess = async ({ orderId, trackingNumber }) => {
+    await loadPaidOrders() // 목록 새로고침
+    setShowTrackingInput(false)
+    setSelectedOrder(null)
+  }
+
+  // 대량 업로드 성공 처리
+  const handleBulkUploadSuccess = async ({ matched, failed }) => {
+    await loadPaidOrders() // 목록 새로고침
+    setShowBulkUpload(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -281,12 +306,21 @@ export default function AdminShippingPage() {
           <h1 className="text-2xl font-bold text-gray-900">발송 관리</h1>
           <p className="text-gray-600">결제 완료된 주문의 발송 상태를 관리하세요</p>
         </div>
-        <button
-          onClick={loadPaidOrders}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
-          새로고침
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowBulkUpload(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+          >
+            <DocumentArrowDownIcon className="w-4 h-4" />
+            Excel 대량 업로드
+          </button>
+          <button
+            onClick={loadPaidOrders}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            새로고침
+          </button>
+        </div>
       </div>
 
 
@@ -446,7 +480,38 @@ export default function AdminShippingPage() {
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-2">
+                        {/* 송장번호 표시/입력 */}
+                        {order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number ? (
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={getTrackingUrl(
+                                order.shipping?.tracking_company || order.order_shipping?.[0]?.tracking_company,
+                                order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline text-xs font-mono"
+                            >
+                              {order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number}
+                            </a>
+                            <button
+                              onClick={() => openTrackingInput(order)}
+                              className="text-gray-600 hover:text-gray-800 text-xs"
+                            >
+                              수정
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openTrackingInput(order)}
+                            className="text-red-600 hover:text-red-700 px-2 py-1 bg-red-50 rounded text-xs"
+                          >
+                            송장번호 입력
+                          </button>
+                        )}
+
+                        <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
                             // 개별 송장 다운로드
@@ -605,8 +670,37 @@ export default function AdminShippingPage() {
                   </div>
                 </div>
 
+                {/* 송장번호 표시 */}
+                {(order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number) && (
+                  <div className="mb-2 text-sm">
+                    <span className="text-gray-500">🚚 송장: </span>
+                    <a
+                      href={getTrackingUrl(
+                        order.shipping?.tracking_company || order.order_shipping?.[0]?.tracking_company,
+                        order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline font-mono"
+                    >
+                      {order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number}
+                    </a>
+                  </div>
+                )}
+
                 {/* 하단: 버튼들 */}
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                  {/* 송장번호 입력 버튼 (송장번호 없을 때만) */}
+                  {!(order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number) && (
+                    <button
+                      onClick={() => openTrackingInput(order)}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
+                    >
+                      <TruckIcon className="w-4 h-4" />
+                      송장입력
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       // 그룹 주문인 경우 첫 번째 원본 주문으로 이동
@@ -693,6 +787,30 @@ export default function AdminShippingPage() {
           </div>
         )}
       </div>
+
+      {/* 송장번호 입력 모달 */}
+      {showTrackingInput && selectedOrder && (
+        <TrackingNumberInput
+          orderId={selectedOrder.id}
+          adminEmail={adminUser.email}
+          currentTracking={selectedOrder.shipping?.tracking_number || selectedOrder.order_shipping?.[0]?.tracking_number}
+          currentCompany={selectedOrder.shipping?.tracking_company || selectedOrder.order_shipping?.[0]?.tracking_company}
+          onSuccess={handleTrackingSuccess}
+          onClose={() => {
+            setShowTrackingInput(false)
+            setSelectedOrder(null)
+          }}
+        />
+      )}
+
+      {/* Excel 대량 업로드 모달 */}
+      {showBulkUpload && (
+        <TrackingNumberBulkUpload
+          adminEmail={adminUser.email}
+          onSuccess={handleBulkUploadSuccess}
+          onClose={() => setShowBulkUpload(false)}
+        />
+      )}
     </div>
   )
 }
