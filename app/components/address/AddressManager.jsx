@@ -14,8 +14,7 @@ import {
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid'
 import toast from 'react-hot-toast'
 
-export default function AddressManager({ userProfile, onUpdate, onSelect, selectMode = false }) {
-  const [addresses, setAddresses] = useState([])
+export default function AddressManager({ addresses = [], onAddressesChange, onSelect, selectMode = false }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [selectedAddressId, setSelectedAddressId] = useState(null)
@@ -27,47 +26,15 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
   })
   const [showAddressSearch, setShowAddressSearch] = useState(false)
 
-  // 🔒 마이그레이션 완료 플래그 (리렌더링 없음)
-  const migrationDone = useRef(false)
-
-  // 📥 초기화: 한 번만 실행 (무한 루프 방지)
+  // 기본 주소 자동 선택 (초기화 시)
   useEffect(() => {
-    if (migrationDone.current) return // 이미 완료됐으면 종료
-
-    let initialAddresses = userProfile?.addresses && Array.isArray(userProfile.addresses)
-      ? [...userProfile.addresses]
-      : []
-
-    // legacy address 마이그레이션 (addresses 배열이 비어있고, legacy 주소가 있을 때만 실행)
-    if (initialAddresses.length === 0 && userProfile?.address) {
-      console.log('🔄 legacy 주소 마이그레이션:', userProfile.address)
-      const legacyAddress = {
-        id: Date.now(),
-        label: '기본 배송지',
-        address: userProfile.address,
-        detail_address: userProfile.detail_address || '',
-        postal_code: userProfile.postal_code || '',
-        is_default: true,
-        created_at: new Date().toISOString()
-      }
-      initialAddresses = [legacyAddress]
-
-      // 즉시 DB에 저장
-      if (onUpdate) {
-        onUpdate({ addresses: initialAddresses })
+    if (addresses.length > 0) {
+      const defaultAddr = addresses.find(a => a.is_default)
+      if (defaultAddr && !selectedAddressId) {
+        setSelectedAddressId(defaultAddr.id)
       }
     }
-
-    setAddresses(initialAddresses)
-
-    // 기본 주소 자동 선택
-    const defaultAddr = initialAddresses.find(a => a.is_default)
-    if (defaultAddr) {
-      setSelectedAddressId(defaultAddr.id)
-    }
-
-    migrationDone.current = true // 완료 표시
-  }, [userProfile, onUpdate])
+  }, [addresses])
 
   // 아이콘 선택 함수
   const getIcon = (label) => {
@@ -97,11 +64,10 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
     }
 
     const updatedAddresses = [...addresses, newAddress]
-    setAddresses(updatedAddresses)
 
     // 부모 컴포넌트에 업데이트 알림
-    if (onUpdate) {
-      await onUpdate({ addresses: updatedAddresses })
+    if (onAddressesChange) {
+      await onAddressesChange(updatedAddresses)
     }
 
     // 폼 초기화 및 성공 메시지
@@ -131,10 +97,8 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
         : addr
     )
 
-    setAddresses(updatedAddresses)
-
-    if (onUpdate) {
-      await onUpdate({ addresses: updatedAddresses })
+    if (onAddressesChange) {
+      await onAddressesChange(updatedAddresses)
     }
 
     setEditingId(null)
@@ -156,10 +120,9 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
     }
 
     const updatedAddresses = addresses.filter(a => a.id !== id)
-    setAddresses(updatedAddresses)
 
-    if (onUpdate) {
-      await onUpdate({ addresses: updatedAddresses })
+    if (onAddressesChange) {
+      await onAddressesChange(updatedAddresses)
     }
 
     toast.success('배송지가 삭제되었습니다')
@@ -172,10 +135,8 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
       is_default: addr.id === id
     }))
 
-    setAddresses(updatedAddresses)
-
-    if (onUpdate) {
-      await onUpdate({ addresses: updatedAddresses })
+    if (onAddressesChange) {
+      await onAddressesChange(updatedAddresses)
     }
 
     toast.success('기본 배송지가 변경되었습니다')

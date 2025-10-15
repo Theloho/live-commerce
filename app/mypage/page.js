@@ -487,14 +487,16 @@ export default function MyPage() {
           </div>
           <div className="p-4">
             <AddressManager
-              userProfile={userProfile}
-              onUpdate={async (updatedData) => {
+              addresses={userProfile.addresses || []}
+              onAddressesChange={async (newAddresses) => {
                 // 💾 DB 업데이트 + userProfile state 동기화
                 try {
                   const currentUser = userSession || user
                   if (!currentUser?.id) return
 
                   const isKakaoUser = currentUser?.provider === 'kakao'
+
+                  const updatedData = { addresses: newAddresses }
 
                   // atomicProfileUpdate 사용 (deprecated된 updateProfile 대신)
                   await UserProfileManager.atomicProfileUpdate(
@@ -508,7 +510,7 @@ export default function MyPage() {
                   // userProfile state 동기화 (새로고침 없이 최신 상태 유지)
                   setUserProfile(prev => ({
                     ...prev,
-                    ...updatedData
+                    addresses: newAddresses  // ✅ Direct assignment
                   }))
 
                   // sessionStorage 업데이트 (카카오 사용자만)
@@ -516,7 +518,7 @@ export default function MyPage() {
                   if (isKakaoUser) {
                     const updatedUser = {
                       ...currentUser,
-                      ...updatedData
+                      addresses: newAddresses
                     }
                     sessionStorage.setItem('user', JSON.stringify(updatedUser))
                   }

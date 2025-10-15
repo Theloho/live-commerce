@@ -1085,14 +1085,16 @@ export default function CheckoutPage() {
                 </div>
 
                 <AddressManager
-                  userProfile={userProfile}
+                  addresses={userProfile.addresses || []}
                   selectMode={true}
-                  onUpdate={async (updatedData) => {
+                  onAddressesChange={async (newAddresses) => {
                     // 💾 중앙화 모듈로 DB 업데이트 + userProfile.addresses 동기화
                     const currentUser = userSession || user
                     const isKakaoUser = currentUser?.provider === 'kakao'
 
                     try {
+                      const updatedData = { addresses: newAddresses }
+
                       // ✅ atomicProfileUpdate 사용 (addresses 필드 자동 저장)
                       await UserProfileManager.atomicProfileUpdate(
                         currentUser.id,
@@ -1105,7 +1107,7 @@ export default function CheckoutPage() {
                       // ✅ userProfile.addresses 동기화 (모달 재오픈 시 새 주소 표시)
                       setUserProfile(prev => ({
                         ...prev,
-                        ...updatedData
+                        addresses: newAddresses
                       }))
 
                       toast.success('배송지가 저장되었습니다')
