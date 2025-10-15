@@ -489,20 +489,36 @@ export default function MyPage() {
             <AddressManager
               userProfile={userProfile}
               onUpdate={async (updatedData) => {
-                // 💾 DB만 업데이트 (userProfile state 건드리지 않음 → 무한 루프 방지)
-                // 중앙화 모듈 사용
+                // 💾 DB 업데이트 + userProfile state 동기화
                 try {
                   const currentUser = userSession || user
                   if (!currentUser?.id) return
 
-                  const result = await UserProfileManager.updateProfile(currentUser.id, updatedData)
+                  const isKakaoUser = currentUser?.provider === 'kakao'
 
-                  if (result.success) {
-                    console.log('✅ 주소 DB 업데이트 성공:', updatedData)
-                    // setUserProfile 제거! → AddressManager는 독립적으로 작동
-                  } else {
-                    console.error('주소 업데이트 실패')
-                    toast.error('주소 저장에 실패했습니다')
+                  // atomicProfileUpdate 사용 (deprecated된 updateProfile 대신)
+                  await UserProfileManager.atomicProfileUpdate(
+                    currentUser.id,
+                    updatedData,
+                    isKakaoUser
+                  )
+
+                  console.log('✅ 주소 DB 업데이트 성공:', updatedData)
+
+                  // userProfile state 동기화 (새로고침 없이 최신 상태 유지)
+                  setUserProfile(prev => ({
+                    ...prev,
+                    ...updatedData
+                  }))
+
+                  // sessionStorage 업데이트 (카카오 사용자만)
+                  if (isKakaoUser) {
+                    const updatedUser = {
+                      ...currentUser,
+                      ...updatedData
+                    }
+                    sessionStorage.setItem('user', JSON.stringify(updatedUser))
+                    setUserSession(updatedUser)
                   }
                 } catch (error) {
                   console.error('주소 업데이트 오류:', error)
