@@ -1117,16 +1117,14 @@ export default function CheckoutPage() {
                     }
                   }}
                   onSelect={(address) => {
-                    // ✅ 동기적으로 즉시 반영 (state 업데이트 대기 안 함)
-                    const updatedProfile = {
-                      ...userProfile,
+                    // ✅ 동기적으로 즉시 반영 + addresses 보존 (prev 사용)
+                    setSelectedAddress(address)
+                    setUserProfile(prev => ({
+                      ...prev,  // ✅ addresses 보존!
                       address: address.address,
                       detail_address: address.detail_address || '',
                       postal_code: address.postal_code || ''
-                    }
-
-                    setSelectedAddress(address)
-                    setUserProfile(updatedProfile)
+                    }))
                     setShowAddressModal(false)
                     // ✨ 토스트 제거: 배송지 선택은 시각적으로 이미 확인 가능
                   }}
