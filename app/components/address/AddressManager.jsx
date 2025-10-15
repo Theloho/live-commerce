@@ -376,6 +376,7 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
                       // 관리 버튼들
                       <div className="flex items-center gap-1">
                         <button
+                          type="button"
                           onClick={() => startEdit(address)}
                           className="p-1 text-gray-400 hover:text-gray-600"
                         >
@@ -384,12 +385,14 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
                         {!address.is_default && (
                           <>
                             <button
+                              type="button"
                               onClick={() => handleDeleteAddress(address.id)}
                               className="p-1 text-gray-400 hover:text-red-600"
                             >
                               <TrashIcon className="w-4 h-4" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleSetDefault(address.id)}
                               className="p-1 text-gray-400 hover:text-green-600"
                               title="기본으로 설정"
