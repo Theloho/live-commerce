@@ -512,8 +512,8 @@ export default function AdminShippingPage() {
                         )}
 
                         <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
+                          <button
+                            onClick={() => {
                             // 개별 송장 다운로드
                             const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
 
@@ -565,23 +565,23 @@ export default function AdminShippingPage() {
                             document.body.removeChild(link)
 
                             toast.success('송장 파일을 다운로드했습니다')
-                          }}
-                          className="text-purple-600 hover:text-purple-700 px-2 py-1 bg-purple-50 rounded text-xs"
-                          title="송장 다운로드"
-                        >
-                          송장
-                        </button>
-
-                        {order.status === 'shipping' && (
-                          <button
-                            onClick={() => updateShippingStatus(order.id, 'delivered')}
-                            className="text-green-600 hover:text-green-700 px-2 py-1 bg-green-50 rounded text-xs"
-                            title="발송 완료"
+                            }}
+                            className="text-purple-600 hover:text-purple-700 px-2 py-1 bg-purple-50 rounded text-xs"
+                            title="송장 다운로드"
                           >
-                            발송완료
+                            송장
                           </button>
-                        )}
-                      </div>
+
+                          {order.status === 'shipping' && (
+                            <button
+                              onClick={() => updateShippingStatus(order.id, 'delivered')}
+                              className="text-green-600 hover:text-green-700 px-2 py-1 bg-green-50 rounded text-xs"
+                              title="발송 완료"
+                            >
+                              발송완료
+                            </button>
+                          )}
+                        </div>
                     </td>
                   </motion.tr>
                 )
