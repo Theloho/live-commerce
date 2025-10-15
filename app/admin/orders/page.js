@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast'
 import { formatShippingInfo } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
+import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 export default function AdminOrdersPage() {
@@ -123,7 +124,9 @@ export default function AdminOrdersPage() {
             address: shipping.address,
             detail_address: shipping.detail_address,
             postal_code: shipping.postal_code,
-            shipping_request: shipping.shipping_request
+            shipping_request: shipping.shipping_request,
+            tracking_number: shipping.tracking_number,
+            tracking_company: shipping.tracking_company
           },
           payment: {
             method: payment.method,
@@ -441,6 +444,19 @@ export default function AdminOrdersPage() {
                           }
                         })()}
                       </div>
+                      {/* 송장번호 표시 (발송완료 상태) */}
+                      {order.status === 'delivered' && order.shipping?.tracking_number && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          <a
+                            href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {getCarrierName(order.shipping?.tracking_company)} {order.shipping.tracking_number}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -682,6 +698,28 @@ export default function AdminOrdersPage() {
                     }
                   </div>
                 </div>
+
+                {/* 송장번호 표시 (발송완료 상태인 경우) */}
+                {order.status === 'delivered' && order.shipping?.tracking_number && (
+                  <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <div className="text-gray-600 mb-0.5">배송조회</div>
+                        <div className="font-medium text-gray-900">
+                          {getCarrierName(order.shipping?.tracking_company)}
+                        </div>
+                      </div>
+                      <a
+                        href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline font-mono"
+                      >
+                        {order.shipping.tracking_number}
+                      </a>
+                    </div>
+                  </div>
+                )}
 
                 {/* 하단: 버튼들 (취소 버튼 최좌측 배치) */}
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
