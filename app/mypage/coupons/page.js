@@ -66,6 +66,33 @@ export default function MyCouponsPage() {
     try {
       setLoading(true)
       const data = await getUserCoupons(currentUser.id)
+
+      // 🔍 디버깅: 로드된 쿠폰 데이터 확인
+      console.log('🎫 로드된 전체 쿠폰 데이터:', data)
+      console.log('🎫 쿠폰 개수:', data?.length || 0)
+
+      if (data && data.length > 0) {
+        console.log('🎫 첫 번째 쿠폰 상세:', {
+          id: data[0].id,
+          coupon_id: data[0].coupon_id,
+          is_used: data[0].is_used,
+          used_at: data[0].used_at,
+          order_id: data[0].order_id,
+          discount_amount: data[0].discount_amount,
+          coupon: data[0].coupon
+        })
+
+        const usedCoupons = data.filter(c => c.is_used)
+        console.log('🎫 사용된 쿠폰 개수:', usedCoupons.length)
+        if (usedCoupons.length > 0) {
+          console.log('🎫 사용된 쿠폰 목록:', usedCoupons.map(c => ({
+            code: c.coupon?.code,
+            is_used: c.is_used,
+            used_at: c.used_at
+          })))
+        }
+      }
+
       setCoupons(data)
     } catch (error) {
       console.error('쿠폰 로딩 오류:', error)
