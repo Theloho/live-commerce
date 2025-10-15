@@ -90,6 +90,15 @@ export async function POST(request) {
 
       // 3-2. order_shipping 업데이트
       if (paymentData && paymentData.shippingData) {
+        // ✅ 무료배송 플래그 조회
+        const { data: orderForShipping } = await supabaseAdmin
+          .from('orders')
+          .select('is_free_shipping')
+          .eq('id', orderId)
+          .single()
+
+        const shippingFee = orderForShipping?.is_free_shipping ? 0 : 4000
+
         const shippingData = paymentData.shippingData
         const shippingUpdate = {
           name: shippingData.shipping_name,
@@ -97,7 +106,7 @@ export async function POST(request) {
           address: shippingData.shipping_address,
           detail_address: shippingData.shipping_detail_address || '',
           postal_code: shippingData.shipping_postal_code || null,
-          shipping_fee: 4000
+          shipping_fee: shippingFee  // ✅ 무료배송 조건 반영
         }
 
         // 먼저 기존 레코드 확인
@@ -140,7 +149,7 @@ export async function POST(request) {
         // 주문 상세 조회 (금액 계산용)
         const { data: orderDetail, error: detailError } = await supabaseAdmin
           .from('orders')
-          .select('id, order_items(*), order_shipping(postal_code)')
+          .select('id, is_free_shipping, order_items(*), order_shipping(postal_code)')
           .eq('id', orderId)
           .single()
 
@@ -155,6 +164,9 @@ export async function POST(request) {
                           paymentData.shippingData?.shipping_postal_code ||
                           'normal'
 
+        // ✅ DB 저장된 무료배송 조건 사용
+        const baseShippingFee = orderDetail.is_free_shipping ? 0 : 4000
+
         // OrderCalculations로 정확한 금액 계산
         const { default: OrderCalculations } = await import('@/lib/orderCalculations')
         const orderCalc = OrderCalculations.calculateFinalOrderAmount(items, {
@@ -163,7 +175,8 @@ export async function POST(request) {
             type: 'fixed_amount',
             value: paymentData.discountAmount
           } : null,
-          paymentMethod: paymentData.method || 'bank_transfer'
+          paymentMethod: paymentData.method || 'bank_transfer',
+          baseShippingFee: baseShippingFee  // ✅ 무료배송 플래그 전달
         })
 
         const finalAmount = orderCalc.finalAmount

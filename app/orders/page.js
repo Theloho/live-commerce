@@ -515,14 +515,17 @@ function OrdersContent() {
                 const groupedItems = groupOrderItems(order.items || [])
 
                 // 🧮 배송비 포함 총 결제금액 계산 (OrderCalculations 사용)
-                const shippingInfo = formatShippingInfo(4000, order.shipping?.postal_code)
+                // ✅ DB 저장된 무료배송 조건 사용
+                const baseShippingFee = order.is_free_shipping ? 0 : 4000
+                const shippingInfo = formatShippingInfo(baseShippingFee, order.shipping?.postal_code)
                 const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
                   region: shippingInfo.region,
                   coupon: order.discount_amount > 0 ? {
                     type: 'fixed_amount',
                     value: order.discount_amount
                   } : null,
-                  paymentMethod: order.payment?.method || 'transfer'
+                  paymentMethod: order.payment?.method || 'transfer',
+                  baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
                 })
                 const finalAmount = orderCalc.finalAmount
 

@@ -117,6 +117,8 @@ export default function AdminOrdersPage() {
           shipped_at: order.shipped_at,
           delivered_at: order.delivered_at,
           order_type: order.order_type,
+          discount_amount: order.discount_amount || 0,
+          is_free_shipping: order.is_free_shipping || false,  // ✅ 무료배송 플래그
           items: order.order_items || [],
           shipping: {
             name: shipping.name,
@@ -478,8 +480,10 @@ export default function AdminOrdersPage() {
                       <div className="text-sm font-medium text-gray-900">
                         {(() => {
                           // 🧮 중앙화된 계산 모듈 사용
+                          // ✅ DB 저장된 무료배송 조건 사용 (결제대기는 결제 전이므로 0원 표시)
+                          const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
                           const shippingInfo = formatShippingInfo(
-                            order.status === 'pending' ? 0 : 4000,
+                            baseShippingFee,
                             order.shipping?.postal_code
                           )
 
@@ -489,7 +493,8 @@ export default function AdminOrdersPage() {
                               type: 'fixed_amount',
                               value: order.discount_amount
                             } : null,
-                            paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer'
+                            paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
+                            baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
                           })
 
                           return (
@@ -626,8 +631,10 @@ export default function AdminOrdersPage() {
         <div className="lg:hidden divide-y divide-gray-200">
           {filteredOrders.map((order, index) => {
             // 🧮 중앙화된 계산 모듈 사용 (모바일 뷰)
+            // ✅ DB 저장된 무료배송 조건 사용 (결제대기는 결제 전이므로 0원 표시)
+            const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
             const shippingInfo = formatShippingInfo(
-              order.status === 'pending' ? 0 : 4000,
+              baseShippingFee,
               order.shipping?.postal_code
             )
 
@@ -637,7 +644,8 @@ export default function AdminOrdersPage() {
                 type: 'fixed_amount',
                 value: order.discount_amount
               } : null,
-              paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer'
+              paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
+              baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
             })
 
             const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)

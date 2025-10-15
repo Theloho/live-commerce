@@ -353,7 +353,9 @@ export default function OrderCompletePage() {
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     {/* 결제 금액 상세 (중앙화된 계산 모듈 사용) */}
                     {(() => {
-                      const shippingInfo = formatShippingInfo(4000, orderData.shipping?.postal_code)
+                      // ✅ DB 저장된 무료배송 조건 사용
+                      const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                      const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
 
                       // 🧮 중앙화된 계산 모듈 사용
                       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
@@ -362,7 +364,8 @@ export default function OrderCompletePage() {
                           type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
                           value: orderData.discount_amount
                         } : null,
-                        paymentMethod: 'card'
+                        paymentMethod: 'card',
+                        baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
                       })
 
                       console.log('💳 카드결제 금액 계산 (중앙화 모듈):', orderCalc.breakdown)
@@ -451,7 +454,9 @@ export default function OrderCompletePage() {
                   {/* 입금 정보 (중앙화된 계산 모듈 사용) */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     {(() => {
-                      const shippingInfo = formatShippingInfo(4000, orderData.shipping?.postal_code)
+                      // ✅ DB 저장된 무료배송 조건 사용
+                      const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                      const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
 
                       // 🧮 중앙화된 계산 모듈 사용
                       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
@@ -460,7 +465,8 @@ export default function OrderCompletePage() {
                           type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
                           value: orderData.discount_amount
                         } : null,
-                        paymentMethod: 'transfer'
+                        paymentMethod: 'transfer',
+                        baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
                       })
 
                       // 입금자명 우선순위 (DB 저장된 순서대로)
@@ -805,7 +811,9 @@ export default function OrderCompletePage() {
                     <div className="border-t pt-3 mt-3">
                       <div className="space-y-2">
                         {(() => {
-                          const shippingInfo = formatShippingInfo(4000, orderData.shipping?.postal_code)
+                          // ✅ DB 저장된 무료배송 조건 사용
+                          const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                          const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
 
                           // 🧮 중앙화된 계산 모듈 사용 (정확한 금액 계산)
                           const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
@@ -814,7 +822,8 @@ export default function OrderCompletePage() {
                               type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
                               value: orderData.discount_amount
                             } : null,
-                            paymentMethod: orderData.payment?.method || 'transfer'
+                            paymentMethod: orderData.payment?.method || 'transfer',
+                            baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
                           })
 
                           console.log('💰 주문 상세 금액 계산 (OrderCalculations):', {

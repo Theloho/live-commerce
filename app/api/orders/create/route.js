@@ -141,7 +141,8 @@ export async function POST(request) {
           ? `${orderData.orderType || 'direct'}:KAKAO:${user.kakao_id}`
           : (orderData.orderType || 'direct'),
         total_amount: orderData.totalPrice,
-        discount_amount: orderData.couponDiscount || 0
+        discount_amount: orderData.couponDiscount || 0,
+        is_free_shipping: orderData.isFreeShipping || false  // ✅ 무료배송 플래그 저장
       }
 
       console.log('💾 DB INSERT orders:', {
@@ -218,11 +219,14 @@ export async function POST(request) {
     // 7. 결제 정보 생성 또는 업데이트
     if (!existingOrder) {
       // 새 주문: 결제 정보 생성
-      const shippingInfo = formatShippingInfo(4000, userProfile.postal_code)
+      // ✅ 무료배송 조건: is_free_shipping = true이면 배송비 0원
+      const baseShippingFee = orderData.isFreeShipping ? 0 : 4000
+      const shippingInfo = formatShippingInfo(baseShippingFee, userProfile.postal_code)
       const shippingFee = shippingInfo.totalShipping
       const totalAmount = normalizedOrderData.totalPrice + shippingFee
 
       console.log('📦 배송비 계산:', {
+        isFreeShipping: orderData.isFreeShipping,
         baseShipping: shippingInfo.baseShipping,
         surcharge: shippingInfo.surcharge,
         region: shippingInfo.region,
@@ -262,11 +266,14 @@ export async function POST(request) {
         return sum + (item.total_price || item.total || 0)
       }, 0)
 
-      const shippingInfo = formatShippingInfo(4000, userProfile.postal_code)
+      // ✅ 무료배송 조건: is_free_shipping = true이면 배송비 0원
+      const baseShippingFee = orderData.isFreeShipping ? 0 : 4000
+      const shippingInfo = formatShippingInfo(baseShippingFee, userProfile.postal_code)
       const shippingFee = shippingInfo.totalShipping
       const newPaymentAmount = itemsTotal + shippingFee
 
       console.log('💰 장바구니 주문 결제 금액 업데이트:', {
+        isFreeShipping: orderData.isFreeShipping,
         itemsCount: allItems.length,
         itemsTotal,
         shippingFee,

@@ -860,7 +860,8 @@ export default function CheckoutPage() {
         const orderItemWithCoupon = {
           ...orderItem,
           couponDiscount: orderCalc.couponDiscount || 0,
-          couponCode: selectedCoupon?.coupon?.code || null
+          couponCode: selectedCoupon?.coupon?.code || null,
+          isFreeShipping: hasPendingOrders  // ✅ 무료배송 조건 전달
         }
 
         console.log('💰 주문 생성 데이터:', {

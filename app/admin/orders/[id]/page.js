@@ -73,6 +73,8 @@ export default function AdminOrderDetailPage() {
           userName: foundOrder.userProfile?.name || foundOrder.order_shipping?.name || '정보없음',
           userNickname: foundOrder.userProfile?.nickname || '정보없음',
           depositName: foundOrder.order_payments?.depositor_name || foundOrder.depositName,
+          discount_amount: foundOrder.discount_amount || 0,
+          is_free_shipping: foundOrder.is_free_shipping || false,  // ✅ 무료배송 플래그
           items: (foundOrder.order_items || []).map(item => ({
             ...item,
             image: item.thumbnail_url || item.products?.thumbnail_url || '/placeholder.png',
@@ -399,8 +401,10 @@ export default function AdminOrderDetailPage() {
               </div>
               {/* 결제 금액 상세 (중앙화된 계산 모듈 사용) */}
               {(() => {
+                // ✅ DB 저장된 무료배송 조건 사용 (결제대기는 결제 전이므로 0원 표시)
+                const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
                 const shippingInfo = formatShippingInfo(
-                  order.status === 'pending' ? 0 : 4000,
+                  baseShippingFee,
                   order.shipping?.postal_code
                 )
 
@@ -411,7 +415,8 @@ export default function AdminOrderDetailPage() {
                     type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
                     value: order.discount_amount
                   } : null,
-                  paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer'
+                  paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
+                  baseShippingFee: baseShippingFee  // ✅ 무료배송 플래그 전달
                 })
 
                 console.log('💰 관리자 주문 상세 금액 계산 (중앙화 모듈):', {
@@ -811,8 +816,10 @@ export default function AdminOrderDetailPage() {
           <div className="space-y-2">
             {/* 결제 금액 상세 (중앙화된 계산 모듈 사용) */}
             {(() => {
+              // ✅ DB 저장된 무료배송 조건 사용 (결제대기는 결제 전이므로 0원 표시)
+              const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
               const shippingInfo = formatShippingInfo(
-                order.status === 'pending' ? 0 : 4000,
+                baseShippingFee,
                 order.shipping?.postal_code
               )
 
@@ -823,7 +830,8 @@ export default function AdminOrderDetailPage() {
                   type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
                   value: order.discount_amount
                 } : null,
-                paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer'
+                paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
+                baseShippingFee: baseShippingFee  // ✅ 무료배송 플래그 전달
               })
 
               console.log('💰 관리자 주문 상세 하단 금액 계산 (중앙화 모듈):', {
