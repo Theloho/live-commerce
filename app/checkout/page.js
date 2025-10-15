@@ -69,6 +69,9 @@ export default function CheckoutPage() {
   const [selectedCoupon, setSelectedCoupon] = useState(null)
   const [showCouponList, setShowCouponList] = useState(false)
 
+  // 무료배송 관련 상태
+  const [hasPendingOrders, setHasPendingOrders] = useState(false)
+
   // 🔒 마이그레이션 완료 플래그 (리렌더링 없음)
   const migrationDone = useRef(false)
 
@@ -322,8 +325,9 @@ export default function CheckoutPage() {
         await Promise.allSettled([
           loadUserProfileOptimized(validationResult.currentUser),
           loadUserAddressesOptimized(validationResult.currentUser),
-          loadUserCouponsOptimized(validationResult.currentUser)
-        ]).then(([profileResult, addressResult, couponResult]) => {
+          loadUserCouponsOptimized(validationResult.currentUser),
+          checkPendingOrders(validationResult.currentUser)
+        ]).then(([profileResult, addressResult, couponResult, pendingOrdersResult]) => {
           // 프로필 처리
           if (profileResult.status === 'fulfilled') {
             setUserProfile(profileResult.value)
@@ -351,6 +355,11 @@ export default function CheckoutPage() {
           // 쿠폰 처리
           if (couponResult.status === 'fulfilled') {
             setAvailableCoupons(couponResult.value)
+          }
+
+          // 무료배송 조건 처리
+          if (pendingOrdersResult.status === 'fulfilled') {
+            setHasPendingOrders(pendingOrdersResult.value)
           }
         })
 
@@ -502,6 +511,43 @@ export default function CheckoutPage() {
       }
     }
 
+    // ⚡ 사용자의 pending/verifying 주문 확인 (무료배송 조건)
+    const checkPendingOrders = async (currentUser) => {
+      try {
+        if (!currentUser?.id) return false
+
+        // 카카오 사용자의 경우 order_type으로 조회
+        let query = supabase.from('orders').select('id, status')
+
+        if (currentUser.provider === 'kakao') {
+          // 카카오 사용자: order_type으로 조회
+          query = query.or(`order_type.like.%KAKAO:${currentUser.kakao_id}%`)
+        } else {
+          // 일반 사용자: user_id로 조회
+          query = query.eq('user_id', currentUser.id)
+        }
+
+        const { data, error } = await query.in('status', ['pending', 'verifying'])
+
+        if (error) {
+          console.warn('주문 확인 실패:', error)
+          return false
+        }
+
+        console.log('🔍 무료배송 조건 확인:', {
+          userId: currentUser.id,
+          provider: currentUser.provider,
+          pendingOrders: data?.length || 0,
+          hasPendingOrders: (data?.length || 0) > 0
+        })
+
+        return (data?.length || 0) > 0
+      } catch (error) {
+        console.warn('주문 확인 중 오류:', error)
+        return false
+      }
+    }
+
     // 🚀 새로운 고성능 초기화 함수 호출
     initCheckoutOptimized()
   }, [isAuthenticated, user, authLoading, router])
@@ -557,7 +603,10 @@ export default function CheckoutPage() {
   // 🧮 중앙화된 계산 모듈 사용
   // selectedAddress 우편번호 우선, 없으면 userProfile 우편번호 사용
   const postalCode = selectedAddress?.postal_code || userProfile.postal_code
-  const shippingInfo = formatShippingInfo(4000, postalCode)  // ✅ 기본 배송비 4000원
+
+  // ✅ 무료배송 조건: pending/verifying 주문이 있으면 배송비 무료 (도서산간 포함)
+  const baseShippingFee = hasPendingOrders ? 0 : 4000
+  const shippingInfo = formatShippingInfo(baseShippingFee, postalCode)  // ✅ 무료배송 조건 적용
 
   // OrderCalculations를 사용한 완전한 주문 계산
   const orderItems = orderItem.isBulkPayment
@@ -1151,11 +1200,24 @@ export default function CheckoutPage() {
                   <p className="text-sm text-gray-500">2-3일 소요</p>
                 </div>
                 <p className="font-medium text-gray-900">
-                  ₩{shippingFee.toLocaleString()}
+                  {hasPendingOrders ? (
+                    <span className="text-green-600">무료</span>
+                  ) : (
+                    `₩${shippingFee.toLocaleString()}`
+                  )}
                 </p>
               </div>
             </div>
-            {shippingInfo.isRemote ? (
+            {hasPendingOrders ? (
+              <div className="mt-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                <p className="text-sm font-medium text-green-800 mb-1">
+                  🎉 무료배송 혜택 적용!
+                </p>
+                <p className="text-xs text-green-700">
+                  입금 대기 중인 주문이 있어 배송비가 무료입니다 (도서산간 포함)
+                </p>
+              </div>
+            ) : shippingInfo.isRemote ? (
               <div className="mt-2 p-2 bg-orange-50 rounded-lg">
                 <p className="text-xs text-orange-700">
                   🏝️ {shippingInfo.region} 지역은 추가 배송비 ₩{shippingInfo.surcharge.toLocaleString()}이 포함됩니다
@@ -1329,15 +1391,24 @@ export default function CheckoutPage() {
                 <span className="text-gray-600">상품 금액</span>
                 <span className="text-gray-900">₩{orderCalc.itemsTotal.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">기본 배송비</span>
-                <span className="text-gray-900">₩{shippingInfo.baseShipping.toLocaleString()}</span>
-              </div>
-              {shippingInfo.isRemote && (
+              {hasPendingOrders ? (
                 <div className="flex justify-between text-sm">
-                  <span className="text-orange-600">도서산간 추가비 ({shippingInfo.region})</span>
-                  <span className="text-orange-600">+₩{shippingInfo.surcharge.toLocaleString()}</span>
+                  <span className="text-green-600">배송비 (무료배송 혜택)</span>
+                  <span className="text-green-600 line-through">₩0</span>
                 </div>
+              ) : (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">기본 배송비</span>
+                    <span className="text-gray-900">₩{shippingInfo.baseShipping.toLocaleString()}</span>
+                  </div>
+                  {shippingInfo.isRemote && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-orange-600">도서산간 추가비 ({shippingInfo.region})</span>
+                      <span className="text-orange-600">+₩{shippingInfo.surcharge.toLocaleString()}</span>
+                    </div>
+                  )}
+                </>
               )}
               {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                 <div className="flex justify-between text-sm">
