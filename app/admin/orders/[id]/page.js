@@ -115,7 +115,9 @@ export default function AdminOrderDetailPage() {
     const statusMap = {
       pending: { label: '결제대기', color: 'bg-yellow-100 text-yellow-800' },
       verifying: { label: '결제확인중', color: 'bg-purple-100 text-purple-800' },
+      deposited: { label: '입금확인', color: 'bg-emerald-100 text-emerald-800' },
       paid: { label: '결제완료', color: 'bg-blue-100 text-blue-800' },
+      shipping: { label: '발송 중', color: 'bg-orange-100 text-orange-800' },
       delivered: { label: '발송완료', color: 'bg-green-100 text-green-800' },
       cancelled: { label: '취소됨', color: 'bg-red-100 text-red-800' }
     }
@@ -514,7 +516,7 @@ export default function AdminOrderDetailPage() {
               )}
 
               {/* 결제 완료 */}
-              {['paid', 'delivered'].includes(order.status) && (
+              {['paid', 'shipping', 'delivered'].includes(order.status) && (
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-green-500"></div>
                   <div className="flex-1">
@@ -539,6 +541,37 @@ export default function AdminOrderDetailPage() {
                             hour12: false
                           })
                         : order.status === 'paid' && order.updated_at
+                        ? new Date(order.updated_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : '처리 대기중'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 발송 중 */}
+              {['shipping', 'delivered'].includes(order.status) && (
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-orange-500"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">발송 중</p>
+                    <p className="text-xs text-gray-500">
+                      {order.shipping?.shipped_at
+                        ? new Date(order.shipping.shipped_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        : order.status === 'shipping' && order.updated_at
                         ? new Date(order.updated_at).toLocaleString('ko-KR', {
                             year: 'numeric',
                             month: '2-digit',
@@ -675,11 +708,21 @@ export default function AdminOrderDetailPage() {
 
               {order.status === 'paid' && (
                 <button
+                  onClick={() => updateOrderStatus('shipping')}
+                  className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                >
+                  <TruckIcon className="w-5 h-5" />
+                  발송 시작
+                </button>
+              )}
+
+              {order.status === 'shipping' && (
+                <button
                   onClick={() => updateOrderStatus('delivered')}
                   className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium"
                 >
-                  <TruckIcon className="w-5 h-5" />
-                  발송 처리
+                  <CheckIcon className="w-5 h-5" />
+                  발송 완료
                 </button>
               )}
 
