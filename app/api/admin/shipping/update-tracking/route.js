@@ -10,12 +10,13 @@ import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
  */
 export async function POST(request) {
   try {
-    const { adminEmail, orderId, trackingNumber } = await request.json()
+    const { adminEmail, orderId, trackingNumber, trackingCompany = 'hanjin' } = await request.json()
 
     console.log('🚚 [송장번호 업데이트 API] 시작:', {
       adminEmail,
       orderId,
-      trackingNumber
+      trackingNumber,
+      trackingCompany
     })
 
     // 1. 유효성 검사
@@ -45,6 +46,7 @@ export async function POST(request) {
       .from('order_shipping')
       .update({
         tracking_number: trackingNumber,
+        tracking_company: trackingCompany,
         shipped_at: now
       })
       .eq('order_id', orderId)
@@ -77,6 +79,7 @@ export async function POST(request) {
       success: true,
       orderId,
       trackingNumber,
+      trackingCompany,
       message: '송장번호가 저장되고 발송 완료로 변경되었습니다'
     })
   } catch (error) {
