@@ -512,13 +512,13 @@ export default function MyPage() {
                   }))
 
                   // sessionStorage 업데이트 (카카오 사용자만)
+                  // ⚠️ setUserSession 호출 제거 (useEffect 재실행 방지)
                   if (isKakaoUser) {
                     const updatedUser = {
                       ...currentUser,
                       ...updatedData
                     }
                     sessionStorage.setItem('user', JSON.stringify(updatedUser))
-                    setUserSession(updatedUser)
                   }
                 } catch (error) {
                   console.error('주소 업데이트 오류:', error)
