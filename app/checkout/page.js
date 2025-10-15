@@ -621,7 +621,8 @@ export default function CheckoutPage() {
       maxDiscount: selectedCoupon.coupon.max_discount_amount,
       code: selectedCoupon.coupon.code
     } : null,
-    paymentMethod: 'transfer'
+    paymentMethod: 'transfer',
+    baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
   })
 
   const shippingFee = orderCalc.shippingFee
@@ -1465,7 +1466,8 @@ export default function CheckoutPage() {
                         maxDiscount: selectedCoupon.coupon.max_discount_amount,
                         code: selectedCoupon.coupon.code
                       } : null,
-                      paymentMethod: 'card'
+                      paymentMethod: 'card',
+                      baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
                     })
                     return cardCalc.finalAmount.toLocaleString()
                   })()})
