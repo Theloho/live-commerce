@@ -104,14 +104,18 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
       await onUpdate({ addresses: updatedAddresses })
     }
 
-    // 선택 모드에서는 새로 추가된 주소를 자동으로 선택
-    if (selectMode && onSelect) {
-      onSelect(newAddress)
-    }
-
+    // 폼 초기화 및 성공 메시지
     setFormData({ label: '', address: '', detail_address: '', postal_code: '' })
     setShowAddForm(false)
     toast.success('배송지가 추가되었습니다')
+
+    // 선택 모드에서는 새로 추가된 주소를 자동으로 선택 (약간 지연하여 toast 확인 가능)
+    if (selectMode && onSelect) {
+      // 사용자가 추가 완료 메시지를 볼 수 있도록 짧은 지연
+      setTimeout(() => {
+        onSelect(newAddress)
+      }, 300)
+    }
   }
 
   // 주소 수정
@@ -323,12 +327,14 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
                   />
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => handleUpdateAddress(address.id)}
                       className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm"
                     >
                       저장
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         setEditingId(null)
                         setFormData({ label: '', address: '', detail_address: '', postal_code: '' })
@@ -438,12 +444,14 @@ export default function AddressManager({ userProfile, onUpdate, onSelect, select
           />
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={handleAddAddress}
               className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm"
             >
               추가
             </button>
             <button
+              type="button"
               onClick={() => {
                 setShowAddForm(false)
                 setFormData({ label: '', address: '', detail_address: '', postal_code: '' })
