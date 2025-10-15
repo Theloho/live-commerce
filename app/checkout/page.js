@@ -1088,32 +1088,30 @@ export default function CheckoutPage() {
                   userProfile={userProfile}
                   selectMode={true}
                   onUpdate={async (updatedData) => {
-                    // 💾 DB 업데이트 + userProfile.addresses 동기화
+                    // 💾 중앙화 모듈로 DB 업데이트 + userProfile.addresses 동기화
                     const currentUser = userSession || user
-                    if (currentUser?.provider === 'kakao') {
-                      try {
-                        const { data, error } = await supabase
-                          .from('profiles')
-                          .update({ addresses: updatedData.addresses })
-                          .eq('kakao_id', currentUser.kakao_id)
-                          .select()
-                          .single()
+                    const isKakaoUser = currentUser?.provider === 'kakao'
 
-                        if (error) {
-                          console.error('주소 업데이트 오류:', error)
-                          toast.error('주소 저장에 실패했습니다')
-                        } else {
-                          console.log('✅ 주소 DB 업데이트 성공')
-                          // ✅ userProfile.addresses 동기화 (모달 재오픈 시 새 주소 표시)
-                          setUserProfile(prev => ({
-                            ...prev,
-                            addresses: updatedData.addresses
-                          }))
-                        }
-                      } catch (error) {
-                        console.error('주소 업데이트 실패:', error)
-                        toast.error('주소 저장 중 오류가 발생했습니다')
-                      }
+                    try {
+                      // ✅ atomicProfileUpdate 사용 (addresses 필드 자동 저장)
+                      await UserProfileManager.atomicProfileUpdate(
+                        currentUser.id,
+                        updatedData,
+                        isKakaoUser
+                      )
+
+                      console.log('✅ 주소 DB 업데이트 성공 (atomicProfileUpdate)')
+
+                      // ✅ userProfile.addresses 동기화 (모달 재오픈 시 새 주소 표시)
+                      setUserProfile(prev => ({
+                        ...prev,
+                        ...updatedData
+                      }))
+
+                      toast.success('배송지가 저장되었습니다')
+                    } catch (error) {
+                      console.error('❌ 주소 업데이트 실패:', error)
+                      toast.error('주소 저장 중 오류가 발생했습니다')
                     }
                   }}
                   onSelect={(address) => {
