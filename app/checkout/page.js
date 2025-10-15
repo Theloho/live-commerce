@@ -1088,7 +1088,7 @@ export default function CheckoutPage() {
                   userProfile={userProfile}
                   selectMode={true}
                   onUpdate={async (updatedData) => {
-                    // 💾 DB만 업데이트 (userProfile state 건드리지 않음 → 무한 루프 방지)
+                    // 💾 DB 업데이트 + userProfile.addresses 동기화
                     const currentUser = userSession || user
                     if (currentUser?.provider === 'kakao') {
                       try {
@@ -1104,7 +1104,11 @@ export default function CheckoutPage() {
                           toast.error('주소 저장에 실패했습니다')
                         } else {
                           console.log('✅ 주소 DB 업데이트 성공')
-                          // setUserProfile 제거! → AddressManager는 독립적으로 작동
+                          // ✅ userProfile.addresses 동기화 (모달 재오픈 시 새 주소 표시)
+                          setUserProfile(prev => ({
+                            ...prev,
+                            addresses: updatedData.addresses
+                          }))
                         }
                       } catch (error) {
                         console.error('주소 업데이트 실패:', error)
