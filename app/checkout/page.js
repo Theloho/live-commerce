@@ -605,7 +605,8 @@ export default function CheckoutPage() {
   const postalCode = selectedAddress?.postal_code || userProfile.postal_code
 
   // ✅ 무료배송 조건: pending/verifying 주문이 있으면 배송비 무료 (도서산간 포함)
-  const baseShippingFee = hasPendingOrders ? 0 : 4000
+  // ⚠️ 단, 일괄결제(isBulkPayment)일 때는 제외 (이미 생성된 주문을 결제하는 것)
+  const baseShippingFee = (hasPendingOrders && !orderItem.isBulkPayment) ? 0 : 4000
   const shippingInfo = formatShippingInfo(baseShippingFee, postalCode)  // ✅ 무료배송 조건 적용
 
   // OrderCalculations를 사용한 완전한 주문 계산
