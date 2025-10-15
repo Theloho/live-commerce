@@ -12,13 +12,15 @@ export async function GET(request) {
     // ✅ 필터 파라미터 추가
     const statusFilter = searchParams.get('status') // 예: "pending,verifying"
     const paymentMethodFilter = searchParams.get('paymentMethod') // 예: "bank_transfer"
+    const orderId = searchParams.get('orderId') // ✅ 단일 주문 조회용
 
     console.log('🔍 [관리자 주문 API] 전체 주문 조회 시작:', {
       adminEmail,
       limit,
       offset,
       statusFilter,
-      paymentMethodFilter
+      paymentMethodFilter,
+      orderId: orderId || 'ALL'
     })
 
     // 1. 관리자 인증 확인
@@ -59,23 +61,31 @@ export async function GET(request) {
         order_shipping (*),
         order_payments${useInnerJoin ? '!inner' : ''} (*)
       `, { count: 'exact' })
-      .neq('status', 'cancelled')
 
-    // ✅ 상태 필터 적용
-    if (statusFilter) {
-      const statuses = statusFilter.split(',').map(s => s.trim())
-      query = query.in('status', statuses)
+    // ✅ 단일 주문 조회 (orderId가 있으면 다른 필터 무시)
+    if (orderId) {
+      query = query.eq('id', orderId)
+      console.log('🔍 단일 주문 조회:', orderId)
+    } else {
+      // 전체 조회 시에만 cancelled 제외
+      query = query.neq('status', 'cancelled')
+
+      // ✅ 상태 필터 적용
+      if (statusFilter) {
+        const statuses = statusFilter.split(',').map(s => s.trim())
+        query = query.in('status', statuses)
+      }
+
+      // ✅ 결제 방법 필터 적용 (!inner 사용으로 order_payments 테이블 필터링)
+      if (paymentMethodFilter) {
+        query = query.eq('order_payments.method', paymentMethodFilter)
+      }
+
+      // 정렬 및 페이지네이션
+      query = query
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
     }
-
-    // ✅ 결제 방법 필터 적용 (!inner 사용으로 order_payments 테이블 필터링)
-    if (paymentMethodFilter) {
-      query = query.eq('order_payments.method', paymentMethodFilter)
-    }
-
-    // 정렬 및 페이지네이션
-    query = query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
 
     const { data, error, count } = await query
 

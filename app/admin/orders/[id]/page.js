@@ -19,32 +19,78 @@ import {
 } from '@heroicons/react/24/outline'
 import { formatShippingInfo } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
 
 export default function AdminOrderDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { adminUser, loading: authLoading } = useAdminAuth()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadOrderDetail()
-  }, [params.id])
+    if (!authLoading && adminUser) {
+      loadOrderDetail()
+    } else if (!authLoading && !adminUser) {
+      toast.error('관리자 권한이 필요합니다')
+      router.push('/admin/login')
+    }
+  }, [params.id, authLoading, adminUser])
 
   const loadOrderDetail = async () => {
     try {
       setLoading(true)
-      const { getOrderById } = await import('@/lib/supabaseApi')
-      const foundOrder = await getOrderById(params.id)
 
-      if (foundOrder) {
-        setOrder(foundOrder)
+      console.log('🔍 [관리자 주문 상세] API 호출 시작:', {
+        orderId: params.id,
+        adminEmail: adminUser?.email
+      })
+
+      const response = await fetch(
+        `/api/admin/orders?adminEmail=${adminUser.email}&orderId=${params.id}`
+      )
+
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('❌ [관리자 주문 상세] API 오류:', error)
+        throw new Error(error.error || '주문 조회에 실패했습니다')
+      }
+
+      const data = await response.json()
+      console.log('✅ [관리자 주문 상세] API 응답:', {
+        success: data.success,
+        ordersCount: data.orders?.length
+      })
+
+      if (data.success && data.orders && data.orders.length > 0) {
+        const foundOrder = data.orders[0]
+
+        // 데이터 포맷팅 (기존 getOrderById와 동일한 형식으로)
+        const formattedOrder = {
+          ...foundOrder,
+          userName: foundOrder.userProfile?.name || foundOrder.order_shipping?.name || '정보없음',
+          userNickname: foundOrder.userProfile?.nickname || '정보없음',
+          depositName: foundOrder.order_payments?.depositor_name || foundOrder.depositName,
+          items: (foundOrder.order_items || []).map(item => ({
+            ...item,
+            image: item.thumbnail_url || item.products?.thumbnail_url || '/placeholder.png',
+            title: item.title || item.products?.title || '상품명 없음',
+            price: item.price || item.unit_price || item.products?.price || 0,
+            quantity: item.quantity || 1
+          })),
+          shipping: foundOrder.order_shipping,
+          payment: foundOrder.order_payments
+        }
+
+        setOrder(formattedOrder)
+        console.log('✅ [관리자 주문 상세] 주문 데이터 로드 완료:', formattedOrder.customer_order_number || formattedOrder.id)
       } else {
         toast.error('주문을 찾을 수 없습니다')
         router.push('/admin/orders')
       }
     } catch (error) {
-      console.error('주문 상세 로딩 오류:', error)
+      console.error('❌ [관리자 주문 상세] 로딩 오류:', error)
       toast.error('주문 정보를 불러오는데 실패했습니다')
     } finally {
       setLoading(false)
@@ -106,10 +152,21 @@ export default function AdminOrderDetailPage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex flex-col items-center justify-center py-12 space-y-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+        <p className="text-sm text-gray-500">
+          {authLoading ? '관리자 인증 확인 중...' : '주문 정보 로딩 중...'}
+        </p>
+      </div>
+    )
+  }
+
+  if (!adminUser) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">관리자 권한이 필요합니다.</p>
       </div>
     )
   }
