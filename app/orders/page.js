@@ -422,18 +422,34 @@ function OrdersContent() {
                 const totalItemCount = pendingOrders.reduce((sum, order) => {
                   return sum + order.items.reduce((itemSum, item) => itemSum + (item.quantity || 1), 0)
                 }, 0)
-                const shippingFee = 4000
+
+                // ✅ 무료배송 조건 체크: pending 주문들 중 하나라도 is_free_shipping = true이면 무료
+                const hasFreeShipping = pendingOrders.some(order => order.is_free_shipping === true)
+                const shippingFee = hasFreeShipping ? 0 : 4000
                 const finalTotal = totalProductPrice + shippingFee
 
                 return (
                   <div className="space-y-2">
+                    {hasFreeShipping && (
+                      <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-xs font-medium text-green-800">
+                          🎉 무료배송 혜택 적용!
+                        </p>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">상품금액 ({totalItemCount}개)</span>
                       <span className="text-gray-900">₩{totalProductPrice.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">배송비</span>
-                      <span className="text-gray-900">₩{shippingFee.toLocaleString()}</span>
+                      <span className="text-gray-900">
+                        {shippingFee === 0 ? (
+                          <span className="text-green-600 font-semibold">무료</span>
+                        ) : (
+                          `₩${shippingFee.toLocaleString()}`
+                        )}
+                      </span>
                     </div>
                     <div className="border-t border-red-200 pt-2">
                       <div className="flex justify-between font-semibold">
@@ -827,7 +843,11 @@ function OrdersContent() {
                 </h2>
 
                 <div className="space-y-3">
-                  {selectedGroupOrder.payment?.method === 'card' ? (
+                  {(() => {
+                    // ✅ 배송비 계산 (무료배송 조건 확인)
+                    const shippingFee = selectedGroupOrder.is_free_shipping ? 0 : 4000
+
+                    return selectedGroupOrder.payment?.method === 'card' ? (
                     // 카드결제 정보
                     <>
                       <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -835,24 +855,30 @@ function OrdersContent() {
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">상품금액</span>
                             <span className="text-sm text-gray-900">
-                              ₩{(selectedGroupOrder.payment.amount - 4000).toLocaleString()}
+                              ₩{(selectedGroupOrder.payment.amount - shippingFee).toLocaleString()}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">부가세 (10%)</span>
                             <span className="text-sm text-gray-900">
-                              ₩{Math.floor((selectedGroupOrder.payment.amount - 4000) * 0.1).toLocaleString()}
+                              ₩{Math.floor((selectedGroupOrder.payment.amount - shippingFee) * 0.1).toLocaleString()}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">배송비</span>
-                            <span className="text-sm text-gray-900">₩4,000</span>
+                            <span className="text-sm text-gray-900">
+                              {shippingFee === 0 ? (
+                                <span className="text-green-600 font-semibold">무료</span>
+                              ) : (
+                                `₩${shippingFee.toLocaleString()}`
+                              )}
+                            </span>
                           </div>
                           <div className="border-t pt-2">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-700">카드 결제금액</span>
                               <span className="text-lg font-bold text-gray-900">
-                                ₩{(Math.floor((selectedGroupOrder.payment.amount - 4000) * 1.1) + 4000).toLocaleString()}
+                                ₩{(Math.floor((selectedGroupOrder.payment.amount - shippingFee) * 1.1) + shippingFee).toLocaleString()}
                               </span>
                             </div>
                           </div>
@@ -898,7 +924,7 @@ function OrdersContent() {
                               const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
                                 return sum + ((item.price || 0) * (item.quantity || 1))
                               }, 0)
-                              const correctDepositAmount = totalProductAmount + 4000
+                              const correctDepositAmount = totalProductAmount + shippingFee
                               return correctDepositAmount.toLocaleString()
                             })()}
                           </span>
@@ -943,7 +969,8 @@ function OrdersContent() {
                         </ul>
                       </div>
                     </>
-                  )}
+                    ) : null  // 무통장입금 종료
+                  })()}
                 </div>
               </motion.div>
 
@@ -1095,38 +1122,51 @@ function OrdersContent() {
 
                   {/* 총 결제 금액 표시 */}
                   <div className="border-t pt-3 mt-3">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">총 상품금액</span>
-                        <span className="font-medium text-gray-900">
-                          ₩{(() => {
-                            // 모든 상품의 총 금액 계산
-                            const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
-                              const itemTotal = (item.price || 0) * (item.quantity || 1)
-                              return sum + itemTotal
-                            }, 0)
-                            return totalProductAmount.toLocaleString()
-                          })()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">배송비</span>
-                        <span className="font-medium text-gray-900">₩4,000</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t pt-2">
-                        <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
-                        <span className="font-bold text-lg text-gray-900">
-                          ₩{(() => {
-                            // 상품금액 + 배송비로 올바른 총 결제금액 계산
-                            const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
-                              return sum + ((item.price || 0) * (item.quantity || 1))
-                            }, 0)
-                            const totalPaymentAmount = totalProductAmount + 4000
-                            return totalPaymentAmount.toLocaleString()
-                          })()}
-                        </span>
-                      </div>
-                    </div>
+                    {(() => {
+                      // ✅ 배송비 계산 (무료배송 조건 확인)
+                      const shippingFee = selectedGroupOrder.is_free_shipping ? 0 : 4000
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">총 상품금액</span>
+                            <span className="font-medium text-gray-900">
+                              ₩{(() => {
+                                // 모든 상품의 총 금액 계산
+                                const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
+                                  const itemTotal = (item.price || 0) * (item.quantity || 1)
+                                  return sum + itemTotal
+                                }, 0)
+                                return totalProductAmount.toLocaleString()
+                              })()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">배송비</span>
+                            <span className="font-medium text-gray-900">
+                              {shippingFee === 0 ? (
+                                <span className="text-green-600 font-semibold">무료</span>
+                              ) : (
+                                `₩${shippingFee.toLocaleString()}`
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center border-t pt-2">
+                            <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
+                            <span className="font-bold text-lg text-gray-900">
+                              ₩{(() => {
+                                // 상품금액 + 배송비로 올바른 총 결제금액 계산
+                                const totalProductAmount = selectedGroupOrder.items.reduce((sum, item) => {
+                                  return sum + ((item.price || 0) * (item.quantity || 1))
+                                }, 0)
+                                const totalPaymentAmount = totalProductAmount + shippingFee
+                                return totalPaymentAmount.toLocaleString()
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               </motion.div>
