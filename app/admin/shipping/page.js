@@ -127,9 +127,9 @@ export default function AdminShippingPage() {
 
     // 탭 필터
     if (activeTab === 'pending') {
-      filtered = filtered.filter(order => order.status === 'paid' || order.status === 'shipping')
+      filtered = filtered.filter(order => order.status === 'paid')
     } else if (activeTab === 'completed') {
-      filtered = filtered.filter(order => order.status === 'delivered')
+      filtered = filtered.filter(order => order.status === 'shipping' || order.status === 'delivered')
     }
 
     setFilteredOrders(filtered)
@@ -337,7 +337,7 @@ export default function AdminShippingPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              발송대기 ({orders.filter(o => o.status === 'paid' || o.status === 'shipping').length})
+              발송대기 ({orders.filter(o => o.status === 'paid').length})
             </button>
             <button
               onClick={() => setActiveTab('completed')}
@@ -347,7 +347,7 @@ export default function AdminShippingPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              발송완료 ({orders.filter(o => o.status === 'delivered').length})
+              발송완료 ({orders.filter(o => o.status === 'shipping' || o.status === 'delivered').length})
             </button>
           </div>
 
