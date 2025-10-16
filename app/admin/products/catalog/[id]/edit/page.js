@@ -1012,22 +1012,45 @@ export default function ProductEditPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                기본 재고
-              </label>
-              <input
-                type="number"
-                value={formData.inventory}
-                onChange={(e) => handleChange('inventory', parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0"
-              />
-            </div>
+            {/* 기본 재고 필드 - Variant 유무에 따라 조건부 표시 */}
+            {product?.variant_count > 0 ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  기본 재고
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                  <div className="flex items-center justify-between">
+                    <span>Variant별로 관리됨</span>
+                    <button
+                      onClick={() => router.push(`/admin/products/catalog/${productId}`)}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      재고 관리 →
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  💡 이 상품은 옵션별 재고로 관리됩니다. 상품 상세 페이지에서 각 Variant의 재고를 확인하고 수정할 수 있습니다.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  기본 재고
+                </label>
+                <input
+                  type="number"
+                  value={formData.inventory}
+                  onChange={(e) => handleChange('inventory', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  옵션이 없는 상품의 기본 재고입니다
+                </p>
+              </div>
+            )}
           </div>
-          <p className="mt-2 text-xs text-gray-500">
-            * Variant가 있는 상품은 Variant별 재고가 우선 적용됩니다
-          </p>
         </div>
 
       </div>
