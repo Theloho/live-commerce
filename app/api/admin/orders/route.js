@@ -50,16 +50,6 @@ export async function GET(request) {
       .from('orders')
       .select(`
         *,
-        profiles (
-          id,
-          name,
-          nickname,
-          phone,
-          email,
-          address,
-          postal_code,
-          kakao_id
-        ),
         order_items (
           *,
           products (
@@ -128,7 +118,8 @@ export async function GET(request) {
 
     // 3. 사용자 정보 조회 및 데이터 포맷팅
     const ordersWithUserInfo = await Promise.all(data.map(async order => {
-      const shipping = order.order_shipping[0] || {}
+      // order_shipping과 order_payments는 이미 배열로 반환됨
+      const shipping = order.order_shipping?.[0] || {}
       const payment = order.order_payments?.[0] || {}
 
       // 사용자 정보 조회
@@ -180,9 +171,7 @@ export async function GET(request) {
 
       return {
         ...order,
-        userProfile: profileInfo,
-        order_shipping: shipping,
-        order_payments: payment
+        profiles: profileInfo  // fulfillmentGrouping.js에서 사용
       }
     }))
 
