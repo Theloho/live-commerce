@@ -583,8 +583,12 @@ function OrdersContent() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm">
-                              {groupedItem.title}
+                            {/* 제품번호 + 상품명 (한 줄) */}
+                            <h3 className="mb-1 line-clamp-1 text-sm">
+                              <span className="font-bold text-gray-900">{groupedItem.product_number || groupedItem.product_id}</span>
+                              {groupedItem.title && groupedItem.title !== (groupedItem.product_number || groupedItem.product_id) && (
+                                <span className="text-xs text-gray-500"> {groupedItem.title}</span>
+                              )}
                             </h3>
 
                             {/* 선택된 옵션 표시 */}
@@ -1087,8 +1091,12 @@ function OrdersContent() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm">
-                            {item.title}
+                          {/* 제품번호 + 상품명 (한 줄) */}
+                          <h3 className="mb-1 line-clamp-1 text-sm">
+                            <span className="font-bold text-gray-900">{item.product_number || item.product_id}</span>
+                            {item.title && item.title !== (item.product_number || item.product_id) && (
+                              <span className="text-xs text-gray-500"> {item.title}</span>
+                            )}
                           </h3>
 
                           {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
