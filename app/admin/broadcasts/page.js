@@ -132,8 +132,10 @@ export default function AdminBroadcastsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">방송 관리</h1>
-          <p className="text-gray-600">라이브 방송을 관리하고 모니터링하세요</p>
+          <h1 className="text-2xl font-bold text-gray-900">📺 방송 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {broadcasts.length}개 | 라이브 {broadcasts.filter(b => b.status === 'live').length}개 | 예정 {broadcasts.filter(b => b.status === 'scheduled').length}개
+          </p>
         </div>
         <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
           <PlusIcon className="w-4 h-4" />
