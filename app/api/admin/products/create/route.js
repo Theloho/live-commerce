@@ -21,8 +21,9 @@ export async function POST(request) {
 
       // ⭐ 상세등록 추가 필드
       supplier_id,
-      category_id,
-      model_number,
+      supplier_product_code,
+      category,
+      sub_category,
       purchase_price,
       purchase_date,
       compare_price,
@@ -82,8 +83,9 @@ export async function POST(request) {
 
     // ⭐ 상세등록 추가 필드 (있는 경우만)
     if (supplier_id) productData.supplier_id = supplier_id
-    if (category_id) productData.category_id = category_id
-    if (model_number) productData.model_number = model_number
+    if (supplier_product_code) productData.supplier_product_code = supplier_product_code
+    if (category) productData.category = category
+    if (sub_category) productData.sub_category = sub_category
     if (purchase_price) productData.purchase_price = parseFloat(purchase_price)
     if (purchase_date) productData.purchase_date = purchase_date
     if (compare_price) productData.compare_price = parseFloat(compare_price)

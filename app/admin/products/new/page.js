@@ -28,7 +28,9 @@ export default function NewProductPage() {
     inventory: 10,
     description: '',
     supplier_id: null, // 업체 (선택사항)
-    model_number: '', // 모델번호 (선택사항)
+    supplier_product_code: '', // 업체 상품 코드 (선택사항)
+    category: '', // 대분류 (선택사항)
+    sub_category: '', // 소분류 (선택사항)
     optionType: 'none', // 'none', 'size', 'color', 'both'
     sizeOptions: [],
     colorOptions: [],
@@ -39,6 +41,8 @@ export default function NewProductPage() {
   const [useThousandUnit, setUseThousandUnit] = useState(true) // 천원단위 입력 기본값 true
   const [suppliers, setSuppliers] = useState([])
   const [showSupplierSheet, setShowSupplierSheet] = useState(false)
+  const [categories, setCategories] = useState([])
+  const [subCategories, setSubCategories] = useState([])
 
   // 필수값 검증 함수
   const validateRequiredFields = () => {
@@ -189,7 +193,34 @@ export default function NewProductPage() {
     }
   }, [authLoading, isAdminAuthenticated, router])
 
-  // 페이지 로드 시 제품번호 자동 생성 & 업체 데이터 로드
+  // 서브 카테고리 로드
+  const loadSubCategories = async (categoryName) => {
+    try {
+      // DB에서 직접 대분류 찾기
+      const { data: mainCategoryData } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', categoryName)
+        .is('parent_id', null)
+        .single()
+
+      if (!mainCategoryData) return
+
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('parent_id', mainCategoryData.id)
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+      setSubCategories(data || [])
+    } catch (error) {
+      console.error('서브 카테고리 로딩 오류:', error)
+    }
+  }
+
+  // 페이지 로드 시 제품번호 자동 생성 & 업체/카테고리 데이터 로드
   useEffect(() => {
     if (isAdminAuthenticated) {
       const autoGenerate = async () => {
@@ -212,8 +243,24 @@ export default function NewProductPage() {
         }
       }
 
+      const loadCategories = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('is_active', true)
+            .order('name')
+
+          if (error) throw error
+          setCategories(data || [])
+        } catch (error) {
+          console.error('카테고리 로드 오류:', error)
+        }
+      }
+
       autoGenerate()
       loadSuppliers()
+      loadCategories()
     }
   }, [isAdminAuthenticated])
 
@@ -381,7 +428,9 @@ export default function NewProductPage() {
           thumbnail_url: imagePreview,
           description: productData.description,
           supplier_id: productData.supplier_id || null,
-          model_number: productData.model_number || null,
+          supplier_product_code: productData.supplier_product_code || null,
+          category: productData.category || null,
+          sub_category: productData.sub_category || null,
           optionType: productData.optionType,
           sizeOptions: productData.sizeOptions,
           colorOptions: productData.colorOptions,
@@ -871,16 +920,67 @@ export default function NewProductPage() {
               </div>
             </div>
 
-            {/* 모델번호 */}
+            {/* 카테고리 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                모델번호 (선택사항)
+                대분류 (선택사항)
+              </label>
+              <select
+                value={productData.category}
+                onChange={(e) => {
+                  const newCategory = e.target.value
+                  setProductData(prev => ({
+                    ...prev,
+                    category: newCategory,
+                    sub_category: ''
+                  }))
+                  if (newCategory) {
+                    loadSubCategories(newCategory)
+                  } else {
+                    setSubCategories([])
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              >
+                <option value="">선택 안 함</option>
+                {categories.filter(c => c.parent_id === null).map(category => (
+                  <option key={category.id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 소분류 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                소분류 (선택사항)
+              </label>
+              <select
+                value={productData.sub_category}
+                onChange={(e) => setProductData(prev => ({ ...prev, sub_category: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                disabled={!productData.category}
+              >
+                <option value="">선택 안 함</option>
+                {subCategories.map(category => (
+                  <option key={category.id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 업체 상품 코드 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                업체 상품 코드 (선택사항)
               </label>
               <input
                 type="text"
-                value={productData.model_number}
-                onChange={(e) => setProductData(prev => ({ ...prev, model_number: e.target.value }))}
-                placeholder="예: MK-2024-001"
+                value={productData.supplier_product_code}
+                onChange={(e) => setProductData(prev => ({ ...prev, supplier_product_code: e.target.value }))}
+                placeholder="업체에서 사용하는 상품 코드"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
               />
             </div>
