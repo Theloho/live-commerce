@@ -64,7 +64,12 @@ export async function GET(request, { params }) {
             model_number,
             supplier_id,
             purchase_price,
-            supplier_sku
+            thumbnail_url,
+            suppliers (
+              id,
+              name,
+              code
+            )
           ),
           product_variants (
             id,
