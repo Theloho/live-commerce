@@ -364,11 +364,16 @@ export default function FulfillmentPage() {
                         {group.orderCount}개 주문 | {group.uniqueProducts}개 제품
                       </span>
                     </div>
-                    <div className="text-sm font-medium text-gray-900">
-                      👤 {group.shippingInfo.name} | 📞 {group.shippingInfo.phone}
-                    </div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      📍 [{group.shippingInfo.postalCode}] {group.shippingInfo.address} {group.shippingInfo.detailAddress}
+                    <div className="text-sm space-y-1">
+                      <div className="font-medium text-gray-900">
+                        👤 {group.shippingInfo.name} ({group.shippingInfo.nickname})
+                      </div>
+                      <div className="text-xs text-gray-700">
+                        📞 {group.shippingInfo.phone} | 💰 입금자: {group.shippingInfo.depositorName}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        📍 [{group.shippingInfo.postalCode}] {group.shippingInfo.address} {group.shippingInfo.detailAddress}
+                      </div>
                     </div>
                     {group.trackingNumber && (
                       <div className="text-xs text-blue-600 font-mono mt-1">
@@ -428,7 +433,7 @@ export default function FulfillmentPage() {
                               {/* 제품 정보 */}
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-medium text-gray-900 truncate">
-                                  {item.productName}
+                                  {item.productDisplayName}
                                 </div>
                                 {item.optionDisplay !== '옵션 없음' && (
                                   <div className="text-[10px] text-gray-600">
