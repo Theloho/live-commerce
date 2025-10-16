@@ -52,7 +52,6 @@ export default function DetailedProductNewPage() {
     purchase_date: '',
     category: '',
     sub_category: '',
-    status: 'active',
     tags: [],
     // ⭐ 빠른등록 방식: 옵션 데이터
     sizeOptions: [],
@@ -412,7 +411,6 @@ export default function DetailedProductNewPage() {
         purchase_date: productData.purchase_date || null,
         compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
         detailed_description: productData.detailed_description.trim(),
-        status: productData.status,
         is_live: false, // ⭐ 상세등록은 라이브 상품이 아님
 
         // 관리자 인증

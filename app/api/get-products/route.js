@@ -12,11 +12,9 @@ export async function GET(request) {
     console.log('상품 데이터 조회 시작 (Service Role Key 사용)...')
 
     // Service Role Key로 직접 조회 (RLS 우회)
-    // ⭐ 삭제된 상품 제외 (Soft Delete)
     const { data: products, error } = await supabaseAdmin
       .from('products')
       .select('*')
-      .neq('status', 'deleted')
       .order('created_at', { ascending: false })
 
     // 디버깅: 각 상품의 재고 관련 필드 출력

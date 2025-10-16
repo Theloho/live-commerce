@@ -220,17 +220,6 @@ export default function ProductDetailPage() {
                     <span className="font-mono text-xs">{product.supplier_product_code}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">상태</span>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    product.status === 'active' ? 'bg-green-100 text-green-800' :
-                    product.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {product.status === 'active' ? '활성' :
-                     product.status === 'draft' ? '임시저장' : '보관'}
-                  </span>
-                </div>
               </div>
             </div>
 

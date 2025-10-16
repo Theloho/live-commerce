@@ -277,8 +277,7 @@ export default function ProductCatalogPage() {
           <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
             <div>
               총 {products.length}개 상품 |
-              라이브 중 {products.filter(p => p.is_live_active).length}개 |
-              활성 {products.filter(p => p.status === 'active').length}개
+              라이브 중 {products.filter(p => p.is_live_active).length}개
             </div>
           </div>
         </div>

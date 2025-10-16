@@ -76,7 +76,6 @@ export default function AdminProductsPage() {
           )
         `)
         .eq('is_live', true)
-        .eq('status', 'active')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -129,7 +128,6 @@ export default function AdminProductsPage() {
         .from('products')
         .select('category')
         .not('category', 'is', null)
-        .eq('status', 'active')
 
       if (error) throw error
 
@@ -157,7 +155,6 @@ export default function AdminProductsPage() {
           )
         `)
         .eq('is_live', false)  // 아직 라이브에 없는 것만
-        .eq('status', 'active')
 
       // 업체 필터
       if (selectedSupplier) {
