@@ -29,6 +29,7 @@ export async function GET(request) {
     console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
     // 2. 입금확인 완료된 주문 조회 (Service Role로 RLS 우회)
+    // paid: 결제 완료 (카드), deposited: 입금 확인 완료 (계좌이체)
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('orders')
       .select(`
@@ -49,6 +50,7 @@ export async function GET(request) {
             model_number,
             supplier_id,
             purchase_price,
+            thumbnail_url,
             suppliers (
               id,
               name,
@@ -71,7 +73,7 @@ export async function GET(request) {
           )
         )
       `)
-      .eq('status', 'deposited')
+      .in('status', ['paid', 'deposited'])
       .order('created_at', { ascending: false })
 
     if (ordersError) {

@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import {
   ArrowLeftIcon,
   BuildingStorefrontIcon,
   ArrowDownTrayIcon,
   PrinterIcon,
   PlusIcon,
-  MinusIcon
+  MinusIcon,
+  CubeIcon,
+  ShoppingBagIcon
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
@@ -90,8 +93,8 @@ export default function SupplierPurchaseOrderDetailPage() {
               orderDate: order.created_at,
               productId: item.product_id,
               productTitle: item.title || item.products?.title,
+              productImage: item.products?.thumbnail_url,
               modelNumber: item.products?.model_number,
-              supplierSku: item.products?.supplier_sku,
               sku: item.product_variants?.sku,
               variantOptions,
               selectedOptions: item.selected_options,
@@ -411,7 +414,11 @@ export default function SupplierPurchaseOrderDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"
+          />
           <p className="text-gray-600">데이터를 불러오는 중...</p>
         </div>
       </div>
@@ -421,89 +428,118 @@ export default function SupplierPurchaseOrderDetailPage() {
   if (!supplier) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">업체 정보를 찾을 수 없습니다</p>
-          <Link href="/admin/purchase-orders" className="text-blue-600 hover:underline mt-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <BuildingStorefrontIcon className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <p className="text-lg text-gray-900 font-medium mb-2">업체 정보를 찾을 수 없습니다</p>
+          <Link href="/admin/purchase-orders" className="text-blue-600 hover:underline">
             목록으로 돌아가기
           </Link>
-        </div>
+        </motion.div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-6">
+    <div className="space-y-6">
       {/* 헤더 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto py-6 px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/admin/purchase-orders"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
-              </Link>
-              <div className="flex items-center gap-3">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white shadow-sm border border-gray-200 rounded-lg p-6"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/purchase-orders"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-100 rounded-lg">
                 <BuildingStorefrontIcon className="w-8 h-8 text-blue-600" />
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{supplier.name} 발주서</h1>
-                  <p className="text-sm text-gray-600">
-                    업체 코드: {supplier.code}
-                    {supplier.contact_person && ` | 담당자: ${supplier.contact_person}`}
-                  </p>
-                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{supplier.name} 발주서</h1>
+                <p className="text-sm text-gray-600">
+                  업체 코드: {supplier.code}
+                  {supplier.contact_person && ` | 담당자: ${supplier.contact_person}`}
+                </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handlePrint}
-                className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 font-medium"
-              >
-                <PrinterIcon className="w-5 h-5" />
-                인쇄
-              </button>
-              <button
-                onClick={handleExcelDownload}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 font-medium"
-              >
-                <ArrowDownTrayIcon className="w-5 h-5" />
-                발주서 다운로드
-              </button>
-            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handlePrint}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+            >
+              <PrinterIcon className="w-5 h-5" />
+              인쇄
+            </button>
+            <button
+              onClick={handleExcelDownload}
+              disabled={orderItems.length === 0}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              <ArrowDownTrayIcon className="w-5 h-5" />
+              발주서 다운로드
+            </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="max-w-7xl mx-auto py-6 px-6">
-        {/* 통계 */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">발주 요약</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">총 아이템 수</p>
-              <p className="text-3xl font-bold text-gray-900">{orderItems.length}개</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">총 발주 수량</p>
-              <p className="text-3xl font-bold text-purple-600">{totals.totalQuantity}개</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">총 발주 금액</p>
-              <p className="text-3xl font-bold text-green-600">₩{totals.totalAmount.toLocaleString()}</p>
-            </div>
+      {/* 통계 */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-lg border border-gray-200 p-6"
+      >
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <ShoppingBagIcon className="w-5 h-5 text-blue-600" />
+          발주 요약
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2">총 아이템 수</p>
+            <p className="text-3xl font-bold text-blue-600">{orderItems.length}개</p>
+          </div>
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2">총 발주 수량</p>
+            <p className="text-3xl font-bold text-purple-600">{totals.totalQuantity}개</p>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2">총 발주 금액</p>
+            <p className="text-3xl font-bold text-green-600">₩{totals.totalAmount.toLocaleString()}</p>
           </div>
         </div>
+      </motion.div>
 
-        {/* 주문 아이템 테이블 */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* 주문 아이템 테이블 */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+      >
+        {orderItems.length === 0 ? (
+          <div className="p-12 text-center">
+            <CubeIcon className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">발주할 제품이 없습니다</h3>
+            <p className="text-gray-600">입금확인 완료된 주문이 없거나 이미 모두 발주되었습니다</p>
+          </div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No.</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">제품</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문번호</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상품명</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">옵션</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">원래 수량</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">발주 수량</th>
@@ -519,15 +555,46 @@ export default function SupplierPurchaseOrderDetailPage() {
                                  '-'
 
                   return (
-                    <tr key={item.id} className="hover:bg-gray-50">
+                    <motion.tr
+                      key={item.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: index * 0.02 }}
+                      className="hover:bg-gray-50"
+                    >
                       <td className="px-4 py-4 text-sm text-gray-900">{index + 1}</td>
-                      <td className="px-4 py-4 text-sm text-gray-600">{item.orderNumber}</td>
-                      <td className="px-4 py-4 text-sm text-gray-900">
-                        <div>{item.productTitle}</div>
-                        {item.modelNumber && (
-                          <div className="text-xs text-gray-500">모델: {item.modelNumber}</div>
-                        )}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          {/* 제품 이미지 */}
+                          <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                            {item.productImage ? (
+                              <img
+                                src={item.productImage}
+                                alt={item.productTitle}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none'
+                                  e.target.nextSibling.style.display = 'flex'
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-full h-full ${item.productImage ? 'hidden' : 'flex'} items-center justify-center bg-blue-100 text-xs text-blue-700`}>
+                              <CubeIcon className="w-6 h-6" />
+                            </div>
+                          </div>
+                          {/* 제품 정보 */}
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{item.productTitle}</div>
+                            {item.modelNumber && (
+                              <div className="text-xs text-gray-500">모델: {item.modelNumber}</div>
+                            )}
+                            {item.sku && (
+                              <div className="text-xs text-gray-500 font-mono">SKU: {item.sku}</div>
+                            )}
+                          </div>
+                        </div>
                       </td>
+                      <td className="px-4 py-4 text-sm text-gray-600">{item.orderNumber}</td>
                       <td className="px-4 py-4 text-sm text-gray-600">{options}</td>
                       <td className="px-4 py-4 text-sm text-gray-500 text-center">{item.quantity}</td>
                       <td className="px-4 py-4 text-center">
@@ -535,6 +602,7 @@ export default function SupplierPurchaseOrderDetailPage() {
                           <button
                             onClick={() => adjustQuantity(item.id, -1)}
                             className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                            title="수량 감소"
                           >
                             <MinusIcon className="w-4 h-4" />
                           </button>
@@ -546,6 +614,7 @@ export default function SupplierPurchaseOrderDetailPage() {
                           <button
                             onClick={() => adjustQuantity(item.id, 1)}
                             className="p-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+                            title="수량 증가"
                           >
                             <PlusIcon className="w-4 h-4" />
                           </button>
@@ -557,39 +626,49 @@ export default function SupplierPurchaseOrderDetailPage() {
                       <td className="px-4 py-4 text-sm text-gray-900 text-right font-medium">
                         ₩{(item.purchasePrice * finalQty).toLocaleString()}
                       </td>
-                    </tr>
+                    </motion.tr>
                   )
                 })}
               </tbody>
-              <tfoot className="bg-gray-100">
+              <tfoot className="bg-gradient-to-r from-blue-50 to-green-50">
                 <tr>
                   <td colSpan="5" className="px-4 py-4 text-right text-sm font-bold text-gray-900">
                     합계
                   </td>
-                  <td className="px-4 py-4 text-center text-sm font-bold text-blue-600">
+                  <td className="px-4 py-4 text-center text-sm font-bold text-purple-600">
                     {totals.totalQuantity}개
                   </td>
                   <td></td>
-                  <td className="px-4 py-4 text-right text-lg font-bold text-blue-600">
+                  <td className="px-4 py-4 text-right text-lg font-bold text-green-600">
                     ₩{totals.totalAmount.toLocaleString()}
                   </td>
                 </tr>
               </tfoot>
             </table>
           </div>
-        </div>
+        )}
+      </motion.div>
 
-        {/* 안내 메시지 */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            💡 <strong>수량 조정:</strong> +/- 버튼으로 실제 발주할 수량을 조정할 수 있습니다.
-            조정된 수량은 파란색으로 표시됩니다.
-          </p>
-          <p className="text-sm text-blue-800 mt-2">
-            📥 <strong>발주서 다운로드:</strong> 다운로드 시 자동으로 발주 완료 처리되어 다음 조회 시 표시되지 않습니다.
-          </p>
+      {/* 안내 메시지 */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-blue-50 border border-blue-200 rounded-lg p-4"
+      >
+        <div className="flex items-start gap-3">
+          <div className="text-2xl">💡</div>
+          <div className="flex-1">
+            <p className="text-sm text-blue-800 mb-2">
+              <strong>수량 조정:</strong> +/- 버튼으로 실제 발주할 수량을 조정할 수 있습니다.
+              조정된 수량은 파란색으로 표시됩니다.
+            </p>
+            <p className="text-sm text-blue-800">
+              <strong>발주서 다운로드:</strong> 다운로드 시 자동으로 발주 완료 처리되어 다음 조회 시 표시되지 않습니다.
+            </p>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
