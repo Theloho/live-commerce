@@ -235,30 +235,27 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6">
       {/* 헤더 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto py-4 px-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">카테고리 관리</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              대분류 {mainCategories.length}개 | 소분류 {subCategories.length}개 |
-              활성 {categories.filter(c => c.is_active).length}개
-            </p>
-          </div>
-          <button
-            onClick={() => openModal()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <PlusIcon className="w-5 h-5" />
-            카테고리 추가
-          </button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">📁 카테고리 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {categories.length}개 | 대분류 {mainCategories.length}개 | 소분류 {subCategories.length}개 | 활성 {categories.filter(c => c.is_active).length}개
+          </p>
         </div>
+        <button
+          onClick={() => openModal()}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
+          <PlusIcon className="w-5 h-5" />
+          카테고리 추가
+        </button>
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-7xl mx-auto py-6 px-6">
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -336,11 +333,11 @@ export default function CategoriesPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => openModal(category)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                        title="수정"
+                        onClick={() => handleDelete(category)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                        title="삭제"
                       >
-                        <PencilIcon className="w-4 h-4" />
+                        <TrashIcon className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleToggleActive(category)}
@@ -350,11 +347,11 @@ export default function CategoriesPage() {
                         <EyeSlashIcon className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(category)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                        title="삭제"
+                        onClick={() => openModal(category)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                        title="수정"
                       >
-                        <TrashIcon className="w-4 h-4" />
+                        <PencilIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -363,20 +360,21 @@ export default function CategoriesPage() {
             </tbody>
           </table>
 
-          {categories.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-gray-400 text-6xl mb-4">📁</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">등록된 카테고리가 없습니다</h3>
-              <p className="text-gray-500 mb-6">초기 카테고리 데이터를 마이그레이션 하세요</p>
-              <button
-                onClick={() => openModal()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                카테고리 추가하기
-              </button>
-            </div>
-          )}
         </div>
+
+        {categories.length === 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <div className="text-gray-400 text-6xl mb-4">📁</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">등록된 카테고리가 없습니다</h3>
+            <p className="text-gray-500 mb-6">첫 번째 카테고리를 추가해보세요</p>
+            <button
+              onClick={() => openModal()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              카테고리 추가하기
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 추가/수정 모달 */}
