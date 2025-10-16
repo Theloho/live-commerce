@@ -99,8 +99,8 @@ export default function AdminOrdersPage() {
       // 기존 포맷으로 변환
       const allOrders = rawOrders.map(order => {
         const profileInfo = order.userProfile || {}
-        const shipping = order.order_shipping || {}
-        const payment = order.order_payments || {}
+        const shipping = order.order_shipping?.[0] || {}
+        const payment = order.order_payments?.[0] || {}
 
         return {
           id: order.id,
