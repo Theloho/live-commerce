@@ -225,10 +225,10 @@ export default function AdminCustomerDetailPage() {
   const grade = getCustomerGrade(customer.totalSpent)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="-m-6 md:-m-4 mb-6 md:mb-4 bg-white shadow-sm border-b border-gray-200">
+        <div className="px-6 md:px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <button
@@ -247,7 +247,7 @@ export default function AdminCustomerDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 고객 기본 정보 */}
           <div className="lg:col-span-1">
