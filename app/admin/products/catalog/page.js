@@ -215,7 +215,7 @@ export default function ProductCatalogPage() {
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="상품명, 설명, SKU로 검색..."
+                  placeholder="제품번호, 상품명, 설명, SKU로 검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -333,8 +333,12 @@ export default function ProductCatalogPage() {
 
                 {/* 상품 정보 */}
                 <div className="p-2">
+                  {/* 제품번호 + 상품명 */}
                   <h3 className="text-xs font-medium text-gray-900 mb-1 line-clamp-2 min-h-[2rem]">
-                    {product.title}
+                    <span className="text-blue-600 font-bold">{product.product_number}</span>
+                    {product.title && product.title !== product.product_number && (
+                      <span className="text-gray-700"> / {product.title}</span>
+                    )}
                   </h3>
 
                   {/* 가격 */}
@@ -438,7 +442,10 @@ export default function ProductCatalogPage() {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900 line-clamp-1">
-                            {product.title}
+                            <span className="text-blue-600 font-bold">{product.product_number}</span>
+                            {product.title && product.title !== product.product_number && (
+                              <span className="text-gray-700"> / {product.title}</span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-500">
                             SKU: {product.sku || '미설정'}

@@ -93,6 +93,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
   const {
     id,
     title,
+    product_number,
     price,
     compare_price: originalPrice,
     thumbnail_url: image,
@@ -327,9 +328,12 @@ export default function ProductCard({ product, variant = 'default', priority = f
 
           {/* Content Section */}
           <div className={variant === 'horizontal' ? 'flex-1 p-4' : 'p-4'}>
-            {/* Title */}
+            {/* Title - 제품번호 + 상품명 */}
             <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
-              {title}
+              <span className="text-blue-600 font-bold">{product_number}</span>
+              {title && title !== product_number && (
+                <span className="text-gray-900"> / {title}</span>
+              )}
             </h3>
 
 

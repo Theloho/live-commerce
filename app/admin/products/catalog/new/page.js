@@ -389,7 +389,7 @@ export default function DetailedProductNewPage() {
       // API 호출 (Service Role API)
       const requestData = {
         // 기본 필드
-        title: productData.title.trim() || productData.product_number,
+        title: productData.title.trim() || '',
         product_number: productData.product_number,
         price: parseInt(productData.price),
         inventory: totalInventory,
@@ -596,11 +596,11 @@ export default function DetailedProductNewPage() {
                     type="text"
                     value={productData.title}
                     onChange={(e) => setProductData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="입력 시: 0001/밍크자켓, 미입력 시: 0001"
+                    placeholder="예: 밍크 자켓"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <p className="mt-1 text-xs text-gray-600">
-                    입력하지 않으면 상품번호가 자동으로 제품명이 됩니다
+                    입력하지 않으면 제품번호만 표시됩니다 (예: 0004)
                   </p>
                 </div>
 
