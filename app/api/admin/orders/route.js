@@ -108,8 +108,15 @@ export async function GET(request) {
 
     if (error) {
       console.error('❌ 주문 조회 쿼리 오류:', error)
+      console.error('❌ 에러 상세:', JSON.stringify(error, null, 2))
       return NextResponse.json(
-        { error: error.message },
+        {
+          error: error.message,
+          errorDetails: error,
+          hint: error.hint,
+          details: error.details,
+          code: error.code
+        },
         { status: 500 }
       )
     }
@@ -198,8 +205,15 @@ export async function GET(request) {
     })
   } catch (error) {
     console.error('❌ [관리자 주문 API] 에러:', error)
+    console.error('❌ 에러 스택:', error.stack)
+    console.error('❌ 에러 전체:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
     return NextResponse.json(
-      { error: error.message },
+      {
+        error: error.message,
+        stack: error.stack,
+        name: error.name,
+        errorDetails: JSON.stringify(error, Object.getOwnPropertyNames(error))
+      },
       { status: 500 }
     )
   }
