@@ -271,8 +271,10 @@ export default function AdminOrdersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">주문 관리</h1>
-          <p className="text-gray-600">총 {orders.length}건의 주문</p>
+          <h1 className="text-2xl font-bold text-gray-900">📦 주문 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {orders.length}건 | 결제대기 {orders.filter(o => o.status === 'pending').length}건 | 결제확인중 {orders.filter(o => o.status === 'verifying').length}건 | 결제완료 {orders.filter(o => o.status === 'paid').length}건 | 발송완료 {orders.filter(o => o.status === 'delivered').length}건
+          </p>
         </div>
         <button
           onClick={loadOrders}

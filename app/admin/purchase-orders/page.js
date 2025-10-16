@@ -136,25 +136,19 @@ export default function PurchaseOrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-6">
-      {/* 헤더 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto py-6 px-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <DocumentTextIcon className="w-8 h-8 text-blue-600" />
-                업체별 발주 관리
-              </h1>
-              <p className="text-gray-600 mt-2">입금확인 완료된 주문을 업체별로 자동 집계합니다</p>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">📋 업체별 발주 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {supplierSummaries.length}개 업체 | 주문 {supplierSummaries.reduce((sum, s) => sum + s.orderCount, 0)}건 | 수량 {supplierSummaries.reduce((sum, s) => sum + s.totalQuantity, 0)}개 | 금액 ₩{supplierSummaries.reduce((sum, s) => sum + s.totalAmount, 0).toLocaleString()}
+          </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto py-6 px-6">
-        {/* 필터 토글 */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6 flex items-center justify-between">
+      {/* 필터 토글 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowCompleted(false)}
@@ -182,10 +176,10 @@ export default function PurchaseOrdersPage() {
           <div className="text-sm text-gray-600">
             총 <span className="font-bold text-blue-600">{supplierSummaries.length}</span>개 업체
           </div>
-        </div>
+      </div>
 
-        {/* 통계 */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+      {/* 통계 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center py-2">
               <p className="text-xs text-gray-500 mb-1">업체 수</p>
@@ -210,11 +204,11 @@ export default function PurchaseOrdersPage() {
               </p>
             </div>
           </div>
-        </div>
+      </div>
 
-        {/* 업체별 요약 리스트 */}
-        {supplierSummaries.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+      {/* 업체별 요약 리스트 */}
+      {supplierSummaries.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <ShoppingCartIcon className="w-16 h-16 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               {showCompleted ? '완료된 발주가 없습니다' : '대기 중인 발주가 없습니다'}
@@ -224,15 +218,15 @@ export default function PurchaseOrdersPage() {
                 ? '아직 다운로드한 발주서가 없습니다'
                 : '입금확인 완료된 주문이 없거나 이미 모두 발주되었습니다'}
             </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {supplierSummaries.map((summary, index) => (
-              <Link
-                key={summary.supplier.id}
-                href={`/admin/purchase-orders/${summary.supplier.id}`}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden border border-gray-200 hover:border-blue-400"
-              >
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {supplierSummaries.map((summary, index) => (
+            <Link
+              key={summary.supplier.id}
+              href={`/admin/purchase-orders/${summary.supplier.id}`}
+              className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow overflow-hidden hover:border-blue-400"
+            >
                 <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">
@@ -267,12 +261,11 @@ export default function PurchaseOrdersPage() {
                       </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

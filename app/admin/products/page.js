@@ -354,58 +354,54 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-6">
-      <div className="max-w-6xl mx-auto space-y-4">
-        {/* Header */}
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <RadioIcon className="w-6 h-6 text-red-600" />
-                  실시간 방송 컨트롤
-                </h1>
-                <p className="text-gray-600">라이브 상품을 관리하고 사용자 페이지 노출을 제어합니다 (총 {liveProducts.length}개)</p>
-              </div>
-              <button
-                onClick={() => router.push('/admin/products/catalog')}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <Squares2X2Icon className="w-4 h-4" />
-                전체 상품 관리
-              </button>
-            </div>
-
-            {/* 액션 버튼 */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setShowSearchModal(true)
-                  handleSearch()
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-              >
-                <MagnifyingGlassIcon className="w-4 h-4" />
-                검색으로 추가
-              </button>
-              <button
-                onClick={handleRemoveFromLive}
-                disabled={selectedIds.length === 0}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <TrashIcon className="w-4 h-4" />
-                선택 항목 제거 ({selectedIds.length})
-              </button>
-              <button
-                onClick={() => router.push('/admin/products/new')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-              >
-                <PlusIcon className="w-4 h-4" />
-                빠른 등록
-              </button>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">📺 실시간 방송 컨트롤</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {liveProducts.length}개 | 노출중 {liveProducts.filter(p => p.is_live_active).length}개 | 숨김 {liveProducts.filter(p => !p.is_live_active).length}개
+          </p>
         </div>
+        <button
+          onClick={() => router.push('/admin/products/catalog')}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+        >
+          <Squares2X2Icon className="w-4 h-4" />
+          전체 상품 관리
+        </button>
+      </div>
+
+      {/* 액션 버튼 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setShowSearchModal(true)
+              handleSearch()
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <MagnifyingGlassIcon className="w-4 h-4" />
+            검색으로 추가
+          </button>
+          <button
+            onClick={handleRemoveFromLive}
+            disabled={selectedIds.length === 0}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <TrashIcon className="w-4 h-4" />
+            선택 항목 제거 ({selectedIds.length})
+          </button>
+          <button
+            onClick={() => router.push('/admin/products/new')}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+          >
+            <PlusIcon className="w-4 h-4" />
+            빠른 등록
+          </button>
+        </div>
+      </div>
 
         {/* 라이브 상품 목록 */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -590,7 +586,6 @@ export default function AdminProductsPage() {
               </div>
             </>
           )}
-        </div>
       </div>
 
       {/* 검색 모달 */}

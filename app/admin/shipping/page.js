@@ -303,8 +303,10 @@ export default function AdminShippingPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">발송 관리</h1>
-          <p className="text-gray-600">결제 완료된 주문의 발송 상태를 관리하세요</p>
+          <h1 className="text-2xl font-bold text-gray-900">🚚 발송 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {orders.length}건 | 발송대기 {orders.filter(o => o.status === 'paid').length}건 | 발송완료 {orders.filter(o => o.status === 'shipping' || o.status === 'delivered').length}건
+          </p>
         </div>
         <div className="flex gap-2">
           <button

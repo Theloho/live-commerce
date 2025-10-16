@@ -522,8 +522,10 @@ export default function AdminDepositsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">입금 확인</h1>
-          <p className="text-gray-600">은행 거래내역을 업로드하여 자동으로 입금을 확인하세요</p>
+          <h1 className="text-2xl font-bold text-gray-900">💰 입금 확인</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            입금 대기 {pendingOrders.length}건 | 매칭 완료 {matchedTransactions.length}건 | 매칭 실패 {unmatchedTransactions.length}건 | 총 거래 {bankTransactions.length}건
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button

@@ -126,6 +126,21 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">📊 대시보드</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            오늘 주문 {stats.todayOrders}건 | 매출 ₩{stats.todaySales.toLocaleString()} | 입금대기 {stats.pendingPayments}건 | 배송준비 {stats.readyToShip}건
+          </p>
+        </div>
+        <button
+          onClick={loadStats}
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+        >
+          새로고침
+        </button>
+      </div>
 
       {/* Compact Stats */}
       <motion.div
@@ -243,17 +258,9 @@ export default function AdminDashboard() {
         </div>
       </motion.div>
 
-      {/* Refresh Button */}
-      <div className="text-center space-y-3">
-        <button
-          onClick={loadStats}
-          className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          통계 새로고침
-        </button>
-
-        {/* 데이터베이스 초기화 버튼 */}
-        <div className="pt-4 border-t border-gray-200">
+      {/* Database Reset Button */}
+      <div className="text-center">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <button
             onClick={async () => {
               if (confirm('⚠️ 정말로 모든 주문/결제 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!')) {
@@ -283,7 +290,7 @@ export default function AdminDashboard() {
           >
             🗑️ 데이터베이스 초기화
           </button>
-          <p className="text-xs text-gray-500 mt-1">모든 주문/결제 데이터 삭제</p>
+          <p className="text-xs text-gray-500 mt-2">모든 주문/결제 데이터 삭제</p>
         </div>
       </div>
     </div>
