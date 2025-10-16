@@ -206,12 +206,19 @@ export default function SuppliersPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', supplier.id)
+      const response = await fetch('/api/admin/suppliers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminEmail: adminUser.email,
+          id: supplier.id
+        })
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error)
+      }
 
       toast.success('업체가 삭제되었습니다')
       loadSuppliers()
@@ -233,54 +240,50 @@ export default function SuppliersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6">
       {/* 헤더 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">🏢 공급업체 관리</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                총 {suppliers.length}개 업체 | 활성 {suppliers.filter(s => s.is_active).length}개
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* 뷰 모드 토글 */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
-                  }`}
-                  title="카드 뷰"
-                >
-                  <Squares2X2Icon className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
-                  }`}
-                  title="리스트 뷰"
-                >
-                  <ListBulletIcon className="w-4 h-4" />
-                </button>
-              </div>
-
-              <button
-                onClick={() => openModal()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              >
-                <PlusIcon className="w-5 h-5" />
-                업체 추가
-              </button>
-            </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">🏢 공급업체 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {suppliers.length}개 업체 | 활성 {suppliers.filter(s => s.is_active).length}개
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* 뷰 모드 토글 */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
+              }`}
+              title="카드 뷰"
+            >
+              <Squares2X2Icon className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
+              }`}
+              title="리스트 뷰"
+            >
+              <ListBulletIcon className="w-4 h-4" />
+            </button>
           </div>
+
+          <button
+            onClick={() => openModal()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          >
+            <PlusIcon className="w-5 h-5" />
+            업체 추가
+          </button>
         </div>
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6">
+      <div>
         {suppliers.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <div className="text-gray-400 text-6xl mb-4">🏢</div>

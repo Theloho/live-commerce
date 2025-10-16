@@ -192,3 +192,57 @@ export async function PUT(request) {
     )
   }
 }
+
+// DELETE - 공급업체 삭제
+export async function DELETE(request) {
+  try {
+    const body = await request.json()
+    const { adminEmail, id } = body
+
+    console.log('🔍 [공급업체 API] DELETE 요청:', { adminEmail, id })
+
+    // 1. 관리자 인증 확인
+    if (!adminEmail) {
+      return NextResponse.json(
+        { error: '관리자 인증 정보가 필요합니다' },
+        { status: 401 }
+      )
+    }
+
+    const isAdmin = await verifyAdminAuth(adminEmail)
+    if (!isAdmin) {
+      console.warn(`⚠️ 권한 없는 공급업체 삭제 시도: ${adminEmail}`)
+      return NextResponse.json(
+        { error: '관리자 권한이 없습니다' },
+        { status: 403 }
+      )
+    }
+
+    // 2. 공급업체 삭제
+    const { error } = await supabaseAdmin
+      .from('suppliers')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('❌ 공급업체 삭제 오류:', error)
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ 공급업체 삭제 완료:', id)
+
+    return NextResponse.json({
+      success: true
+    })
+
+  } catch (error) {
+    console.error('❌ [공급업체 API] DELETE 에러:', error)
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+}
