@@ -236,7 +236,7 @@ export default function SuppliersPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto py-4 px-6">
+        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">🏢 공급업체 관리</h1>
@@ -280,7 +280,7 @@ export default function SuppliersPage() {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-7xl mx-auto py-6 px-6">
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6">
         {suppliers.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <div className="text-gray-400 text-6xl mb-4">🏢</div>
