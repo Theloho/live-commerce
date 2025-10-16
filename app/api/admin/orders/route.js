@@ -56,7 +56,6 @@ export async function GET(request) {
             id,
             title,
             product_number,
-            image_url,
             thumbnail_url,
             price,
             sku
@@ -64,7 +63,6 @@ export async function GET(request) {
           product_variants (
             id,
             sku,
-            image_url,
             variant_option_values (
               product_option_values (
                 value,
