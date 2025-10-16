@@ -176,9 +176,8 @@ export default function AdminCouponDetailPage() {
     )
   })
 
-  // 배포 가능한 고객 (아직 쿠폰을 받지 않은 고객)
-  const holderIds = new Set(holders.map(h => h.user_id))
-  const availableCustomers = filteredCustomers.filter(c => !holderIds.has(c.id))
+  // 배포 가능한 고객 (중복 배포 허용)
+  const availableCustomers = filteredCustomers
 
   // 탭별 필터링
   const unusedHolders = holders.filter(h => !h.is_used)

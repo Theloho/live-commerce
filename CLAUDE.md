@@ -1161,7 +1161,36 @@ Phase 4: 최종 검증 및 문서 업데이트 (1분) ⭐
 
 **🎯 모든 작업 전에 이 문서를 다시 읽으세요!**
 
-**마지막 업데이트**: 2025-10-15 (야간 - 최신)
+**마지막 업데이트**: 2025-10-16
+- 🐛 **무료배송 로직 버그 수정 세션** (2025-10-16 ⭐⭐)
+  - **완료된 작업**:
+    1. ✅ 주문 취소 시 재고 복원 실패 버그 수정
+       - 문제: Variant 재고 복원 시 `!result.success` 검증으로 실패 판정
+       - 원인: `updateVariantInventory` RPC는 JSONB 반환 (variant_id, old_inventory, new_inventory)
+       - 해결: 검증 로직 `!result.success` → `!result.variant_id`로 수정
+       - 영향: `/lib/supabaseApi.js` (line 1525)
+    2. ✅ 일괄결제 시 무료배송 UI 표시 버그 수정 (커밋: ccbab41)
+       - 문제: 일괄결제 시에도 "무료배송 혜택 적용!" 표시됨
+       - 원인: UI 조건문이 `hasPendingOrders`만 확인, `isBulkPayment` 미확인
+       - 해결: 3개 UI 위치에 `&& !orderItem.isBulkPayment` 조건 추가
+       - 영향: `/app/checkout/page.js` (lines 1206, 1214, 1397)
+    3. ✅ 일괄결제 시 무료배송 로직 버그 수정 (커밋: 64bcb81)
+       - 문제: 일괄결제 시 다른 pending/verifying 주문이 있어도 무료배송 미적용
+       - 원인: `checkPendingOrders()` 함수가 결제하려는 주문들도 카운트에 포함
+       - 해결:
+         - `checkPendingOrders(currentUser, orderItem)` 파라미터 추가
+         - `originalOrderIds` Set으로 필터링하여 다른 주문만 확인
+         - UI 조건문 단순화 (불필요한 `isBulkPayment` 체크 제거)
+       - 예시: 2개 일괄결제 + 1개 verifying → 무료배송 적용 ✅
+       - 영향: `/app/checkout/page.js` (lines 515-565, 329, 625, 1222, 1230, 1413)
+  - **배포 내역**:
+    - ccbab41: 일괄결제 시 무료배송 UI 표시 버그 수정
+    - 64bcb81: 일괄결제 시 무료배송 로직 수정 (originalOrderIds 필터링)
+  - **결과**:
+    - ✅ 주문 취소 시 variant 재고 정상 복원
+    - ✅ 일괄결제 시 무료배송 프로모션 정확히 표시
+    - ✅ 다른 주문이 있으면 일괄결제에도 무료배송 적용
+    - ✅ 무료배송 조건 로깅 강화 (일괄결제 시 상세 정보 출력)
 - ✅ **주문번호 시스템 G/S 구분 완전 제거** 🎯 (2025-10-15 야간 ⭐⭐⭐)
   - **문제**: G251015-8418 주문이 고객에게는 보이지만 관리자에게 안 보임
     - 근본 원인: DB에는 S251015-XXXX 저장, UI에서 G251015-8418 표시 → 검색 실패
