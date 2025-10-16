@@ -678,6 +678,24 @@ export default function DetailedProductNewPage() {
                     >
                       {productData.category || '카테고리 선택'}
                     </button>
+                    {productData.category && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductData(prev => ({
+                            ...prev,
+                            category: '',
+                            sub_category: ''
+                          }))
+                          setSubCategories([])
+                          toast.success('카테고리 선택이 해제되었습니다')
+                        }}
+                        className="px-3 py-2 bg-red-50 text-red-600 border border-red-300 rounded-lg hover:bg-red-100"
+                        title="카테고리 선택 해제"
+                      >
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setShowMainCategorySheet(true)}
@@ -713,6 +731,22 @@ export default function DetailedProductNewPage() {
                     >
                       {productData.sub_category || '소분류 선택'}
                     </button>
+                    {productData.sub_category && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductData(prev => ({
+                            ...prev,
+                            sub_category: ''
+                          }))
+                          toast.success('소분류 선택이 해제되었습니다')
+                        }}
+                        className="px-3 py-2 bg-red-50 text-red-600 border border-red-300 rounded-lg hover:bg-red-100"
+                        title="소분류 선택 해제"
+                      >
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
