@@ -15,7 +15,7 @@ import {
   TrashIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { getCoupons, toggleCouponStatus, getCouponStats } from '@/lib/couponApi'
+import { getCoupons, toggleCouponStatus, deleteCoupon, getCouponStats } from '@/lib/couponApi'
 
 export default function AdminCouponsPage() {
   const router = useRouter()
@@ -96,6 +96,21 @@ export default function AdminCouponsPage() {
     } catch (error) {
       console.error('쿠폰 상태 변경 실패:', error)
       toast.error('쿠폰 상태 변경에 실패했습니다')
+    }
+  }
+
+  const handleDeleteCoupon = async (couponId, couponCode) => {
+    if (!window.confirm(`쿠폰 "${couponCode}"을(를) 완전히 삭제하시겠습니까?\n\n⚠️ 주의:\n- 쿠폰 사용 이력(user_coupons)도 모두 삭제됩니다\n- 이미 완료된 주문 금액은 영향 없습니다\n- 이 작업은 되돌릴 수 없습니다`)) {
+      return
+    }
+
+    try {
+      await deleteCoupon(couponId)
+      toast.success('쿠폰이 삭제되었습니다')
+      loadCoupons()
+    } catch (error) {
+      console.error('쿠폰 삭제 실패:', error)
+      toast.error('쿠폰 삭제에 실패했습니다')
     }
   }
 
@@ -351,6 +366,16 @@ export default function AdminCouponsPage() {
                           ) : (
                             <CheckCircleIcon className="h-5 w-5" />
                           )}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteCoupon(coupon.id, coupon.code)
+                          }}
+                          className="p-1 rounded hover:bg-red-100 text-red-600"
+                          title="완전 삭제"
+                        >
+                          <TrashIcon className="h-5 w-5" />
                         </button>
                       </div>
                     </td>
