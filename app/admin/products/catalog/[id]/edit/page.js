@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeftIcon, CheckIcon, XMarkIcon, PlusIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, CheckIcon, XMarkIcon, PlusIcon, MinusIcon, Cog6ToothIcon, CameraIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import { getSuppliers } from '@/lib/supabaseApi'
 import { supabase } from '@/lib/supabase'
@@ -26,6 +26,30 @@ export default function ProductEditPage() {
   const [showSupplierSheet, setShowSupplierSheet] = useState(false)
   const [showMainCategorySheet, setShowMainCategorySheet] = useState(false)
   const [showSubCategorySheet, setShowSubCategorySheet] = useState(false)
+
+  // 이미지 관련 state
+  const cameraInputRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const [imagePreview, setImagePreview] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+
+  // 옵션 관련 constants
+  const SIZE_TEMPLATES = {
+    number: ['55', '66', '77', '88', '99'],
+    alpha: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    free: ['FREE']
+  }
+
+  const COLOR_PRESETS = [
+    '블랙', '화이트', '그레이', '베이지', '네이비',
+    '브라운', '카키', '핑크', '레드', '블루'
+  ]
+
+  // 옵션 관련 state
+  const [sizeOptions, setSizeOptions] = useState([])
+  const [colorOptions, setColorOptions] = useState([])
+  const [optionInventories, setOptionInventories] = useState({})
+
   const [formData, setFormData] = useState({
     title: '',
     product_number: '',
@@ -41,6 +65,119 @@ export default function ProductEditPage() {
     supplier_product_code: '',
     inventory: 0
   })
+
+  // 이미지 업로드 핸들러
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // 옵션 관리 함수들
+  const applySizeTemplate = (templateKey) => {
+    setSizeOptions([...SIZE_TEMPLATES[templateKey]])
+    toast.success(`${SIZE_TEMPLATES[templateKey].length}개의 사이즈가 추가되었습니다`)
+  }
+
+  const addSizeOption = () => {
+    setSizeOptions([...sizeOptions, ''])
+  }
+
+  const removeSizeOption = (index) => {
+    setSizeOptions(sizeOptions.filter((_, i) => i !== index))
+  }
+
+  const updateSizeOption = (index, value) => {
+    const newSizeOptions = [...sizeOptions]
+    newSizeOptions[index] = value
+    setSizeOptions(newSizeOptions)
+  }
+
+  const removeAllSizeOptions = () => {
+    setSizeOptions([])
+    toast.success('모든 사이즈 옵션이 제거되었습니다')
+  }
+
+  const applyColorPresets = () => {
+    setColorOptions([...COLOR_PRESETS])
+    toast.success(`${COLOR_PRESETS.length}개의 색상이 추가되었습니다`)
+  }
+
+  const addColorOption = () => {
+    setColorOptions([...colorOptions, ''])
+  }
+
+  const removeColorOption = (index) => {
+    setColorOptions(colorOptions.filter((_, i) => i !== index))
+  }
+
+  const updateColorOption = (index, value) => {
+    const newColorOptions = [...colorOptions]
+    newColorOptions[index] = value
+    setColorOptions(newColorOptions)
+  }
+
+  const removeAllColorOptions = () => {
+    setColorOptions([])
+    toast.success('모든 색상 옵션이 제거되었습니다')
+  }
+
+  const generateOptionCombinations = () => {
+    if (sizeOptions.length === 0 && colorOptions.length === 0) {
+      return []
+    }
+
+    const combinations = []
+
+    if (sizeOptions.length > 0 && colorOptions.length > 0) {
+      sizeOptions.forEach(size => {
+        colorOptions.forEach(color => {
+          combinations.push({
+            key: `size:${size}|color:${color}`,
+            label: `${size} × ${color}`,
+            type: 'both',
+            size,
+            color
+          })
+        })
+      })
+    } else if (sizeOptions.length > 0) {
+      sizeOptions.forEach(size => {
+        combinations.push({
+          key: `size:${size}`,
+          label: size,
+          type: 'size',
+          size
+        })
+      })
+    } else if (colorOptions.length > 0) {
+      colorOptions.forEach(color => {
+        combinations.push({
+          key: `color:${color}`,
+          label: color,
+          type: 'color',
+          color
+        })
+      })
+    }
+
+    return combinations
+  }
+
+  const handleOptionInventoryChange = (comboKey, inventory) => {
+    setOptionInventories({
+      ...optionInventories,
+      [comboKey]: parseInt(inventory) || 0
+    })
+  }
+
+  const combinations = generateOptionCombinations()
 
   // 권한 체크
   useEffect(() => {
@@ -96,6 +233,11 @@ export default function ProductEditPage() {
       })
       setSuppliers(suppliersData)
       setCategories(categoriesData.data)
+
+      // 기존 이미지 로드
+      if (productData.data.thumbnail_url) {
+        setImagePreview(productData.data.thumbnail_url)
+      }
 
       // 현재 카테고리가 설정되어 있으면 서브 카테고리 로드
       if (productData.data.category) {
@@ -207,7 +349,30 @@ export default function ProductEditPage() {
     try {
       setSaving(true)
 
-      console.log('🔍 저장할 데이터:', formData)
+      let thumbnailUrl = imagePreview
+
+      // 새로운 이미지 파일이 있으면 업로드
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop()
+        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
+        const filePath = `products/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, imageFile)
+
+        if (uploadError) {
+          throw new Error('이미지 업로드에 실패했습니다')
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath)
+
+        thumbnailUrl = publicUrl
+      }
+
+      console.log('🔍 저장할 데이터:', { ...formData, thumbnail_url: thumbnailUrl })
 
       // Service Role API 사용 (RLS 우회)
       const response = await fetch('/api/admin/products/update', {
@@ -217,7 +382,10 @@ export default function ProductEditPage() {
         },
         body: JSON.stringify({
           productId,
-          updateData: formData
+          updateData: {
+            ...formData,
+            thumbnail_url: thumbnailUrl
+          }
         })
       })
 
@@ -291,6 +459,96 @@ export default function ProductEditPage() {
 
       {/* 메인 컨텐츠 */}
       <div className="max-w-4xl mx-auto py-6 space-y-6">
+
+        {/* 상품 이미지 */}
+        <div className="bg-white rounded-lg shadow-sm py-6 px-4">
+          <h2 className="text-lg font-semibold mb-4">상품 이미지</h2>
+          <div className="space-y-4">
+            {imagePreview ? (
+              <div className="space-y-4">
+                {/* 이미지 미리보기 */}
+                <div className="relative aspect-square w-full max-w-md mx-auto rounded-lg overflow-hidden border border-gray-200">
+                  <Image
+                    src={imagePreview}
+                    alt="상품 이미지"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* 이미지 변경 버튼 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                  >
+                    <PhotoIcon className="w-8 h-8 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">사진보관함</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                  >
+                    <CameraIcon className="w-8 h-8 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">사진촬영</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* 이미지 없을 때 업로드 버튼 */}
+                <div className="relative aspect-square w-full max-w-md mx-auto rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
+                  <div className="text-center text-gray-400">
+                    <PhotoIcon className="w-16 h-16 mx-auto mb-2" />
+                    <p className="text-sm">상품 이미지를 업로드하세요</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                  >
+                    <PhotoIcon className="w-8 h-8 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">사진보관함</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex flex-col items-center gap-2 p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                  >
+                    <CameraIcon className="w-8 h-8 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">사진촬영</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Hidden file inputs */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+
+            <p className="text-xs text-gray-500 text-center">
+              권장 크기: 1:1 비율 (정사각형), 최소 800x800px
+            </p>
+          </div>
+        </div>
 
         {/* 기본 정보 */}
         <div className="bg-white rounded-lg shadow-sm py-6 px-4">
@@ -506,6 +764,197 @@ export default function ProductEditPage() {
             </div>
           </div>
         </div>
+
+        {/* 옵션 관리 섹션 (Variant가 없는 경우에만 표시) */}
+        {(!product?.variant_count || product.variant_count === 0) && (
+          <>
+            {/* 사이즈 옵션 */}
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">사이즈 옵션</h2>
+                {sizeOptions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={removeAllSizeOptions}
+                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                  >
+                    전체 삭제
+                  </button>
+                )}
+              </div>
+
+              {sizeOptions.length === 0 ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => applySizeTemplate('number')}
+                      className="p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="font-medium text-sm">숫자(55-99)</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applySizeTemplate('alpha')}
+                      className="p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="font-medium text-sm">영문(S-XXL)</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applySizeTemplate('free')}
+                      className="p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="font-medium text-sm">FREE</div>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sizeOptions.map((size, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={size}
+                        onChange={(e) => updateSizeOption(index, e.target.value)}
+                        placeholder="사이즈명"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSizeOption(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <MinusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addSizeOption}
+                    className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                  >
+                    + 사이즈 추가
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 색상 옵션 */}
+            <div className="bg-white rounded-lg shadow-sm py-6 px-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">색상 옵션</h2>
+                {colorOptions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={removeAllColorOptions}
+                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                  >
+                    전체 삭제
+                  </button>
+                )}
+              </div>
+
+              {colorOptions.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={applyColorPresets}
+                  className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  + 색상 프리셋 (10색)
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  {colorOptions.map((color, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={color}
+                        onChange={(e) => updateColorOption(index, e.target.value)}
+                        placeholder="색상명"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeColorOption(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        <MinusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addColorOption}
+                    className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600"
+                  >
+                    + 색상 추가
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 옵션별 재고 설정 */}
+            {combinations.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm py-6 px-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">옵션별 재고 설정</h2>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      id="bulkInventory"
+                      placeholder="일괄 입력"
+                      min="0"
+                      className="w-24 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const bulkValue = document.getElementById('bulkInventory').value
+                        if (bulkValue) {
+                          const newInventories = {}
+                          combinations.forEach(combo => {
+                            newInventories[combo.key] = parseInt(bulkValue) || 0
+                          })
+                          setOptionInventories(newInventories)
+                          document.getElementById('bulkInventory').value = ''
+                          toast.success(`모든 옵션에 재고 ${bulkValue}개가 적용되었습니다`)
+                        }
+                      }}
+                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      일괄 적용
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {combinations.map((combo) => (
+                    <div key={combo.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium">{combo.label}</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={optionInventories[combo.key] || 0}
+                          onChange={(e) => handleOptionInventoryChange(combo.key, e.target.value)}
+                          min="0"
+                          className="w-20 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <span className="text-sm text-gray-500">개</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    💡 총 재고: {Object.values(optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)}개
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
         {/* 추가 정보 */}
         <div className="bg-white rounded-lg shadow-sm py-6 px-4">

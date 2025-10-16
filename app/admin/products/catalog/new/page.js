@@ -617,19 +617,6 @@ export default function DetailedProductNewPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상세 설명
-                  </label>
-                  <textarea
-                    value={productData.detailed_description}
-                    onChange={(e) => setProductData(prev => ({ ...prev, detailed_description: e.target.value }))}
-                    placeholder="상품 상세 설명"
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  />
-                </div>
-
                 {/* ⭐ 판매가격 (천 단위 토글) */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -748,21 +735,6 @@ export default function DetailedProductNewPage() {
                       <Cog6ToothIcon className="w-5 h-5" />
                     </button>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상태
-                  </label>
-                  <select
-                    value={productData.status}
-                    onChange={(e) => setProductData(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="active">활성</option>
-                    <option value="draft">임시저장</option>
-                    <option value="archived">보관</option>
-                  </select>
                 </div>
               </div>
             </div>
@@ -1081,13 +1053,13 @@ export default function DetailedProductNewPage() {
       <CategoryManageSheet
         isOpen={showSubCategorySheet}
         onClose={() => setShowSubCategorySheet(false)}
-        onSelect={(subCategoryName) => {
-          handleCategorySelect(productData.category, subCategoryName)
+        onSelect={(mainCategory, subCategoryName) => {
+          handleCategorySelect(mainCategory, subCategoryName)
           setShowSubCategorySheet(false)
         }}
-        currentCategory={productData.sub_category}
-        parentCategory={productData.category}
-        isMainCategory={false}
+        currentCategory={productData.category}
+        currentSubCategory={productData.sub_category}
+        mode="sub"
       />
     </div>
   )
