@@ -180,11 +180,12 @@ export default function ProductCatalogPage() {
               실시간 방송 컨트롤
             </button>
           </div>
-          </div>
         </div>
+      </div>
 
+      {/* 메인 컨텐츠 */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* 필터 및 검색 */}
-        <div className="mb-6">
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             {/* 검색 */}
@@ -476,7 +477,7 @@ export default function ProductCatalogPage() {
 
         {/* 상품이 없을 때 */}
         {products.length === 0 && !loading && (
-          <div className="text-center py-12">
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <div className="text-gray-400 text-6xl mb-4">📦</div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">상품이 없습니다</h3>
             <p className="text-gray-500 mb-6">첫 번째 상품을 추가해보세요</p>
