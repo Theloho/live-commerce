@@ -329,12 +329,16 @@ export default function ProductCard({ product, variant = 'default', priority = f
           {/* Content Section */}
           <div className={variant === 'horizontal' ? 'flex-1 p-4' : 'p-4'}>
             {/* Title - 제품번호 + 상품명 */}
-            <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
-              <span className="text-blue-600 font-bold">{product_number}</span>
+            <div className="mb-2">
+              <h3 className="font-bold text-blue-600 text-base">
+                {product_number}
+              </h3>
               {title && title !== product_number && (
-                <span className="text-gray-900"> / {title}</span>
+                <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">
+                  {title}
+                </p>
               )}
-            </h3>
+            </div>
 
 
             {/* Price */}
