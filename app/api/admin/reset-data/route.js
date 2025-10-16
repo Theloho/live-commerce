@@ -139,47 +139,10 @@ export async function POST(request) {
     }
 
     // ====================================
-    // Phase 3: 상품 재고 초기화 (상품 자체는 보존)
+    // Phase 3: 라이브 방송 데이터 삭제 (products FK)
     // ====================================
 
-    console.log('🔄 8. products 재고 초기화...')
-    const { error: productResetError } = await supabaseAdmin
-      .from('products')
-      .update({
-        inventory: 100,
-        sales_count: 0,
-        view_count: 0,
-        like_count: 0
-      })
-      .neq('id', '00000000-0000-0000-0000-000000000000')
-
-    if (productResetError) {
-      results.errors.push({ table: 'products', error: productResetError.message })
-    } else {
-      results.deleted.push('products (재고 초기화)')
-      results.preserved.push('products (상품 데이터)')
-    }
-
-    // 3-2. Variant 재고 초기화
-    console.log('🔄 9. product_variants 재고 초기화...')
-    const { error: variantResetError } = await supabaseAdmin
-      .from('product_variants')
-      .update({
-        inventory: 100
-      })
-      .neq('id', '00000000-0000-0000-0000-000000000000')
-
-    if (variantResetError) {
-      results.errors.push({ table: 'product_variants', error: variantResetError.message })
-    } else {
-      results.deleted.push('product_variants (재고 초기화)')
-    }
-
-    // ====================================
-    // Phase 4: 라이브 방송 데이터 삭제
-    // ====================================
-
-    console.log('🗑️ 10. live_products, live_broadcasts 삭제...')
+    console.log('🗑️ 8. live_products, live_broadcasts 삭제...')
 
     const { error: liveProductsError } = await supabaseAdmin
       .from('live_products')
@@ -204,17 +167,105 @@ export async function POST(request) {
     }
 
     // ====================================
-    // Phase 5: 보존된 데이터 확인
+    // Phase 4: 상품 데이터 완전 삭제 (외래키 순서)
+    // ====================================
+
+    console.log('🗑️ 9. variant_option_values 삭제...')
+    const { error: variantOptionValuesError } = await supabaseAdmin
+      .from('variant_option_values')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+
+    if (variantOptionValuesError) {
+      results.errors.push({ table: 'variant_option_values', error: variantOptionValuesError.message })
+    } else {
+      results.deleted.push('variant_option_values')
+    }
+
+    console.log('🗑️ 10. product_variants 삭제...')
+    const { error: variantsError } = await supabaseAdmin
+      .from('product_variants')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+
+    if (variantsError) {
+      results.errors.push({ table: 'product_variants', error: variantsError.message })
+    } else {
+      results.deleted.push('product_variants')
+    }
+
+    console.log('🗑️ 11. product_option_values 삭제...')
+    const { error: optionValuesError } = await supabaseAdmin
+      .from('product_option_values')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+
+    if (optionValuesError) {
+      results.errors.push({ table: 'product_option_values', error: optionValuesError.message })
+    } else {
+      results.deleted.push('product_option_values')
+    }
+
+    console.log('🗑️ 12. product_options 삭제...')
+    const { error: optionsError } = await supabaseAdmin
+      .from('product_options')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+
+    if (optionsError) {
+      results.errors.push({ table: 'product_options', error: optionsError.message })
+    } else {
+      results.deleted.push('product_options')
+    }
+
+    console.log('🗑️ 13. products 삭제...')
+    const { error: productsError } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+
+    if (productsError) {
+      results.errors.push({ table: 'products', error: productsError.message })
+    } else {
+      results.deleted.push('products')
+    }
+
+    // ====================================
+    // Phase 5: 쿠폰, 업체 삭제
+    // ====================================
+
+    console.log('🗑️ 14. coupons 삭제...')
+    const { error: couponsError } = await supabaseAdmin
+      .from('coupons')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+
+    if (couponsError) {
+      results.errors.push({ table: 'coupons', error: couponsError.message })
+    } else {
+      results.deleted.push('coupons')
+    }
+
+    console.log('🗑️ 15. suppliers 삭제...')
+    const { error: suppliersError } = await supabaseAdmin
+      .from('suppliers')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+
+    if (suppliersError) {
+      results.errors.push({ table: 'suppliers', error: suppliersError.message })
+    } else {
+      results.deleted.push('suppliers')
+    }
+
+    // ====================================
+    // Phase 6: 보존된 데이터 확인
     // ====================================
 
     results.preserved.push('admins (모든 관리자 계정)')
     results.preserved.push('admin_sessions')
-    results.preserved.push('categories (카테고리 마스터)')
-    results.preserved.push('suppliers (업체 마스터)')
-    results.preserved.push('coupons (쿠폰 마스터)')
-    results.preserved.push('products (상품 마스터 데이터)')
-    results.preserved.push('product_options, product_option_values')
-    results.preserved.push('product_variants (SKU 데이터)')
+    results.preserved.push('categories (카테고리 마스터) ⭐')
+    results.preserved.push('profiles (관리자만)')
 
     console.log('🎉 데이터베이스 초기화 완료!')
     console.log('✅ 삭제된 테이블:', results.deleted)
