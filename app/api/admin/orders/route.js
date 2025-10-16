@@ -117,61 +117,75 @@ export async function GET(request) {
     console.log(`✅ 조회된 주문 수: ${data?.length || 0} / 전체: ${count || 0} (필터: status=${statusFilter}, method=${paymentMethodFilter})`)
 
     // 3. 사용자 정보 조회 및 데이터 포맷팅
-    const ordersWithUserInfo = await Promise.all(data.map(async order => {
-      // order_shipping과 order_payments는 이미 배열로 반환됨
-      const shipping = order.order_shipping?.[0] || {}
-      const payment = order.order_payments?.[0] || {}
+    const ordersWithUserInfo = await Promise.all(data.map(async (order, index) => {
+      try {
+        // order_shipping과 order_payments는 이미 배열로 반환됨
+        const shipping = order.order_shipping?.[0] || {}
+        const payment = order.order_payments?.[0] || {}
 
-      // 사용자 정보 조회
-      let profileInfo = null
+        // 사용자 정보 조회
+        let profileInfo = null
 
-      if (order.user_id) {
-        // 이메일 사용자: user_id로 profiles 조회
-        try {
-          const { data: profileData } = await supabaseAdmin
-            .from('profiles')
-            .select('nickname, name, phone, email')
-            .eq('id', order.user_id)
-            .single()
+        if (order.user_id) {
+          // 이메일 사용자: user_id로 profiles 조회
+          try {
+            const { data: profileData, error: profileError } = await supabaseAdmin
+              .from('profiles')
+              .select('nickname, name, phone, email, address, postal_code')
+              .eq('id', order.user_id)
+              .maybeSingle()  // single() 대신 maybeSingle() 사용
 
-          if (profileData) {
-            profileInfo = profileData
+            if (profileError) {
+              console.error(`프로필 조회 에러 (user_id: ${order.user_id}):`, profileError)
+            } else if (profileData) {
+              profileInfo = profileData
+            }
+          } catch (error) {
+            console.error(`사용자 정보 조회 실패 (user_id: ${order.user_id}):`, error)
           }
-        } catch (error) {
-          console.debug('사용자 정보 조회 실패:', order.user_id)
-        }
-      } else if (order.order_type?.includes(':KAKAO:')) {
-        // 카카오 사용자: kakao_id로 조회
-        const kakaoId = order.order_type.split(':KAKAO:')[1]
+        } else if (order.order_type?.includes(':KAKAO:')) {
+          // 카카오 사용자: kakao_id로 조회
+          const kakaoId = order.order_type.split(':KAKAO:')[1]
 
-        try {
-          const { data: kakaoProfile } = await supabaseAdmin
-            .from('profiles')
-            .select('nickname, name, phone, email, kakao_id')
-            .eq('kakao_id', kakaoId)
-            .single()
+          try {
+            const { data: kakaoProfile, error: kakaoError } = await supabaseAdmin
+              .from('profiles')
+              .select('nickname, name, phone, email, kakao_id, address, postal_code')
+              .eq('kakao_id', kakaoId)
+              .maybeSingle()  // single() 대신 maybeSingle() 사용
 
-          if (kakaoProfile) {
-            profileInfo = kakaoProfile
-          } else {
-            // 프로필 없으면 배송 정보 사용
+            if (kakaoError) {
+              console.error(`카카오 프로필 조회 에러 (kakao_id: ${kakaoId}):`, kakaoError)
+            } else if (kakaoProfile) {
+              profileInfo = kakaoProfile
+            } else {
+              // 프로필 없으면 배송 정보 사용
+              profileInfo = {
+                name: shipping?.name || '카카오 사용자',
+                nickname: shipping?.name || '카카오 사용자'
+              }
+            }
+          } catch (error) {
+            console.error(`카카오 프로필 조회 실패 (kakao_id: ${kakaoId}):`, error)
+            // 프로필 조회 실패 시 배송 정보 사용
             profileInfo = {
               name: shipping?.name || '카카오 사용자',
               nickname: shipping?.name || '카카오 사용자'
             }
           }
-        } catch (error) {
-          // 프로필 조회 실패 시 배송 정보 사용
-          profileInfo = {
-            name: shipping?.name || '카카오 사용자',
-            nickname: shipping?.name || '카카오 사용자'
-          }
         }
-      }
 
-      return {
-        ...order,
-        profiles: profileInfo  // fulfillmentGrouping.js에서 사용
+        return {
+          ...order,
+          profiles: profileInfo  // fulfillmentGrouping.js에서 사용
+        }
+      } catch (error) {
+        console.error(`주문 처리 중 에러 (index: ${index}, order_id: ${order.id}):`, error)
+        // 에러가 발생해도 기본 주문 데이터는 반환
+        return {
+          ...order,
+          profiles: null
+        }
       }
     }))
 
