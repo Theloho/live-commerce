@@ -50,12 +50,39 @@ export async function GET(request) {
       .from('orders')
       .select(`
         *,
+        profiles (
+          id,
+          name,
+          nickname,
+          phone,
+          email,
+          address,
+          postal_code,
+          kakao_id
+        ),
         order_items (
           *,
           products (
+            id,
             title,
+            product_number,
+            image_url,
             thumbnail_url,
-            price
+            price,
+            sku
+          ),
+          product_variants (
+            id,
+            sku,
+            image_url,
+            variant_option_values (
+              product_option_values (
+                value,
+                product_options (
+                  name
+                )
+              )
+            )
           )
         ),
         order_shipping (*),
