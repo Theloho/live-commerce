@@ -629,8 +629,12 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 mb-1 line-clamp-2">
-                  {title}
+                {/* 제품번호 + 상품명 (한 줄) */}
+                <h3 className="mb-1 line-clamp-1">
+                  <span className="font-bold text-gray-900">{product.product_number || product.id}</span>
+                  {title && title !== (product.product_number || product.id) && (
+                    <span className="text-sm text-gray-500"> {title}</span>
+                  )}
                 </h3>
                 <div className="flex items-baseline gap-2">
                   <span className="text-xl font-bold text-red-500">
