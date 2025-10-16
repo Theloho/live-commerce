@@ -233,7 +233,9 @@ export default function ProductEditPage() {
       console.log('📦 상품 정보:', {
         id: productData.data.id,
         variant_count: productData.data.variant_count,
-        option_count: productData.data.option_count
+        option_count: productData.data.option_count,
+        has_variants: productData.data.variant_count > 0,
+        full_product_data: productData.data
       })
       setSuppliers(suppliersData)
       setCategories(categoriesData.data)
@@ -753,6 +755,13 @@ export default function ProductEditPage() {
             </div>
           </div>
         </div>
+
+        {/* 디버깅: 조건 확인 */}
+        {console.log('🔍 조건 체크:', {
+          product: product,
+          variant_count: product?.variant_count,
+          should_show_options: !product?.variant_count || product.variant_count === 0
+        })}
 
         {/* 옵션 관리 섹션 (Variant가 없는 경우에만 표시) */}
         {(!product?.variant_count || product.variant_count === 0) && (
