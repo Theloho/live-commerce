@@ -179,11 +179,11 @@ export default function AdminsPage() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">관리자 관리</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            하위 관리자를 생성하고 권한을 부여할 수 있습니다
+          <h1 className="text-2xl font-bold text-gray-900">🔐 관리자 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {admins.length}명 | 마스터 {admins.filter(a => a.is_master).length}명 | 일반 {admins.filter(a => !a.is_master && a.is_admin).length}명
           </p>
         </div>
         <button
@@ -306,18 +306,18 @@ export default function AdminsPage() {
                       {!admin.is_master && (
                         <>
                           <button
-                            onClick={() => openPermissionModal(admin)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="권한 관리"
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </button>
-                          <button
                             onClick={() => handleDeleteAdmin(admin.id, admin.email)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="삭제"
                           >
                             <TrashIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openPermissionModal(admin)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="권한 관리"
+                          >
+                            <PencilIcon className="w-4 h-4" />
                           </button>
                         </>
                       )}
