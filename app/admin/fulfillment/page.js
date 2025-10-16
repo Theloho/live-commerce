@@ -63,7 +63,16 @@ export default function FulfillmentPage() {
       const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
 
       if (!response.ok) {
-        throw new Error('주문 조회 실패')
+        // ⭐ 에러 응답 body 읽기
+        const errorData = await response.json()
+        console.error('❌❌❌ API 에러 응답:', errorData)
+        console.error('❌❌❌ error.message:', errorData.error)
+        console.error('❌❌❌ error.errorDetails:', errorData.errorDetails)
+        console.error('❌❌❌ error.hint:', errorData.hint)
+        console.error('❌❌❌ error.details:', errorData.details)
+        console.error('❌❌❌ error.code:', errorData.code)
+        console.error('❌❌❌ error.stack:', errorData.stack)
+        throw new Error(errorData.error || '주문 조회 실패')
       }
 
       const { orders: allOrders } = await response.json()
