@@ -197,7 +197,7 @@ export default function ProductEditPage() {
     try {
       setLoading(true)
 
-      const [productData, suppliersData, categoriesData] = await Promise.all([
+      const [productData, suppliersData, categoriesData, variantsData] = await Promise.all([
         supabase
           .from('products')
           .select('*')
@@ -208,13 +208,25 @@ export default function ProductEditPage() {
           .from('categories')
           .select('*')
           .eq('is_active', true)
-          .order('name')
+          .order('name'),
+        // 실제 variant 개수 조회
+        supabase
+          .from('product_variants')
+          .select('id', { count: 'exact', head: true })
+          .eq('product_id', productId)
       ])
 
       if (productData.error) throw productData.error
       if (categoriesData.error) throw categoriesData.error
 
-      setProduct(productData.data) // 원본 데이터 저장 (variant_count 등)
+      // 실제 variant 개수로 업데이트
+      const actualVariantCount = variantsData.count || 0
+      const productWithRealCount = {
+        ...productData.data,
+        variant_count: actualVariantCount
+      }
+
+      setProduct(productWithRealCount) // 원본 데이터 저장 (실제 variant_count 포함)
       setFormData({
         title: productData.data.title || '',
         product_number: productData.data.product_number || '',
@@ -232,10 +244,13 @@ export default function ProductEditPage() {
 
       console.log('📦 상품 정보:', {
         id: productData.data.id,
-        variant_count: productData.data.variant_count,
+        variant_count_from_db: productData.data.variant_count,
+        actual_variant_count: actualVariantCount,
         option_count: productData.data.option_count,
-        has_variants: productData.data.variant_count > 0,
-        full_product_data: productData.data
+        has_variants: actualVariantCount > 0,
+        '⚠️': actualVariantCount !== productData.data.variant_count
+          ? 'DB의 variant_count가 실제 개수와 다름!'
+          : 'OK'
       })
       setSuppliers(suppliersData)
       setCategories(categoriesData.data)
