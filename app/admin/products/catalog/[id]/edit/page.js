@@ -628,9 +628,13 @@ export default function ProductEditPage() {
                 판매가격 *
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={formData.price || ''}
-                onChange={(e) => handleChange('price', parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d]/g, '')
+                  handleChange('price', parseInt(value) || 0)
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="10000"
               />
@@ -641,9 +645,13 @@ export default function ProductEditPage() {
                 정가 (비교 가격)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={formData.compare_price || ''}
-                onChange={(e) => handleChange('compare_price', parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d]/g, '')
+                  handleChange('compare_price', parseInt(value) || 0)
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="15000"
               />

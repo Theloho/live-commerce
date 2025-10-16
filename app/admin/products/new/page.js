@@ -292,23 +292,30 @@ export default function NewProductPage() {
 
   // 가격 입력 처리
   const handlePriceChange = (value) => {
-    if (!value) {
+    // 빈 값 처리
+    if (!value || value === '') {
       setProductData(prev => ({ ...prev, price: '' }))
       return
     }
 
     if (useThousandUnit) {
-      // 천원 단위 모드: 소수점 1자리까지 허용
-      const numValue = parseFloat(value)
+      // 천원 단위 모드: 숫자와 소수점만 허용
+      const filtered = value.replace(/[^\d.]/g, '')
+      const numValue = parseFloat(filtered)
       if (!isNaN(numValue)) {
         const actualPrice = Math.floor(numValue * 1000)
         setProductData(prev => ({ ...prev, price: actualPrice }))
+      } else {
+        setProductData(prev => ({ ...prev, price: '' }))
       }
     } else {
       // 일반 모드: 숫자만 허용
-      const numValue = parseInt(value)
+      const filtered = value.replace(/[^\d]/g, '')
+      const numValue = parseInt(filtered)
       if (!isNaN(numValue)) {
         setProductData(prev => ({ ...prev, price: numValue }))
+      } else {
+        setProductData(prev => ({ ...prev, price: '' }))
       }
     }
   }
@@ -602,8 +609,8 @@ export default function NewProductPage() {
                   <div className="space-y-3">
                     <div className="relative">
                       <input
-                        type="number"
-                        step={useThousandUnit ? "0.1" : "1"}
+                        type="text"
+                        inputMode="decimal"
                         value={getDisplayPrice()}
                         onChange={(e) => handlePriceChange(e.target.value)}
                         placeholder={useThousandUnit ? "19.5" : "19500"}
