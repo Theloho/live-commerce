@@ -109,6 +109,18 @@ export default function SupplierPurchaseOrderDetailPage() {
       setOrderItems(items)
       console.log('📋 발주 상세:', items.length, '개 아이템')
 
+      // 매입가 디버깅
+      if (items.length > 0) {
+        console.log('💰 매입가 샘플 데이터:', {
+          첫번째아이템: items[0],
+          매입가: items[0].purchasePrice,
+          수량: items[0].quantity,
+          총액: items[0].totalPrice
+        })
+        const 총매입가 = items.reduce((sum, item) => sum + item.totalPrice, 0)
+        console.log('💰 전체 매입가 합계:', 총매입가.toLocaleString(), '원')
+      }
+
     } catch (error) {
       console.error('데이터 로딩 오류:', error)
       toast.error('데이터를 불러오는데 실패했습니다')
@@ -445,76 +457,67 @@ export default function SupplierPurchaseOrderDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white shadow-sm border border-gray-200 rounded-lg p-6"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/admin/purchase-orders"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <BuildingStorefrontIcon className="w-8 h-8 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{supplier.name} 발주서</h1>
-                <p className="text-sm text-gray-600">
-                  업체 코드: {supplier.code}
-                  {supplier.contact_person && ` | 담당자: ${supplier.contact_person}`}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handlePrint}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
-            >
-              <PrinterIcon className="w-5 h-5" />
-              인쇄
-            </button>
-            <button
-              onClick={handleExcelDownload}
-              disabled={orderItems.length === 0}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              발주서 다운로드
-            </button>
+      {/* 헤더 - 배송 취합 관리 스타일 */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/purchase-orders"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">🏢 {supplier.name} 발주서</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              업체 코드: {supplier.code}
+              {supplier.contact_person && ` | 담당자: ${supplier.contact_person}`}
+              {supplier.phone && ` | 연락처: ${supplier.phone}`}
+            </p>
           </div>
         </div>
-      </motion.div>
+        <div className="flex gap-2">
+          <button
+            onClick={handlePrint}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+          >
+            <PrinterIcon className="w-4 h-4" />
+            인쇄
+          </button>
+          <button
+            onClick={handleExcelDownload}
+            disabled={orderItems.length === 0}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            <ArrowDownTrayIcon className="w-4 h-4" />
+            Excel 업로드
+          </button>
+        </div>
+      </div>
 
-      {/* 통계 */}
+      {/* 통계 카드 - 모바일 최적화 */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-lg border border-gray-200 p-6"
+        className="bg-white rounded-lg border border-gray-200"
       >
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <ShoppingBagIcon className="w-5 h-5 text-blue-600" />
-          발주 요약
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-2">총 아이템 수</p>
-            <p className="text-3xl font-bold text-blue-600">{orderItems.length}개</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">총 아이템</p>
+            <p className="text-2xl font-bold text-blue-600">{orderItems.length}</p>
           </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-2">총 발주 수량</p>
-            <p className="text-3xl font-bold text-purple-600">{totals.totalQuantity}개</p>
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">발주 수량</p>
+            <p className="text-2xl font-bold text-purple-600">{totals.totalQuantity}</p>
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-2">총 발주 금액</p>
-            <p className="text-3xl font-bold text-green-600">₩{totals.totalAmount.toLocaleString()}</p>
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">발주 금액</p>
+            <p className="text-2xl font-bold text-green-600">₩{(totals.totalAmount / 1000).toFixed(0)}K</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-1">평균 단가</p>
+            <p className="text-2xl font-bold text-orange-600">
+              {orderItems.length > 0 ? `₩${(totals.totalAmount / totals.totalQuantity / 1000).toFixed(0)}K` : '₩0'}
+            </p>
           </div>
         </div>
       </motion.div>
