@@ -33,7 +33,6 @@ export default function ProductCatalogPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('all')
   const [viewMode, setViewMode] = useState('grid') // grid | list
   const [showFilters, setShowFilters] = useState(false)
 
@@ -57,8 +56,7 @@ export default function ProductCatalogPage() {
       const [productsData, categoriesData] = await Promise.all([
         getAllProducts({
           search: searchTerm,
-          category_id: selectedCategory,
-          status: selectedStatus
+          category_id: selectedCategory
         }),
         getCategories()
       ])
@@ -95,7 +93,7 @@ export default function ProductCatalogPage() {
     }, 300) // 300ms 디바운스
 
     return () => clearTimeout(timeoutId)
-  }, [searchTerm, selectedCategory, selectedStatus])
+  }, [searchTerm, selectedCategory])
 
   // 라이브 방송 추가/제거
   const handleToggleLive = async (product) => {
@@ -137,26 +135,6 @@ export default function ProductCatalogPage() {
     } catch (error) {
       console.error('상품 삭제 오류:', error)
       toast.error('상품 삭제에 실패했습니다')
-    }
-  }
-
-  // 상품 상태별 색상
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'draft': return 'bg-yellow-100 text-yellow-800'
-      case 'archived': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  // 상품 상태 텍스트
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'active': return '활성'
-      case 'draft': return '임시저장'
-      case 'archived': return '보관'
-      default: return '알 수 없음'
     }
   }
 
@@ -237,18 +215,6 @@ export default function ProductCatalogPage() {
                     {category.name}
                   </option>
                 ))}
-              </select>
-
-              {/* 상태 필터 */}
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">모든 상태</option>
-                <option value="active">활성</option>
-                <option value="draft">임시저장</option>
-                <option value="archived">보관</option>
               </select>
 
               {/* 뷰 모드 */}
@@ -345,12 +311,9 @@ export default function ProductCatalogPage() {
                     ₩{(product.price || 0).toLocaleString()}
                   </div>
 
-                  {/* 카테고리 & 상태 */}
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                    <span className="truncate">{product.category || '미분류'}</span>
-                    <span className={`px-1 py-0.5 rounded text-xs ${getStatusColor(product.status)}`}>
-                      {getStatusText(product.status)}
-                    </span>
+                  {/* 카테고리 */}
+                  <div className="text-xs text-gray-500 mb-2 truncate">
+                    {product.category || '미분류'}
                   </div>
 
                   {/* 액션 버튼 (그리드 뷰) */}
@@ -402,9 +365,6 @@ export default function ProductCatalogPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     재고
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    상태
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     라이브
@@ -467,11 +427,6 @@ export default function ProductCatalogPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {product.inventory}개
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(product.status)}`}>
-                        {getStatusText(product.status)}
-                      </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {product.is_live_active ? (
