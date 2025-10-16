@@ -47,6 +47,7 @@ export async function POST(request) {
         order_items (
           *,
           products (
+            product_number,
             title,
             thumbnail_url,
             price
@@ -107,6 +108,7 @@ export async function POST(request) {
           order_items (
             *,
             products (
+              product_number,
               title,
               thumbnail_url,
               price
@@ -160,6 +162,7 @@ export async function POST(request) {
           order_items (
             *,
             products (
+              product_number,
               title,
               thumbnail_url,
               price
@@ -229,7 +232,9 @@ export async function POST(request) {
         totalPrice: item.total_price || item.total || 0,
         // ✅ selectedOptions 추가 (결제대기 페이지 옵션별 분리 표시용)
         selectedOptions: item.selected_options || {},
-        product_number: item.product_id,
+        // ✅ product_number 우선순위: order_items.product_number > products.product_number > product_id (폴백)
+        product_number: item.product_number || item.products?.product_number || item.product_id,
+        product_id: item.product_id,
         variant_id: item.variant_id
       })),
       shipping: Array.isArray(order.order_shipping) && order.order_shipping.length > 0
