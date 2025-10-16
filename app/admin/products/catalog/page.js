@@ -150,107 +150,105 @@ export default function ProductCatalogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6">
       {/* 헤더 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">🛍️ 전체 상품 관리</h1>
-              <p className="text-gray-600 mt-1">상품 마스터 데이터를 관리합니다</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => router.push('/admin/products/catalog/new')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-              >
-                <PlusIcon className="w-4 h-4 mr-2" />
-                상세 상품 등록
-              </button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">🛍️ 전체 상품 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {products.length}개 상품 | 라이브 중 {products.filter(p => p.is_live_active).length}개
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/admin/products')}
+            className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <PlayIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">실시간 방송</span>
+          </button>
+          <button
+            onClick={() => router.push('/admin/products/catalog/new')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+          >
+            <PlusIcon className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">상세 상품 등록</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 필터 및 검색 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* 검색 */}
+          <div className="flex-1 max-w-lg">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="제품번호, 상품명, 설명, SKU로 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
           </div>
 
-          {/* 빠른 이동 */}
-          <div className="flex gap-2 pb-4">
-            <button
-              onClick={() => router.push('/admin/products')}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          {/* 필터 및 뷰 옵션 */}
+          <div className="flex items-center gap-3">
+            {/* 카테고리 필터 */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
-              <PlayIcon className="w-4 h-4" />
-              실시간 방송 컨트롤
-            </button>
+              <option value="">모든 카테고리</option>
+              {categories.map(category => (
+                <option key={category.id} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+
+            {/* 뷰 모드 */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
+                }`}
+                title="카드 뷰"
+              >
+                <Squares2X2Icon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
+                }`}
+                title="리스트 뷰"
+              >
+                <ListBulletIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 메인 컨텐츠 */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* 필터 및 검색 */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            {/* 검색 */}
-            <div className="flex-1 max-w-lg">
-              <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="제품번호, 상품명, 설명, SKU로 검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* 필터 및 뷰 옵션 */}
-            <div className="flex items-center space-x-3">
-              {/* 카테고리 필터 */}
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">모든 카테고리</option>
-                {categories.map(category => (
-                  <option key={category.id} value={category.name}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* 뷰 모드 */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
-                  }`}
-                >
-                  <Squares2X2Icon className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
-                  }`}
-                >
-                  <ListBulletIcon className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 통계 */}
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-            <div>
-              총 {products.length}개 상품 |
-              라이브 중 {products.filter(p => p.is_live_active).length}개
-            </div>
-          </div>
+      {/* 상품 목록 */}
+      {products.length === 0 && !loading ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <div className="text-gray-400 text-6xl mb-4">📦</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">상품이 없습니다</h3>
+          <p className="text-gray-500 mb-6">첫 번째 상품을 추가해보세요</p>
+          <button
+            onClick={() => router.push('/admin/products/catalog/new')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            상품 추가하기
+          </button>
         </div>
-
-        {/* 상품 목록 */}
-        {viewMode === 'grid' ? (
+      ) : viewMode === 'grid' ? (
           // 그리드 뷰 - 컴팩트한 카드 디자인
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
             {products.map((product) => (
@@ -474,22 +472,6 @@ export default function ProductCatalogPage() {
             </table>
           </div>
         )}
-
-        {/* 상품이 없을 때 */}
-        {products.length === 0 && !loading && (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <div className="text-gray-400 text-6xl mb-4">📦</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">상품이 없습니다</h3>
-            <p className="text-gray-500 mb-6">첫 번째 상품을 추가해보세요</p>
-            <button
-              onClick={() => router.push('/admin/products/new')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              상품 추가하기
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   )
 }
