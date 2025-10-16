@@ -135,28 +135,26 @@ export default function AdminCouponsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="space-y-6">
       {/* 헤더 */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">쿠폰 관리</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              쿠폰 발행, 배포 및 사용 현황을 관리합니다
-            </p>
-          </div>
-          <button
-            onClick={() => router.push('/admin/coupons/new')}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            쿠폰 발행
-          </button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">🎟️ 쿠폰 관리</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            총 {coupons.length}개 | 활성 {coupons.filter(c => c.is_active).length}개 | 발급 {coupons.reduce((sum, c) => sum + c.total_issued_count, 0)}회 | 사용 {coupons.reduce((sum, c) => sum + c.total_used_count, 0)}회
+          </p>
         </div>
+        <button
+          onClick={() => router.push('/admin/coupons/new')}
+          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <PlusIcon className="h-5 w-5 mr-2" />
+          쿠폰 발행
+        </button>
       </div>
 
       {/* 통계 카드 - 컴팩트 버전 */}
-      <div className="bg-white rounded-lg shadow mb-6 p-4">
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
             <p className="text-xs text-gray-500 mb-1">전체 쿠폰</p>
@@ -184,7 +182,7 @@ export default function AdminCouponsPage() {
       </div>
 
       {/* 필터 */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
+      <div className="bg-white p-4 rounded-lg border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* 검색 */}
           <div className="relative">
@@ -223,7 +221,7 @@ export default function AdminCouponsPage() {
       </div>
 
       {/* 쿠폰 목록 */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -354,6 +352,16 @@ export default function AdminCouponsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
+                            handleDeleteCoupon(coupon.id, coupon.code)
+                          }}
+                          className="p-1 rounded hover:bg-red-100 text-red-600"
+                          title="완전 삭제"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
                             handleToggleStatus(coupon.id, coupon.is_active)
                           }}
                           className={`p-1 rounded hover:bg-gray-100 ${
@@ -366,16 +374,6 @@ export default function AdminCouponsPage() {
                           ) : (
                             <CheckCircleIcon className="h-5 w-5" />
                           )}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteCoupon(coupon.id, coupon.code)
-                          }}
-                          className="p-1 rounded hover:bg-red-100 text-red-600"
-                          title="완전 삭제"
-                        >
-                          <TrashIcon className="h-5 w-5" />
                         </button>
                       </div>
                     </td>
