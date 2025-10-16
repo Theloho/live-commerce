@@ -499,8 +499,12 @@ export default function AdminProductsPage() {
 
                     {/* 상품 정보 */}
                     <div className="p-3">
-                      <h3 className="font-medium text-sm text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem]">
-                        {product.title}
+                      {/* 제품번호 + 상품명 (한 줄) */}
+                      <h3 className="mb-1 line-clamp-1 text-sm min-h-[1.25rem]">
+                        <span className="font-bold text-gray-900">{product.product_number || product.id}</span>
+                        {product.title && product.title !== (product.product_number || product.id) && (
+                          <span className="text-xs text-gray-500"> {product.title}</span>
+                        )}
                       </h3>
 
                       {/* 업체 정보 */}
@@ -768,8 +772,12 @@ export default function AdminProductsPage() {
 
                           {/* 상품 정보 */}
                           <div className="p-2">
-                            <h3 className="text-xs font-medium text-gray-900 line-clamp-2 mb-1">
-                              {product.title}
+                            {/* 제품번호 + 상품명 (한 줄) */}
+                            <h3 className="mb-1 line-clamp-1 text-xs">
+                              <span className="font-bold text-gray-900">{product.product_number || product.id}</span>
+                              {product.title && product.title !== (product.product_number || product.id) && (
+                                <span className="text-xs text-gray-500"> {product.title}</span>
+                              )}
                             </h3>
                             {product.suppliers && (
                               <p className="text-xs text-gray-500 mb-1">
