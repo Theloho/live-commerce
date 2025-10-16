@@ -330,7 +330,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
           <div className={variant === 'horizontal' ? 'flex-1 p-4' : 'p-4'}>
             {/* Title - 제품번호 + 상품명 */}
             <div className="mb-2">
-              <h3 className="font-bold text-blue-600 text-base">
+              <h3 className="font-bold text-gray-900 text-base">
                 {product_number}
               </h3>
               {title && title !== product_number && (

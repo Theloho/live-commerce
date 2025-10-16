@@ -335,7 +335,7 @@ export default function ProductCatalogPage() {
                 <div className="p-2">
                   {/* 제품번호 + 상품명 */}
                   <h3 className="text-xs font-medium text-gray-900 mb-1 line-clamp-2 min-h-[2rem]">
-                    <span className="text-blue-600 font-bold">{product.product_number}</span>
+                    <span className="text-gray-900 font-bold">{product.product_number}</span>
                     {product.title && product.title !== product.product_number && (
                       <span className="text-gray-700"> / {product.title}</span>
                     )}
@@ -442,7 +442,7 @@ export default function ProductCatalogPage() {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900 line-clamp-1">
-                            <span className="text-blue-600 font-bold">{product.product_number}</span>
+                            <span className="text-gray-900 font-bold">{product.product_number}</span>
                             {product.title && product.title !== product.product_number && (
                               <span className="text-gray-700"> / {product.title}</span>
                             )}
