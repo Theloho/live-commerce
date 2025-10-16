@@ -370,10 +370,11 @@ export default function SuppliersPage() {
                   {/* 액션 버튼 */}
                   <div className="flex gap-2 pt-3 border-t">
                     <button
-                      onClick={() => openModal(supplier)}
-                      className="flex-1 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 border border-blue-300 rounded transition-colors"
+                      onClick={() => handleDelete(supplier)}
+                      className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 border border-red-300 rounded transition-colors"
+                      title="삭제"
                     >
-                      편집
+                      <TrashIcon className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleToggleActive(supplier)}
@@ -383,11 +384,10 @@ export default function SuppliersPage() {
                       <EyeSlashIcon className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(supplier)}
-                      className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 border border-red-300 rounded transition-colors"
-                      title="삭제"
+                      onClick={() => openModal(supplier)}
+                      className="flex-1 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 border border-blue-300 rounded transition-colors"
                     >
-                      <TrashIcon className="w-4 h-4" />
+                      편집
                     </button>
                   </div>
                 </div>
@@ -469,11 +469,11 @@ export default function SuppliersPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => openModal(supplier)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                          title="수정"
+                          onClick={() => handleDelete(supplier)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                          title="삭제"
                         >
-                          <PencilIcon className="w-4 h-4" />
+                          <TrashIcon className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleToggleActive(supplier)}
@@ -483,11 +483,11 @@ export default function SuppliersPage() {
                           <EyeSlashIcon className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(supplier)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                          title="삭제"
+                          onClick={() => openModal(supplier)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                          title="수정"
                         >
-                          <TrashIcon className="w-4 h-4" />
+                          <PencilIcon className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
