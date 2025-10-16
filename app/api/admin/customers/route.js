@@ -70,6 +70,7 @@ export async function GET(request) {
         phone: profile.phone || '',
         email: profile.email || '',
         address: profile.address || '',
+        avatar_url: profile.avatar_url || '',
         kakao_id: profile.kakao_id || '',
         created_at: profile.created_at,
         orderCount,
