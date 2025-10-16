@@ -58,7 +58,6 @@ export default function ProductEditPage() {
     description: '',
     category: '',
     sub_category: '',
-    model_number: '',
     sku: '',
     barcode: '',
     supplier_id: '',
@@ -224,12 +223,17 @@ export default function ProductEditPage() {
         description: productData.data.description || '',
         category: productData.data.category || '',
         sub_category: productData.data.sub_category || '',
-        model_number: productData.data.model_number || '',
         sku: productData.data.sku || '',
         barcode: productData.data.barcode || '',
         supplier_id: productData.data.supplier_id || '',
         supplier_product_code: productData.data.supplier_product_code || '',
         inventory: productData.data.inventory || 0
+      })
+
+      console.log('📦 상품 정보:', {
+        id: productData.data.id,
+        variant_count: productData.data.variant_count,
+        option_count: productData.data.option_count
       })
       setSuppliers(suppliersData)
       setCategories(categoriesData.data)
@@ -567,35 +571,20 @@ export default function ProductEditPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  상품번호 (수정 불가)
-                </label>
-                <input
-                  type="text"
-                  value={formData.product_number}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
-                  placeholder="P-0001"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  상품번호는 등록 후 변경할 수 없습니다
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  모델명
-                </label>
-                <input
-                  type="text"
-                  value={formData.model_number}
-                  onChange={(e) => handleChange('model_number', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="MODEL-001"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                상품번호 (수정 불가)
+              </label>
+              <input
+                type="text"
+                value={formData.product_number}
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                placeholder="P-0001"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                상품번호는 등록 후 변경할 수 없습니다
+              </p>
             </div>
 
             <div>

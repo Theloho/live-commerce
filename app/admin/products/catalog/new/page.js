@@ -47,7 +47,7 @@ export default function DetailedProductNewPage() {
     price: '',
     compare_price: '',
     supplier_id: '',
-    model_number: '',
+    supplier_product_code: '',
     purchase_price: '',
     purchase_date: '',
     category: '',
@@ -407,7 +407,7 @@ export default function DetailedProductNewPage() {
         supplier_id: productData.supplier_id || null,
         category: productData.category || null,
         sub_category: productData.sub_category || null,
-        model_number: productData.model_number.trim() || null,
+        supplier_product_code: productData.supplier_product_code.trim() || null,
         purchase_price: productData.purchase_price ? parseFloat(productData.purchase_price) : null,
         purchase_date: productData.purchase_date || null,
         compare_price: productData.compare_price ? parseInt(productData.compare_price) : null,
@@ -773,13 +773,13 @@ export default function DetailedProductNewPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    모델번호
+                    업체 상품 코드
                   </label>
                   <input
                     type="text"
-                    value={productData.model_number}
-                    onChange={(e) => setProductData(prev => ({ ...prev, model_number: e.target.value }))}
-                    placeholder="ABC-123"
+                    value={productData.supplier_product_code}
+                    onChange={(e) => setProductData(prev => ({ ...prev, supplier_product_code: e.target.value }))}
+                    placeholder="업체에서 사용하는 상품 코드"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
