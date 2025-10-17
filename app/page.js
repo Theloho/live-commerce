@@ -20,49 +20,14 @@ export default function Home() {
     checkUserSession()
   }, [])
 
-  // 직접 세션 확인 (DB 조회 포함)
+  // 직접 세션 확인 (모바일 최적화)
   const checkUserSession = async () => {
     try {
       const storedUser = sessionStorage.getItem('user')
 
       if (storedUser) {
         const userData = JSON.parse(storedUser)
-
-        // ⚠️ 이름이 없으면 DB에서 재조회
-        if (!userData.name || userData.name === '사용자') {
-          // Supabase Auth 세션 확인
-          const { data: { session } } = await supabase.auth.getSession()
-
-          if (session?.user?.id) {
-            // DB에서 프로필 조회
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single()
-
-            if (profile && !error) {
-              // sessionStorage 업데이트
-              const updatedUser = {
-                ...userData,
-                name: profile.name,
-                nickname: profile.nickname,
-                phone: profile.phone || '',
-                address: profile.address || '',
-                detail_address: profile.detail_address || '',
-                postal_code: profile.postal_code || '',
-                avatar_url: profile.avatar_url
-              }
-
-              sessionStorage.setItem('user', JSON.stringify(updatedUser))
-              setUserSession(updatedUser)
-              return
-            } else {
-              console.error('❌ DB 프로필 조회 실패:', error)
-            }
-          }
-        }
-
+        console.log('📱 [홈] sessionStorage 사용자:', userData)
         setUserSession(userData)
       } else {
         setUserSession(null)
@@ -102,13 +67,28 @@ export default function Home() {
     }
   }, [])
 
-  if (loading) {
+  if (sessionLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">데이터를 불러오는 중...</p>
+          <p className="text-gray-600">세션 확인 중...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="px-4 pt-4">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">상품을 불러오는 중...</p>
+          </div>
+        </main>
+        <MobileNav />
       </div>
     )
   }
