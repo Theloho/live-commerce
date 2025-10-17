@@ -11,7 +11,6 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        console.log('🚀 고속 카카오 로그인 처리 시작...')
 
         // ⚡ 1단계: URL 파라미터 통합 분석
         const { authType, authData } = parseUrlParameters()
@@ -26,7 +25,6 @@ export default function AuthCallback() {
         await finalizeLoginFast(userProfile)
 
       } catch (error) {
-        console.error('❌ 로그인 처리 실패:', error)
         toast.error('로그인 중 오류가 발생했습니다')
         router.push('/login')
       }
@@ -100,7 +98,6 @@ export default function AuthCallback() {
 
     // ⚡ 코드 인증 고속 처리 (병렬화)
     const processCodeAuthFast = async ({ code }) => {
-      console.log('⚡ 카카오 Authorization code 고속 처리:', code)
 
       // 🚀 병렬 처리: 토큰 교환과 사용자 정보 동시 획득
       const tokenData = await fetch('/api/auth/kakao-token', {
@@ -121,7 +118,6 @@ export default function AuthCallback() {
         return res.json()
       })
 
-      console.log('✅ 토큰 교환 및 사용자 정보 로드 완료')
 
       // 🚀 병렬 처리: 사용자 확인과 프로필 데이터 준비
       const kakaoUserId = userData.id.toString()
@@ -145,12 +141,10 @@ export default function AuthCallback() {
       let userProfile
       if (!checkResult.exists) {
         // 🚀 통합 인증 시스템: 새 사용자 생성
-        console.log('🆕 통합 시스템으로 카카오 사용자 생성')
 
         // 1. Supabase Auth에 사용자 생성 (고정 패턴 임시 패스워드)
         const tempPassword = `kakao_temp_${kakaoUserId}`  // ✅ 고정 패턴 (타임스탬프 제거)
 
-        console.log('🔐 [디버그] signUp 시도:', { email, password: tempPassword.substring(0, 20) + '...' })
 
         let authData = null
         let authError = null
@@ -172,17 +166,8 @@ export default function AuthCallback() {
         authData = signUpResult.data
         authError = signUpResult.error
 
-        console.log('🔐 [디버그] signUp 결과:', {
-          hasData: !!authData,
-          hasSession: !!authData?.session,
-          hasUser: !!authData?.user,
-          error: authError,
-          session_access_token: authData?.session?.access_token?.substring(0, 50)
-        })
-
         // ✅ "User already registered" 에러 처리 (DB 초기화 후 auth.users는 남아있는 경우)
         if (authError && authError.message?.includes('already registered')) {
-          console.log('⚠️ auth.users에 이미 존재하는 사용자, signIn 시도...')
 
           const signInResult = await supabase.auth.signInWithPassword({
             email: email,
@@ -190,7 +175,6 @@ export default function AuthCallback() {
           })
 
           if (signInResult.error) {
-            console.error('signIn 실패, 패스워드 재설정 시도...', signInResult.error)
 
             // 패스워드 재설정 시도
             try {
@@ -207,7 +191,6 @@ export default function AuthCallback() {
                 throw new Error(resetResult.error || '패스워드 재설정 실패')
               }
 
-              console.log('✅ 패스워드 재설정 성공, 재로그인 시도...')
 
               const retrySignIn = await supabase.auth.signInWithPassword({
                 email: email,
@@ -220,43 +203,34 @@ export default function AuthCallback() {
 
               authData = retrySignIn.data
               authError = null
-              console.log('✅ 재로그인 성공')
             } catch (resetError) {
-              console.error('패스워드 재설정 실패:', resetError)
               throw new Error('기존 사용자 인증 실패 - 관리자에게 문의하세요')
             }
           } else {
             authData = signInResult.data
             authError = null
-            console.log('✅ 기존 auth.users 사용자 로그인 성공')
           }
         } else if (authError) {
-          console.error('Auth 사용자 생성 실패:', authError)
           throw new Error(`카카오 사용자 생성 실패: ${authError.message}`)
         }
 
-        console.log('✅ auth.users 인증 성공:', authData.user.id)
 
         // 1.5. 세션 확인 및 대기 (localStorage 저장 보장)
         let sessionVerified = false
         for (let i = 0; i < 10; i++) {
           const { data: sessionData } = await supabase.auth.getSession()
           if (sessionData?.session?.user?.id) {
-            console.log('✅ Supabase Auth 세션 확인 완료:', sessionData.session.user.id)
             sessionVerified = true
             break
           }
-          console.log(`⏳ 세션 저장 대기 중... (${i + 1}/10)`)
           await new Promise(resolve => setTimeout(resolve, 100)) // 100ms 대기
         }
 
         if (!sessionVerified) {
-          console.error('❌ Supabase Auth 세션 확인 실패')
           throw new Error('세션 생성 실패 - 다시 로그인해주세요')
         }
 
         // 2. profiles 테이블에 추가 정보 저장 (UPSERT - DB 초기화 대비)
-        console.log('📝 profiles 테이블 생성/업데이트 시도')
 
         const { data: newProfile, error: profileError } = await supabase
           .from('profiles')
@@ -282,37 +256,23 @@ export default function AuthCallback() {
           .single()
 
         if (profileError) {
-          console.error('프로필 생성 실패:', profileError)
           throw new Error('카카오 프로필 생성 실패')
         }
 
-        console.log('✅ 통합 카카오 사용자 생성 완료')
         userProfile = newProfile
       } else {
         // 기존 사용자 업데이트 (통합 시스템)
-        console.log('🔄 기존 카카오 사용자 정보 업데이트')
 
         // ✅ 1. 기존 사용자 Supabase Auth 로그인
         const tempPassword = `kakao_temp_${kakaoUserId}`
 
-        console.log('🔐 [디버그] signInWithPassword 시도:', { email, password: tempPassword.substring(0, 20) + '...' })
 
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: email,
           password: tempPassword
         })
 
-        console.log('🔐 [디버그] signInWithPassword 결과:', {
-          hasData: !!signInData,
-          hasSession: !!signInData?.session,
-          hasUser: !!signInData?.user,
-          error: signInError,
-          session_access_token: signInData?.session?.access_token?.substring(0, 50)
-        })
-
         if (signInError) {
-          console.error('기존 사용자 Auth 로그인 실패:', signInError)
-          console.log('⚠️ 패스워드 불일치, Service Role로 재설정 시도...')
 
           // ✅ Service Role API로 패스워드 재설정
           try {
@@ -329,7 +289,6 @@ export default function AuthCallback() {
               throw new Error(resetResult.error || '패스워드 재설정 실패')
             }
 
-            console.log('✅ 패스워드 재설정 성공, 재로그인 시도...')
 
             // 재로그인 시도
             const { data: retrySignIn, error: retryError } = await supabase.auth.signInWithPassword({
@@ -341,40 +300,25 @@ export default function AuthCallback() {
               throw new Error('재로그인 실패: ' + retryError.message)
             }
 
-            console.log('✅ 재로그인 성공')
           } catch (resetError) {
-            console.error('패스워드 재설정 실패:', resetError)
             throw new Error('기존 사용자 인증 실패 - 관리자에게 문의하세요')
           }
         }
 
-        console.log('✅ 기존 사용자 Supabase Auth 로그인 성공')
 
         // ✅ 1.5. 세션 확인 및 대기 (localStorage 저장 보장)
-        console.log('🔍 [디버그] 세션 확인 시작')
         let sessionVerified = false
         for (let i = 0; i < 10; i++) {
-          const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-
-          console.log(`🔍 [디버그] 세션 확인 ${i + 1}/10:`, {
-            hasSession: !!sessionData?.session,
-            hasUser: !!sessionData?.session?.user,
-            userId: sessionData?.session?.user?.id,
-            error: sessionError,
-            localStorage_keys: Object.keys(localStorage).filter(k => k.includes('sb-') || k.includes('auth'))
-          })
+          const { data: sessionData } = await supabase.auth.getSession()
 
           if (sessionData?.session?.user?.id) {
-            console.log('✅ Supabase Auth 세션 확인 완료:', sessionData.session.user.id)
             sessionVerified = true
             break
           }
-          console.log(`⏳ 세션 저장 대기 중... (${i + 1}/10)`)
           await new Promise(resolve => setTimeout(resolve, 100)) // 100ms 대기
         }
 
         if (!sessionVerified) {
-          console.error('❌ Supabase Auth 세션 확인 실패')
           throw new Error('세션 생성 실패 - 다시 로그인해주세요')
         }
 
@@ -390,20 +334,17 @@ export default function AuthCallback() {
           .single()
 
         if (updateError) {
-          console.error('프로필 업데이트 실패:', updateError)
           throw new Error('카카오 프로필 업데이트 실패')
         }
 
         userProfile = updatedProfile
       }
 
-      console.log('✅ 카카오 로그인 고속 처리 완료')
       return userProfile
     }
 
     // ⚡ 최종 로그인 처리 (세션 저장 + 리다이렉트) - 통합 시스템
     const finalizeLoginFast = async (userProfile) => {
-      console.log('🔐 통합 시스템 세션 저장:', userProfile.id)
 
       // ✅ localStorage + sessionStorage에 사용자 정보 저장 (모든 필드 포함)
       const sessionUser = {
@@ -424,7 +365,6 @@ export default function AuthCallback() {
       localStorage.setItem('unified_user_session', JSON.stringify(sessionUser))
       // ✅ sessionStorage에도 저장 (checkout/mypage 호환성)
       sessionStorage.setItem('user', JSON.stringify(sessionUser))
-      console.log('✅ 통합 세션 저장 완료 (localStorage + sessionStorage)')
 
       // 커스텀 로그인 이벤트 발생
       window.dispatchEvent(new CustomEvent('kakaoLoginSuccess', {
@@ -433,12 +373,10 @@ export default function AuthCallback() {
 
       // 리다이렉트 결정
       if (!userProfile.phone || !userProfile.address) {
-        console.log('📝 추가 정보 입력 필요')
         toast.success('카카오 로그인 성공! 추가 정보를 입력해주세요.')
         // ✅ router.replace() 사용 (뒤로가기 시 callback 재실행 방지)
         router.replace('/auth/complete-profile')
       } else {
-        console.log('🎉 카카오 로그인 완료')
         toast.success('카카오 로그인 성공!')
         // ✅ router.replace() 사용 (뒤로가기 시 callback 재실행 방지)
         router.replace('/')
