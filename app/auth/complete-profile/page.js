@@ -15,7 +15,8 @@ export default function CompleteProfilePage() {
     phone: '',
     nickname: '',
     address: '',
-    detailAddress: ''
+    detailAddress: '',
+    postalCode: ''
   })
 
   useEffect(() => {
@@ -29,7 +30,8 @@ export default function CompleteProfilePage() {
         name: sessionUser.name || '',
         nickname: sessionUser.nickname || sessionUser.name || ''
       }))
-    } else if (!authLoading && !user) {
+    } else if (!authLoading && !user && !sessionUser.id) {
+      // ✅ 카카오 사용자도 sessionUser.id가 있으면 리다이렉트 안 함
       toast.error('로그인이 필요합니다')
       router.push('/login')
       return
@@ -48,9 +50,14 @@ export default function CompleteProfilePage() {
     if (typeof window !== 'undefined' && window.daum && window.daum.Postcode) {
       new window.daum.Postcode({
         oncomplete: function(data) {
+          console.log('📍 주소 검색 완료:', {
+            address: data.address,
+            zonecode: data.zonecode
+          })
           setFormData(prev => ({
             ...prev,
-            address: data.address
+            address: data.address,
+            postalCode: data.zonecode // ✅ 우편번호 저장
           }))
         }
       }).open()
@@ -124,7 +131,8 @@ export default function CompleteProfilePage() {
           phone: formData.phone,
           nickname: formData.nickname || formData.name,
           address: formData.address,
-          detail_address: formData.detailAddress || ''
+          detail_address: formData.detailAddress || '',
+          postal_code: formData.postalCode || '' // ✅ 우편번호 추가
         }
         console.log('📱 [모바일] updateData:', updateData)
 
@@ -176,7 +184,8 @@ export default function CompleteProfilePage() {
           phone: formData.phone,
           nickname: formData.nickname || formData.name,
           address: formData.address,
-          detail_address: formData.detailAddress || ''
+          detail_address: formData.detailAddress || '',
+          postal_code: formData.postalCode || '' // ✅ 우편번호 추가
         }
 
         const response = await fetch('/api/profile/complete', {
