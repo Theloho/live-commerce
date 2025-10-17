@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getProducts } from '@/lib/supabaseApi'
 
-// 캐시 객체 (5분 캐시)
+// 캐시 객체 (5분)
 let productsCache = {
   data: null,
   timestamp: null,
@@ -37,12 +37,12 @@ export default function useRealtimeProducts() {
     try {
       setError(null)
 
-      // 캐시 체크 (강제 새로고침이 아닐 때만)
+      // 캐시 확인 (5분 이내면 사용)
+      const now = Date.now()
       if (!forceRefresh && productsCache.data && productsCache.timestamp) {
-        const now = Date.now()
-        const isValid = (now - productsCache.timestamp) < productsCache.ttl
-
-        if (isValid) {
+        const age = now - productsCache.timestamp
+        if (age < productsCache.ttl) {
+          console.log('✅ 캐시된 상품 데이터 사용')
           setProducts(productsCache.data)
           setLoading(false)
           return
@@ -51,9 +51,9 @@ export default function useRealtimeProducts() {
 
       setLoading(true)
 
-      // ⚡ 타임아웃 추가 (모바일 환경 최적화) - 20초 (JOIN 쿼리 대응)
+      // 타임아웃 추가 (10초)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('상품 로딩 시간 초과 (20초) - 네트워크 확인 필요')), 20000)
+        setTimeout(() => reject(new Error('상품 로딩 시간 초과 - 네트워크 확인 필요')), 10000)
       )
 
       const startTime = Date.now()
@@ -74,6 +74,7 @@ export default function useRealtimeProducts() {
       setProducts(data)
     } catch (err) {
       const errorMessage = err.message || '상품 데이터 로드 실패'
+      console.error('❌ 상품 로딩 실패:', errorMessage)
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -81,7 +82,7 @@ export default function useRealtimeProducts() {
   }
 
   const refreshProducts = () => {
-    loadProducts()
+    loadProducts(true)
   }
 
   return {
