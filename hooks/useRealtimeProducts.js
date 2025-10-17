@@ -51,7 +51,15 @@ export default function useRealtimeProducts() {
 
       setLoading(true)
 
-      const data = await getProducts()
+      // ⚡ 타임아웃 추가 (모바일 환경 최적화) - 10초
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('상품 로딩 시간 초과 (10초)')), 10000)
+      )
+
+      const data = await Promise.race([
+        getProducts(),
+        timeoutPromise
+      ])
 
       // 캐시 업데이트
       productsCache = {
@@ -62,8 +70,8 @@ export default function useRealtimeProducts() {
 
       setProducts(data)
     } catch (err) {
-      console.error('상품 데이터 로드 오류:', err)
-      setError(err.message)
+      const errorMessage = err.message || '상품 데이터 로드 실패'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
