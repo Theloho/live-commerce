@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "올록 - 라이브 커머스 플랫폼",
-  description: "실시간 라이브 방송으로 만나는 특별한 쇼핑 경험. 합리적인 가격의 다양한 상품을 올록에서 만나보세요.",
-  keywords: "라이브커머스, 라이브쇼핑, 온라인쇼핑, 올록",
+  title: "알록 - 라이브 커머스 플랫폼",
+  description: "실시간 라이브 방송으로 만나는 특별한 쇼핑 경험. 합리적인 가격의 다양한 상품을 알록에서 만나보세요.",
+  keywords: "라이브커머스, 라이브쇼핑, 온라인쇼핑, 알록",
 };
 
 export default function RootLayout({ children }) {

@@ -1,8 +1,8 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: '개인정보 처리방침 - 올록',
-  description: '올록의 개인정보 처리방침 및 쿠키 사용 안내',
+  title: '개인정보 처리방침 - 알록',
+  description: '알록의 개인정보 처리방침 및 쿠키 사용 안내',
 }
 
 export default function PrivacyPolicy() {
@@ -17,7 +17,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">1. 수집하는 개인정보 항목</h2>
               <p className="mb-4">
-                올록은 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다:
+                알록은 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다:
               </p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>필수항목: 이름, 연락처, 배송주소, 이메일</li>
@@ -55,7 +55,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">4. 쿠키(Cookie) 사용 안내</h2>
               <p className="mb-4">
-                올록은 웹사이트 기능 개선과 사용자 경험 향상을 위해 쿠키를 사용합니다.
+                알록은 웹사이트 기능 개선과 사용자 경험 향상을 위해 쿠키를 사용합니다.
               </p>
 
               <h3 className="text-xl font-semibold mt-4 mb-2">쿠키란?</h3>
@@ -83,7 +83,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">5. Google Analytics 사용</h2>
               <p className="mb-4">
-                올록은 웹사이트 이용 패턴 분석 및 서비스 개선을 위해 Google Analytics를 사용합니다.
+                알록은 웹사이트 이용 패턴 분석 및 서비스 개선을 위해 Google Analytics를 사용합니다.
               </p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>수집 정보: 페이지뷰, 방문 시간, 디바이스 정보, 브라우저 정보</li>
@@ -107,7 +107,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">6. 개인정보 보호책임자</h2>
               <p className="mb-4">
-                올록은 개인정보 처리에 관한 업무를 총괄해서 책임지고,
+                알록은 개인정보 처리에 관한 업무를 총괄해서 책임지고,
                 개인정보 처리와 관련한 정보주체의 불만처리 및 피해구제를 위하여
                 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.
               </p>

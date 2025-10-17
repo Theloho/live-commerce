@@ -77,7 +77,7 @@ export default function CookieConsent() {
               <div className="flex-1">
                 <h3 className="text-lg font-bold mb-2">🍪 쿠키 사용 안내</h3>
                 <p className="text-sm text-gray-300 leading-relaxed">
-                  올록은 웹사이트 기능 개선과 사용자 경험 향상을 위해 쿠키와 유사 기술을 사용합니다.{' '}
+                  알록은 웹사이트 기능 개선과 사용자 경험 향상을 위해 쿠키와 유사 기술을 사용합니다.{' '}
                   계속 이용하시면 쿠키 사용에 동의하는 것으로 간주됩니다.{' '}
                   <Link href="/privacy" className="underline hover:text-blue-400 transition-colors">
                     개인정보 처리방침
