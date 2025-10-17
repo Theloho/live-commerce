@@ -22,32 +22,25 @@ export default function Home() {
 
   // 직접 세션 확인 (모바일 최적화)
   const checkUserSession = async () => {
-    console.log('🏠 [홈] 세션 확인 시작')
     try {
       // 📱 모바일: sessionStorage 접근 가능 여부 확인
       if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined') {
-        console.warn('⚠️ [홈] sessionStorage 사용 불가')
         setUserSession(null)
         setSessionLoading(false)
         return
       }
 
       const storedUser = sessionStorage.getItem('user')
-      console.log('🔍 [홈] sessionStorage.getItem("user"):', storedUser ? '있음' : '없음')
 
       if (storedUser) {
         const userData = JSON.parse(storedUser)
-        console.log('✅ [홈] sessionStorage 사용자:', userData?.id)
         setUserSession(userData)
       } else {
-        console.log('⚠️ [홈] sessionStorage에 user 없음')
         setUserSession(null)
       }
     } catch (error) {
-      console.error('❌ [홈] 세션 확인 오류:', error)
       setUserSession(null)
     } finally {
-      console.log('✅ [홈] 세션 로딩 완료')
       setSessionLoading(false)
     }
   }
@@ -81,23 +74,10 @@ export default function Home() {
 
   if (sessionLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 mb-4">세션 확인 중...</p>
-
-          {/* 🔍 모바일 디버깅 정보 */}
-          <div className="mt-6 bg-white border border-gray-300 rounded-lg p-4 text-left text-xs">
-            <p className="font-bold mb-2 text-blue-600">🏠 홈 로딩 디버깅:</p>
-            <div className="space-y-1 text-gray-700">
-              <p>🔐 sessionLoading: {sessionLoading ? '🔄 로딩중' : '✅ 완료'}</p>
-              <p>👤 userSession: {userSession?.id ? '✅ 있음 (' + userSession.id + ')' : '❌ 없음'}</p>
-              <p>🔄 isAuthenticated: {isAuthenticated ? '✅ 인증됨' : '❌ 미인증'}</p>
-              <p className="mt-2 text-blue-600">
-                🕐 {new Date().toLocaleTimeString('ko-KR')}
-              </p>
-            </div>
-          </div>
+          <p className="text-gray-600">세션 확인 중...</p>
         </div>
       </div>
     )
@@ -108,22 +88,9 @@ export default function Home() {
       <div className="min-h-screen bg-gray-50">
         <Header />
         <main className="px-4 pt-4">
-          <div className="text-center py-12 max-w-md mx-auto">
+          <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-            <p className="text-gray-600 mb-4">상품을 불러오는 중...</p>
-
-            {/* 🔍 모바일 디버깅 정보 */}
-            <div className="mt-6 bg-white border border-gray-300 rounded-lg p-4 text-left text-xs">
-              <p className="font-bold mb-2 text-green-600">🛍️ 상품 로딩 디버깅:</p>
-              <div className="space-y-1 text-gray-700">
-                <p>📦 products loading: {loading ? '🔄 로딩중' : '✅ 완료'}</p>
-                <p>👤 userSession: {userSession?.id ? '✅ 있음' : '❌ 없음'}</p>
-                <p>🔄 isAuthenticated: {isAuthenticated ? '✅ 인증됨' : '❌ 미인증'}</p>
-                <p className="mt-2 text-green-600">
-                  🕐 {new Date().toLocaleTimeString('ko-KR')}
-                </p>
-              </div>
-            </div>
+            <p className="text-gray-600">상품을 불러오는 중...</p>
           </div>
         </main>
         <MobileNav />

@@ -219,8 +219,6 @@ export default function MyPage() {
         }
       } else {
         // ⚡ 모바일 최적화: API Route로 업데이트
-        console.log('📱 [마이페이지] 프로필 필드 업데이트 API 호출:', { field, value: editValues[field] })
-
         const response = await fetch('/api/profile/complete', {
           method: 'POST',
           headers: {
@@ -234,12 +232,10 @@ export default function MyPage() {
 
         if (!response.ok) {
           const errorData = await response.json()
-          console.error('📱 [마이페이지] API 오류:', errorData)
           throw new Error(errorData.error || '정보 수정 실패')
         }
 
-        const result = await response.json()
-        console.log('📱 [마이페이지] API 응답 성공:', result)
+        await response.json()
 
         // UI 상태 업데이트
         const isKakaoUser = currentUser?.provider === 'kakao'
@@ -260,7 +256,6 @@ export default function MyPage() {
       toast.success('정보가 수정되었습니다')
 
     } catch (error) {
-      console.error('📱 [마이페이지] 정보 수정 실패:', error)
       toast.error(`정보 수정에 실패했습니다: ${error.message}`)
     }
   }
@@ -274,11 +269,8 @@ export default function MyPage() {
     const confirmed = window.confirm('로그아웃하시겠습니까?')
     if (confirmed) {
       try {
-        console.log('🚪 [로그아웃] 시작')
-
         // 1. sessionStorage 정리
         sessionStorage.removeItem('user')
-        console.log('✅ [로그아웃] sessionStorage 정리 완료')
 
         // 2. 로컬 상태 정리
         setUserSession(null)
@@ -286,19 +278,15 @@ export default function MyPage() {
 
         // 3. 다른 컴포넌트에 로그아웃 알림 (이벤트 발생)
         window.dispatchEvent(new CustomEvent('userLoggedOut'))
-        console.log('✅ [로그아웃] userLoggedOut 이벤트 발생')
 
         // 4. Supabase Auth 로그아웃
-        const result = await signOut()
-        console.log('✅ [로그아웃] Supabase signOut 완료:', result)
+        await signOut()
 
         // 5. 성공 메시지 및 리다이렉트
         toast.success('로그아웃되었습니다')
-        console.log('✅ [로그아웃] 홈으로 리다이렉트')
         router.push('/')
 
       } catch (error) {
-        console.error('❌ [로그아웃] 오류:', error)
         // 오류가 발생해도 클라이언트 상태는 정리되었으므로 홈으로 이동
         toast.info('로그아웃되었습니다')
         router.push('/')
@@ -505,8 +493,6 @@ export default function MyPage() {
                   const currentUser = userSession || user
                   if (!currentUser?.id) return
 
-                  console.log('📱 [마이페이지] 주소 업데이트 API 호출:', newAddresses)
-
                   // ⚡ API Route로 업데이트 (모바일 안전)
                   const response = await fetch('/api/profile/complete', {
                     method: 'POST',
@@ -521,12 +507,10 @@ export default function MyPage() {
 
                   if (!response.ok) {
                     const errorData = await response.json()
-                    console.error('📱 [마이페이지] API 오류:', errorData)
                     throw new Error(errorData.error || '주소 저장 실패')
                   }
 
-                  const result = await response.json()
-                  console.log('📱 [마이페이지] API 응답 성공:', result)
+                  await response.json()
 
                   // userProfile state 동기화 (새로고침 없이 최신 상태 유지)
                   setUserProfile(prev => ({
@@ -544,7 +528,6 @@ export default function MyPage() {
                     sessionStorage.setItem('user', JSON.stringify(updatedUser))
                   }
                 } catch (error) {
-                  console.error('📱 [마이페이지] 주소 저장 실패:', error)
                   toast.error(`주소 저장에 실패했습니다: ${error.message}`)
                 }
               }}
