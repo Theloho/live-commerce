@@ -233,8 +233,22 @@ export default function CheckoutPage() {
               }
               addresses = [legacyAddress]
 
-              // 마이그레이션된 주소를 데이터베이스에 저장 (중앙화 모듈 사용)
-              await UserProfileManager.updateProfile(currentUser.id, { addresses })
+              // ⚡ 모바일 최적화: API Route로 마이그레이션 저장
+              try {
+                const response = await fetch('/api/profile/complete', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: currentUser.id,
+                    profileData: { addresses }
+                  })
+                })
+                if (!response.ok) {
+                  console.warn('📱 주소 마이그레이션 저장 실패 (진행 계속)')
+                }
+              } catch (error) {
+                console.warn('📱 주소 마이그레이션 오류 (진행 계속):', error)
+              }
 
               migrationDone.current = true // 완료 표시
             }
@@ -464,9 +478,15 @@ export default function CheckoutPage() {
           }
           addresses = [defaultAddress]
 
-          // 백그라운드에서 마이그레이션 저장 (blocking 하지 않음)
-          UserProfileManager.updateProfile(currentUser.id, { addresses })
-            .catch(console.warn) // 실패해도 진행
+          // ⚡ 모바일 최적화: 백그라운드에서 API Route로 마이그레이션 저장
+          fetch('/api/profile/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: currentUser.id,
+              profileData: { addresses }
+            })
+          }).catch(console.warn) // 실패해도 진행
         }
 
         return addresses
