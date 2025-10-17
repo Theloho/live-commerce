@@ -68,11 +68,19 @@ export default function AdminOrderDetailPage() {
         const foundOrder = data.orders[0]
 
         // 데이터 포맷팅 (기존 getOrderById와 동일한 형식으로)
+        // ✅ order_shipping과 order_payments는 배열로 반환되므로 첫 번째 요소 추출
+        const shippingData = Array.isArray(foundOrder.order_shipping)
+          ? foundOrder.order_shipping[0]
+          : foundOrder.order_shipping
+        const paymentData = Array.isArray(foundOrder.order_payments)
+          ? foundOrder.order_payments[0]
+          : foundOrder.order_payments
+
         const formattedOrder = {
           ...foundOrder,
-          userName: foundOrder.userProfile?.name || foundOrder.order_shipping?.name || '정보없음',
+          userName: foundOrder.userProfile?.name || shippingData?.name || '정보없음',
           userNickname: foundOrder.userProfile?.nickname || '정보없음',
-          depositName: foundOrder.order_payments?.depositor_name || foundOrder.depositName,
+          depositName: paymentData?.depositor_name || foundOrder.depositName,
           discount_amount: foundOrder.discount_amount || 0,
           is_free_shipping: foundOrder.is_free_shipping || false,  // ✅ 무료배송 플래그
           items: (foundOrder.order_items || []).map(item => ({
@@ -82,8 +90,8 @@ export default function AdminOrderDetailPage() {
             price: item.price || item.unit_price || item.products?.price || 0,
             quantity: item.quantity || 1
           })),
-          shipping: foundOrder.order_shipping,
-          payment: foundOrder.order_payments
+          shipping: shippingData,
+          payment: paymentData
         }
 
         setOrder(formattedOrder)

@@ -190,14 +190,16 @@ export async function GET(request) {
 
         return {
           ...order,
-          profiles: profileInfo  // fulfillmentGrouping.js에서 사용
+          profiles: profileInfo,  // fulfillmentGrouping.js에서 사용
+          userProfile: profileInfo  // 관리자 주문 상세, 입금확인, 발송관리에서 사용
         }
       } catch (error) {
         console.error(`주문 처리 중 에러 (index: ${index}, order_id: ${order.id}):`, error)
         // 에러가 발생해도 기본 주문 데이터는 반환
         return {
           ...order,
-          profiles: null
+          profiles: null,
+          userProfile: null
         }
       }
     }))
