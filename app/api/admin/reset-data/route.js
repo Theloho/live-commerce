@@ -122,20 +122,66 @@ export async function POST(request) {
     }
 
     // ====================================
-    // Phase 2: 사용자 프로필 정리 (관리자 제외)
+    // Phase 2: 사용자 완전 삭제 (auth.users + profiles, 관리자 제외)
     // ====================================
 
-    console.log('🗑️ 7. profiles 정리 (관리자 제외)...')
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .delete()
-      .eq('is_admin', false)  // ⭐ 관리자가 아닌 사용자만 삭제
+    console.log('🗑️ 7. 일반 사용자 완전 삭제 (auth.users + profiles)...')
 
-    if (profileError) {
-      results.errors.push({ table: 'profiles', error: profileError.message })
+    // 7-1. 먼저 삭제할 일반 사용자 목록 조회
+    const { data: usersToDelete, error: fetchError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, name')
+      .eq('is_admin', false)
+
+    if (fetchError) {
+      results.errors.push({ table: 'profiles (fetch)', error: fetchError.message })
+    } else if (usersToDelete && usersToDelete.length > 0) {
+      console.log(`📋 삭제 대상 사용자: ${usersToDelete.length}명`)
+
+      // 7-2. auth.users에서 각 사용자 삭제
+      let deletedAuthUsers = 0
+      let failedAuthUsers = 0
+
+      for (const user of usersToDelete) {
+        try {
+          const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id)
+
+          if (authDeleteError) {
+            console.error(`❌ auth.users 삭제 실패 (${user.email}):`, authDeleteError.message)
+            failedAuthUsers++
+          } else {
+            console.log(`✅ auth.users 삭제 성공: ${user.email}`)
+            deletedAuthUsers++
+          }
+        } catch (error) {
+          console.error(`❌ auth.users 삭제 오류 (${user.email}):`, error.message)
+          failedAuthUsers++
+        }
+      }
+
+      results.deleted.push(`auth.users (일반 사용자 ${deletedAuthUsers}명)`)
+      if (failedAuthUsers > 0) {
+        results.errors.push({
+          table: 'auth.users',
+          error: `${failedAuthUsers}명 삭제 실패`
+        })
+      }
+
+      // 7-3. profiles 테이블에서 일반 사용자 삭제
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('is_admin', false)
+
+      if (profileError) {
+        results.errors.push({ table: 'profiles', error: profileError.message })
+      } else {
+        results.deleted.push('profiles (일반 사용자)')
+        results.preserved.push('profiles (관리자)')
+      }
     } else {
-      results.deleted.push('profiles (일반 사용자)')
-      results.preserved.push('profiles (관리자)')
+      console.log('ℹ️ 삭제할 일반 사용자가 없습니다')
+      results.preserved.push('profiles (관리자만 존재)')
     }
 
     // ====================================
@@ -262,10 +308,13 @@ export async function POST(request) {
     // Phase 6: 보존된 데이터 확인
     // ====================================
 
+    results.preserved.push('auth.users (관리자 계정)')
     results.preserved.push('admins (모든 관리자 계정)')
     results.preserved.push('admin_sessions')
     results.preserved.push('categories (카테고리 마스터) ⭐')
-    results.preserved.push('profiles (관리자만)')
+    if (!results.preserved.includes('profiles (관리자)')) {
+      results.preserved.push('profiles (관리자)')
+    }
 
     console.log('🎉 데이터베이스 초기화 완료!')
     console.log('✅ 삭제된 테이블:', results.deleted)
