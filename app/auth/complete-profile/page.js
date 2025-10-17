@@ -111,35 +111,36 @@ export default function CompleteProfilePage() {
     setLoading(true)
 
     try {
-      console.log('프로필 완성 시작:', formData)
+      console.log('📱 [모바일] 프로필 완성 시작:', formData)
 
       // 카카오 로그인 사용자인지 확인
       const sessionUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+      console.log('📱 [모바일] sessionUser:', sessionUser)
 
       if (sessionUser.provider === 'kakao' && sessionUser.id) {
         // 🚀 새로운 통합 프로필 업데이트 사용
-        console.log('🔄 카카오 사용자 통합 프로필 업데이트 시작')
+        console.log('📱 [모바일] 카카오 사용자 통합 프로필 업데이트 시작')
 
-        await UserProfileManager.atomicProfileUpdate(
-          sessionUser.id,
-          {
-            name: formData.name,
-            phone: formData.phone,
-            nickname: formData.nickname || formData.name,
-            address: formData.address,
-            detail_address: formData.detailAddress || ''
-          },
-          true // 카카오 사용자
-        )
-
-        // 프로필 완성 이벤트 발생
-        const updatedUser = {
-          ...sessionUser,
+        const updateData = {
           name: formData.name,
           phone: formData.phone,
           nickname: formData.nickname || formData.name,
           address: formData.address,
-          detail_address: formData.detailAddress || '',
+          detail_address: formData.detailAddress || ''
+        }
+        console.log('📱 [모바일] updateData:', updateData)
+
+        const result = await UserProfileManager.atomicProfileUpdate(
+          sessionUser.id,
+          updateData,
+          true // 카카오 사용자
+        )
+        console.log('📱 [모바일] atomicProfileUpdate 결과:', result)
+
+        // 프로필 완성 이벤트 발생
+        const updatedUser = {
+          ...sessionUser,
+          ...updateData,
           profile_completed: true
         }
 
@@ -147,11 +148,11 @@ export default function CompleteProfilePage() {
           detail: updatedUser
         }))
 
-        console.log('✅ 카카오 사용자 프로필 완성 완료')
+        console.log('✅ [모바일] 카카오 사용자 프로필 완성 완료')
 
       } else {
         // 🚀 일반 Supabase 사용자도 통합 프로필 업데이트 사용
-        console.log('🔄 일반 사용자 통합 프로필 업데이트 시작')
+        console.log('📱 [모바일] 일반 사용자 통합 프로필 업데이트 시작')
 
         await UserProfileManager.atomicProfileUpdate(
           user.id,
@@ -165,15 +166,19 @@ export default function CompleteProfilePage() {
           false // 일반 사용자
         )
 
-        console.log('✅ 일반 사용자 프로필 완성 완료')
+        console.log('✅ [모바일] 일반 사용자 프로필 완성 완료')
       }
 
+      console.log('📱 [모바일] 홈으로 리다이렉트')
       toast.success('프로필이 완성되었습니다!')
       router.push('/')
 
     } catch (error) {
-      console.error('프로필 완성 오류:', error)
-      toast.error('프로필 저장 중 오류가 발생했습니다')
+      console.error('❌ [모바일] 프로필 완성 오류:', error)
+      console.error('❌ [모바일] 에러 상세:', error.message, error.stack)
+      // 모바일에서 에러를 명확히 보기 위해
+      alert(`프로필 저장 실패: ${error.message}`)
+      toast.error(`프로필 저장 중 오류: ${error.message}`)
     } finally {
       setLoading(false)
     }
