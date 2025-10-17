@@ -571,6 +571,117 @@
 
 ---
 
+### 3.1.3 analytics.js ⭐ NEW (2025-10-17)
+- **파일**: `/Users/jt/live-commerce/lib/analytics.js`
+- **목적**: Google Analytics 4 이벤트 추적 통합
+- **총 9개 함수**
+
+**주요 함수**:
+
+1. **`isGALoaded()`**
+   - GA 로드 여부 확인
+   - `typeof window.gtag === 'function'`
+
+2. **`trackPageView(url)`**
+   - 페이지뷰 추적
+   - gtag('config', GA_ID, { page_path })
+
+3. **`trackViewItem(product)` ⭐ 상품 조회**
+   - GA4 이벤트: `view_item`
+   - 파라미터: `{ currency: 'KRW', value, items }`
+   - 호출 위치: ProductCard.jsx (handleBuyClick)
+   - 로그: `📊 GA - 상품 조회: ${product.title}`
+
+4. **`trackAddToCart(product, quantity)` ⭐ 장바구니 추가**
+   - GA4 이벤트: `add_to_cart`
+   - 파라미터: `{ currency: 'KRW', value: price * quantity, items }`
+   - 호출 위치: ProductCard.jsx (handleAddToCart)
+   - 로그: `📊 GA - 장바구니 추가: ${product.title} 수량: ${quantity}`
+
+5. **`trackBeginCheckout(items, totalAmount)` ⭐ 결제 시작**
+   - GA4 이벤트: `begin_checkout`
+   - 파라미터: `{ currency: 'KRW', value, items }`
+   - 호출 위치: checkout/page.js (useEffect)
+   - 로그: `📊 GA - 결제 시작: ${items.length}개 상품, 금액: ${totalAmount}`
+   - items 변환: `{ item_id, item_name, price, quantity }`
+
+6. **`trackPurchase(order)` ⭐ 구매 완료**
+   - GA4 이벤트: `purchase`
+   - 파라미터:
+     ```javascript
+     {
+       transaction_id: order.id,
+       value: order.total_amount,
+       currency: 'KRW',
+       shipping: order.shipping_fee || 0,
+       items: [...]
+     }
+     ```
+   - 호출 위치: orders/[id]/complete/page.js (useEffect)
+   - 로그: `📊 GA - 구매 완료: ${order.id} 금액: ${order.total_amount}`
+
+7. **`trackSearch(searchTerm)`**
+   - GA4 이벤트: `search`
+   - 파라미터: `{ search_term }`
+   - 로그: `📊 GA - 검색: ${searchTerm}`
+
+8. **`trackCouponUse(coupon, discountAmount)` ⭐ 쿠폰 사용**
+   - GA4 이벤트: `coupon_use` (커스텀)
+   - 파라미터:
+     ```javascript
+     {
+       coupon_code: coupon.code,
+       discount_type: coupon.discount_type,
+       discount_amount: discountAmount
+     }
+     ```
+   - 호출 위치: checkout/page.js (handleApplyCoupon)
+   - 로그: `📊 GA - 쿠폰 사용: ${coupon.code} 할인: ${discountAmount}`
+
+9. **`trackLiveView(broadcastId, broadcastTitle)`**
+   - GA4 이벤트: `live_view` (커스텀)
+   - 파라미터: `{ broadcast_id, broadcast_title }`
+   - 로그: `📊 GA - 라이브 시청: ${broadcastTitle}`
+
+10. **`trackEvent(eventName, params)`**
+    - 범용 커스텀 이벤트 추적
+    - 로그: `📊 GA - 커스텀 이벤트: ${eventName}`
+
+**전자상거래 퍼널 완성**:
+```
+view_item → add_to_cart → begin_checkout → [coupon_use] → purchase
+```
+
+**사용 예시**:
+```javascript
+// 상품 조회 (ProductCard.jsx)
+import { trackViewItem } from '@/lib/analytics'
+trackViewItem(product)
+
+// 결제 시작 (checkout/page.js)
+import { trackBeginCheckout } from '@/lib/analytics'
+useEffect(() => {
+  if (orderData) {
+    trackBeginCheckout(items, totalAmount)
+  }
+}, [orderData])
+
+// 구매 완료 (orders/[id]/complete/page.js)
+import { trackPurchase } from '@/lib/analytics'
+useEffect(() => {
+  if (orderData && !loading) {
+    trackPurchase({
+      id: orderData.id,
+      total_amount: finalAmount,
+      shipping_fee: shippingFee,
+      items: orderData.items
+    })
+  }
+}, [orderData, loading])
+```
+
+---
+
 ### 3.2 데이터베이스 API
 
 #### 3.2.1 supabaseApi.js

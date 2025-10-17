@@ -34,21 +34,7 @@ function OrdersContent() {
   const [filterStatus, setFilterStatus] = useState('pending')
   const [selectedGroupOrder, setSelectedGroupOrder] = useState(null)
 
-  // 🔍 RLS 디버그: auth.uid() 확인
-  useEffect(() => {
-    const checkAuthSession = async () => {
-      const { supabase } = await import('@/lib/supabase')
-      const { data: sessionData } = await supabase.auth.getSession()
-      console.log('🔍 [주문목록] Auth 세션 상태:', {
-        hasSession: !!sessionData?.session,
-        authUid: sessionData?.session?.user?.id || 'NULL',
-        sessionStorageUser: sessionStorage.getItem('user') ? 'EXISTS' : 'NULL',
-        isAuthenticated,
-        userFromHook: user?.id || 'NULL'
-      })
-    }
-    checkAuthSession()
-  }, [])
+  // RLS 디버그 제거 (프로덕션 성능 최적화)
 
   // 🚀 통합된 고성능 초기화 (모든 useEffect 통합)
   useEffect(() => {
@@ -72,7 +58,7 @@ function OrdersContent() {
 
         logger.info('✅ 주문내역 고속 초기화 완료')
       } catch (error) {
-        console.error('❌ 주문내역 초기화 실패:', error)
+        logger.error('주문내역 초기화 실패:', error)
         toast.error('주문내역을 불러오는 중 오류가 발생했습니다')
         setOrders([])
       } finally {
@@ -91,7 +77,7 @@ function OrdersContent() {
         }
         return { sessionUser }
       } catch (error) {
-        console.warn('세션 로드 실패:', error)
+        logger.warn('세션 로드 실패:', error)
         setUserSession(null)
         return { sessionUser: null }
       }
@@ -135,7 +121,7 @@ function OrdersContent() {
         setOrders(ordersData)
         return ordersData
       } catch (error) {
-        console.error('주문 데이터 로드 오류:', error)
+        logger.error('주문 데이터 로드 오류:', error)
         setOrders([])
         throw error
       }
@@ -145,7 +131,7 @@ function OrdersContent() {
     const setupFocusRefresh = () => {
       const handleFocus = () => {
         if (!pageLoading && (userSession || isAuthenticated)) {
-          loadOrdersDataFast(userSession || user).catch(console.warn)
+          loadOrdersDataFast(userSession || user).catch(err => logger.warn('주문 새로고침 실패:', err))
         }
       }
 
@@ -177,7 +163,7 @@ function OrdersContent() {
         }
       }
     } catch (error) {
-      console.warn('주문 새로고침 실패:', error)
+      logger.warn('주문 새로고침 실패:', error)
       setPageLoading(false)
     }
   }
@@ -288,7 +274,7 @@ function OrdersContent() {
         setOrders(updatedOrders)
       }
     } catch (error) {
-      console.error('주문 취소 중 오류:', error)
+      logger.error('주문 취소 중 오류:', error)
       toast.error('주문 취소 중 오류가 발생했습니다')
     }
   }
@@ -342,7 +328,7 @@ function OrdersContent() {
       toast.success(`${pendingOrders.length}개 주문 (총 ₩${totalPrice.toLocaleString()})을 결제합니다`)
       router.push('/checkout')
     } catch (error) {
-      console.error('SessionStorage 저장 실패:', error)
+      logger.error('SessionStorage 저장 실패:', error)
       // 용량 초과 시 sessionStorage 비우고 다시 시도
       sessionStorage.clear()
       try {

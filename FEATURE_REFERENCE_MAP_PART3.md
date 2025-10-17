@@ -871,6 +871,234 @@ coupons.total_used_count 증가
 
 ---
 
+---
+
+## 9. 통계 및 분석 관련 기능
+
+### 9.1 Google Analytics 4 통합 ⭐ [주요] (2025-10-17 신규)
+
+#### 📍 영향받는 페이지
+1. **전체 페이지** - GoogleAnalytics 컴포넌트 (글로벌)
+2. `/` - 홈페이지
+3. `/app/components/product/ProductCard.jsx` - 상품 조회, 장바구니 추가
+4. `/checkout` - 결제 시작, 쿠폰 사용
+5. `/orders/[id]/complete` - 구매 완료
+
+#### 🔧 핵심 컴포넌트 및 함수 체인
+
+##### GoogleAnalytics 컴포넌트
+```javascript
+// /app/components/GoogleAnalytics.jsx
+export default function GoogleAnalytics() {
+  return (
+    <>
+      {/* Google Tag Manager Script */}
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
+        strategy="afterInteractive"
+      />
+
+      {/* GA4 Initialization */}
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${measurementId}');
+        `}
+      </Script>
+    </>
+  )
+}
+```
+
+##### Analytics 유틸리티 함수
+```javascript
+// /lib/analytics.js - 전자상거래 이벤트 추적
+
+1. trackPageView(url)
+   - 페이지뷰 추적
+   - gtag('config', GA_ID, { page_path: url })
+
+2. trackViewItem(product) ⭐ 상품 조회
+   - 이벤트: 'view_item'
+   - 파라미터: { currency: 'KRW', value, items }
+   - 호출 위치: ProductCard.jsx (handleBuyClick)
+
+3. trackAddToCart(product, quantity) ⭐ 장바구니 추가
+   - 이벤트: 'add_to_cart'
+   - 파라미터: { currency: 'KRW', value, items }
+   - 호출 위치: ProductCard.jsx (handleAddToCart)
+
+4. trackBeginCheckout(items, totalAmount) ⭐ 결제 시작
+   - 이벤트: 'begin_checkout'
+   - 파라미터: { currency: 'KRW', value, items }
+   - 호출 위치: checkout/page.js (useEffect)
+
+5. trackCouponUse(coupon, discountAmount) ⭐ 쿠폰 사용
+   - 이벤트: 'coupon_use'
+   - 파라미터: { coupon_code, discount_type, discount_amount }
+   - 호출 위치: checkout/page.js (handleApplyCoupon)
+
+6. trackPurchase(order) ⭐ 구매 완료
+   - 이벤트: 'purchase'
+   - 파라미터: { transaction_id, value, currency, shipping, items }
+   - 호출 위치: orders/[id]/complete/page.js (useEffect)
+
+7. trackSearch(searchTerm)
+   - 이벤트: 'search'
+   - 파라미터: { search_term }
+
+8. trackEvent(eventName, params)
+   - 커스텀 이벤트 추적
+
+9. trackLiveView(broadcastId, broadcastTitle)
+   - 라이브 방송 시청 이벤트
+   - 이벤트: 'live_view'
+```
+
+#### 📊 전자상거래 퍼널 완성
+
+```mermaid
+graph TD
+    A[상품 조회 view_item] --> B[장바구니 추가 add_to_cart]
+    B --> C[결제 시작 begin_checkout]
+    C --> D{쿠폰 사용?}
+    D -->|Yes| E[쿠폰 사용 coupon_use]
+    D -->|No| F[구매 완료 purchase]
+    E --> F
+```
+
+#### 🗄️ 환경 변수
+```bash
+# Vercel 또는 .env.local에 추가 필수
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-H8TT6EQCTH
+```
+
+#### ⚠️ 필수 체크리스트
+- [x] GoogleAnalytics 컴포넌트 생성
+- [x] CookieConsent 컴포넌트 생성 (GDPR 준수)
+- [x] Layout에 GA 컴포넌트 추가 (`<head>`)
+- [x] analytics.js 유틸리티 함수 생성 (9개)
+- [x] 개인정보 처리방침 페이지 생성 (`/privacy`)
+- [x] 환경변수 추가 (`NEXT_PUBLIC_GA_MEASUREMENT_ID`)
+- [x] 상품 카드에 trackViewItem 추가
+- [x] 장바구니 버튼에 trackAddToCart 추가
+- [x] 체크아웃 페이지에 trackBeginCheckout 추가
+- [x] 쿠폰 사용 시 trackCouponUse 추가
+- [x] 주문 완료 페이지에 trackPurchase 추가
+
+#### 🔗 연관 기능
+- **쿠폰 시스템** (trackCouponUse)
+- **주문 생성** (trackPurchase)
+- **주문 계산** (OrderCalculations 사용)
+
+#### 💡 특이사항
+- **쿠키 동의**: 사용자가 쿠키 동의 전까지 GA 로드 안 됨
+- **Consent Mode**: gtag('consent', 'update', { analytics_storage: 'granted' })
+- **금액 계산**: OrderCalculations 모듈로 정확한 금액 전송
+- **쿠폰 할인**: 배송비 제외한 할인 금액 정확히 추적
+- **디버깅**: 콘솔에 "📊 GA - ..." 로그 출력
+
+#### 📝 최근 수정 이력
+- 2025-10-17: GA4 완전 통합
+  - GoogleAnalytics 컴포넌트 생성
+  - CookieConsent 컴포넌트 생성
+  - analytics.js 유틸리티 9개 함수 생성
+  - 전자상거래 이벤트 5개 추가
+  - 개인정보 처리방침 페이지 생성
+
+#### 🎓 상세 문서 위치
+- **컴포넌트**:
+  - `app/components/GoogleAnalytics.jsx`
+  - `app/components/CookieConsent.jsx`
+- **유틸리티**: `lib/analytics.js`
+- **레이아웃**: `app/layout.js` (GoogleAnalytics, CookieConsent)
+- **페이지**:
+  - `app/privacy/page.js` (개인정보 처리방침)
+  - `app/components/product/ProductCard.jsx:236, 161` (상품 조회, 장바구니)
+  - `app/checkout/page.js` (결제 시작, 쿠폰 사용)
+  - `app/orders/[id]/complete/page.js:154-185` (구매 완료)
+- **데이터 흐름**: DETAILED_DATA_FLOW.md § GA4 이벤트 추적
+
+---
+
+### 9.2 GA4 실시간 보고서 확인 [일반]
+
+#### 📍 확인 방법
+1. Google Analytics 대시보드 접속
+2. 보고서 → 실시간
+3. 이벤트 발생 확인:
+   - `view_item` - 상품 조회
+   - `add_to_cart` - 장바구니 추가
+   - `begin_checkout` - 결제 시작
+   - `coupon_use` - 쿠폰 사용
+   - `purchase` - 구매 완료
+
+#### 🔧 디버깅 방법
+```javascript
+// 브라우저 개발자 도구 콘솔에서 확인
+// 📊 GA - 상품 조회: [상품명]
+// 📊 GA - 장바구니 추가: [상품명] 수량: 1
+// 📊 GA - 결제 시작: [아이템 수]개 상품, 금액: [총액]
+// 📊 GA - 쿠폰 사용: [쿠폰코드] 할인: [할인금액]
+// 📊 GA - 구매 완료: [주문ID] 금액: [총액]
+```
+
+---
+
+### 9.3 쿠키 동의 관리 ⭐ [주요]
+
+#### 📍 영향받는 페이지
+1. 전체 페이지 - CookieConsent 컴포넌트 (하단 고정)
+2. `/privacy` - 개인정보 처리방침
+
+#### 🔧 핵심 기능
+```javascript
+// /app/components/CookieConsent.jsx
+const CookieConsent = () => {
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    // localStorage 확인
+    const consent = localStorage.getItem('cookie-consent')
+    if (!consent) {
+      setIsVisible(true)
+    } else if (consent === 'accepted') {
+      // GA 활성화
+      window.gtag('consent', 'update', {
+        analytics_storage: 'granted'
+      })
+    }
+  }, [])
+
+  const acceptCookies = () => {
+    localStorage.setItem('cookie-consent', 'accepted')
+    window.gtag('consent', 'update', {
+      analytics_storage: 'granted'
+    })
+    setIsVisible(false)
+  }
+
+  const declineCookies = () => {
+    localStorage.setItem('cookie-consent', 'declined')
+    setIsVisible(false)
+  }
+
+  return (
+    // 하단 고정 배너 UI
+  )
+}
+```
+
+#### ⚠️ 준수 사항
+- **GDPR**: EU 사용자 쿠키 동의 필수
+- **개인정보보호법**: 한국 사용자 쿠키 사용 안내 필수
+- **Google Analytics 개인정보 보호정책**: 링크 제공
+- **동의 철회**: 사용자가 언제든 철회 가능해야 함
+
+---
+
 **문서화 완료율**: 100%
-**최종 업데이트**: 2025-10-08 (오후 - 웰컴 쿠폰 자동 지급 기능 추가)
-**총 기능 수**: 쿠폰 관련 11개 (8.11 웰컴 쿠폰 자동 지급 추가)
+**최종 업데이트**: 2025-10-17 (GA4 통합 완료)
+**총 기능 수**: 88개 (쿠폰 11개 + 배송 5개 + 통계/분석 3개)

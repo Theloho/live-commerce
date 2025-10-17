@@ -24,25 +24,13 @@ import { getUserCoupons, validateCoupon, applyCouponUsage } from '@/lib/couponAp
 import { OrderCalculations } from '@/lib/orderCalculations'
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
+import { trackBeginCheckout, trackCouponUse } from '@/lib/analytics'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
 
-  // 🔍 RLS 디버그: auth.uid() 확인
-  useEffect(() => {
-    const checkAuthSession = async () => {
-      const { data: sessionData } = await supabase.auth.getSession()
-      console.log('🔍 [체크아웃] Auth 세션 상태:', {
-        hasSession: !!sessionData?.session,
-        authUid: sessionData?.session?.user?.id || 'NULL',
-        sessionStorageUser: sessionStorage.getItem('user') ? 'EXISTS' : 'NULL',
-        isAuthenticated,
-        userFromHook: user?.id || 'NULL'
-      })
-    }
-    checkAuthSession()
-  }, [])
+  // RLS 디버그 제거 (프로덕션 성능 최적화)
   const [orderItem, setOrderItem] = useState(null)
   const [userProfile, setUserProfile] = useState({
     name: '',
@@ -90,7 +78,7 @@ export default function CheckoutPage() {
 
         logger.debug('체크아웃 초기화 완료')
       } catch (error) {
-        console.error('❌ 체크아웃 초기화 실패:', error)
+        logger.error('체크아웃 초기화 실패:', error)
         toast.error('페이지 로딩 중 오류가 발생했습니다')
         router.push('/')
       } finally {
@@ -118,7 +106,7 @@ export default function CheckoutPage() {
 
         return { sessionUser }
       } catch (error) {
-        console.error('세션 데이터 로드 오류:', error)
+        logger.error('세션 데이터 로드 오류:', error)
         setUserSession(null)
         return null
       }
@@ -153,7 +141,7 @@ export default function CheckoutPage() {
 
         // 필수 필드 검증 (일괄결제의 경우 totalPrice만 있을 수 있음)
         if (!parsedOrderItem.title || (!parsedOrderItem.price && !parsedOrderItem.totalPrice)) {
-          console.error('주문 아이템에 필수 필드가 없습니다:', parsedOrderItem)
+          logger.error('주문 아이템에 필수 필드가 없습니다')
           toast.error('주문 정보가 올바르지 않습니다')
           router.push('/')
           return
@@ -166,7 +154,7 @@ export default function CheckoutPage() {
 
         setOrderItem(parsedOrderItem)
       } catch (error) {
-        console.error('주문 데이터 파싱 오류:', error)
+        logger.error('주문 데이터 파싱 오류:', error)
         toast.error('주문 정보를 읽을 수 없습니다')
         router.push('/')
         return
@@ -183,13 +171,7 @@ export default function CheckoutPage() {
             const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
 
             if (dbProfile) {
-              console.log('✅ 체크아웃: 카카오 사용자 프로필 로드 성공:', {
-                name: dbProfile.name,
-                phone: dbProfile.phone,
-                hasAddress: !!dbProfile.address
-              })
-
-              // ✅ MyPage와 동일한 방식으로 프로필 객체 생성
+              // MyPage와 동일한 방식으로 프로필 객체 생성
               loadedProfile = {
                 name: dbProfile.name || currentUser.name || '',
                 phone: dbProfile.phone || currentUser.phone || '',
@@ -200,7 +182,6 @@ export default function CheckoutPage() {
                 postal_code: dbProfile.postal_code || ''
               }
             } else {
-              console.warn('⚠️ 데이터베이스에서 프로필을 찾을 수 없음, currentUser 사용')
               loadedProfile = {
                 name: currentUser.name || '',
                 phone: currentUser.phone || '',
@@ -212,7 +193,7 @@ export default function CheckoutPage() {
               }
             }
           } catch (error) {
-            console.error('❌ 카카오 사용자 프로필 로드 실패:', error)
+            logger.error('카카오 사용자 프로필 로드 실패:', error)
             // 오류 시 기본 프로필 사용
             loadedProfile = {
               name: currentUser.name || '',
@@ -230,7 +211,6 @@ export default function CheckoutPage() {
         }
 
         // 프로필 설정
-        console.log('🎯 체크아웃: 최종 로드된 프로필:', loadedProfile)
         setUserProfile(loadedProfile)
 
         // 주소 목록 불러오기 (중앙화 모듈 사용)
@@ -286,7 +266,7 @@ export default function CheckoutPage() {
             }
           }
         } catch (error) {
-          console.error('주소 목록 로드 오류:', error)
+          logger.error('주소 목록 로드 오류:', error)
         }
       } else {
         // 빈 프로필 설정
@@ -332,7 +312,6 @@ export default function CheckoutPage() {
           if (profileResult.status === 'fulfilled') {
             setUserProfile(profileResult.value)
           } else {
-            console.warn('⚠️ 프로필 로드 실패, 기본값 사용')
             setUserProfile(UserProfileManager.normalizeProfile(validationResult.currentUser))
           }
 
@@ -365,7 +344,7 @@ export default function CheckoutPage() {
 
         logger.debug('고성능 체크아웃 초기화 완료')
       } catch (error) {
-        console.error('❌ 체크아웃 초기화 실패:', error)
+        logger.error('체크아웃 초기화 실패:', error)
         toast.error('페이지 로딩 중 오류가 발생했습니다')
         router.push('/')
       } finally {
@@ -392,7 +371,7 @@ export default function CheckoutPage() {
 
         return { success: true, data: { sessionUser: JSON.parse(storedUser || 'null') } }
       } catch (error) {
-        console.error('세션 데이터 로드 오류:', error)
+        logger.error('세션 데이터 로드 오류:', error)
         return { success: false }
       }
     }
@@ -426,7 +405,7 @@ export default function CheckoutPage() {
 
         // 필수 필드 검증
         if (!parsedOrderItem.title || (!parsedOrderItem.price && !parsedOrderItem.totalPrice)) {
-          console.error('주문 아이템에 필수 필드가 없습니다:', parsedOrderItem)
+          logger.error('주문 아이템에 필수 필드가 없습니다')
           toast.error('주문 정보가 올바르지 않습니다')
           router.push('/')
           return { success: false }
@@ -445,7 +424,7 @@ export default function CheckoutPage() {
           orderItem: parsedOrderItem
         }
       } catch (error) {
-        console.error('주문 데이터 파싱 오류:', error)
+        logger.error('주문 데이터 파싱 오류:', error)
         toast.error('주문 정보를 읽을 수 없습니다')
         router.push('/')
         return { success: false }
@@ -492,7 +471,7 @@ export default function CheckoutPage() {
 
         return addresses
       } catch (error) {
-        console.warn('주소 로드 실패:', error)
+        logger.warn('주소 로드 실패:', error)
         return []
       }
     }
@@ -506,7 +485,7 @@ export default function CheckoutPage() {
         // 미사용 쿠폰만 필터링
         return coupons.filter(c => !c.is_used)
       } catch (error) {
-        console.warn('쿠폰 로드 실패:', error)
+        logger.warn('쿠폰 로드 실패:', error)
         return []
       }
     }
@@ -530,36 +509,20 @@ export default function CheckoutPage() {
         const { data, error } = await query.in('status', ['pending', 'verifying'])
 
         if (error) {
-          console.warn('주문 확인 실패:', error)
+          logger.warn('주문 확인 실패:', error)
           return false
         }
 
-        // ✅ 일괄결제인 경우: originalOrderIds에 포함된 주문 제외
+        // 일괄결제인 경우: originalOrderIds에 포함된 주문 제외
         let filteredOrders = data || []
         if (orderItem?.isBulkPayment && orderItem?.originalOrderIds?.length > 0) {
           const excludeIds = new Set(orderItem.originalOrderIds)
           filteredOrders = data.filter(order => !excludeIds.has(order.id))
-
-          console.log('🔍 무료배송 조건 확인 (일괄결제):', {
-            userId: currentUser.id,
-            provider: currentUser.provider,
-            totalOrders: data?.length || 0,
-            excludedOrders: orderItem.originalOrderIds.length,
-            remainingOrders: filteredOrders.length,
-            hasPendingOrders: filteredOrders.length > 0
-          })
-        } else {
-          console.log('🔍 무료배송 조건 확인:', {
-            userId: currentUser.id,
-            provider: currentUser.provider,
-            pendingOrders: data?.length || 0,
-            hasPendingOrders: (data?.length || 0) > 0
-          })
         }
 
         return filteredOrders.length > 0
       } catch (error) {
-        console.warn('주문 확인 중 오류:', error)
+        logger.warn('주문 확인 중 오류:', error)
         return false
       }
     }
@@ -587,6 +550,31 @@ export default function CheckoutPage() {
       }
     }
   }, [userProfile])
+
+  // Google Analytics: 결제 시작 이벤트
+  useEffect(() => {
+    if (orderItem && !pageLoading) {
+      const items = orderItem.isBulkPayment
+        ? [{ price: orderItem.totalPrice, quantity: 1, title: orderItem.title }]
+        : [{ price: orderItem.price, quantity: orderItem.quantity, title: orderItem.title }]
+
+      const postalCode = selectedAddress?.postal_code || userProfile?.postal_code
+      const baseShippingFee = hasPendingOrders ? 0 : 4000
+      const orderCalc = OrderCalculations.calculateFinalOrderAmount(items, {
+        region: postalCode || 'normal',
+        coupon: selectedCoupon ? {
+          type: selectedCoupon.coupon.discount_type,
+          value: selectedCoupon.coupon.discount_value,
+          maxDiscount: selectedCoupon.coupon.max_discount_amount,
+          code: selectedCoupon.coupon.code
+        } : null,
+        paymentMethod: 'transfer',
+        baseShippingFee: baseShippingFee
+      })
+
+      trackBeginCheckout(items, orderCalc.finalAmount)
+    }
+  }, [orderItem, pageLoading])
 
   if ((authLoading && !userSession) || pageLoading) {
     return (
@@ -644,13 +632,6 @@ export default function CheckoutPage() {
 
   const shippingFee = orderCalc.shippingFee
   const finalTotal = orderCalc.finalAmount
-  // couponDiscount는 이미 state로 선언됨 (line 55)
-
-  console.log('💰 체크아웃 주문 계산 (중앙화 모듈):', {
-    postalCode,
-    shippingInfo,
-    orderCalc: orderCalc.breakdown
-  })
 
   // 쿠폰 적용/해제 핸들러
   const handleApplyCoupon = async (userCoupon) => {
@@ -658,39 +639,30 @@ export default function CheckoutPage() {
       // userCoupon 구조: { id, coupon: { code, name, ... } }
       const coupon = userCoupon.coupon
 
-      // 🔒 쿠폰 데이터 검증 (RLS 문제로 JOIN 실패 시 대응)
+      // 쿠폰 데이터 검증 (RLS 문제로 JOIN 실패 시 대응)
       if (!coupon || !coupon.code || !coupon.discount_type || coupon.discount_value == null) {
-        console.error('❌ 쿠폰 데이터 불완전:', userCoupon)
+        logger.error('쿠폰 데이터 불완전')
         toast.error('쿠폰 정보를 불러올 수 없습니다. 페이지를 새로고침해주세요.')
         return
       }
 
-      // ✅ 수정: 쿠폰 목록 조회와 동일한 user_id 사용 (userSession 우선)
+      // 쿠폰 목록 조회와 동일한 user_id 사용 (userSession 우선)
       const currentUser = userSession || user
 
       // DB 함수로 쿠폰 검증 (상품 금액만 전달, 배송비 제외)
       const result = await validateCoupon(coupon.code, currentUser?.id, orderItem.totalPrice)
 
-      console.log('🎟️ validateCoupon 결과:', {
-        code: coupon.code,
-        userId: currentUser?.id,
-        productAmount: orderItem.totalPrice,
-        result: {
-          is_valid: result.is_valid,
-          discount_amount: result.discount_amount,
-          error_message: result.error_message
-        }
-      })
-
       if (!result.is_valid) {
         toast.error(result.error_message || '쿠폰을 사용할 수 없습니다')
-        console.log('❌ 쿠폰 검증 실패 - 주문 진행 중단')
         return
       }
 
       setSelectedCoupon(userCoupon)
       setShowCouponList(false)
       toast.success(`${coupon.name} 쿠폰이 적용되었습니다 (₩${result.discount_amount.toLocaleString()} 할인)`)
+
+      // Google Analytics: 쿠폰 사용 이벤트
+      trackCouponUse(coupon, result.discount_amount)
 
       logger.debug('🎟️ 쿠폰 적용 완료', {
         code: coupon.code,
@@ -718,14 +690,13 @@ export default function CheckoutPage() {
   }
 
   const confirmBankTransfer = async () => {
-    // 📱 모바일 중복 실행 방지
+    // 모바일 중복 실행 방지
     if (processing) {
-      console.log('⚠️ 이미 처리 중입니다')
       return
     }
 
     if (!orderItem || !userProfile) {
-      console.error('주문 정보 또는 사용자 정보가 없습니다')
+      logger.error('주문 정보 또는 사용자 정보가 없습니다')
       toast.error('주문 정보가 없습니다')
       return
     }
@@ -741,7 +712,7 @@ export default function CheckoutPage() {
       return
     }
 
-    // ✅ 실제 사용될 데이터로 직접 검증 (selectedAddress 포함)
+    // 실제 사용될 데이터로 직접 검증 (selectedAddress 포함)
     const missing = []
     if (!userProfile.name || userProfile.name.trim().length === 0) {
       missing.push('이름')
@@ -755,16 +726,6 @@ export default function CheckoutPage() {
 
     if (missing.length > 0) {
       toast.error(`다음 정보를 입력해주세요: ${missing.join(', ')}`)
-      console.log('🔍 검증 실패:', {
-        userProfile: {
-          name: userProfile.name,
-          phone: userProfile.phone
-        },
-        selectedAddress: {
-          address: selectedAddress.address
-        },
-        missing
-      })
       return
     }
 
@@ -779,24 +740,18 @@ export default function CheckoutPage() {
       if (orderItem.isBulkPayment && orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
         logger.debug('일괄결제 처리 시작', { count: orderItem.originalOrderIds.length })
 
-        // ✅ selectedAddress 직접 사용 (React setState 비동기 문제 해결)
+        // selectedAddress 직접 사용 (React setState 비동기 문제 해결)
         const finalAddress = selectedAddress || {
           address: userProfile.address,
           detail_address: userProfile.detail_address,
           postal_code: userProfile.postal_code
         }
 
-        console.log('🏠 최종 배송지 확인:', {
-          selectedAddress_postal_code: selectedAddress?.postal_code,
-          userProfile_postal_code: userProfile.postal_code,
-          finalAddress_postal_code: finalAddress.postal_code
-        })
-
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
         const paymentUpdateData = {
           method: 'bank_transfer',
           depositorName: depositName,
-          discountAmount: orderCalc.couponDiscount || 0, // ✅ 쿠폰 할인 추가
+          discountAmount: orderCalc.couponDiscount || 0,
           shippingData: {
             shipping_name: userProfile.name,
             shipping_phone: userProfile.phone,
@@ -805,15 +760,6 @@ export default function CheckoutPage() {
             shipping_postal_code: finalAddress.postal_code || ''
           }
         }
-
-        console.log('📤 updateMultipleOrderStatus 전달 데이터:', {
-          orderIds: orderItem.originalOrderIds,
-          status: 'verifying',
-          selectedCoupon_code: selectedCoupon?.coupon?.code,
-          orderCalc_couponDiscount: orderCalc.couponDiscount,
-          depositName: depositName,
-          paymentUpdateData
-        })
 
         const updateResult = await updateMultipleOrderStatus(
           orderItem.originalOrderIds,
@@ -830,7 +776,7 @@ export default function CheckoutPage() {
         }))
       } else {
         // 단일 주문 생성
-        // ✅ selectedAddress 직접 사용 (React setState 비동기 문제 해결)
+        // selectedAddress 직접 사용 (React setState 비동기 문제 해결)
         const finalAddress = selectedAddress || {
           address: userProfile.address,
           detail_address: userProfile.detail_address,
@@ -844,87 +790,22 @@ export default function CheckoutPage() {
           postal_code: finalAddress.postal_code
         }
 
-        // ✅ DEBUG: 주문 생성 데이터 확인
-        console.log('📦 주문 생성 데이터:', {
-          selectedAddress: selectedAddress ? {
-            postal_code: selectedAddress.postal_code,
-            address: selectedAddress.address,
-            detail_address: selectedAddress.detail_address
-          } : null,
-          userProfile: {
-            postal_code: userProfile.postal_code,
-            address: userProfile.address,
-            detail_address: userProfile.detail_address
-          },
-          finalAddress: {
-            postal_code: finalAddress.postal_code,
-            address: finalAddress.address,
-            detail_address: finalAddress.detail_address
-          },
-          orderProfile: {
-            postal_code: orderProfile.postal_code,
-            address: orderProfile.address,
-            detail_address: orderProfile.detail_address
-          },
-          selectedCoupon: selectedCoupon ? {
-            code: selectedCoupon.coupon.code,
-            coupon_id: selectedCoupon.coupon_id
-          } : null,
-          couponDiscount: orderCalc.couponDiscount
-        })
-
         // 쿠폰 할인 금액을 orderItem에 포함
         const orderItemWithCoupon = {
           ...orderItem,
           couponDiscount: orderCalc.couponDiscount || 0,
           couponCode: selectedCoupon?.coupon?.code || null,
-          isFreeShipping: hasPendingOrders  // ✅ 무료배송 조건 전달
+          isFreeShipping: hasPendingOrders
         }
-
-        console.log('💰 주문 생성 데이터:', {
-          selectedCoupon: selectedCoupon ? {
-            code: selectedCoupon.coupon.code,
-            discount_type: selectedCoupon.coupon.discount_type,
-            discount_value: selectedCoupon.coupon.discount_value
-          } : null,
-          orderCalc: {
-            itemsTotal: orderCalc.itemsTotal,
-            couponDiscount: orderCalc.couponDiscount,
-            couponApplied: orderCalc.couponApplied,
-            finalAmount: orderCalc.finalAmount
-          },
-          orderItemWithCoupon: {
-            couponDiscount: orderItemWithCoupon.couponDiscount,
-            couponCode: orderItemWithCoupon.couponCode
-          }
-        })
 
         const newOrder = await createOrder(orderItemWithCoupon, orderProfile, depositName)
         orderId = newOrder.id
       }
 
-      // 🔍 디버깅: 쿠폰 사용 처리 전 상태 확인
-      console.log('🔍 [쿠폰 디버깅] 주문 생성 완료, 쿠폰 사용 처리 시작:', {
-        selectedCoupon: selectedCoupon,
-        hasCoupon: !!selectedCoupon,
-        couponDiscount: orderCalc.couponDiscount,
-        willProcess: selectedCoupon && orderCalc.couponDiscount > 0,
-        couponId: selectedCoupon?.coupon_id,
-        userId: selectedCoupon?.user_id,
-        orderId: orderId
-      })
-
       // 쿠폰 사용 처리
       if (selectedCoupon && orderCalc.couponDiscount > 0) {
         try {
-          const currentUserId = selectedCoupon.user_id  // ✅ 쿠폰 소유자 ID 직접 사용
-
-          console.log('🎟️ [쿠폰 디버깅] applyCouponUsage 호출:', {
-            userId: currentUserId,
-            couponId: selectedCoupon.coupon_id,
-            orderId: orderId,
-            discount: orderCalc.couponDiscount
-          })
+          const currentUserId = selectedCoupon.user_id
 
           const couponUsed = await applyCouponUsage(
             currentUserId,
@@ -932,8 +813,6 @@ export default function CheckoutPage() {
             orderId,
             orderCalc.couponDiscount
           )
-
-          console.log('🎟️ [쿠폰 디버깅] applyCouponUsage 결과:', couponUsed)
 
           if (couponUsed) {
             logger.debug('🎟️ 쿠폰 사용 완료', {
@@ -947,20 +826,17 @@ export default function CheckoutPage() {
             })
           }
         } catch (error) {
-          console.error('❌ [쿠폰 디버깅] 쿠폰 사용 처리 중 에러:', error)
-          logger.error('❌ 쿠폰 사용 처리 중 오류:', error)
+          logger.error('쿠폰 사용 처리 중 오류:', error)
           // 쿠폰 사용 실패해도 주문은 진행
         }
-      } else {
-        console.log('⚠️ [쿠폰 디버깅] 쿠폰 사용 처리 건너뜀 - 조건 불충족')
       }
 
-      // ✅ 주문 상태를 'verifying'으로 변경 (입금 확인중)
+      // 주문 상태를 'verifying'으로 변경 (입금 확인중)
       try {
         await updateOrderStatus(orderId, 'verifying')
-        logger.debug('🕐 주문 상태 변경: pending → verifying', { orderId })
+        logger.debug('주문 상태 변경: pending → verifying', { orderId })
       } catch (error) {
-        logger.error('❌ 주문 상태 변경 실패:', error)
+        logger.error('주문 상태 변경 실패:', error)
         // 상태 변경 실패해도 주문은 진행
       }
 
@@ -972,20 +848,19 @@ export default function CheckoutPage() {
         toast.success('계좌번호: 79421940478')
       }
 
-      // 📱 모바일 호환성: 먼저 세션 정리 및 상태 업데이트
+      // 모바일 호환성: 먼저 세션 정리 및 상태 업데이트
       sessionStorage.removeItem('checkoutItem')
       setShowDepositModal(false)
 
-      // 📱 모바일 호환성: 즉시 리다이렉트 (setTimeout 제거)
-      // 모바일 브라우저에서 setTimeout은 modal close animation과 충돌하여 실행되지 않을 수 있음
+      // 모바일 호환성: 즉시 리다이렉트 (setTimeout 제거)
       toast.success('주문이 접수되었습니다', { duration: 2000 })
 
-      // 🚀 즉시 페이지 이동 (모바일 환경에서 안정적)
+      // 즉시 페이지 이동 (모바일 환경에서 안정적)
       router.replace(`/orders/${orderId}/complete`)
     } catch (error) {
-      console.error('계좌이체 처리 중 오류:', error)
+      logger.error('계좌이체 처리 중 오류:', error)
       toast.error('주문 처리 중 오류가 발생했습니다')
-      // 🔓 에러 시 processing 상태 해제
+      // 에러 시 processing 상태 해제
       setProcessing(false)
       setShowDepositModal(false)
     }
@@ -1163,16 +1038,14 @@ export default function CheckoutPage() {
                     try {
                       const updatedData = { addresses: newAddresses }
 
-                      // ✅ atomicProfileUpdate 사용 (addresses 필드 자동 저장)
+                      // atomicProfileUpdate 사용 (addresses 필드 자동 저장)
                       await UserProfileManager.atomicProfileUpdate(
                         currentUser.id,
                         updatedData,
                         isKakaoUser
                       )
 
-                      console.log('✅ 주소 DB 업데이트 성공 (atomicProfileUpdate)')
-
-                      // ✅ userProfile.addresses 동기화 (모달 재오픈 시 새 주소 표시)
+                      // userProfile.addresses 동기화 (모달 재오픈 시 새 주소 표시)
                       setUserProfile(prev => ({
                         ...prev,
                         addresses: newAddresses
@@ -1180,21 +1053,20 @@ export default function CheckoutPage() {
 
                       toast.success('배송지가 저장되었습니다')
                     } catch (error) {
-                      console.error('❌ 주소 업데이트 실패:', error)
+                      logger.error('주소 업데이트 실패:', error)
                       toast.error('주소 저장 중 오류가 발생했습니다')
                     }
                   }}
                   onSelect={(address) => {
-                    // ✅ 동기적으로 즉시 반영 + addresses 보존 (prev 사용)
+                    // 동기적으로 즉시 반영 + addresses 보존 (prev 사용)
                     setSelectedAddress(address)
                     setUserProfile(prev => ({
-                      ...prev,  // ✅ addresses 보존!
+                      ...prev,
                       address: address.address,
                       detail_address: address.detail_address || '',
                       postal_code: address.postal_code || ''
                     }))
                     setShowAddressModal(false)
-                    // ✨ 토스트 제거: 배송지 선택은 시각적으로 이미 확인 가능
                   }}
                 />
               </div>
@@ -1410,24 +1282,15 @@ export default function CheckoutPage() {
                 <span className="text-gray-600">상품 금액</span>
                 <span className="text-gray-900">₩{orderCalc.itemsTotal.toLocaleString()}</span>
               </div>
-              {hasPendingOrders ? (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">기본 배송비</span>
+                <span className="text-gray-900">₩{shippingInfo.baseShipping.toLocaleString()}</span>
+              </div>
+              {shippingInfo.isRemote && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-green-600">배송비 (무료배송 혜택)</span>
-                  <span className="text-green-600 line-through">₩0</span>
+                  <span className="text-orange-600">도서산간 추가비 ({shippingInfo.region})</span>
+                  <span className="text-orange-600">+₩{shippingInfo.surcharge.toLocaleString()}</span>
                 </div>
-              ) : (
-                <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">기본 배송비</span>
-                    <span className="text-gray-900">₩{shippingInfo.baseShipping.toLocaleString()}</span>
-                  </div>
-                  {shippingInfo.isRemote && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-orange-600">도서산간 추가비 ({shippingInfo.region})</span>
-                      <span className="text-orange-600">+₩{shippingInfo.surcharge.toLocaleString()}</span>
-                    </div>
-                  )}
-                </>
               )}
               {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                 <div className="flex justify-between text-sm">

@@ -13,6 +13,7 @@ import { createOrder } from '@/lib/supabaseApi'
 import BuyBottomSheet from '@/app/components/product/BuyBottomSheet'
 import PurchaseChoiceModal from '@/app/components/common/PurchaseChoiceModal'
 import toast from 'react-hot-toast'
+import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 
 export default function ProductCard({ product, variant = 'default', priority = false }) {
   const [imageError, setImageError] = useState(false)
@@ -156,6 +157,9 @@ export default function ProductCard({ product, variant = 'default', priority = f
       }
       const newOrder = await createOrder(orderData, userProfile)
 
+      // Google Analytics: 장바구니 추가 이벤트
+      trackAddToCart(product, 1)
+
       // 주문 업데이트 이벤트 발생 (재고 업데이트용)
       window.dispatchEvent(new CustomEvent('orderUpdated', {
         detail: {
@@ -227,6 +231,9 @@ export default function ProductCard({ product, variant = 'default', priority = f
       router.push('/login')
       return
     }
+
+    // Google Analytics: 상품 조회 이벤트
+    trackViewItem(product)
 
     setIsProcessing(true)
     setShowBuySheet(true)

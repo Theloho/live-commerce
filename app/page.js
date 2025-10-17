@@ -33,8 +33,6 @@ export default function Home() {
 
         // ⚠️ 이름이 없으면 DB에서 재조회
         if (!userData.name || userData.name === '사용자') {
-          console.log('⚠️ sessionStorage에 name 없음, DB 조회 시작')
-
           // Supabase Auth 세션 확인
           const { data: { session } } = await supabase.auth.getSession()
 
@@ -47,8 +45,6 @@ export default function Home() {
               .single()
 
             if (profile && !error) {
-              console.log('✅ DB에서 프로필 재조회 성공:', profile.name)
-
               // sessionStorage 업데이트
               const updatedUser = {
                 ...userData,
@@ -87,18 +83,15 @@ export default function Home() {
     const handleKakaoLogin = (event) => {
       const userProfile = event.detail
       setUserSession(userProfile)
-      console.log('홈페이지에서 카카오 로그인 이벤트 수신:', userProfile)
     }
 
     const handleProfileCompleted = (event) => {
       const userProfile = event.detail
       setUserSession(userProfile)
-      console.log('홈페이지에서 프로필 완성 이벤트 수신:', userProfile)
     }
 
     const handleLogout = () => {
       setUserSession(null)
-      console.log('홈페이지에서 로그아웃 이벤트 수신')
     }
 
     window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)

@@ -274,6 +274,75 @@ const subscription = supabase
   .subscribe()
 ```
 
+#### 📊 Google Analytics 이벤트 (2025-10-17 추가)
+
+**홈페이지 자체에서는 GA 이벤트를 직접 발생시키지 않습니다.**
+대신, 렌더링되는 **ProductCard 컴포넌트**에서 사용자 인터랙션 시 이벤트가 발생합니다:
+
+- **상품 클릭 시**: `trackViewItem(product)` - ProductCard.jsx:236
+- **장바구니 추가 시**: `trackAddToCart(product, 1)` - ProductCard.jsx:161
+
+자세한 내용은 아래 "ProductCard 컴포넌트" 섹션을 참조하세요.
+
+---
+
+### 1.1 📦 ProductCard 컴포넌트 (GA 이벤트 추적)
+
+**파일**: `/app/components/product/ProductCard.jsx`
+
+#### 📊 Google Analytics 이벤트 (2025-10-17 추가)
+
+##### 1. 상품 조회 이벤트 (view_item)
+```javascript
+// 위치: /app/components/product/ProductCard.jsx:236
+const handleBuyClick = (e) => {
+  e.preventDefault()
+
+  // ... 품절 체크, 로그인 확인 ...
+
+  // Google Analytics: 상품 조회 이벤트
+  trackViewItem(product)
+
+  setIsProcessing(true)
+  setShowBuySheet(true)
+}
+
+// GA4 전송 데이터:
+// - 이벤트: 'view_item'
+// - currency: 'KRW'
+// - value: product.price
+// - items: [{ item_id, item_name, price, quantity: 1 }]
+```
+
+##### 2. 장바구니 추가 이벤트 (add_to_cart)
+```javascript
+// 위치: /app/components/product/ProductCard.jsx:161
+const handleAddToCart = async (e) => {
+  e.preventDefault()
+
+  // ... 품절 체크, 로그인 확인 ...
+
+  try {
+    const orderData = { ...cartItem, orderType: 'cart' }
+    const newOrder = await createOrder(orderData, userProfile)
+
+    // Google Analytics: 장바구니 추가 이벤트
+    trackAddToCart(product, 1)
+
+    // 주문 업데이트 이벤트 발생 (재고 업데이트용)
+    window.dispatchEvent(new CustomEvent('orderUpdated', { ... }))
+  } catch (error) {
+    console.error('주문 생성 실패:', error)
+  }
+}
+
+// GA4 전송 데이터:
+// - 이벤트: 'add_to_cart'
+// - currency: 'KRW'
+// - value: product.price * quantity
+// - items: [{ item_id, item_name, price, quantity }]
+```
+
 ---
 
 ### 2. 💳 체크아웃 페이지 (`/app/checkout/page.js`)
@@ -612,6 +681,78 @@ export async function applyCouponUsage(userId, couponId, orderId, discountAmount
 - `is_used = true, used_at = NOW(), order_id, discount_amount`
 - WHERE: `user_id, coupon_id, is_used = false`
 
+#### 📊 Google Analytics 이벤트 (2025-10-17 추가)
+
+##### 1. 결제 시작 이벤트 (begin_checkout)
+```javascript
+// 위치: /app/checkout/page.js - useEffect 실행 시점
+// 페이지 로드 및 주문 데이터 준비 완료 시 자동 발생
+
+useEffect(() => {
+  if (orderItem && !pageLoading) {
+    // 주문 아이템 배열 생성
+    const items = orderItem.isBulkPayment
+      ? [{ price: orderItem.totalPrice, quantity: 1, title: orderItem.title }]
+      : [{ price: orderItem.price, quantity: orderItem.quantity, title: orderItem.title }]
+
+    // 배송비 계산
+    const postalCode = selectedAddress?.postal_code || userProfile?.postal_code
+    const baseShippingFee = hasPendingOrders ? 0 : 4000
+
+    // OrderCalculations로 최종 금액 계산
+    const orderCalc = OrderCalculations.calculateFinalOrderAmount(items, {
+      region: postalCode || 'normal',
+      coupon: selectedCoupon ? { ... } : null,
+      paymentMethod: 'transfer',
+      baseShippingFee: baseShippingFee
+    })
+
+    // Google Analytics: 결제 시작 이벤트
+    trackBeginCheckout(items, orderCalc.finalAmount)
+  }
+}, [orderItem, pageLoading])
+
+// GA4 전송 데이터:
+// - 이벤트: 'begin_checkout'
+// - currency: 'KRW'
+// - value: orderCalc.finalAmount (쿠폰 할인 + 배송비 포함)
+// - items: [{ item_id, item_name, price, quantity }]
+```
+
+##### 2. 쿠폰 사용 이벤트 (coupon_use)
+```javascript
+// 위치: /app/checkout/page.js:722 - handleApplyCoupon 함수 내
+const handleApplyCoupon = async (userCoupon) => {
+  // ... 쿠폰 유효성 검증 ...
+
+  const result = await validateCoupon(
+    coupon.code,
+    currentUser?.id,
+    orderItem.totalPrice  // 배송비 제외
+  )
+
+  if (result.is_valid) {
+    setSelectedCoupon(userCoupon)
+    toast.success(`${coupon.name} 쿠폰이 적용되었습니다`)
+
+    // Google Analytics: 쿠폰 사용 이벤트
+    trackCouponUse(coupon, result.discount_amount)
+  }
+}
+
+// GA4 전송 데이터:
+// - 이벤트: 'coupon_use' (커스텀 이벤트)
+// - coupon_code: coupon.code
+// - discount_type: coupon.discount_type ('fixed_amount' | 'percentage')
+// - discount_amount: result.discount_amount (실제 할인 금액)
+```
+
+**주의사항**:
+- `trackBeginCheckout`은 페이지 로드 시 **자동 실행** (useEffect)
+- `trackCouponUse`는 사용자가 쿠폰 적용 시 **수동 실행** (이벤트 핸들러)
+- 금액 계산은 **OrderCalculations 모듈** 사용하여 정확성 보장
+- 쿠폰 할인은 **배송비 제외**하고 계산
+
 ---
 
 ### 3. 📋 주문 완료 페이지 (`/app/orders/[id]/complete/page.js`)
@@ -753,6 +894,74 @@ const depositorName =
 // ⚠️ 주의: 쿠폰 타입(fixed_amount, percentage)은 orders 테이블에 저장 안 됨
 //         discount_amount만 저장되므로, 주문 완료 페이지에서는 fixed_amount로 간주
 ```
+
+#### 📊 Google Analytics 이벤트 (2025-10-17 추가)
+
+##### 구매 완료 이벤트 (purchase)
+```javascript
+// 위치: /app/orders/[id]/complete/page.js:154-185
+// 페이지 로드 및 주문 데이터 조회 완료 시 자동 발생
+
+useEffect(() => {
+  if (orderData && !loading) {
+    // ✅ DB 저장된 무료배송 조건 사용
+    const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+    const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+
+    // 🧮 중앙화된 계산 모듈로 정확한 금액 계산
+    const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
+      region: shippingInfo.region,
+      coupon: orderData.discount_amount > 0 ? {
+        type: 'fixed_amount',
+        value: orderData.discount_amount
+      } : null,
+      paymentMethod: orderData.payment?.method || 'transfer',
+      baseShippingFee: baseShippingFee
+    })
+
+    // GA4 구매 완료 이벤트 전송
+    trackPurchase({
+      id: orderData.id,
+      total_amount: orderCalc.finalAmount,
+      shipping_fee: orderCalc.shippingFee,
+      items: orderData.items
+    })
+
+    console.log('📊 GA - 구매 완료 이벤트 전송:', {
+      orderId: orderData.id,
+      totalAmount: orderCalc.finalAmount,
+      itemCount: orderData.items.length
+    })
+  }
+}, [orderData, loading])
+
+// GA4 전송 데이터:
+// - 이벤트: 'purchase'
+// - transaction_id: orderData.id (주문 UUID)
+// - value: orderCalc.finalAmount (최종 결제 금액)
+// - currency: 'KRW'
+// - shipping: orderCalc.shippingFee (배송비)
+// - items: [
+//     {
+//       item_id: item.product_id || item.id,
+//       item_name: item.title,
+//       price: item.price,
+//       quantity: item.quantity
+//     }
+//   ]
+```
+
+**주요 특징**:
+- **한 번만 실행**: useEffect 의존성 배열로 중복 전송 방지
+- **정확한 금액**: OrderCalculations로 재계산하여 DB 저장값과 일치 확인
+- **쿠폰 할인 포함**: orderData.discount_amount 반영
+- **배송비 정확**: 도서산간 배송비(제주, 울릉도) 포함
+- **주문 ID 추적**: GA4에서 transaction_id로 주문 추적 가능
+
+**디버깅**:
+- 콘솔에 `📊 GA - 구매 완료 이벤트 전송` 로그 출력
+- GA4 실시간 보고서에서 즉시 확인 가능
+- 전자상거래 보고서에 24시간 후 반영
 
 ---
 

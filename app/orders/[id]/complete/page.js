@@ -22,6 +22,7 @@ import { formatShippingInfo } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
 import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import toast from 'react-hot-toast'
+import { trackPurchase } from '@/lib/analytics'
 
 export default function OrderCompletePage() {
   const router = useRouter()
@@ -148,6 +149,40 @@ export default function OrderCompletePage() {
 
     fetchOrderData()
   }, [isAuthenticated, userSession, sessionLoaded, params.id, router, user])
+
+  // Google Analytics: 구매 완료 이벤트 추적
+  useEffect(() => {
+    if (orderData && !loading) {
+      // ✅ DB 저장된 무료배송 조건 사용
+      const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+      const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+
+      // 🧮 중앙화된 계산 모듈로 정확한 금액 계산
+      const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
+        region: shippingInfo.region,
+        coupon: orderData.discount_amount > 0 ? {
+          type: 'fixed_amount',
+          value: orderData.discount_amount
+        } : null,
+        paymentMethod: orderData.payment?.method || 'transfer',
+        baseShippingFee: baseShippingFee
+      })
+
+      // GA4 구매 완료 이벤트 전송
+      trackPurchase({
+        id: orderData.id,
+        total_amount: orderCalc.finalAmount,
+        shipping_fee: orderCalc.shippingFee,
+        items: orderData.items
+      })
+
+      console.log('📊 GA - 구매 완료 이벤트 전송:', {
+        orderId: orderData.id,
+        totalAmount: orderCalc.finalAmount,
+        itemCount: orderData.items.length
+      })
+    }
+  }, [orderData, loading])
 
   if (loading) {
     console.log('주문 상세 페이지 로딩 중...')

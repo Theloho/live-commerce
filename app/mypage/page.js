@@ -53,13 +53,11 @@ export default function MyPage() {
         const storedUser = sessionStorage.getItem('user')
         if (storedUser) {
           const userData = JSON.parse(storedUser)
-          console.log('마이페이지에서 세션 복원:', userData)
           setUserSession(userData)
         } else {
           setUserSession(null)
         }
       } catch (error) {
-        console.error('마이페이지 세션 확인 오류:', error)
         setUserSession(null)
       } finally {
         setSessionLoading(false)
@@ -94,16 +92,6 @@ export default function MyPage() {
           const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
 
           if (dbProfile) {
-            console.log('데이터베이스에서 카카오 사용자 프로필 로드:', dbProfile)
-            console.log('🏠 주소 정보 상세:', {
-              address: dbProfile.address,
-              detail_address: dbProfile.detail_address,
-              addresses: dbProfile.addresses,
-              hasAddress: !!dbProfile.address,
-              hasAddresses: !!(dbProfile.addresses && dbProfile.addresses.length > 0)
-            })
-            console.log('🔍 addresses 배열 상세:', JSON.stringify(dbProfile.addresses, null, 2))
-
             const profile = {
               name: dbProfile.name || currentUser.name || '',
               phone: dbProfile.phone || currentUser.phone || '',
@@ -113,7 +101,6 @@ export default function MyPage() {
               addresses: dbProfile.addresses || [],
               postal_code: dbProfile.postal_code || ''
             }
-            console.log('마이페이지 프로필 로드:', { dbProfile, currentUser, profile })
             setUserProfile(profile)
             setEditValues(profile)
 
@@ -124,7 +111,6 @@ export default function MyPage() {
             }
             sessionStorage.setItem('user', JSON.stringify(updatedUser))
           } else {
-            console.log('데이터베이스에서 프로필을 찾을 수 없음, sessionStorage 사용')
             const profile = {
               name: currentUser.name || '',
               phone: currentUser.phone || '',
@@ -138,7 +124,6 @@ export default function MyPage() {
             setEditValues(profile)
           }
         } catch (error) {
-          console.error('카카오 사용자 프로필 로드 오류:', error)
           const profile = {
             name: currentUser.name || '',
             phone: currentUser.phone || '',
@@ -173,7 +158,6 @@ export default function MyPage() {
           .maybeSingle() // single() 대신 maybeSingle() 사용 (없어도 오류 안남)
 
         if (error) {
-          console.error('프로필 조회 오류:', error)
           toast.error('프로필 정보를 불러올 수 없습니다')
           return
         }
@@ -206,7 +190,6 @@ export default function MyPage() {
         }
       }
     } catch (error) {
-      console.error('프로필 조회 실패:', error)
       toast.error('프로필 정보를 불러올 수 없습니다')
     } finally {
       setProfileLoading(false)
@@ -237,8 +220,6 @@ export default function MyPage() {
         }
       } else {
         // 🚀 실제 환경: 통합 프로필 업데이트 사용 (카카오/일반 사용자 공통)
-        console.log('🔄 프로필 필드 업데이트 시작:', field, editValues[field])
-
         const isKakaoUser = currentUser?.provider === 'kakao'
 
         await UserProfileManager.atomicProfileUpdate(
@@ -257,8 +238,6 @@ export default function MyPage() {
           sessionStorage.setItem('user', JSON.stringify(updatedUser))
           setUserSession(updatedUser)
         }
-
-        console.log('✅ 프로필 필드 업데이트 완료:', field)
       }
 
       // 로컬 상태 업데이트
@@ -267,7 +246,6 @@ export default function MyPage() {
       toast.success('정보가 수정되었습니다')
 
     } catch (error) {
-      console.error('정보 수정 실패:', error)
       toast.error('정보 수정에 실패했습니다')
     }
   }
@@ -281,8 +259,6 @@ export default function MyPage() {
     const confirmed = window.confirm('로그아웃하시겠습니까?')
     if (confirmed) {
       try {
-        console.log('마이페이지에서 로그아웃 시작')
-
         // sessionStorage 정리
         sessionStorage.removeItem('user')
         setUserSession(null)
@@ -292,16 +268,13 @@ export default function MyPage() {
         const result = await signOut()
 
         if (result && result.success) {
-          console.log('마이페이지에서 로그아웃 성공')
           // 즉시 홈으로 이동
           router.push('/')
         } else {
-          console.error('마이페이지에서 로그아웃 실패:', result?.error)
           // 실패해도 홈으로 이동 (클라이언트 상태는 이미 정리됨)
           router.push('/')
         }
       } catch (error) {
-        console.error('마이페이지 로그아웃 처리 오류:', error)
         // 오류가 발생해도 홈으로 이동
         router.push('/')
       }
@@ -505,8 +478,6 @@ export default function MyPage() {
                     isKakaoUser
                   )
 
-                  console.log('✅ 주소 DB 업데이트 성공:', updatedData)
-
                   // userProfile state 동기화 (새로고침 없이 최신 상태 유지)
                   setUserProfile(prev => ({
                     ...prev,
@@ -523,7 +494,6 @@ export default function MyPage() {
                     sessionStorage.setItem('user', JSON.stringify(updatedUser))
                   }
                 } catch (error) {
-                  console.error('주소 업데이트 오류:', error)
                   toast.error('주소 저장에 실패했습니다')
                 }
               }}
