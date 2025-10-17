@@ -87,8 +87,16 @@ export async function GET(request) {
 
     // ✅ 단일 주문 조회 (orderId가 있으면 다른 필터 무시)
     if (orderId) {
-      query = query.eq('id', orderId)
-      console.log('🔍 단일 주문 조회:', orderId)
+      // UUID 형식이면 id로 조회, 아니면 customer_order_number로 조회
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)
+
+      if (isUUID) {
+        query = query.eq('id', orderId)
+        console.log('🔍 단일 주문 조회 (UUID):', orderId)
+      } else {
+        query = query.eq('customer_order_number', orderId)
+        console.log('🔍 단일 주문 조회 (주문번호):', orderId)
+      }
     } else {
       // 전체 조회 시에만 cancelled 제외
       query = query.neq('status', 'cancelled')
