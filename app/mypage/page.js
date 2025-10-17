@@ -460,7 +460,20 @@ export default function MyPage() {
           </div>
           <div className="p-4">
             <AddressManager
-              addresses={userProfile.addresses || []}
+              addresses={(() => {
+                // addresses 배열이 비어있지만 기본 주소가 있는 경우 자동 변환
+                if ((!userProfile.addresses || userProfile.addresses.length === 0) && userProfile.address) {
+                  return [{
+                    id: Date.now(),
+                    label: '기본 배송지',
+                    address: userProfile.address,
+                    detail_address: userProfile.detail_address || '',
+                    postal_code: userProfile.postal_code || '',
+                    is_default: true
+                  }]
+                }
+                return userProfile.addresses || []
+              })()}
               onAddressesChange={async (newAddresses) => {
                 // 💾 DB 업데이트 + userProfile state 동기화
                 try {
