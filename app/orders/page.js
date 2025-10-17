@@ -91,14 +91,26 @@ function OrdersContent() {
     // 🔧 동기 세션 데이터 로드
     const loadSessionDataSync = () => {
       try {
+        // 📱 모바일 환경: sessionStorage 접근 가능 여부 확인
+        if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined') {
+          console.warn('⚠️ [모바일] sessionStorage 사용 불가')
+          return { sessionUser: null }
+        }
+
         const storedUser = sessionStorage.getItem('user')
+        console.log('🔍 [모바일] sessionStorage.getItem("user"):', storedUser ? '있음' : '없음')
+
         let sessionUser = null
         if (storedUser) {
           sessionUser = JSON.parse(storedUser)
+          console.log('✅ [모바일] sessionUser 파싱 성공:', sessionUser?.id)
           setUserSession(sessionUser)
+        } else {
+          console.warn('⚠️ [모바일] sessionStorage에 user 없음')
         }
         return { sessionUser }
       } catch (error) {
+        console.error('❌ [모바일] 세션 로드 실패:', error.message)
         logger.warn('세션 로드 실패:', error)
         setUserSession(null)
         return { sessionUser: null }
@@ -116,24 +128,33 @@ function OrdersContent() {
 
     // 🔒 인증 검증 (빠른 검사)
     const validateAuthenticationFast = ({ sessionUser }) => {
+      console.log('🔍 [인증검증] sessionUser:', sessionUser?.id, 'user:', user?.id, 'authLoading:', authLoading)
+
       // ✅ sessionUser가 있으면 authLoading과 관계없이 즉시 진행 (카카오 사용자 우선)
       if (sessionUser?.id) {
+        console.log('✅ [인증검증] sessionUser 있음 → 진행')
         return { success: true, currentUser: sessionUser }
       }
 
       // ✅ useAuth의 user가 있으면 진행 (일반 사용자)
       if (user?.id) {
+        console.log('✅ [인증검증] useAuth user 있음 → 진행')
         return { success: true, currentUser: user }
       }
 
       // 🚫 둘 다 없으면 로그인 필요
+      console.log('⚠️ [인증검증] sessionUser와 user 둘 다 없음')
+
+      // 📱 모바일: authLoading이 false가 되면 즉시 로그인 페이지로
       if (!authLoading) {
-        // authLoading 완료 후에도 사용자 없으면 로그인 페이지로
+        console.log('❌ [인증검증] authLoading 완료 + 사용자 없음 → 로그인 페이지')
         toast.error('로그인이 필요합니다')
         router.push('/login')
+        return { success: false }
       }
 
-      // authLoading 중이면 대기
+      // authLoading 중이면 대기 (단, 한 번만 대기하고 hasInitialized로 차단됨)
+      console.log('⏳ [인증검증] authLoading 중 → 대기')
       return { success: false }
     }
 
