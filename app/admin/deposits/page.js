@@ -72,9 +72,9 @@ export default function AdminDepositsPage() {
       const ordersWithUsers = (orders || []).map(order => ({
         ...order,
         user: order.userProfile || null,
-        payment: order.order_payments || order.payment,
-        shipping: order.order_shipping || order.shipping,
-        depositName: order.deposit_name || order.depositor_name || order.order_payments?.depositor_name
+        payment: order.order_payments?.[0] || order.payment,
+        shipping: order.order_shipping?.[0] || order.shipping,
+        depositName: order.deposit_name || order.depositor_name || order.order_payments?.[0]?.depositor_name
       }))
 
       setPendingOrders(ordersWithUsers)
