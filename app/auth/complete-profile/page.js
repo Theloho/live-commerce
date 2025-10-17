@@ -156,13 +156,26 @@ export default function CompleteProfilePage() {
 
         const result = await response.json()
 
-        // sessionStorage 업데이트
+        // sessionStorage + localStorage 동시 업데이트 (무한루프 방지)
         const updatedUser = {
           ...sessionUser,
           ...updateData,
           profile_completed: true
         }
+
+        // ✅ sessionStorage 먼저 저장 (즉시 완료)
         sessionStorage.setItem('user', JSON.stringify(updatedUser))
+
+        // ⚡ localStorage 쓰기 완료 대기 (모바일 디스크 I/O)
+        await new Promise(resolve => {
+          localStorage.setItem('unified_user_session', JSON.stringify(updatedUser))
+          // requestIdleCallback 사용 가능하면 사용, 아니면 150ms 대기
+          if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(resolve)
+          } else {
+            setTimeout(resolve, 150)
+          }
+        })
 
         // ✅ 이벤트는 발생시키지 않음 (홈 페이지가 sessionStorage를 직접 읽음)
         // 모바일에서 이벤트 + 리다이렉트 동시 발생 시 무한루프 방지
@@ -196,6 +209,27 @@ export default function CompleteProfilePage() {
         }
 
         const result = await response.json()
+
+        // ⚡ 일반 사용자도 localStorage 저장 (세션 유지)
+        const updatedUser = {
+          id: user.id,
+          email: user.email,
+          ...updateData,
+          profile_completed: true
+        }
+
+        // ✅ sessionStorage 먼저 저장
+        sessionStorage.setItem('user', JSON.stringify(updatedUser))
+
+        // ⚡ localStorage 쓰기 완료 대기
+        await new Promise(resolve => {
+          localStorage.setItem('unified_user_session', JSON.stringify(updatedUser))
+          if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(resolve)
+          } else {
+            setTimeout(resolve, 150)
+          }
+        })
       }
 
       toast.success('프로필이 완성되었습니다!')

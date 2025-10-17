@@ -51,15 +51,18 @@ export default function useRealtimeProducts() {
 
       setLoading(true)
 
-      // ⚡ 타임아웃 추가 (모바일 환경 최적화) - 10초
+      // ⚡ 타임아웃 추가 (모바일 환경 최적화) - 20초 (JOIN 쿼리 대응)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('상품 로딩 시간 초과 (10초)')), 10000)
+        setTimeout(() => reject(new Error('상품 로딩 시간 초과 (20초) - 네트워크 확인 필요')), 20000)
       )
 
+      const startTime = Date.now()
       const data = await Promise.race([
         getProducts(),
         timeoutPromise
       ])
+      const loadTime = Date.now() - startTime
+      console.log(`✅ 상품 로딩 완료: ${loadTime}ms`)
 
       // 캐시 업데이트
       productsCache = {
