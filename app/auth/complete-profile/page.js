@@ -130,20 +130,38 @@ export default function CompleteProfilePage() {
         }
         console.log('📱 [모바일] updateData:', updateData)
 
-        const result = await UserProfileManager.atomicProfileUpdate(
-          sessionUser.id,
-          updateData,
-          true // 카카오 사용자
-        )
-        console.log('📱 [모바일] atomicProfileUpdate 결과:', result)
+        // ⚡ 모바일 최적화: profiles 테이블만 직접 업데이트 (auth.updateUser 스킵)
+        console.log('📱 [모바일] profiles 테이블 직접 업데이트 시작...')
 
-        // 프로필 완성 이벤트 발생
+        const { data: profileResult, error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: sessionUser.id,
+            ...updateData,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id'
+          })
+          .select()
+          .single()
+
+        if (profileError) {
+          console.error('📱 [모바일] profiles 업데이트 실패:', profileError)
+          throw new Error(`프로필 저장 실패: ${profileError.message}`)
+        }
+
+        console.log('📱 [모바일] profiles 업데이트 성공:', profileResult)
+
+        // sessionStorage 업데이트
         const updatedUser = {
           ...sessionUser,
           ...updateData,
           profile_completed: true
         }
+        sessionStorage.setItem('user', JSON.stringify(updatedUser))
+        console.log('📱 [모바일] sessionStorage 업데이트 완료')
 
+        // 프로필 완성 이벤트 발생
         window.dispatchEvent(new CustomEvent('profileCompleted', {
           detail: updatedUser
         }))
