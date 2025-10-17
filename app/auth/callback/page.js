@@ -152,7 +152,11 @@ export default function AuthCallback() {
 
         console.log('🔐 [디버그] signUp 시도:', { email, password: tempPassword.substring(0, 20) + '...' })
 
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        let authData = null
+        let authError = null
+
+        // ✅ DB 초기화 후 auth.users는 남아있는 경우 처리
+        const signUpResult = await supabase.auth.signUp({
           email: email,
           password: tempPassword,
           options: {
@@ -165,6 +169,9 @@ export default function AuthCallback() {
           }
         })
 
+        authData = signUpResult.data
+        authError = signUpResult.error
+
         console.log('🔐 [디버그] signUp 결과:', {
           hasData: !!authData,
           hasSession: !!authData?.session,
@@ -173,12 +180,62 @@ export default function AuthCallback() {
           session_access_token: authData?.session?.access_token?.substring(0, 50)
         })
 
-        if (authError) {
+        // ✅ "User already registered" 에러 처리 (DB 초기화 후 auth.users는 남아있는 경우)
+        if (authError && authError.message?.includes('already registered')) {
+          console.log('⚠️ auth.users에 이미 존재하는 사용자, signIn 시도...')
+
+          const signInResult = await supabase.auth.signInWithPassword({
+            email: email,
+            password: tempPassword
+          })
+
+          if (signInResult.error) {
+            console.error('signIn 실패, 패스워드 재설정 시도...', signInResult.error)
+
+            // 패스워드 재설정 시도
+            try {
+              const resetResult = await fetch('/api/auth/reset-kakao-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  kakao_id: kakaoUserId,
+                  new_password: tempPassword
+                })
+              }).then(res => res.json())
+
+              if (!resetResult.success) {
+                throw new Error(resetResult.error || '패스워드 재설정 실패')
+              }
+
+              console.log('✅ 패스워드 재설정 성공, 재로그인 시도...')
+
+              const retrySignIn = await supabase.auth.signInWithPassword({
+                email: email,
+                password: tempPassword
+              })
+
+              if (retrySignIn.error) {
+                throw new Error('재로그인 실패: ' + retrySignIn.error.message)
+              }
+
+              authData = retrySignIn.data
+              authError = null
+              console.log('✅ 재로그인 성공')
+            } catch (resetError) {
+              console.error('패스워드 재설정 실패:', resetError)
+              throw new Error('기존 사용자 인증 실패 - 관리자에게 문의하세요')
+            }
+          } else {
+            authData = signInResult.data
+            authError = null
+            console.log('✅ 기존 auth.users 사용자 로그인 성공')
+          }
+        } else if (authError) {
           console.error('Auth 사용자 생성 실패:', authError)
           throw new Error(`카카오 사용자 생성 실패: ${authError.message}`)
         }
 
-        console.log('✅ auth.users 생성 성공:', authData.user.id)
+        console.log('✅ auth.users 인증 성공:', authData.user.id)
 
         // 1.5. 세션 확인 및 대기 (localStorage 저장 보장)
         let sessionVerified = false
@@ -198,10 +255,12 @@ export default function AuthCallback() {
           throw new Error('세션 생성 실패 - 다시 로그인해주세요')
         }
 
-        // 2. profiles 테이블에 추가 정보 저장
+        // 2. profiles 테이블에 추가 정보 저장 (UPSERT - DB 초기화 대비)
+        console.log('📝 profiles 테이블 생성/업데이트 시도')
+
         const { data: newProfile, error: profileError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: authData.user.id, // auth.users의 ID 사용
             kakao_id: kakaoUserId,
             email: email,
@@ -216,6 +275,8 @@ export default function AuthCallback() {
             postal_code: '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id' // id가 이미 존재하면 업데이트
           })
           .select()
           .single()
