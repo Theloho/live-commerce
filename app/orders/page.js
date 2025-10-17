@@ -109,25 +109,25 @@ function OrdersContent() {
 
     // 🔒 인증 검증 (빠른 검사)
     const validateAuthenticationFast = ({ sessionUser }) => {
-      // ✅ authLoading이 true이지만 sessionUser가 있으면 진행 (카카오 사용자)
-      if (authLoading && !sessionUser && !user) {
-        // 세션 사용자도 없고 useAuth의 user도 없으면 대기
-        return { success: false }
+      // ✅ sessionUser가 있으면 authLoading과 관계없이 즉시 진행 (카카오 사용자 우선)
+      if (sessionUser?.id) {
+        return { success: true, currentUser: sessionUser }
       }
 
-      const currentUser = sessionUser || user
-      const isUserLoggedIn = sessionUser || isAuthenticated
-
-      if (!isUserLoggedIn || !currentUser?.id) {
-        // ✅ authLoading 중에는 로그인 리다이렉트 안 함 (로딩 완료 대기)
-        if (!authLoading) {
-          toast.error('로그인이 필요합니다')
-          router.push('/login')
-        }
-        return { success: false }
+      // ✅ useAuth의 user가 있으면 진행 (일반 사용자)
+      if (user?.id) {
+        return { success: true, currentUser: user }
       }
 
-      return { success: true, currentUser }
+      // 🚫 둘 다 없으면 로그인 필요
+      if (!authLoading) {
+        // authLoading 완료 후에도 사용자 없으면 로그인 페이지로
+        toast.error('로그인이 필요합니다')
+        router.push('/login')
+      }
+
+      // authLoading 중이면 대기
+      return { success: false }
     }
 
     // ⚡ 주문 데이터 고속 로드
