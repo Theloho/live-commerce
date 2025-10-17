@@ -435,11 +435,13 @@ export default function AuthCallback() {
       if (!userProfile.phone || !userProfile.address) {
         console.log('📝 추가 정보 입력 필요')
         toast.success('카카오 로그인 성공! 추가 정보를 입력해주세요.')
-        router.push('/auth/complete-profile')
+        // ✅ router.replace() 사용 (뒤로가기 시 callback 재실행 방지)
+        router.replace('/auth/complete-profile')
       } else {
         console.log('🎉 카카오 로그인 완료')
         toast.success('카카오 로그인 성공!')
-        router.push('/')
+        // ✅ router.replace() 사용 (뒤로가기 시 callback 재실행 방지)
+        router.replace('/')
       }
     }
 

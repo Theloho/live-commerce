@@ -220,7 +220,8 @@ export default function CompleteProfilePage() {
 
       console.log('📱 [모바일] 홈으로 리다이렉트')
       toast.success('프로필이 완성되었습니다!')
-      router.push('/')
+      // ✅ router.replace() 사용 (뒤로가기 시 프로필 입력 페이지로 안 돌아감)
+      router.replace('/')
 
     } catch (error) {
       console.error('❌ [모바일] 프로필 완성 오류:', error)
