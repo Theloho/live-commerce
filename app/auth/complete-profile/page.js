@@ -69,22 +69,30 @@ export default function CompleteProfilePage() {
   const handleInputChange = (e) => {
     const { name, value } = e.target
 
-    // 휴대폰 번호 자동 포맷팅
+    // 휴대폰 번호: 입력 중에는 숫자만 저장 (포맷팅은 onBlur에서 처리)
     if (name === 'phone') {
       const numbers = value.replace(/[^\d]/g, '')
-      let formatted = numbers
-
-      if (numbers.length >= 3) {
-        formatted = numbers.slice(0, 3) + '-' + numbers.slice(3)
-      }
-      if (numbers.length >= 7) {
-        formatted = numbers.slice(0, 3) + '-' + numbers.slice(3, 7) + '-' + numbers.slice(7, 11)
-      }
-
-      setFormData(prev => ({ ...prev, [name]: formatted }))
+      // 11자리까지만 허용
+      const limited = numbers.slice(0, 11)
+      setFormData(prev => ({ ...prev, [name]: limited }))
     } else {
       setFormData(prev => ({ ...prev, [name]: value }))
     }
+  }
+
+  // 휴대폰 번호 포커스 잃을 때 포맷팅 적용
+  const handlePhoneBlur = () => {
+    const numbers = formData.phone.replace(/[^\d]/g, '')
+    let formatted = numbers
+
+    if (numbers.length >= 3) {
+      formatted = numbers.slice(0, 3) + '-' + numbers.slice(3)
+    }
+    if (numbers.length >= 7) {
+      formatted = numbers.slice(0, 3) + '-' + numbers.slice(3, 7) + '-' + numbers.slice(7, 11)
+    }
+
+    setFormData(prev => ({ ...prev, phone: formatted }))
   }
 
   const validateForm = () => {
@@ -293,8 +301,8 @@ export default function CompleteProfilePage() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-                placeholder="010-0000-0000"
-                maxLength={13}
+                onBlur={handlePhoneBlur}
+                placeholder="01012345678"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
                 required
               />
