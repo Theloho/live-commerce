@@ -59,9 +59,16 @@ function OrdersContent() {
         const sessionData = loadSessionDataSync()
         const urlData = parseUrlParameters()
 
+        console.log('🔍 [주문내역] 세션 데이터:', sessionData)
+        console.log('🔍 [주문내역] authLoading:', authLoading, 'user:', user?.id)
+
         // ⚡ 2단계: 인증 검증
         const authResult = validateAuthenticationFast(sessionData)
+        console.log('🔍 [주문내역] 인증 결과:', authResult)
+
         if (!authResult.success) {
+          console.log('⚠️ [주문내역] 인증 실패 - 초기화 플래그 설정 후 종료')
+          hasInitialized.current = true  // ✅ 실패해도 플래그 설정 (무한 루프 방지)
           setPageLoading(false)
           return
         }
@@ -69,14 +76,14 @@ function OrdersContent() {
         // ⚡ 3단계: 주문 데이터 병렬 로드
         await loadOrdersDataFast(authResult.currentUser)
 
-        // ✅ 초기화 성공: 플래그 설정 (재실행 방지)
-        hasInitialized.current = true
-        logger.info('✅ 주문내역 고속 초기화 완료')
+        console.log('✅ [주문내역] 초기화 완료')
       } catch (error) {
         logger.error('주문내역 초기화 실패:', error)
         toast.error('주문내역을 불러오는 중 오류가 발생했습니다')
         setOrders([])
       } finally {
+        // ✅ 성공/실패 관계없이 항상 플래그 설정 (무한 루프 방지)
+        hasInitialized.current = true
         setPageLoading(false)
       }
     }
