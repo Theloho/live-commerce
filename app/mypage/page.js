@@ -272,17 +272,20 @@ export default function MyPage() {
         // 1. sessionStorage 정리
         sessionStorage.removeItem('user')
 
-        // 2. 로컬 상태 정리
+        // 2. localStorage 정리 (카카오 인증 흔적 제거)
+        localStorage.removeItem('unified_user_session')
+
+        // 3. 로컬 상태 정리
         setUserSession(null)
         setUserProfile(null)
 
-        // 3. 다른 컴포넌트에 로그아웃 알림 (이벤트 발생)
+        // 4. 다른 컴포넌트에 로그아웃 알림 (이벤트 발생)
         window.dispatchEvent(new CustomEvent('userLoggedOut'))
 
-        // 4. Supabase Auth 로그아웃
+        // 5. Supabase Auth 로그아웃 (자동으로 localStorage의 인증 토큰 정리)
         await signOut()
 
-        // 5. 성공 메시지 및 리다이렉트
+        // 6. 성공 메시지 및 리다이렉트
         toast.success('로그아웃되었습니다')
         router.push('/')
 

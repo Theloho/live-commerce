@@ -59,15 +59,10 @@ function OrdersContent() {
         const sessionData = loadSessionDataSync()
         const urlData = parseUrlParameters()
 
-        console.log('🔍 [주문내역] 세션 데이터:', sessionData)
-        console.log('🔍 [주문내역] authLoading:', authLoading, 'user:', user?.id)
-
         // ⚡ 2단계: 인증 검증
         const authResult = validateAuthenticationFast(sessionData)
-        console.log('🔍 [주문내역] 인증 결과:', authResult)
 
         if (!authResult.success) {
-          console.log('⚠️ [주문내역] 인증 실패 - 초기화 플래그 설정 후 종료')
           hasInitialized.current = true  // ✅ 실패해도 플래그 설정 (무한 루프 방지)
           setPageLoading(false)
           return
@@ -76,7 +71,7 @@ function OrdersContent() {
         // ⚡ 3단계: 주문 데이터 병렬 로드
         await loadOrdersDataFast(authResult.currentUser)
 
-        console.log('✅ [주문내역] 초기화 완료')
+        logger.info('✅ 주문내역 고속 초기화 완료')
       } catch (error) {
         logger.error('주문내역 초기화 실패:', error)
         toast.error('주문내역을 불러오는 중 오류가 발생했습니다')
@@ -93,24 +88,17 @@ function OrdersContent() {
       try {
         // 📱 모바일 환경: sessionStorage 접근 가능 여부 확인
         if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined') {
-          console.warn('⚠️ [모바일] sessionStorage 사용 불가')
           return { sessionUser: null }
         }
 
         const storedUser = sessionStorage.getItem('user')
-        console.log('🔍 [모바일] sessionStorage.getItem("user"):', storedUser ? '있음' : '없음')
-
         let sessionUser = null
         if (storedUser) {
           sessionUser = JSON.parse(storedUser)
-          console.log('✅ [모바일] sessionUser 파싱 성공:', sessionUser?.id)
           setUserSession(sessionUser)
-        } else {
-          console.warn('⚠️ [모바일] sessionStorage에 user 없음')
         }
         return { sessionUser }
       } catch (error) {
-        console.error('❌ [모바일] 세션 로드 실패:', error.message)
         logger.warn('세션 로드 실패:', error)
         setUserSession(null)
         return { sessionUser: null }
@@ -128,33 +116,25 @@ function OrdersContent() {
 
     // 🔒 인증 검증 (빠른 검사)
     const validateAuthenticationFast = ({ sessionUser }) => {
-      console.log('🔍 [인증검증] sessionUser:', sessionUser?.id, 'user:', user?.id, 'authLoading:', authLoading)
-
       // ✅ sessionUser가 있으면 authLoading과 관계없이 즉시 진행 (카카오 사용자 우선)
       if (sessionUser?.id) {
-        console.log('✅ [인증검증] sessionUser 있음 → 진행')
         return { success: true, currentUser: sessionUser }
       }
 
       // ✅ useAuth의 user가 있으면 진행 (일반 사용자)
       if (user?.id) {
-        console.log('✅ [인증검증] useAuth user 있음 → 진행')
         return { success: true, currentUser: user }
       }
 
       // 🚫 둘 다 없으면 로그인 필요
-      console.log('⚠️ [인증검증] sessionUser와 user 둘 다 없음')
-
       // 📱 모바일: authLoading이 false가 되면 즉시 로그인 페이지로
       if (!authLoading) {
-        console.log('❌ [인증검증] authLoading 완료 + 사용자 없음 → 로그인 페이지')
         toast.error('로그인이 필요합니다')
         router.push('/login')
         return { success: false }
       }
 
       // authLoading 중이면 대기 (단, 한 번만 대기하고 hasInitialized로 차단됨)
-      console.log('⏳ [인증검증] authLoading 중 → 대기')
       return { success: false }
     }
 
@@ -240,37 +220,11 @@ function OrdersContent() {
   // ⚡ 로딩 상태 체크 (통합된 단일 로딩)
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
           <p className="text-gray-800 font-medium text-lg mb-2">주문내역 로딩 중</p>
-          <p className="text-gray-500 text-sm mb-4">잠시만 기다려주세요...</p>
-
-          {/* 🔍 모바일 디버깅 정보 (화면에 직접 표시) */}
-          <div className="mt-6 bg-white border border-gray-300 rounded-lg p-4 text-left text-xs">
-            <p className="font-bold mb-2 text-red-600">📱 디버깅 정보:</p>
-            <div className="space-y-1 text-gray-700">
-              <p>🔐 sessionUser: {userSession?.id ? '✅ 있음 (' + userSession.id + ')' : '❌ 없음'}</p>
-              <p>👤 useAuth user: {user?.id ? '✅ 있음 (' + user.id.slice(0, 8) + '...)' : '❌ 없음'}</p>
-              <p>⏳ authLoading: {authLoading ? '🔄 로딩중' : '✅ 완료'}</p>
-              <p>🔄 hasInitialized: {hasInitialized.current ? '✅ 완료' : '❌ 미완료'}</p>
-              <p className="mt-2 text-blue-600">
-                🕐 {new Date().toLocaleTimeString('ko-KR')}
-              </p>
-            </div>
-          </div>
-
-          {/* 🚀 고속 처리 진행 표시 */}
-          <div className="mt-4 max-w-xs mx-auto">
-            <div className="flex justify-between text-xs text-gray-400 mb-2">
-              <span>인증</span>
-              <span>주문조회</span>
-              <span>완료</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-red-500 h-2 rounded-full animate-pulse" style={{width: '70%'}}></div>
-            </div>
-          </div>
+          <p className="text-gray-500 text-sm">잠시만 기다려주세요...</p>
         </div>
       </div>
     )
