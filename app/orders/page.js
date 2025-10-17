@@ -240,14 +240,28 @@ function OrdersContent() {
   // ⚡ 로딩 상태 체크 (통합된 단일 로딩)
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
           <p className="text-gray-800 font-medium text-lg mb-2">주문내역 로딩 중</p>
-          <p className="text-gray-500 text-sm">잠시만 기다려주세요...</p>
+          <p className="text-gray-500 text-sm mb-4">잠시만 기다려주세요...</p>
+
+          {/* 🔍 모바일 디버깅 정보 (화면에 직접 표시) */}
+          <div className="mt-6 bg-white border border-gray-300 rounded-lg p-4 text-left text-xs">
+            <p className="font-bold mb-2 text-red-600">📱 디버깅 정보:</p>
+            <div className="space-y-1 text-gray-700">
+              <p>🔐 sessionUser: {userSession?.id ? '✅ 있음 (' + userSession.id + ')' : '❌ 없음'}</p>
+              <p>👤 useAuth user: {user?.id ? '✅ 있음 (' + user.id.slice(0, 8) + '...)' : '❌ 없음'}</p>
+              <p>⏳ authLoading: {authLoading ? '🔄 로딩중' : '✅ 완료'}</p>
+              <p>🔄 hasInitialized: {hasInitialized.current ? '✅ 완료' : '❌ 미완료'}</p>
+              <p className="mt-2 text-blue-600">
+                🕐 {new Date().toLocaleTimeString('ko-KR')}
+              </p>
+            </div>
+          </div>
 
           {/* 🚀 고속 처리 진행 표시 */}
-          <div className="mt-6 max-w-xs mx-auto">
+          <div className="mt-4 max-w-xs mx-auto">
             <div className="flex justify-between text-xs text-gray-400 mb-2">
               <span>인증</span>
               <span>주문조회</span>
