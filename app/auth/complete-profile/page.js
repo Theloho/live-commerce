@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import useAuth from '@/app/hooks/useAuth'
-import { UserProfileManager } from '@/lib/userProfileManager'
 
 export default function CompleteProfilePage() {
   const router = useRouter()
@@ -130,27 +128,28 @@ export default function CompleteProfilePage() {
         }
         console.log('📱 [모바일] updateData:', updateData)
 
-        // ⚡ 모바일 최적화: profiles 테이블만 직접 업데이트 (auth.updateUser 스킵)
-        console.log('📱 [모바일] profiles 테이블 직접 업데이트 시작...')
+        // ⚡ 모바일 최적화: API Route로 서버사이드 처리
+        console.log('📱 [모바일] API 호출 시작...')
 
-        const { data: profileResult, error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: sessionUser.id,
-            ...updateData,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id'
+        const response = await fetch('/api/profile/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: sessionUser.id,
+            profileData: updateData
           })
-          .select()
-          .single()
+        })
 
-        if (profileError) {
-          console.error('📱 [모바일] profiles 업데이트 실패:', profileError)
-          throw new Error(`프로필 저장 실패: ${profileError.message}`)
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error('📱 [모바일] API 오류:', errorData)
+          throw new Error(errorData.error || '프로필 저장 실패')
         }
 
-        console.log('📱 [모바일] profiles 업데이트 성공:', profileResult)
+        const result = await response.json()
+        console.log('📱 [모바일] API 응답 성공:', result)
 
         // sessionStorage 업데이트
         const updatedUser = {
@@ -169,21 +168,36 @@ export default function CompleteProfilePage() {
         console.log('✅ [모바일] 카카오 사용자 프로필 완성 완료')
 
       } else {
-        // 🚀 일반 Supabase 사용자도 통합 프로필 업데이트 사용
-        console.log('📱 [모바일] 일반 사용자 통합 프로필 업데이트 시작')
+        // 🚀 일반 Supabase 사용자도 API Route 사용
+        console.log('📱 [모바일] 일반 사용자 프로필 업데이트 시작')
 
-        await UserProfileManager.atomicProfileUpdate(
-          user.id,
-          {
-            name: formData.name,
-            phone: formData.phone,
-            nickname: formData.nickname || formData.name,
-            address: formData.address,
-            detail_address: formData.detailAddress || ''
+        const updateData = {
+          name: formData.name,
+          phone: formData.phone,
+          nickname: formData.nickname || formData.name,
+          address: formData.address,
+          detail_address: formData.detailAddress || ''
+        }
+
+        const response = await fetch('/api/profile/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
           },
-          false // 일반 사용자
-        )
+          body: JSON.stringify({
+            userId: user.id,
+            profileData: updateData
+          })
+        })
 
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error('📱 [모바일] API 오류:', errorData)
+          throw new Error(errorData.error || '프로필 저장 실패')
+        }
+
+        const result = await response.json()
+        console.log('📱 [모바일] API 응답 성공:', result)
         console.log('✅ [모바일] 일반 사용자 프로필 완성 완료')
       }
 
