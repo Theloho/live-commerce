@@ -62,10 +62,26 @@ export default function useAuth() {
             clearUser()
           }
         } else {
-          // 4️⃣ Supabase Auth 세션이 없으면 sessionStorage도 클리어
-          console.log('❌ Supabase Auth 세션 없음 - sessionStorage 클리어')
-          sessionStorage.removeItem('user')
-          clearUser()
+          // 4️⃣ Supabase Auth 세션이 없으면 localStorage 체크 후 복구 시도
+          // ⚡ localStorage에 unified_user_session이 있으면 sessionStorage 복구
+          const fallbackSession = localStorage.getItem('unified_user_session')
+          if (fallbackSession) {
+            try {
+              const userData = JSON.parse(fallbackSession)
+              sessionStorage.setItem('user', fallbackSession)
+              setUser(userData)
+              console.log('✅ localStorage에서 세션 복구 성공:', userData.email)
+            } catch (e) {
+              console.warn('localStorage 세션 복구 실패:', e)
+              sessionStorage.removeItem('user')
+              clearUser()
+            }
+          } else {
+            // localStorage에도 없으면 클리어
+            console.log('❌ Supabase Auth 세션 없음 - sessionStorage 클리어')
+            sessionStorage.removeItem('user')
+            clearUser()
+          }
         }
       } catch (error) {
         console.error('세션 확인 오류:', error)

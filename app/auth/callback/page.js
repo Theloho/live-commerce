@@ -361,10 +361,19 @@ export default function AuthCallback() {
         kakao_id: userProfile.kakao_id
       }
 
-      // ✅ localStorage 사용 (페이지 새로고침 후에도 유지)
-      localStorage.setItem('unified_user_session', JSON.stringify(sessionUser))
-      // ✅ sessionStorage에도 저장 (checkout/mypage 호환성)
+      // ✅ sessionStorage 먼저 저장 (즉시 완료)
       sessionStorage.setItem('user', JSON.stringify(sessionUser))
+
+      // ⚡ localStorage 쓰기 완료 대기 (모바일 브라우저 디스크 I/O)
+      await new Promise(resolve => {
+        localStorage.setItem('unified_user_session', JSON.stringify(sessionUser))
+        // requestIdleCallback 사용 가능하면 사용, 아니면 150ms 대기
+        if (typeof requestIdleCallback !== 'undefined') {
+          requestIdleCallback(resolve)
+        } else {
+          setTimeout(resolve, 150)
+        }
+      })
 
       // 커스텀 로그인 이벤트 발생
       window.dispatchEvent(new CustomEvent('kakaoLoginSuccess', {
