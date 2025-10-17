@@ -59,15 +59,9 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
                 // ✅ sessionStorage도 업데이트하여 최신 상태 유지
                 sessionStorage.setItem('user', JSON.stringify(userData))
-                console.log('✅ BuyBottomSheet: 최신 프로필 정보 동기화 완료', {
-                  name: userData.name,
-                  phone: userData.phone,
-                  postal_code: userData.postal_code,
-                  address: userData.address
-                })
               }
             } catch (error) {
-              console.error('BuyBottomSheet 프로필 정보 로드 오류:', error)
+              // 프로필 로드 오류는 조용히 처리
             }
           }
 
@@ -76,7 +70,6 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
           setUserSession(null)
         }
       } catch (error) {
-        console.error('BuyBottomSheet 세션 확인 오류:', error)
         setUserSession(null)
       }
     }
@@ -208,10 +201,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
   // variant_id 찾기 함수
   const findVariantId = (selectedOptions) => {
-    console.log('🔍 findVariantId 호출:', { selectedOptions, variantsCount: product.variants?.length })
-
     if (!product.variants || product.variants.length === 0) {
-      console.log('⚠️ product.variants가 없음')
       return null
     }
 
@@ -219,40 +209,20 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     const matchedVariant = product.variants.find(variant => {
       if (!variant.options || variant.options.length === 0) return false
 
-      console.log('🔍 Variant 검사:', {
-        variantId: variant.id,
-        sku: variant.sku,
-        variantOptions: variant.options,
-        selectedOptions
-      })
-
       // 선택된 옵션의 개수와 variant의 옵션 개수가 같아야 함
       if (variant.options.length !== Object.keys(selectedOptions).length) {
-        console.log('❌ 옵션 개수 불일치')
         return false
       }
 
       // 모든 옵션이 일치하는지 확인
       const allMatch = Object.entries(selectedOptions).every(([optionName, optionValue]) => {
-        const match = variant.options.some(
+        return variant.options.some(
           opt => opt.optionName === optionName && opt.optionValue === optionValue
         )
-        if (!match) {
-          console.log(`❌ 매칭 실패: ${optionName}=${optionValue}`)
-        }
-        return match
       })
-
-      if (allMatch) {
-        console.log('✅ Variant 찾음:', variant.id)
-      }
 
       return allMatch
     })
-
-    if (!matchedVariant) {
-      console.log('❌ 매칭되는 variant를 찾지 못함')
-    }
 
     return matchedVariant ? matchedVariant.id : null
   }
@@ -388,7 +358,6 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const handleAddToCart = async (shouldClose = true) => {
     // 이미 처리 중이면 중복 실행 방지
     if (isLoading) {
-      console.log('이미 처리 중입니다')
       return
     }
 
@@ -401,12 +370,6 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       onClose()
       return
     }
-
-    console.log('BuyBottomSheet 장바구니 담기 클릭됨') // 디버깅
-    console.log('🔍 currentUser 상태:', {
-      postal_code: currentUser?.postal_code,
-      address: currentUser?.address
-    })
 
     // 사용자 정보 확인 (우편번호 포함)
     const userProfile = {
@@ -454,9 +417,6 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       })
     }
 
-    console.log('장바구니 항목들:', cartItems) // 디버깅
-    console.log('사용자 프로필:', userProfile) // 디버깅
-
     setIsLoading(true) // 로딩 시작
 
     try {
@@ -479,8 +439,6 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
             setIsLoading(false)
             return false
           }
-
-          console.log(`✅ Variant 재고 확인 통과: ${cartItem.variantId} (재고: ${variant.inventory}개, 주문: ${cartItem.quantity}개)`)
         } else {
           // Variant가 없는 경우 기존 옵션 재고 검증
           if (cartItem.selectedOptions && Object.keys(cartItem.selectedOptions).length > 0) {
@@ -506,8 +464,6 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
           variantId: cartItem.variantId // variant_id 포함
         }
 
-        console.log(`주문 생성 중: ${cartItem.optionLabel || '기본'} - ${cartItem.quantity}개`)
-
         // 옵션이 있으면 createOrderWithOptions 사용, 없으면 createOrder 사용
         const newOrder = cartItem.selectedOptions && Object.keys(cartItem.selectedOptions).length > 0
           ? await createOrderWithOptions(orderData, userProfile)
@@ -516,10 +472,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
         createdOrders.push(newOrder)
       }
 
-      console.log('생성된 주문들:', createdOrders) // 디버깅
-
       // 주문 업데이트 이벤트 발생 (재고 업데이트용)
-      console.log('주문 목록 업데이트 이벤트 발생 (BuyBottomSheet)')
       createdOrders.forEach(order => {
         window.dispatchEvent(new CustomEvent('orderUpdated', {
           detail: {
@@ -553,26 +506,18 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     const currentUser = userSession || user
     const isUserLoggedIn = userSession || isAuthenticated
 
-    console.log('🛒 구매하기 버튼 클릭됨')
-    console.log('🔐 인증 상태:', isUserLoggedIn)
-
     if (!isUserLoggedIn) {
-      console.log('❌ 로그인 필요')
       toast.error('로그인이 필요합니다')
       router.push('/login')
       onClose()
       return
     }
 
-    console.log('✅ 인증 완료, 장바구니 추가 시작')
-
     try {
       // 장바구니에 추가
       const success = await handleAddToCart(false)
 
       if (success) {
-        console.log('🎯 장바구니 추가 성공, BottomSheet 닫고 모달 표시')
-
         // BottomSheet 먼저 닫기
         onClose()
 
@@ -582,7 +527,6 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
         }, 300)
       }
     } catch (error) {
-      console.error('장바구니 추가 실패:', error)
       // 에러가 발생해도 BottomSheet는 닫기
       onClose()
     }
