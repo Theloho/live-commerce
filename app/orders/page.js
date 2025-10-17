@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -39,10 +39,18 @@ function OrdersContent() {
   const [pagination, setPagination] = useState({ totalPages: 0, totalCount: 0, pageSize: 10 })
   const [statusCounts, setStatusCounts] = useState({})
 
+  // ✅ 초기화 완료 플래그 (useRef)
+  const hasInitialized = useRef(false)
+
   // RLS 디버그 제거 (프로덕션 성능 최적화)
 
   // 🚀 통합된 고성능 초기화 (모든 useEffect 통합)
   useEffect(() => {
+    // ✅ 이미 초기화되었으면 실행 안 함 (authLoading 변경 시 재실행 방지)
+    if (hasInitialized.current) {
+      return
+    }
+
     const initOrdersPageFast = async () => {
       setPageLoading(true)
 
@@ -61,6 +69,8 @@ function OrdersContent() {
         // ⚡ 3단계: 주문 데이터 병렬 로드
         await loadOrdersDataFast(authResult.currentUser)
 
+        // ✅ 초기화 성공: 플래그 설정 (재실행 방지)
+        hasInitialized.current = true
         logger.info('✅ 주문내역 고속 초기화 완료')
       } catch (error) {
         logger.error('주문내역 초기화 실패:', error)
