@@ -19,7 +19,6 @@ import useAuth from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import AddressManager from '@/app/components/address/AddressManager'
-import { UserProfileManager } from '@/lib/userProfileManager'
 
 export default function MyPage() {
   const router = useRouter()
@@ -219,16 +218,31 @@ export default function MyPage() {
           }
         }
       } else {
-        // 🚀 실제 환경: 통합 프로필 업데이트 사용 (카카오/일반 사용자 공통)
-        const isKakaoUser = currentUser?.provider === 'kakao'
+        // ⚡ 모바일 최적화: API Route로 업데이트
+        console.log('📱 [마이페이지] 프로필 필드 업데이트 API 호출:', { field, value: editValues[field] })
 
-        await UserProfileManager.atomicProfileUpdate(
-          currentUser.id,
-          { [field]: editValues[field] },
-          isKakaoUser
-        )
+        const response = await fetch('/api/profile/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            profileData: { [field]: editValues[field] }
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error('📱 [마이페이지] API 오류:', errorData)
+          throw new Error(errorData.error || '정보 수정 실패')
+        }
+
+        const result = await response.json()
+        console.log('📱 [마이페이지] API 응답 성공:', result)
 
         // UI 상태 업데이트
+        const isKakaoUser = currentUser?.provider === 'kakao'
         if (isKakaoUser) {
           // sessionStorage 업데이트 (카카오 사용자만)
           const updatedUser = {
@@ -246,7 +260,8 @@ export default function MyPage() {
       toast.success('정보가 수정되었습니다')
 
     } catch (error) {
-      toast.error('정보 수정에 실패했습니다')
+      console.error('📱 [마이페이지] 정보 수정 실패:', error)
+      toast.error(`정보 수정에 실패했습니다: ${error.message}`)
     }
   }
 
@@ -475,30 +490,42 @@ export default function MyPage() {
                 return userProfile.addresses || []
               })()}
               onAddressesChange={async (newAddresses) => {
-                // 💾 DB 업데이트 + userProfile state 동기화
+                // 💾 DB 업데이트 + userProfile state 동기화 (모바일 최적화 - API Route 사용)
                 try {
                   const currentUser = userSession || user
                   if (!currentUser?.id) return
 
-                  const isKakaoUser = currentUser?.provider === 'kakao'
+                  console.log('📱 [마이페이지] 주소 업데이트 API 호출:', newAddresses)
 
-                  const updatedData = { addresses: newAddresses }
+                  // ⚡ API Route로 업데이트 (모바일 안전)
+                  const response = await fetch('/api/profile/complete', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      userId: currentUser.id,
+                      profileData: { addresses: newAddresses }
+                    })
+                  })
 
-                  // atomicProfileUpdate 사용 (deprecated된 updateProfile 대신)
-                  await UserProfileManager.atomicProfileUpdate(
-                    currentUser.id,
-                    updatedData,
-                    isKakaoUser
-                  )
+                  if (!response.ok) {
+                    const errorData = await response.json()
+                    console.error('📱 [마이페이지] API 오류:', errorData)
+                    throw new Error(errorData.error || '주소 저장 실패')
+                  }
+
+                  const result = await response.json()
+                  console.log('📱 [마이페이지] API 응답 성공:', result)
 
                   // userProfile state 동기화 (새로고침 없이 최신 상태 유지)
                   setUserProfile(prev => ({
                     ...prev,
-                    addresses: newAddresses  // ✅ Direct assignment
+                    addresses: newAddresses
                   }))
 
                   // sessionStorage 업데이트 (카카오 사용자만)
-                  // ⚠️ setUserSession 호출 제거 (useEffect 재실행 방지)
+                  const isKakaoUser = currentUser?.provider === 'kakao'
                   if (isKakaoUser) {
                     const updatedUser = {
                       ...currentUser,
@@ -507,7 +534,8 @@ export default function MyPage() {
                     sessionStorage.setItem('user', JSON.stringify(updatedUser))
                   }
                 } catch (error) {
-                  toast.error('주소 저장에 실패했습니다')
+                  console.error('📱 [마이페이지] 주소 저장 실패:', error)
+                  toast.error(`주소 저장에 실패했습니다: ${error.message}`)
                 }
               }}
             />

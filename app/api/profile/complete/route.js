@@ -38,17 +38,25 @@ export async function POST(request) {
     // profiles 테이블 업데이트
     console.log('📱 [API] Supabase upsert 호출 시작...')
 
+    // 업데이트할 데이터 준비 (제공된 필드만 업데이트)
+    const updateData = {
+      id: userId,
+      updated_at: new Date().toISOString()
+    }
+
+    if (profileData.name !== undefined) updateData.name = profileData.name
+    if (profileData.phone !== undefined) updateData.phone = profileData.phone
+    if (profileData.nickname !== undefined) updateData.nickname = profileData.nickname
+    if (profileData.address !== undefined) updateData.address = profileData.address
+    if (profileData.detail_address !== undefined) updateData.detail_address = profileData.detail_address
+    if (profileData.postal_code !== undefined) updateData.postal_code = profileData.postal_code
+    if (profileData.addresses !== undefined) updateData.addresses = profileData.addresses
+
+    console.log('📱 [API] 업데이트 데이터:', updateData)
+
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .upsert({
-        id: userId,
-        name: profileData.name,
-        phone: profileData.phone,
-        nickname: profileData.nickname || profileData.name,
-        address: profileData.address,
-        detail_address: profileData.detail_address || '',
-        updated_at: new Date().toISOString()
-      }, {
+      .upsert(updateData, {
         onConflict: 'id'
       })
       .select()
