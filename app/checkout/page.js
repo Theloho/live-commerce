@@ -1031,19 +1031,28 @@ export default function CheckoutPage() {
                   addresses={userProfile.addresses || []}
                   selectMode={true}
                   onAddressesChange={async (newAddresses) => {
-                    // 💾 중앙화 모듈로 DB 업데이트 + userProfile.addresses 동기화
+                    // ⚡ 모바일 최적화: API Route로 서버사이드 처리
                     const currentUser = userSession || user
                     const isKakaoUser = currentUser?.provider === 'kakao'
 
                     try {
-                      const updatedData = { addresses: newAddresses }
+                      console.log('📱 [체크아웃] 주소 업데이트 API 호출:', newAddresses)
 
-                      // atomicProfileUpdate 사용 (addresses 필드 자동 저장)
-                      await UserProfileManager.atomicProfileUpdate(
-                        currentUser.id,
-                        updatedData,
-                        isKakaoUser
-                      )
+                      const response = await fetch('/api/profile/complete', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          userId: currentUser.id,
+                          profileData: { addresses: newAddresses }
+                        })
+                      })
+
+                      if (!response.ok) {
+                        const errorData = await response.json()
+                        throw new Error(errorData.error || '주소 저장 실패')
+                      }
 
                       // userProfile.addresses 동기화 (모달 재오픈 시 새 주소 표시)
                       setUserProfile(prev => ({
@@ -1051,10 +1060,19 @@ export default function CheckoutPage() {
                         addresses: newAddresses
                       }))
 
+                      // 카카오 사용자는 sessionStorage 업데이트
+                      if (isKakaoUser) {
+                        const updatedUser = {
+                          ...currentUser,
+                          addresses: newAddresses
+                        }
+                        sessionStorage.setItem('user', JSON.stringify(updatedUser))
+                      }
+
                       toast.success('배송지가 저장되었습니다')
                     } catch (error) {
                       logger.error('주소 업데이트 실패:', error)
-                      toast.error('주소 저장 중 오류가 발생했습니다')
+                      toast.error(`주소 저장 중 오류: ${error.message}`)
                     }
                   }}
                   onSelect={(address) => {
