@@ -6,12 +6,10 @@ import { supabase } from '@/lib/supabase'
 import useAuth from '@/hooks/useAuth'
 import useRealtimeProducts from '@/hooks/useRealtimeProducts'
 import Header from './components/layout/Header'
-import LiveBanner from './components/layout/LiveBanner'
 import ProductGrid from './components/product/ProductGrid'
 import MobileNav from './components/layout/MobileNav'
 
 export default function Home() {
-  const [liveBroadcast, setLiveBroadcast] = useState(null)
   const [userSession, setUserSession] = useState(null)
   const [sessionLoading, setSessionLoading] = useState(true)
   const { isAuthenticated } = useAuth()
@@ -19,7 +17,6 @@ export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    loadLiveBroadcastData()
     checkUserSession()
   }, [])
 
@@ -105,26 +102,6 @@ export default function Home() {
     }
   }, [])
 
-  async function loadLiveBroadcastData() {
-    try {
-      // Mock 라이브 방송 데이터 (테스트용)
-      const mockBroadcast = {
-        id: 'live-broadcast-1',
-        title: '🔥 특가 세일 라이브!',
-        status: 'live',
-        viewer_count: 1247,
-        thumbnail_url: '/images/live-thumbnail.jpg',
-        broadcaster_name: 'allok 라이브',
-        created_at: new Date().toISOString()
-      }
-
-      // 라이브 방송이 있는 것처럼 설정 (원하면 null로 설정 가능)
-      setLiveBroadcast(mockBroadcast)
-    } catch (err) {
-      console.error('라이브 방송 데이터 로딩 오류:', err)
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -203,33 +180,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* 라이브 방송 섹션 */}
-        {liveBroadcast ? (
-          <>
-            <LiveBanner broadcast={liveBroadcast} />
-            <div className="mt-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-3">🔥 라이브 중인 상품</h2>
-              <ProductGrid products={products} />
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="bg-white rounded-lg p-6 mb-6 text-center">
-              <div className="text-gray-400 mb-3">
-                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">현재 진행중인 방송이 없습니다</h3>
-              <p className="text-sm text-gray-600">곧 새로운 라이브 방송이 시작됩니다!</p>
-            </div>
-
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-3">🛍️ 인기 상품</h2>
-              <ProductGrid products={products} />
-            </div>
-          </>
-        )}
+        {/* 상품 그리드 */}
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-3">🛍️ 인기 상품</h2>
+          <ProductGrid products={products} />
+        </div>
       </main>
 
       {/* 하단 네비게이션 */}
