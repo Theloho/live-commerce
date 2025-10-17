@@ -1199,7 +1199,7 @@ export default function AdminDepositsPage() {
                       )
                     })()}
                     <p className="text-sm text-gray-500">
-                      주문번호: {order.customer_order_number || order.customerOrderNumber || order.id.slice(-8)} • ₩{order.payment?.amount.toLocaleString()}
+                      주문번호: {order.customer_order_number || order.customerOrderNumber || order.id.slice(-8)} • ₩{(order.payment?.amount || 0).toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-400">
                       {new Date(order.created_at).toLocaleString('ko-KR')}

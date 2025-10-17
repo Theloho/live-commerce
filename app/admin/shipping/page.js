@@ -443,7 +443,7 @@ export default function AdminShippingPage() {
                           </button>
                         </div>
                         <div className="text-sm text-gray-500">
-                          ₩{order.payment?.amount.toLocaleString()}
+                          ₩{(order.payment?.amount || 0).toLocaleString()}
                         </div>
                         <div className="text-xs text-gray-500">
                           {(() => {
@@ -663,7 +663,7 @@ export default function AdminShippingPage() {
                       {order.user?.name}
                     </span>
                     <span className="text-sm text-gray-600">
-                      ₩{order.payment?.amount.toLocaleString()}
+                      ₩{(order.payment?.amount || 0).toLocaleString()}
                     </span>
                   </div>
                   <div className="text-sm text-gray-600">
