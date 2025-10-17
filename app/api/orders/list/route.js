@@ -21,13 +21,16 @@ const supabaseAdmin = createClient(
  */
 export async function POST(request) {
   try {
-    const { user, orderId } = await request.json()
+    const { user, orderId, page = 1, pageSize = 10, status = null } = await request.json()
 
     console.log('🚀 [Service Role API] 주문 조회 시작:', {
       userId: user?.id,
       userName: user?.name,
       hasKakaoId: !!user?.kakao_id,
-      specificOrderId: orderId || 'ALL'
+      specificOrderId: orderId || 'ALL',
+      page,
+      pageSize,
+      statusFilter: status
     })
 
     // 1. 기본 유효성 검사
@@ -245,11 +248,36 @@ export async function POST(request) {
         : order.order_payments || null
     }))
 
-    console.log(`✅ [Service Role API] 주문 조회 완료: ${normalizedOrders.length}건`)
+    // 5. 상태별 총계 계산 (탭 숫자용)
+    const statusCounts = normalizedOrders.reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1
+      return acc
+    }, {})
+
+    // 6. 상태 필터 적용
+    let filteredOrders = normalizedOrders
+    if (status) {
+      filteredOrders = normalizedOrders.filter(order => order.status === status)
+    }
+
+    // 7. 페이지네이션 적용
+    const totalCount = filteredOrders.length
+    const totalPages = Math.ceil(totalCount / pageSize)
+    const offset = (page - 1) * pageSize
+    const paginatedOrders = filteredOrders.slice(offset, offset + pageSize)
+
+    console.log(`✅ [Service Role API] 주문 조회 완료: 전체 ${totalCount}건 중 ${paginatedOrders.length}건 반환 (${page}/${totalPages} 페이지)`)
 
     return NextResponse.json({
       success: true,
-      orders: normalizedOrders
+      orders: paginatedOrders,
+      pagination: {
+        currentPage: page,
+        pageSize,
+        totalCount,
+        totalPages
+      },
+      statusCounts
     })
   } catch (error) {
     console.error('❌ [Service Role API] 주문 조회 오류:', error)

@@ -34,6 +34,11 @@ function OrdersContent() {
   const [filterStatus, setFilterStatus] = useState('pending')
   const [selectedGroupOrder, setSelectedGroupOrder] = useState(null)
 
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState({ totalPages: 0, totalCount: 0, pageSize: 10 })
+  const [statusCounts, setStatusCounts] = useState({})
+
   // RLS 디버그 제거 (프로덕션 성능 최적화)
 
   // 🚀 통합된 고성능 초기화 (모든 useEffect 통합)
@@ -113,16 +118,22 @@ function OrdersContent() {
     // ⚡ 주문 데이터 고속 로드
     const loadOrdersDataFast = async (currentUser) => {
       try {
-        let ordersData = []
+        // 🚀 통합 API 사용 (페이지네이션 포함)
+        const result = await getOrders(currentUser.id, {
+          page: currentPage,
+          pageSize: 10,
+          status: filterStatus
+        })
 
-        // 🚀 통합 API 사용 (모든 사용자 동일 처리)
-        ordersData = await getOrders(currentUser.id)
-
-        setOrders(ordersData)
-        return ordersData
+        setOrders(result.orders || [])
+        setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
+        setStatusCounts(result.statusCounts || {})
+        return result.orders
       } catch (error) {
         logger.error('주문 데이터 로드 오류:', error)
         setOrders([])
+        setPagination({ currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
+        setStatusCounts({})
         throw error
       }
     }
@@ -155,10 +166,16 @@ function OrdersContent() {
         if (currentUser?.id) {
           setPageLoading(true)
 
-          // 통합 API 사용 (모든 사용자 동일 처리)
-          let ordersData = await getOrders(currentUser.id)
+          // 통합 API 사용 (페이지네이션 포함)
+          const result = await getOrders(currentUser.id, {
+            page: currentPage,
+            pageSize: 10,
+            status: filterStatus
+          })
 
-          setOrders(ordersData)
+          setOrders(result.orders || [])
+          setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
+          setStatusCounts(result.statusCounts || {})
           setPageLoading(false)
         }
       }
@@ -167,6 +184,13 @@ function OrdersContent() {
       setPageLoading(false)
     }
   }
+
+  // 페이지나 필터 변경 시 데이터 다시 로드
+  useEffect(() => {
+    if (userSession || isAuthenticated) {
+      refreshOrders()
+    }
+  }, [currentPage, filterStatus])
 
   // ⚡ 로딩 상태 체크 (통합된 단일 로딩)
   if (pageLoading) {
@@ -193,8 +217,23 @@ function OrdersContent() {
     )
   }
 
-  // 상태별 필터링
-  const filteredOrders = orders.filter(order => order.status === filterStatus)
+  // 탭 변경 핸들러 (페이지 리셋)
+  const handleTabChange = (newStatus) => {
+    setFilterStatus(newStatus)
+    setCurrentPage(1) // 페이지 1로 리셋
+  }
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setCurrentPage(newPage)
+      // 페이지 상단으로 스크롤
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  // 상태별 필터링 (이미 API에서 필터링됨)
+  const filteredOrders = orders
 
   const getStatusInfo = (status, paymentMethod = null) => {
     const statusMap = {
@@ -367,11 +406,11 @@ function OrdersContent() {
               { key: 'paid', label: '결제완료' },
               { key: 'delivered', label: '출고완료' }
             ].map(filter => {
-              const count = orders.filter(order => order.status === filter.key).length
+              const count = statusCounts[filter.key] || 0
               return (
               <button
                 key={filter.key}
-                onClick={() => setFilterStatus(filter.key)}
+                onClick={() => handleTabChange(filter.key)}
                 className={`
                   px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
                   ${filterStatus === filter.key
@@ -714,6 +753,55 @@ function OrdersContent() {
                   </motion.div>
                 )
               })}
+            </div>
+          )}
+
+          {/* 페이지네이션 (주문이 있을 때만 표시) */}
+          {filteredOrders.length > 0 && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-6 mt-4">
+              {/* 이전 버튼 */}
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg
+                           bg-white border border-gray-300 font-medium text-sm
+                           disabled:opacity-40 disabled:cursor-not-allowed
+                           active:bg-gray-100 transition-all
+                           min-w-[80px] justify-center"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>이전</span>
+              </button>
+
+              {/* 페이지 정보 */}
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-base font-semibold">
+                  <span className="text-red-500 text-lg">{currentPage}</span>
+                  <span className="text-gray-400 mx-2">/</span>
+                  <span className="text-gray-600">{pagination.totalPages}</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  총 {pagination.totalCount}건
+                </div>
+              </div>
+
+              {/* 다음 버튼 */}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === pagination.totalPages}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg
+                           bg-white border border-gray-300 font-medium text-sm
+                           disabled:opacity-40 disabled:cursor-not-allowed
+                           active:bg-gray-100 transition-all
+                           min-w-[80px] justify-center"
+              >
+                <span>다음</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
           )}
         </div>
