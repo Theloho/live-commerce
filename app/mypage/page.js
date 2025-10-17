@@ -274,23 +274,33 @@ export default function MyPage() {
     const confirmed = window.confirm('로그아웃하시겠습니까?')
     if (confirmed) {
       try {
-        // sessionStorage 정리
+        console.log('🚪 [로그아웃] 시작')
+
+        // 1. sessionStorage 정리
         sessionStorage.removeItem('user')
+        console.log('✅ [로그아웃] sessionStorage 정리 완료')
+
+        // 2. 로컬 상태 정리
         setUserSession(null)
         setUserProfile(null)
 
-        // useAuth의 signOut 호출
-        const result = await signOut()
+        // 3. 다른 컴포넌트에 로그아웃 알림 (이벤트 발생)
+        window.dispatchEvent(new CustomEvent('userLoggedOut'))
+        console.log('✅ [로그아웃] userLoggedOut 이벤트 발생')
 
-        if (result && result.success) {
-          // 즉시 홈으로 이동
-          router.push('/')
-        } else {
-          // 실패해도 홈으로 이동 (클라이언트 상태는 이미 정리됨)
-          router.push('/')
-        }
+        // 4. Supabase Auth 로그아웃
+        const result = await signOut()
+        console.log('✅ [로그아웃] Supabase signOut 완료:', result)
+
+        // 5. 성공 메시지 및 리다이렉트
+        toast.success('로그아웃되었습니다')
+        console.log('✅ [로그아웃] 홈으로 리다이렉트')
+        router.push('/')
+
       } catch (error) {
-        // 오류가 발생해도 홈으로 이동
+        console.error('❌ [로그아웃] 오류:', error)
+        // 오류가 발생해도 클라이언트 상태는 정리되었으므로 홈으로 이동
+        toast.info('로그아웃되었습니다')
         router.push('/')
       }
     }
