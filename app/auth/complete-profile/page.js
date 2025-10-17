@@ -164,11 +164,8 @@ export default function CompleteProfilePage() {
         }
         sessionStorage.setItem('user', JSON.stringify(updatedUser))
 
-        // 프로필 완성 이벤트 발생
-        window.dispatchEvent(new CustomEvent('profileCompleted', {
-          detail: updatedUser
-        }))
-
+        // ✅ 이벤트는 발생시키지 않음 (홈 페이지가 sessionStorage를 직접 읽음)
+        // 모바일에서 이벤트 + 리다이렉트 동시 발생 시 무한루프 방지
 
       } else {
         // 🚀 일반 Supabase 사용자도 API Route 사용
