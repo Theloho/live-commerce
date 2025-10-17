@@ -99,7 +99,9 @@ function OrdersContent() {
 
     // 🔒 인증 검증 (빠른 검사)
     const validateAuthenticationFast = ({ sessionUser }) => {
-      if (authLoading && !sessionUser) {
+      // ✅ authLoading이 true이지만 sessionUser가 있으면 진행 (카카오 사용자)
+      if (authLoading && !sessionUser && !user) {
+        // 세션 사용자도 없고 useAuth의 user도 없으면 대기
         return { success: false }
       }
 
@@ -107,8 +109,11 @@ function OrdersContent() {
       const isUserLoggedIn = sessionUser || isAuthenticated
 
       if (!isUserLoggedIn || !currentUser?.id) {
-        toast.error('로그인이 필요합니다')
-        router.push('/login')
+        // ✅ authLoading 중에는 로그인 리다이렉트 안 함 (로딩 완료 대기)
+        if (!authLoading) {
+          toast.error('로그인이 필요합니다')
+          router.push('/login')
+        }
         return { success: false }
       }
 
@@ -187,9 +192,11 @@ function OrdersContent() {
 
   // 페이지나 필터 변경 시 데이터 다시 로드
   useEffect(() => {
-    if (userSession || isAuthenticated) {
+    // ✅ 초기 로딩이 완료된 후에만 페이지/필터 변경에 반응
+    if (!pageLoading && (userSession || isAuthenticated)) {
       refreshOrders()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filterStatus])
 
   // ⚡ 로딩 상태 체크 (통합된 단일 로딩)
