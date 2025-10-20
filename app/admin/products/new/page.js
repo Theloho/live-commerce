@@ -360,7 +360,7 @@ export default function NewProductPage() {
           key: `size:${size}`,
           label: size,
           type: 'size',
-          value: size
+          size: size  // ✅ 수정: API가 필요로 하는 size 필드 추가
         })
       })
     } else if (optionType === 'color') {
@@ -369,7 +369,7 @@ export default function NewProductPage() {
           key: `color:${color}`,
           label: color,
           type: 'color',
-          value: color
+          color: color  // ✅ 수정: API가 필요로 하는 color 필드 추가
         })
       })
     } else if (optionType === 'both') {
@@ -420,6 +420,16 @@ export default function NewProductPage() {
       if (productData.optionType !== 'none') {
         totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
       }
+
+      // 🔍 디버깅: 옵션 데이터 확인
+      console.log('📦 [빠른등록] 옵션 데이터:', {
+        optionType: productData.optionType,
+        sizeOptions: productData.sizeOptions,
+        colorOptions: productData.colorOptions,
+        optionInventories: productData.optionInventories,
+        combinations: combinations,
+        combinationsLength: combinations.length
+      })
 
       // Service Role API 호출 (관리자 권한 검증 포함)
       const response = await fetch('/api/admin/products/create', {

@@ -413,6 +413,10 @@ export default function useAuth() {
       console.log('카카오 로그인 리디렉션 URL:', redirectUrl)
       console.log('카카오 OAuth URL:', kakaoAuthUrl)
 
+      // ✅ 페이지 리디렉션 직전에 loading 상태 해제
+      // (window.location.href는 finally 블록에 도달하지 못함)
+      setAuthLoading(false)
+
       // 직접 리디렉션
       window.location.href = kakaoAuthUrl
 
@@ -420,9 +424,8 @@ export default function useAuth() {
     } catch (error) {
       console.error('카카오 로그인 오류:', error)
       toast.error(error.message || '카카오 로그인에 실패했습니다')
-      return { success: false, error: error.message }
-    } finally {
       setAuthLoading(false)
+      return { success: false, error: error.message }
     }
   }
 

@@ -107,9 +107,28 @@ export async function POST(request) {
 
     console.log(`✅ [${registrationType} API] 상품 생성 완료:`, product.id)
 
+    // 🔍 디버깅: 받은 옵션 데이터 확인
+    console.log(`🔍 [${registrationType} API] 받은 옵션 데이터:`, {
+      optionType,
+      sizeOptionsLength: sizeOptions?.length || 0,
+      colorOptionsLength: colorOptions?.length || 0,
+      combinationsLength: combinations?.length || 0,
+      optionInventoriesKeys: Object.keys(optionInventories || {}).length
+    })
+
     // 2. 옵션이 있는 경우 Variant 시스템으로 저장
     if (optionType !== 'none' && combinations && combinations.length > 0) {
-      console.log(`📦 [${registrationType} API] 옵션 저장 시작`)
+      console.log(`📦 [${registrationType} API] 옵션 저장 시작 - 조건 충족됨`)
+      console.log(`   - optionType: ${optionType}`)
+      console.log(`   - combinations: ${combinations.length}개`)
+    } else {
+      console.log(`⚠️ [${registrationType} API] 옵션 저장 건너뜀 - 조건 미충족`)
+      console.log(`   - optionType: ${optionType}`)
+      console.log(`   - combinations: ${combinations?.length || 0}개`)
+      console.log(`   - 조건: optionType !== 'none' && combinations && combinations.length > 0`)
+    }
+
+    if (optionType !== 'none' && combinations && combinations.length > 0) {
 
       // 2-1. product_options 생성
       const optionsToCreate = []

@@ -18,7 +18,8 @@ export default function LoginPage() {
 
   const handleKakaoLogin = async () => {
     try {
-      setLoading(true)
+      // ✅ 로컬 loading 제거: signInWithKakao()가 페이지 리디렉션하므로
+      // finally 블록에 도달하지 못함 → loading 상태 관리 불필요
       const result = await signInWithKakao()
       if (!result.success) {
         console.error('카카오 로그인 실패:', result.error)
@@ -26,8 +27,6 @@ export default function LoginPage() {
     } catch (error) {
       console.error('카카오 로그인 오류:', error)
       toast.error('카카오 로그인 중 오류가 발생했습니다')
-    } finally {
-      setLoading(false)
     }
   }
 

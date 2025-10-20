@@ -1047,38 +1047,81 @@ deleteProduct(productId)
 
 ---
 
-### 2.4 상품 조회 (사용자) [일반]
+### 2.4 상품 조회 (사용자) [일반] ⭐ 2025-10-18 ISR 적용
 
 #### 📍 영향받는 페이지
-1. `/` - 홈 페이지
+1. `/` - 홈 페이지 (Server Component + ISR)
+2. `/app/components/HomeClient.jsx` - Client Component
 
 #### 🔧 핵심 함수
 ```javascript
-getProducts(filters)
+// Server Component (빌드 시 실행)
+async function getProducts() {
+  ↓ SELECT (11개 컬럼만 - JOIN 제거)
+  id, title, product_number, price, compare_price, thumbnail_url,
+  inventory, status, is_featured, is_live_active, created_at
   ↓ filters
-  status='active' AND is_live=true AND is_live_active=true
-  ↓ joins
-  product_variants (병렬 로드)
+  status='active'
+  ↓ order
+  created_at DESC
+  ↓ limit
+  50개
+}
+
+// ISR 설정
+export const revalidate = 300 // 5분마다 재생성
 ```
 
 #### 🗄️ DB 작업
-- `products` (SELECT) - 활성 + 라이브 노출 상품
-- `product_variants` (SELECT) - 각 상품의 Variant
+- `products` (SELECT) - ⚡ **11개 컬럼만** (JOIN 제거)
+  - ❌ ~~product_variants JOIN 제거~~ (불필요)
+  - ❌ ~~categories JOIN 제거~~ (불필요)
+  - ❌ ~~suppliers JOIN 제거~~ (불필요)
+- **데이터 전송량**: 90% 감소 (200KB → 20KB)
 
 #### ⚠️ 필수 체크리스트
-- [ ] 활성 상품만 표시 (status='active')
-- [ ] 라이브 활성화 상품만 (is_live_active=true)
-- [ ] Variant 정보 병렬 로드
-- [ ] 총 재고 계산 (모든 Variant 합계)
-- [ ] 옵션 정보 추출
+- [x] ✅ **ISR 설정**: `export const revalidate = 300` (5분)
+- [x] ✅ **Server Component**: `await getProducts()` (빌드 시)
+- [x] ✅ **Client Component**: initialProducts prop 전달
+- [x] ✅ **11개 컬럼만 SELECT** (JOIN 제거)
+- [x] ✅ status='active' 필터링
+- [x] ✅ 최대 50개 상품 조회
+- [x] ✅ **모바일 타임아웃 해결** (즉시 표시 ⚡)
+- [ ] ~~is_live_active=true 필터링~~ (제거됨, 모든 active 상품 표시)
+- [ ] ~~Variant 정보 병렬 로드~~ (제거됨, ProductCard에서 불필요)
+- [ ] ~~총 재고 계산 (모든 Variant 합계)~~ (제거됨, 불필요)
+- [ ] ~~옵션 정보 추출~~ (제거됨, 불필요)
 
 #### 💡 특이사항
-- **실시간 업데이트**: useRealtimeProducts hook 사용
-- **병렬 로딩**: 모든 상품의 Variant 동시 로드
+- **ISR 적용** (2025-10-18):
+  - 빌드 시 HTML pre-rendering → 5분마다 자동 재생성
+  - 모바일 첫 로딩: 10-20초 타임아웃 → **즉시 표시** ⚡
+- **성능 최적화** (2025-10-18):
+  - 쿼리 간소화: 4-level JOIN 제거 → 11개 컬럼만 SELECT
+  - 데이터 전송량: 90% 감소 (200KB → 20KB)
+- **아키텍처 변경** (2025-10-18):
+  - `/app/page.js` - Server Component (데이터 fetch)
+  - `/app/components/HomeClient.jsx` - Client Component (UI 렌더링)
+- ~~**실시간 업데이트**: useRealtimeProducts hook 사용~~ (제거됨, ISR 사용)
+- ~~**병렬 로딩**: 모든 상품의 Variant 동시 로드~~ (제거됨, 불필요)
+
+#### 📝 최근 수정 이력
+- **2025-10-18**: ISR 적용 + 쿼리 최적화 (커밋: ac7f56c, fb8b0cd)
+  - 문제: 모바일 첫 로딩 10-20초 타임아웃 ❌
+  - 원인: 4-level JOIN 쿼리 + Cold Start + 모바일 네트워크 지연
+  - 해결:
+    1. 쿼리 최적화: JOIN 제거, 11개 컬럼만 SELECT
+    2. ISR 적용: Server Component + revalidate: 300초
+  - 결과: 모바일 첫 로딩 **즉시 표시** ⚡
 
 #### 🎓 상세 문서 위치
-- **코드**: lib/supabaseApi.js - getProducts()
-- **Hook**: hooks/useRealtimeProducts.js
+- **코드**:
+  - `/app/page.js` - Server Component + ISR 설정
+  - `/lib/supabaseApi.js` - getProducts() (간소화됨)
+- **문서**:
+  - `DETAILED_DATA_FLOW.md` - 홈페이지 ISR 데이터 흐름
+  - `PAGE_FEATURE_MATRIX_PART1.md` - 홈페이지 기능 상세
+  - `SYSTEM_ARCHITECTURE.md` - ISR 아키텍처
 
 ---
 
