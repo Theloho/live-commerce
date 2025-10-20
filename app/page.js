@@ -22,7 +22,12 @@ async function getProducts() {
         status,
         is_featured,
         is_live_active,
-        created_at
+        created_at,
+        product_variants (
+          id,
+          sku,
+          inventory
+        )
       `)
       .eq('status', 'active')
       .eq('is_live_active', true)  // ✅ 추가: 노출 중인 상품만 표시
@@ -45,7 +50,10 @@ async function getProducts() {
     const productsFormatted = data.map(product => ({
       ...product,
       stock_quantity: product.inventory,
-      isLive: product.is_live_active || false
+      isLive: product.is_live_active || false,
+      hasOptions: product.product_variants && product.product_variants.length > 0,
+      optionCount: product.product_variants ? product.product_variants.length : 0,
+      variants: product.product_variants || []
     }))
 
     return productsFormatted
