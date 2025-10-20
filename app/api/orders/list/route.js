@@ -70,52 +70,13 @@ export async function POST(request) {
         .order('created_at', { ascending: false })
     }
 
-    // 3. 상태별 총계 계산 (⚡ 최적화: 별도 count 쿼리로 효율적 계산)
-    let statusCountQuery = supabaseAdmin
-      .from('orders')
-      .select('status')
+    // 3. 사용자 타입별 데이터 조회 (⚡ 최적화: 카카오 OR 조건 1번의 쿼리)
+    let data = []
 
     if (user.kakao_id) {
-      // 카카오 사용자: OR 조건 동일하게 적용
-      const primaryPattern = `direct:KAKAO:${user.kakao_id}`
-      const cartPattern = `cart:KAKAO:${user.kakao_id}`
-      const idPattern = `%KAKAO:${user.id}%`
+      // ⚡ 카카오 사용자: OR 조건으로 1번에 조회
+      console.log('📱 카카오 사용자 주문 조회:', user.kakao_id)
 
-      statusCountQuery = statusCountQuery.or(
-        `order_type.eq.${primaryPattern},` +
-        `order_type.like.${cartPattern}%,` +
-        `order_type.like.${idPattern}`
-      )
-    } else {
-      // Auth 사용자
-      statusCountQuery = statusCountQuery.eq('user_id', user.id)
-    }
-
-    // cancelled 제외
-    if (!orderId) {
-      statusCountQuery = statusCountQuery.neq('status', 'cancelled')
-    }
-
-    const { data: statusData } = await statusCountQuery
-    const statusCounts = (statusData || []).reduce((acc, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1
-      return acc
-    }, {})
-
-    // 5. 상태 필터 적용 (DB-level)
-    if (status && !orderId) {
-      query = query.eq('status', status)
-    }
-
-    // 6. ⚡ DB-level 페이지네이션 (메모리 사용량 90% 감소)
-    const offset = (page - 1) * pageSize
-    if (!orderId) {
-      query = query.range(offset, offset + pageSize - 1)
-    }
-
-    // 7. 최종 쿼리 실행 (페이지네이션 적용된 데이터만 로드)
-    let finalData = []
-    if (user.kakao_id) {
       const primaryPattern = `direct:KAKAO:${user.kakao_id}`
       const cartPattern = `cart:KAKAO:${user.kakao_id}`
       const idPattern = `%KAKAO:${user.id}%`
@@ -127,25 +88,30 @@ export async function POST(request) {
       )
 
       if (kakaoError) {
-        console.error('❌ 카카오 페이지네이션 쿼리 오류:', kakaoError)
+        console.error('❌ 카카오 사용자 주문 조회 오류:', kakaoError)
         throw kakaoError
       }
 
-      finalData = kakaoData || []
+      data = kakaoData || []
+      console.log(`✅ 카카오 사용자 주문 조회 완료: ${data.length}건`)
+
     } else {
+      // Supabase Auth 사용자: user_id로 조회
+      console.log('🔐 Auth 사용자 주문 조회:', user.id)
+
       const { data: authData, error: authError } = await query
         .eq('user_id', user.id)
 
       if (authError) {
-        console.error('❌ Auth 페이지네이션 쿼리 오류:', authError)
+        console.error('❌ Auth 조회 오류:', authError)
         throw authError
       }
 
-      finalData = authData || []
+      data = authData || []
     }
 
-    // 8. 데이터 정규화 (페이지네이션된 데이터만)
-    const normalizedOrders = finalData.map(order => ({
+    // 4. 데이터 정규화
+    const normalizedOrders = data.map(order => ({
       ...order,
       items: (order.order_items || []).map(item => ({
         ...item,
@@ -168,12 +134,23 @@ export async function POST(request) {
         : order.order_payments || null
     }))
 
-    // 9. 페이지네이션 메타데이터 계산
-    const totalCount = status
-      ? (statusCounts[status] || 0)
-      : Object.values(statusCounts).reduce((sum, count) => sum + count, 0)
+    // 5. 상태별 총계 계산 (⚡ 메모리 계산 - 즉시 반응)
+    const statusCounts = normalizedOrders.reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1
+      return acc
+    }, {})
+
+    // 6. 상태 필터 적용 (⚡ 메모리 필터 - 즉시 반응)
+    let filteredOrders = normalizedOrders
+    if (status) {
+      filteredOrders = normalizedOrders.filter(order => order.status === status)
+    }
+
+    // 7. 페이지네이션 적용 (⚡ 메모리 slice - 즉시 반응)
+    const totalCount = filteredOrders.length
     const totalPages = Math.ceil(totalCount / pageSize)
-    const paginatedOrders = normalizedOrders
+    const offset = (page - 1) * pageSize
+    const paginatedOrders = filteredOrders.slice(offset, offset + pageSize)
 
     console.log(`✅ [Service Role API] 주문 조회 완료: 전체 ${totalCount}건 중 ${paginatedOrders.length}건 반환 (${page}/${totalPages} 페이지)`)
 
