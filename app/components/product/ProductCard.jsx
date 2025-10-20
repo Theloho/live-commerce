@@ -359,15 +359,6 @@ export default function ProductCard({ product, variant = 'default', priority = f
               )}
             </div>
 
-            {/* 옵션 정보 표시 */}
-            {hasOptions && optionCount > 0 && (
-              <div className="mb-2">
-                <span className="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded">
-                  옵션 {optionCount}개
-                </span>
-              </div>
-            )}
-
             {/* Quick Actions */}
             <div className="flex gap-2 mt-3">
               <button
