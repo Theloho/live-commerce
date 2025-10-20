@@ -42,7 +42,7 @@ export async function POST(request) {
       )
     }
 
-    // 2. 기본 쿼리 구성
+    // 2. 기본 쿼리 구성 (⚡ product_variants JOIN 제거 - 성능 개선)
     let query = supabaseAdmin
       .from('orders')
       .select(`
@@ -54,19 +54,6 @@ export async function POST(request) {
             title,
             thumbnail_url,
             price
-          ),
-          product_variants (
-            id,
-            sku,
-            inventory,
-            variant_option_values (
-              product_option_values (
-                value,
-                product_options (
-                  name
-                )
-              )
-            )
           )
         ),
         order_shipping (*),
@@ -115,19 +102,6 @@ export async function POST(request) {
               title,
               thumbnail_url,
               price
-            ),
-            product_variants (
-              id,
-              sku,
-              inventory,
-              variant_option_values (
-                product_option_values (
-                  value,
-                  product_options (
-                    name
-                  )
-                )
-              )
             )
           ),
           order_shipping (*),
@@ -169,19 +143,6 @@ export async function POST(request) {
               title,
               thumbnail_url,
               price
-            ),
-            product_variants (
-              id,
-              sku,
-              inventory,
-              variant_option_values (
-                product_option_values (
-                  value,
-                  product_options (
-                    name
-                  )
-                )
-              )
             )
           ),
           order_shipping (*),
