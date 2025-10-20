@@ -16,9 +16,11 @@ import {
   TicketIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
+import useAuthStore from '@/app/stores/authStore' // ⚡ Zustand store
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import AddressManager from '@/app/components/address/AddressManager'
+import { UserProfileManager } from '@/lib/userProfileManager' // ⚡ 중앙화 모듈
 
 export default function MyPage() {
   const router = useRouter()
@@ -252,6 +254,10 @@ export default function MyPage() {
 
       // 로컬 상태 업데이트
       setUserProfile(prev => ({ ...prev, [field]: editValues[field] }))
+
+      // ⚡ authStore 캐시 업데이트
+      useAuthStore.getState().updateProfile({ [field]: editValues[field] })
+
       setEditingField(null)
       toast.success('정보가 수정되었습니다')
 
@@ -520,6 +526,9 @@ export default function MyPage() {
                     ...prev,
                     addresses: newAddresses
                   }))
+
+                  // ⚡ authStore 캐시 업데이트
+                  useAuthStore.getState().updateProfile({ addresses: newAddresses })
 
                   // sessionStorage 업데이트 (카카오 사용자만)
                   const isKakaoUser = currentUser?.provider === 'kakao'
