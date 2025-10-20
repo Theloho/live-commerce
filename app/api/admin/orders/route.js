@@ -6,7 +6,7 @@ export async function GET(request) {
     // URL에서 파라미터 추출
     const { searchParams } = new URL(request.url)
     const adminEmail = searchParams.get('adminEmail')
-    const limit = parseInt(searchParams.get('limit') || '1000') // 기본값: 전체
+    const limit = parseInt(searchParams.get('limit') || '100') // ⚡ 성능: 기본값 100 (1000→100)
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // ✅ 필터 파라미터 추가
@@ -137,58 +137,56 @@ export async function GET(request) {
 
     console.log(`✅ 조회된 주문 수: ${data?.length || 0} / 전체: ${count || 0} (필터: status=${statusFilter}, method=${paymentMethodFilter})`)
 
-    // 3. 사용자 정보 조회 및 데이터 포맷팅
-    const ordersWithUserInfo = await Promise.all(data.map(async (order, index) => {
+    // 3. ⚡ 성능 최적화: N+1 쿼리 제거 - 프로필 일괄 조회
+    // 3-1. 모든 user_id와 kakao_id 수집
+    const userIds = [...new Set(data.filter(o => o.user_id).map(o => o.user_id))]
+    const kakaoIds = [...new Set(
+      data
+        .filter(o => !o.user_id && o.order_type?.includes(':KAKAO:'))
+        .map(o => o.order_type.split(':KAKAO:')[1])
+        .filter(id => id)
+    )]
+
+    console.log(`🔍 [관리자 API] 일괄 조회: ${userIds.length}개 이메일 사용자, ${kakaoIds.length}개 카카오 사용자`)
+
+    // 3-2. 프로필 일괄 조회 (2개 쿼리만)
+    const { data: emailProfiles } = userIds.length > 0
+      ? await supabaseAdmin
+          .from('profiles')
+          .select('id, nickname, name, phone, email, address, postal_code')
+          .in('id', userIds)
+      : { data: [] }
+
+    const { data: kakaoProfiles } = kakaoIds.length > 0
+      ? await supabaseAdmin
+          .from('profiles')
+          .select('kakao_id, nickname, name, phone, email, address, postal_code')
+          .in('kakao_id', kakaoIds)
+      : { data: [] }
+
+    // 3-3. Map으로 빠른 조회
+    const profileMap = new Map()
+    emailProfiles?.forEach(p => profileMap.set(`email:${p.id}`, p))
+    kakaoProfiles?.forEach(p => profileMap.set(`kakao:${p.kakao_id}`, p))
+
+    console.log(`✅ [관리자 API] 프로필 매핑 완료: ${profileMap.size}개`)
+
+    // 3-4. 데이터 포맷팅 (메모리 매칭만, DB 쿼리 없음)
+    const ordersWithUserInfo = data.map((order, index) => {
       try {
-        // order_shipping과 order_payments는 이미 배열로 반환됨
         const shipping = order.order_shipping?.[0] || {}
         const payment = order.order_payments?.[0] || {}
 
-        // 사용자 정보 조회
+        // 프로필 조회 (Map에서)
         let profileInfo = null
-
         if (order.user_id) {
-          // 이메일 사용자: user_id로 profiles 조회
-          try {
-            const { data: profileData, error: profileError } = await supabaseAdmin
-              .from('profiles')
-              .select('nickname, name, phone, email, address, postal_code')
-              .eq('id', order.user_id)
-              .maybeSingle()  // single() 대신 maybeSingle() 사용
-
-            if (profileError) {
-              console.error(`프로필 조회 에러 (user_id: ${order.user_id}):`, profileError)
-            } else if (profileData) {
-              profileInfo = profileData
-            }
-          } catch (error) {
-            console.error(`사용자 정보 조회 실패 (user_id: ${order.user_id}):`, error)
-          }
+          profileInfo = profileMap.get(`email:${order.user_id}`)
         } else if (order.order_type?.includes(':KAKAO:')) {
-          // 카카오 사용자: kakao_id로 조회
           const kakaoId = order.order_type.split(':KAKAO:')[1]
+          profileInfo = profileMap.get(`kakao:${kakaoId}`)
 
-          try {
-            const { data: kakaoProfile, error: kakaoError } = await supabaseAdmin
-              .from('profiles')
-              .select('nickname, name, phone, email, kakao_id, address, postal_code')
-              .eq('kakao_id', kakaoId)
-              .maybeSingle()  // single() 대신 maybeSingle() 사용
-
-            if (kakaoError) {
-              console.error(`카카오 프로필 조회 에러 (kakao_id: ${kakaoId}):`, kakaoError)
-            } else if (kakaoProfile) {
-              profileInfo = kakaoProfile
-            } else {
-              // 프로필 없으면 배송 정보 사용
-              profileInfo = {
-                name: shipping?.name || '카카오 사용자',
-                nickname: shipping?.name || '카카오 사용자'
-              }
-            }
-          } catch (error) {
-            console.error(`카카오 프로필 조회 실패 (kakao_id: ${kakaoId}):`, error)
-            // 프로필 조회 실패 시 배송 정보 사용
+          // 프로필 없으면 배송 정보 사용
+          if (!profileInfo) {
             profileInfo = {
               name: shipping?.name || '카카오 사용자',
               nickname: shipping?.name || '카카오 사용자'
@@ -203,14 +201,13 @@ export async function GET(request) {
         }
       } catch (error) {
         console.error(`주문 처리 중 에러 (index: ${index}, order_id: ${order.id}):`, error)
-        // 에러가 발생해도 기본 주문 데이터는 반환
         return {
           ...order,
           profiles: null,
           userProfile: null
         }
       }
-    }))
+    })
 
     return NextResponse.json({
       success: true,
