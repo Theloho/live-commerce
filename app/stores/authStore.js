@@ -6,6 +6,7 @@ const useAuthStore = create(
     (set, get) => ({
       // State
       user: null,
+      profile: null, // ⚡ 추가: 사용자 프로필 캐시 (DB profiles 테이블)
       loading: false,
       isAuthenticated: false,
 
@@ -26,9 +27,22 @@ const useAuthStore = create(
       clearUser: () =>
         set({
           user: null,
+          profile: null, // ⚡ 프로필도 함께 삭제
           isAuthenticated: false,
           loading: false
         }),
+
+      // ⚡ 추가: 프로필 관리
+      setProfile: (profile) =>
+        set({ profile }),
+
+      clearProfile: () =>
+        set({ profile: null }),
+
+      updateProfile: (updates) =>
+        set((state) => ({
+          profile: state.profile ? { ...state.profile, ...updates } : updates
+        })),
 
       setLoading: (loading) =>
         set({ loading }),
@@ -80,6 +94,7 @@ const useAuthStore = create(
           user_metadata: state.user.user_metadata,
           email_confirmed_at: state.user.email_confirmed_at
         } : null,
+        profile: state.profile, // ⚡ 추가: 프로필 캐시 저장 (localStorage)
         isAuthenticated: state.isAuthenticated
       })
     }

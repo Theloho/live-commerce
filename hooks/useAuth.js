@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import useAuthStore from '@/app/stores/authStore' // ⚡ Zustand store 사용
 import toast from 'react-hot-toast'
 
 // 전역 구독 관리 (싱글톤 패턴)
@@ -9,8 +10,12 @@ let globalSubscription = null
 let subscriberCount = 0
 
 export default function useAuth() {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // ⚡ authStore에서 state 읽기 (useState 대신)
+  const user = useAuthStore((state) => state.user)
+  const loading = useAuthStore((state) => state.loading)
+  const setUser = useAuthStore((state) => state.setUser)
+  const clearUser = useAuthStore((state) => state.clearUser)
+  const setLoading = useAuthStore((state) => state.setLoading)
 
   useEffect(() => {
     // 초기 세션 확인
@@ -148,6 +153,7 @@ export default function useAuth() {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
 
+      clearUser() // ⚡ authStore 클리어 (user + profile)
       return { success: true }
     } catch (error) {
       console.error('로그아웃 오류:', error)

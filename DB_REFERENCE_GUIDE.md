@@ -452,6 +452,7 @@ CREATE TABLE orders (
     -- 금액
     total_amount NUMERIC(10,2),
     discount_amount NUMERIC(12,2) DEFAULT 0 NOT NULL,  -- ⭐ 쿠폰 할인 (2025-10-04)
+    is_free_shipping BOOLEAN DEFAULT false,  -- ⭐ 무료배송 조건 (2025-10-16)
 
     -- 배송 정보 (orders 테이블에 직접 저장)
     shipping_name TEXT,
@@ -547,6 +548,7 @@ CREATE TABLE order_shipping (
     shipping_fee NUMERIC(10,2) DEFAULT 4000,
     shipping_method VARCHAR(50) DEFAULT 'standard',
     tracking_number VARCHAR(100),
+    tracking_company VARCHAR(50),  -- ⭐ 택배사명 (예: CJ대한통운, 한진택배)
     shipped_at TIMESTAMPTZ,
     delivered_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -556,6 +558,7 @@ CREATE TABLE order_shipping (
 **핵심 포인트**:
 - `postal_code`: 주문 시점 우편번호 스냅샷 (2025-10-03 추가)
 - `shipping_fee`: 도서산간 배송비 포함된 총 배송비
+- `tracking_company`: 택배사명 (2025-10-18 추가)
 
 ---
 

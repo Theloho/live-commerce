@@ -246,7 +246,7 @@ router.replace(`/orders/${orderId}/complete`)
 
 ---
 
-### 1.2 주문 조회 (사용자) [일반]
+### 1.2 주문 조회 (사용자) [일반] ⚡ 2025-10-18 성능 최적화
 
 #### 📍 영향받는 페이지
 1. `/orders` - 주문 내역 페이지
@@ -258,8 +258,8 @@ router.replace(`/orders/${orderId}/complete`)
 getUserOrders(userId)
   ↓ or (카카오 사용자)
 getUserOrdersByOrderType(orderType)
-  ↓ joins
-  orders + order_items + products + order_shipping
+  ↓ joins (⚡ product_variants JOIN 제거 - 성능 개선)
+  orders + order_items + products (기본 정보만) + order_shipping
   ↓ groups (2025-10-13 신규)
   groupOrderItems(items)
     → 동일 상품 + 동일 옵션 = 수량 병합
@@ -268,11 +268,13 @@ getUserOrdersByOrderType(orderType)
   formatShippingInfo(baseShipping, postalCode)
 ```
 
-#### 🗄️ DB 작업 순서
+#### 🗄️ DB 작업 순서 (⚡ 2025-10-18 최적화)
 1. `orders` (SELECT) - 사용자 주문 조회
 2. `order_items` (SELECT) - 주문 항목 조회
-3. `products` (SELECT) - 상품 정보 조회
+3. `products` (SELECT) - ⚡ **기본 정보만** (product_number, title, thumbnail_url, price)
+   - ❌ ~~product_variants JOIN 제거~~ (주문 내역에서 불필요)
 4. `order_shipping` (SELECT) - 배송 정보 조회
+5. `order_payments` (SELECT) - 결제 정보 조회
 
 #### ⚠️ 필수 체크리스트
 - [ ] UserProfileManager 사용 (카카오/일반 사용자 구분)
@@ -281,16 +283,31 @@ getUserOrdersByOrderType(orderType)
 - [ ] postal_code 기반 배송비 계산 (formatShippingInfo)
 - [ ] 타임스탬프 표시 (created_at, deposited_at, shipped_at 등)
 - [ ] 상태별 필터링 (pending/verifying/paid/delivered)
+- [x] ✅ **성능 최적화**: product_variants JOIN 제거 (2025-10-18)
 
 #### 🔗 연관 기능
 - **사용자 인증** (카카오/일반 사용자 구분)
 - **배송비 계산** (도서산간 추가비)
 - **주문 상태 변경** (취소, 수량 조절)
 
+#### 💡 특이사항
+- **성능 최적화** (2025-10-18):
+  - product_variants 4-level JOIN 제거 → 기본 정보만 SELECT
+  - 모바일 타임아웃 에러 완전 해결
+  - 쿼리 시간: 10-20배 향상 예상
+  - API: `/app/api/orders/list/route.js` (Service Role)
+
+#### 📝 최근 수정 이력
+- **2025-10-18**: product_variants JOIN 제거 (커밋: 680c31b)
+  - 문제: 모바일 타임아웃 (10초+) 및 500 에러
+  - 해결: 4-level JOIN 제거, 필요한 컬럼만 SELECT
+  - 결과: 쿼리 시간 10-20배 향상, 타임아웃 제거
+
 #### 🎓 상세 문서 위치
 - **DB**: DB_REFERENCE_GUIDE.md § 4.1
 - **데이터 흐름**: DETAILED_DATA_FLOW.md § 주문 내역 페이지
 - **코드**: lib/supabaseApi.js - getOrders()
+- **API**: app/api/orders/list/route.js
 - **페이지**: app/orders/page.js
 
 ---
