@@ -15,6 +15,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
+import useAuthStore from '@/app/stores/authStore' // ⚡ Zustand store
 import { supabase } from '@/lib/supabase'
 
 // ⚡ Dynamic Import: 모달은 열릴 때만 로드 (번들 크기 15-20% 감소)
@@ -324,34 +325,35 @@ export default function CheckoutPage() {
           return
         }
 
-        // ⚡ 3단계: 비동기 데이터 병렬 로드 (가장 느린 부분 최적화!)
+        // ⚡ 3단계: 비동기 데이터 병렬 로드 (프로필+주소 통합으로 DB 쿼리 50% 감소!)
         await Promise.allSettled([
-          loadUserProfileOptimized(validationResult.currentUser),
-          loadUserAddressesOptimized(validationResult.currentUser),
+          loadUserProfileAndAddresses(validationResult.currentUser), // ⚡ 통합 함수 (1번 DB 쿼리)
           loadUserCouponsOptimized(validationResult.currentUser),
           checkPendingOrders(validationResult.currentUser, validationResult.orderItem)
-        ]).then(([profileResult, addressResult, couponResult, pendingOrdersResult]) => {
-          // 프로필 처리
-          if (profileResult.status === 'fulfilled') {
-            setUserProfile(profileResult.value)
+        ]).then(([profileAndAddressResult, couponResult, pendingOrdersResult]) => {
+          // 프로필+주소 처리 (1개 결과에서 모두 추출)
+          if (profileAndAddressResult.status === 'fulfilled') {
+            const { profile, addresses } = profileAndAddressResult.value
+
+            setUserProfile(profile)
+
+            // 주소가 있으면 기본 주소 선택
+            if (addresses && addresses.length > 0) {
+              const defaultAddress = addresses.find(addr => addr.is_default) || addresses[0]
+
+              if (defaultAddress) {
+                setSelectedAddress(defaultAddress)
+                setUserProfile(prev => ({
+                  ...prev,
+                  address: defaultAddress.address,
+                  detail_address: defaultAddress.detail_address,
+                  postal_code: defaultAddress.postal_code,
+                  addresses: addresses
+                }))
+              }
+            }
           } else {
             setUserProfile(UserProfileManager.normalizeProfile(validationResult.currentUser))
-          }
-
-          // 주소 처리
-          if (addressResult.status === 'fulfilled' && addressResult.value?.length > 0) {
-            const addresses = addressResult.value
-            const defaultAddress = addresses.find(addr => addr.is_default) || addresses[0]
-
-            if (defaultAddress) {
-              setSelectedAddress(defaultAddress)
-              setUserProfile(prev => ({
-                ...prev,
-                address: defaultAddress.address,
-                detail_address: defaultAddress.detail_address,
-                addresses: addresses
-              }))
-            }
           }
 
           // 쿠폰 처리
@@ -454,40 +456,47 @@ export default function CheckoutPage() {
       }
     }
 
-    // ⚡ 최적화된 사용자 프로필 로드
-    const loadUserProfileOptimized = async (currentUser) => {
-      if (currentUser?.provider === 'kakao') {
-        const { data: dbProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('kakao_id', currentUser.kakao_id)
-          .single()
-
-        return UserProfileManager.normalizeProfile(dbProfile || currentUser)
-      }
-      return UserProfileManager.normalizeProfile(currentUser)
-    }
-
-    // ⚡ 최적화된 사용자 주소 로드 (중앙화 모듈 사용)
-    const loadUserAddressesOptimized = async (currentUser) => {
+    // ⚡ authStore 캐시 우선 프로필 + 주소 로드 (중복 제거!)
+    const loadUserProfileAndAddresses = async (currentUser) => {
       try {
-        const profile = await UserProfileManager.loadUserProfile(currentUser.id)
-        if (!profile) return []
+        // 1️⃣ authStore 캐시 확인 (즉시 반환, DB 쿼리 생략!)
+        const cachedProfile = useAuthStore.getState().profile
 
-        let addresses = profile?.addresses || []
+        if (cachedProfile && cachedProfile.id === currentUser.id) {
+          logger.debug('⚡ 캐시에서 프로필+주소 로드 (DB 쿼리 생략)')
 
-        // 주소 마이그레이션 (한 번만 실행)
-        if (!addresses.length && profile?.address) {
+          const normalizedProfile = UserProfileManager.normalizeProfile(cachedProfile)
+          const addresses = cachedProfile.addresses || []
+
+          return { profile: normalizedProfile, addresses }
+        }
+
+        // 2️⃣ 캐시 미스: DB에서 1번만 조회 (UserProfileManager가 자동으로 authStore에 저장)
+        logger.debug('🔍 DB에서 프로필+주소 조회 (1번만!)')
+        const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
+
+        if (!dbProfile) {
+          return {
+            profile: UserProfileManager.normalizeProfile(currentUser),
+            addresses: []
+          }
+        }
+
+        let addresses = dbProfile.addresses || []
+
+        // 3️⃣ 주소 마이그레이션 (한 번만 실행)
+        if (!addresses.length && dbProfile.address) {
           const defaultAddress = {
             id: Date.now(),
             label: '기본 배송지',
-            address: profile.address,
-            detail_address: profile.detail_address || '',
+            address: dbProfile.address,
+            detail_address: dbProfile.detail_address || '',
+            postal_code: dbProfile.postal_code || '',
             is_default: true
           }
           addresses = [defaultAddress]
 
-          // ⚡ 모바일 최적화: 백그라운드에서 API Route로 마이그레이션 저장
+          // ⚡ 백그라운드 저장 (비동기, 실패해도 진행)
           fetch('/api/profile/complete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -495,13 +504,19 @@ export default function CheckoutPage() {
               userId: currentUser.id,
               profileData: { addresses }
             })
-          }).catch(console.warn) // 실패해도 진행
+          }).catch(console.warn)
         }
 
-        return addresses
+        return {
+          profile: UserProfileManager.normalizeProfile(dbProfile),
+          addresses
+        }
       } catch (error) {
-        logger.warn('주소 로드 실패:', error)
-        return []
+        logger.warn('프로필+주소 로드 실패:', error)
+        return {
+          profile: UserProfileManager.normalizeProfile(currentUser),
+          addresses: []
+        }
       }
     }
 
