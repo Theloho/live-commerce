@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
 
 export async function POST(request) {
@@ -54,6 +55,10 @@ export async function POST(request) {
     }
 
     console.log('✅ 노출 토글 완료:', { productId, newStatus })
+
+    // 4. 홈페이지 캐시 즉시 무효화 (사용자가 바로 변경사항 확인 가능)
+    revalidatePath('/')
+    console.log('🔄 홈페이지 캐시 무효화 완료')
 
     return NextResponse.json({
       success: true,
