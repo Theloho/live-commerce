@@ -114,6 +114,42 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
   if (!product) return null
 
+  // 🔍 디버깅: product 데이터 확인
+  console.log('🛍️ BuyBottomSheet - product:', {
+    id: product.id,
+    product_number: product.product_number,
+    hasVariants: !!product.variants,
+    variantsCount: product.variants?.length || 0,
+    hasOptions: !!product.options,
+    optionsCount: product.options?.length || 0,
+    variants: product.variants
+  })
+
+  // variants가 있으면 options 형식으로 변환
+  let convertedOptions = []
+  if (product.variants && product.variants.length > 0) {
+    const optionsMap = new Map() // { optionName: Set(optionValues) }
+
+    product.variants.forEach(variant => {
+      if (variant.options && variant.options.length > 0) {
+        variant.options.forEach(opt => {
+          if (!optionsMap.has(opt.optionName)) {
+            optionsMap.set(opt.optionName, new Set())
+          }
+          optionsMap.get(opt.optionName).add(opt.optionValue)
+        })
+      }
+    })
+
+    // Map을 options 배열로 변환
+    convertedOptions = Array.from(optionsMap.entries()).map(([name, valuesSet]) => ({
+      name,
+      values: Array.from(valuesSet)
+    }))
+
+    console.log('✅ variants → options 변환 완료:', convertedOptions)
+  }
+
   const {
     id,
     title,
@@ -124,7 +160,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     stock_quantity,
     inventory, // 호환성을 위해 유지
     inventory_quantity, // 호환성을 위해 유지
-    options: rawOptions = [],
+    options: rawOptions = convertedOptions, // variants에서 변환한 options 사용
     minOrder = 1,
     maxOrder = (stock_quantity || inventory || inventory_quantity || 50)
   } = product
