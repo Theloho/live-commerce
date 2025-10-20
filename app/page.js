@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import HomeClient from './components/HomeClient'
 
-// ⚡ ISR 설정: 5분마다 재생성
-export const revalidate = 300 // 5분
+// ⚡ ISR 설정: 10초마다 재생성 (빠른 업데이트)
+export const revalidate = 10 // 10초
 
 // ⚡ 서버에서 상품 데이터 fetch (빌드 시 pre-render)
 async function getProducts() {
