@@ -25,6 +25,7 @@ async function getProducts() {
         created_at
       `)
       .eq('status', 'active')
+      .eq('is_live_active', true)  // ✅ 추가: 노출 중인 상품만 표시
       .order('created_at', { ascending: false })
       .limit(50)
 

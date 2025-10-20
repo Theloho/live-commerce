@@ -287,6 +287,8 @@ export default function AdminProductsPage() {
   // 개별 상품 노출 토글
   const toggleLiveActive = async (productId, currentStatus) => {
     try {
+      console.log('👁️ 노출 토글 시작:', { productId, currentStatus })
+
       // Service Role API 호출 (관리자 권한 검증 포함)
       const response = await fetch('/api/admin/products/toggle-visibility', {
         method: 'POST',
@@ -300,17 +302,21 @@ export default function AdminProductsPage() {
         })
       })
 
+      console.log('👁️ 노출 토글 응답:', response.status, response.ok)
+
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('❌ 노출 토글 에러 응답:', errorData)
         throw new Error(errorData.error || '노출 상태 변경 실패')
       }
 
       const { message } = await response.json()
+      console.log('✅ 노출 토글 성공:', message)
       toast.success(message)
       loadLiveProducts()
     } catch (error) {
-      console.error('노출 토글 오류:', error)
-      toast.error('노출 상태 변경에 실패했습니다')
+      console.error('❌ 노출 토글 오류:', error)
+      toast.error(`노출 상태 변경에 실패했습니다: ${error.message}`)
     }
   }
 
