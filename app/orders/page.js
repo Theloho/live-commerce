@@ -141,12 +141,18 @@ function OrdersContent() {
     // ⚡ 주문 데이터 고속 로드
     const loadOrdersDataFast = async (currentUser) => {
       try {
+        console.log('🔍 [DEBUG] 주문 로딩 시작:', { userId: currentUser.id, page: currentPage, status: filterStatus })
+        const startTime = Date.now()
+
         // 🚀 통합 API 사용 (페이지네이션 포함)
         const result = await getOrders(currentUser.id, {
           page: currentPage,
           pageSize: 10,
           status: filterStatus
         })
+
+        const elapsed = Date.now() - startTime
+        console.log('✅ [DEBUG] 주문 로딩 완료:', { count: result.orders?.length, elapsed: `${elapsed}ms` })
 
         setOrders(result.orders || [])
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
