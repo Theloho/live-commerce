@@ -41,6 +41,8 @@ function OrdersContent() {
 
   // ✅ 초기화 완료 플래그 (useRef)
   const hasInitialized = useRef(false)
+  // ⚡ 디바운싱 타이머 (useRef)
+  const debounceTimer = useRef(null)
 
   // RLS 디버그 제거 (프로덕션 성능 최적화)
 
@@ -208,11 +210,27 @@ function OrdersContent() {
     }
   }
 
-  // 페이지나 필터 변경 시 데이터 다시 로드
+  // 페이지나 필터 변경 시 데이터 다시 로드 (⚡ 200ms 디바운싱)
   useEffect(() => {
     // ✅ 초기 로딩이 완료된 후에만 페이지/필터 변경에 반응
     if (!pageLoading && (userSession || isAuthenticated)) {
-      refreshOrders()
+      // ⚡ 이전 타이머 정리
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
+
+      // ⚡ 200ms 디바운싱 (빠른 탭 전환 시 중복 API 호출 방지)
+      debounceTimer.current = setTimeout(() => {
+        console.log('⚡ [디바운싱] 주문 데이터 로드:', { currentPage, filterStatus })
+        refreshOrders()
+      }, 200)
+    }
+
+    // cleanup 함수: 컴포넌트 언마운트 시 타이머 정리
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filterStatus])

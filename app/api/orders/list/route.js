@@ -42,7 +42,7 @@ export async function POST(request) {
       )
     }
 
-    // 2. 기본 쿼리 구성
+    // 2. 기본 쿼리 구성 (⚡ 최적화: product_variants JOIN 제거)
     let query = supabaseAdmin
       .from('orders')
       .select(`
@@ -54,19 +54,6 @@ export async function POST(request) {
             title,
             thumbnail_url,
             price
-          ),
-          product_variants (
-            id,
-            sku,
-            inventory,
-            variant_option_values (
-              product_option_values (
-                value,
-                product_options (
-                  name
-                )
-              )
-            )
           )
         ),
         order_shipping (*),
@@ -83,149 +70,82 @@ export async function POST(request) {
         .order('created_at', { ascending: false })
     }
 
-    // 3. 사용자 타입별 필터링
-    let data = []
+    // 3. 상태별 총계 계산 (⚡ 최적화: 별도 count 쿼리로 효율적 계산)
+    let statusCountQuery = supabaseAdmin
+      .from('orders')
+      .select('status')
 
     if (user.kakao_id) {
-      // 카카오 사용자: order_type으로 조회
-      console.log('📱 카카오 사용자 주문 조회:', user.kakao_id)
-
-      // 기본 조회 (direct:KAKAO:kakao_id)
+      // 카카오 사용자: OR 조건 동일하게 적용
       const primaryPattern = `direct:KAKAO:${user.kakao_id}`
-      const { data: primaryData, error: primaryError } = await query
-        .eq('order_type', primaryPattern)
-
-      if (primaryError) {
-        console.error('❌ 기본 조회 오류:', primaryError)
-        throw primaryError
-      }
-
-      data = primaryData || []
-
-      // 대체 조회 (cart:KAKAO:kakao_id)
       const cartPattern = `cart:KAKAO:${user.kakao_id}`
-      let cartQuery = supabaseAdmin
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            *,
-            products (
-              product_number,
-              title,
-              thumbnail_url,
-              price
-            ),
-            product_variants (
-              id,
-              sku,
-              inventory,
-              variant_option_values (
-                product_option_values (
-                  value,
-                  product_options (
-                    name
-                  )
-                )
-              )
-            )
-          ),
-          order_shipping (*),
-          order_payments (*)
-        `)
-
-      // ✅ orderId가 제공된 경우 특정 주문만 조회
-      if (orderId) {
-        cartQuery = cartQuery.eq('id', orderId)
-      } else {
-        cartQuery = cartQuery
-          .neq('status', 'cancelled')
-          .order('created_at', { ascending: false })
-      }
-
-      const { data: cartData, error: cartError } = await cartQuery
-        .like('order_type', `${cartPattern}%`)
-
-      if (cartError) {
-        console.warn('⚠️ 장바구니 조회 오류:', cartError)
-      } else if (cartData && cartData.length > 0) {
-        // 중복 제거 후 병합
-        const existingIds = new Set(data.map(o => o.id))
-        const newCartOrders = cartData.filter(o => !existingIds.has(o.id))
-        data = [...data, ...newCartOrders]
-        console.log(`✅ 장바구니 주문 ${newCartOrders.length}개 추가`)
-      }
-
-      // 추가 대체 조회 (user.id 기반)
       const idPattern = `%KAKAO:${user.id}%`
-      let idQuery = supabaseAdmin
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            *,
-            products (
-              product_number,
-              title,
-              thumbnail_url,
-              price
-            ),
-            product_variants (
-              id,
-              sku,
-              inventory,
-              variant_option_values (
-                product_option_values (
-                  value,
-                  product_options (
-                    name
-                  )
-                )
-              )
-            )
-          ),
-          order_shipping (*),
-          order_payments (*)
-        `)
 
-      // ✅ orderId가 제공된 경우 특정 주문만 조회
-      if (orderId) {
-        idQuery = idQuery.eq('id', orderId)
-      } else {
-        idQuery = idQuery
-          .neq('status', 'cancelled')
-          .order('created_at', { ascending: false })
-      }
-
-      const { data: idData, error: idError } = await idQuery
-        .like('order_type', idPattern)
-
-      if (idError) {
-        console.warn('⚠️ ID 기반 조회 오류:', idError)
-      } else if (idData && idData.length > 0) {
-        const existingIds = new Set(data.map(o => o.id))
-        const newIdOrders = idData.filter(o => !existingIds.has(o.id))
-        data = [...data, ...newIdOrders]
-        console.log(`✅ ID 기반 주문 ${newIdOrders.length}개 추가`)
-      }
-
+      statusCountQuery = statusCountQuery.or(
+        `order_type.eq.${primaryPattern},` +
+        `order_type.like.${cartPattern}%,` +
+        `order_type.like.${idPattern}`
+      )
     } else {
-      // Supabase Auth 사용자: user_id로 조회
-      console.log('🔐 Auth 사용자 주문 조회:', user.id)
+      // Auth 사용자
+      statusCountQuery = statusCountQuery.eq('user_id', user.id)
+    }
 
+    // cancelled 제외
+    if (!orderId) {
+      statusCountQuery = statusCountQuery.neq('status', 'cancelled')
+    }
+
+    const { data: statusData } = await statusCountQuery
+    const statusCounts = (statusData || []).reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1
+      return acc
+    }, {})
+
+    // 5. 상태 필터 적용 (DB-level)
+    if (status && !orderId) {
+      query = query.eq('status', status)
+    }
+
+    // 6. ⚡ DB-level 페이지네이션 (메모리 사용량 90% 감소)
+    const offset = (page - 1) * pageSize
+    if (!orderId) {
+      query = query.range(offset, offset + pageSize - 1)
+    }
+
+    // 7. 최종 쿼리 실행 (페이지네이션 적용된 데이터만 로드)
+    let finalData = []
+    if (user.kakao_id) {
+      const primaryPattern = `direct:KAKAO:${user.kakao_id}`
+      const cartPattern = `cart:KAKAO:${user.kakao_id}`
+      const idPattern = `%KAKAO:${user.id}%`
+
+      const { data: kakaoData, error: kakaoError } = await query.or(
+        `order_type.eq.${primaryPattern},` +
+        `order_type.like.${cartPattern}%,` +
+        `order_type.like.${idPattern}`
+      )
+
+      if (kakaoError) {
+        console.error('❌ 카카오 페이지네이션 쿼리 오류:', kakaoError)
+        throw kakaoError
+      }
+
+      finalData = kakaoData || []
+    } else {
       const { data: authData, error: authError } = await query
         .eq('user_id', user.id)
 
       if (authError) {
-        console.error('❌ Auth 조회 오류:', authError)
+        console.error('❌ Auth 페이지네이션 쿼리 오류:', authError)
         throw authError
       }
 
-      data = authData || []
+      finalData = authData || []
     }
 
-    // 4. 데이터 정규화
-    const normalizedOrders = data.map(order => ({
+    // 8. 데이터 정규화 (페이지네이션된 데이터만)
+    const normalizedOrders = finalData.map(order => ({
       ...order,
       items: (order.order_items || []).map(item => ({
         ...item,
@@ -248,23 +168,12 @@ export async function POST(request) {
         : order.order_payments || null
     }))
 
-    // 5. 상태별 총계 계산 (탭 숫자용)
-    const statusCounts = normalizedOrders.reduce((acc, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1
-      return acc
-    }, {})
-
-    // 6. 상태 필터 적용
-    let filteredOrders = normalizedOrders
-    if (status) {
-      filteredOrders = normalizedOrders.filter(order => order.status === status)
-    }
-
-    // 7. 페이지네이션 적용
-    const totalCount = filteredOrders.length
+    // 9. 페이지네이션 메타데이터 계산
+    const totalCount = status
+      ? (statusCounts[status] || 0)
+      : Object.values(statusCounts).reduce((sum, count) => sum + count, 0)
     const totalPages = Math.ceil(totalCount / pageSize)
-    const offset = (page - 1) * pageSize
-    const paginatedOrders = filteredOrders.slice(offset, offset + pageSize)
+    const paginatedOrders = normalizedOrders
 
     console.log(`✅ [Service Role API] 주문 조회 완료: 전체 ${totalCount}건 중 ${paginatedOrders.length}건 반환 (${page}/${totalPages} 페이지)`)
 

@@ -14,6 +14,43 @@ import { createOrder, createOrderWithOptions, checkOptionInventory, getProductVa
 import { UserProfileManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
 
+// ⚡ 프로필 캐싱 헬퍼 함수 (5분 TTL)
+const PROFILE_CACHE_TTL = 5 * 60 * 1000 // 5분
+
+const getCachedProfile = async (userId) => {
+  const cacheKey = `profile_cache_${userId}`
+  const cached = sessionStorage.getItem(cacheKey)
+
+  if (cached) {
+    try {
+      const { data, timestamp } = JSON.parse(cached)
+      const age = Date.now() - timestamp
+
+      // 5분 이내면 캐시 사용
+      if (age < PROFILE_CACHE_TTL) {
+        console.log('⚡ [BuyBottomSheet] 프로필 캐시 사용 (age:', Math.floor(age / 1000), 's)')
+        return data
+      }
+    } catch (e) {
+      // 캐시 파싱 실패 시 무시
+    }
+  }
+
+  // 캐시 없거나 만료됨 → DB에서 로드
+  console.log('🔄 [BuyBottomSheet] 프로필 DB 로드')
+  const profile = await UserProfileManager.loadUserProfile(userId)
+
+  // 캐시에 저장
+  if (profile) {
+    sessionStorage.setItem(cacheKey, JSON.stringify({
+      data: profile,
+      timestamp: Date.now()
+    }))
+  }
+
+  return profile
+}
+
 export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const [quantity, setQuantity] = useState(1)
   const [selectedOptions, setSelectedOptions] = useState({})
@@ -27,7 +64,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
-  // 직접 세션 확인 (카카오 로그인 지원) + 주소 정보 불러오기
+  // 직접 세션 확인 (카카오 로그인 지원) + 주소 정보 불러오기 (⚡ 캐싱 적용)
   useEffect(() => {
     const checkUserSession = async () => {
       try {
@@ -35,10 +72,10 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
         if (storedUser) {
           const userData = JSON.parse(storedUser)
 
-          // profiles 테이블에서 최신 프로필 정보 불러오기 (중앙화 모듈 사용)
+          // profiles 테이블에서 최신 프로필 정보 불러오기 (⚡ 캐싱 사용)
           if (userData.id) {
             try {
-              const profile = await UserProfileManager.loadUserProfile(userData.id)
+              const profile = await getCachedProfile(userData.id)
 
               if (profile) {
                 // ✅ MyPage/Checkout와 동일한 방식으로 전체 프로필 업데이트
@@ -91,14 +128,29 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       setUserSession(null)
     }
 
+    // ⚡ 프로필 업데이트 이벤트 리스너 (캐시 무효화)
+    const handleProfileUpdated = (event) => {
+      const userId = event.detail?.userId
+      if (userId) {
+        const cacheKey = `profile_cache_${userId}`
+        sessionStorage.removeItem(cacheKey)
+        console.log('🔄 [BuyBottomSheet] 프로필 캐시 무효화:', userId)
+
+        // 세션 다시 로드
+        checkUserSession()
+      }
+    }
+
     window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
     window.addEventListener('profileCompleted', handleProfileCompleted)
     window.addEventListener('userLoggedOut', handleLogout)
+    window.addEventListener('profileUpdated', handleProfileUpdated)
 
     return () => {
       window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
       window.removeEventListener('profileCompleted', handleProfileCompleted)
       window.removeEventListener('userLoggedOut', handleLogout)
+      window.removeEventListener('profileUpdated', handleProfileUpdated)
     }
   }, [])
 
