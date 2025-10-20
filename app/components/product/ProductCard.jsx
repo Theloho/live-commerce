@@ -256,7 +256,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
     router.push('/orders')
   }
 
-  const variants = {
+  const cardVariants = {
     default: 'group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow',
     compact: 'group relative bg-white rounded-lg overflow-hidden',
     horizontal: 'group relative bg-white rounded-lg overflow-hidden flex'
@@ -271,7 +271,7 @@ export default function ProductCard({ product, variant = 'default', priority = f
         className={currentInventory > 0 ? "cursor-pointer" : "cursor-not-allowed"}
       >
         <div
-          className={`${variants[variant]} ${currentInventory <= 0 ? 'opacity-60 grayscale' : ''}`}
+          className={`${cardVariants[variant]} ${currentInventory <= 0 ? 'opacity-60 grayscale' : ''}`}
           data-testid="product-card"
         >
           {/* Image Section */}
