@@ -10,7 +10,7 @@ import Button from '@/app/components/common/Button'
 import PurchaseChoiceModal from '@/app/components/common/PurchaseChoiceModal'
 import { motion } from 'framer-motion'
 import useAuth from '@/hooks/useAuth'
-import { createOrder, createOrderWithOptions, checkOptionInventory } from '@/lib/supabaseApi'
+import { createOrder, createOrderWithOptions, checkOptionInventory, getProductVariants } from '@/lib/supabaseApi'
 import { UserProfileManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
 
@@ -22,6 +22,8 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   const [showChoiceModal, setShowChoiceModal] = useState(false)
   const [userSession, setUserSession] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [variants, setVariants] = useState([]) // 동적 로드된 variants
+  const [isLoadingVariants, setIsLoadingVariants] = useState(false)
   const { isAuthenticated, user } = useAuth()
   const router = useRouter()
 
@@ -100,6 +102,31 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     }
   }, [])
 
+  // 🚀 BuyBottomSheet 열릴 때만 variants 동적 로드 (성능 최적화)
+  useEffect(() => {
+    const loadVariants = async () => {
+      if (!isOpen || !product?.id) return
+
+      // 이미 로드된 경우 스킵
+      if (variants.length > 0) return
+
+      setIsLoadingVariants(true)
+      try {
+        console.log('📦 Variants 로딩 시작:', product.id)
+        const loadedVariants = await getProductVariants(product.id)
+        setVariants(loadedVariants || [])
+        console.log('✅ Variants 로딩 완료:', loadedVariants?.length || 0, '개')
+      } catch (error) {
+        console.error('❌ Variants 로딩 실패:', error)
+        setVariants([])
+      } finally {
+        setIsLoadingVariants(false)
+      }
+    }
+
+    loadVariants()
+  }, [isOpen, product?.id])
+
   // Auto-add combination when all options are selected
   useEffect(() => {
     if (Object.keys(selectedOptions).length === options.length && Object.keys(selectedOptions).length > 0) {
@@ -118,19 +145,19 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
   console.log('🛍️ BuyBottomSheet - product:', {
     id: product.id,
     product_number: product.product_number,
-    hasVariants: !!product.variants,
-    variantsCount: product.variants?.length || 0,
+    hasVariants: variants.length > 0,
+    variantsCount: variants.length,
+    isLoadingVariants,
     hasOptions: !!product.options,
-    optionsCount: product.options?.length || 0,
-    variants: product.variants
+    optionsCount: product.options?.length || 0
   })
 
-  // variants가 있으면 options 형식으로 변환
+  // 동적으로 로드한 variants를 options 형식으로 변환
   let convertedOptions = []
-  if (product.variants && product.variants.length > 0) {
+  if (variants.length > 0) {
     const optionsMap = new Map() // { optionName: Set(optionValues) }
 
-    product.variants.forEach(variant => {
+    variants.forEach(variant => {
       if (variant.options && variant.options.length > 0) {
         variant.options.forEach(opt => {
           if (!optionsMap.has(opt.optionName)) {
@@ -237,12 +264,12 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
 
   // variant_id 찾기 함수
   const findVariantId = (selectedOptions) => {
-    if (!product.variants || product.variants.length === 0) {
+    if (!variants || variants.length === 0) {
       return null
     }
 
     // 선택된 옵션과 일치하는 variant 찾기
-    const matchedVariant = product.variants.find(variant => {
+    const matchedVariant = variants.find(variant => {
       if (!variant.options || variant.options.length === 0) return false
 
       // 선택된 옵션의 개수와 variant의 옵션 개수가 같아야 함
@@ -271,7 +298,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
       const variantId = findVariantId(selectedOptions) // variant_id 찾기
 
       // 재고 확인
-      const variant = variantId ? product.variants?.find(v => v.id === variantId) : null
+      const variant = variantId ? variants?.find(v => v.id === variantId) : null
       const maxInventory = variant ? variant.inventory : stock
 
       if (maxInventory === 0) {
@@ -333,7 +360,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
     // 해당 조합의 variant 재고 확인
     const combo = selectedCombinations[index]
     if (combo.variantId) {
-      const variant = product.variants?.find(v => v.id === combo.variantId)
+      const variant = variants?.find(v => v.id === combo.variantId)
       if (variant && newQuantity > variant.inventory) {
         toast.error(`재고가 부족합니다. 현재 재고: ${variant.inventory}개`)
         return
@@ -463,7 +490,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
         // ✅ 재고 검증만 수행 (차감은 API에서 처리)
         if (cartItem.variantId) {
           // Variant 재고 확인
-          const variant = product.variants?.find(v => v.id === cartItem.variantId)
+          const variant = variants?.find(v => v.id === cartItem.variantId)
           if (!variant) {
             toast.error('옵션 정보를 찾을 수 없습니다')
             setIsLoading(false)
@@ -682,7 +709,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                               if (prevOptionsSelected) {
                                 // 이 값을 선택했을 때의 조합으로 variant 찾기
                                 const testOptions = { ...selectedOptions, [option.name]: displayValue }
-                                const variant = product.variants?.find(v => {
+                                const variant = variants?.find(v => {
                                   if (!v.options || v.options.length !== options.length) return false
                                   return Object.entries(testOptions).every(([optName, optValue]) => {
                                     return v.options.some(opt => opt.optionName === optName && opt.optionValue === optValue)
@@ -762,7 +789,7 @@ export default function BuyBottomSheet({ isOpen, onClose, product }) {
                     <h5 className="font-medium text-gray-900">선택된 옵션들</h5>
                     {selectedCombinations.map((combo, index) => {
                       // 해당 조합의 재고 확인
-                      const variant = combo.variantId ? product.variants?.find(v => v.id === combo.variantId) : null
+                      const variant = combo.variantId ? variants?.find(v => v.id === combo.variantId) : null
                       const maxInventory = variant ? variant.inventory : stock
 
                       return (

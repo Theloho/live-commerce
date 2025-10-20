@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import HomeClient from './components/HomeClient'
 
-// ⚡ ISR 설정: 10초마다 재생성 (빠른 업데이트)
-export const revalidate = 10 // 10초
+// ⚡ ISR 설정: 30초마다 재생성 (성능과 업데이트 속도 균형)
+export const revalidate = 30 // 30초
 
 // ⚡ 서버에서 상품 데이터 fetch (빌드 시 pre-render)
 async function getProducts() {
@@ -22,26 +22,7 @@ async function getProducts() {
         status,
         is_featured,
         is_live_active,
-        created_at,
-        product_variants (
-          id,
-          sku,
-          inventory,
-          price_adjustment,
-          is_active,
-          variant_option_values (
-            option_value_id,
-            product_option_values (
-              id,
-              value,
-              option_id,
-              product_options (
-                id,
-                name
-              )
-            )
-          )
-        )
+        created_at
       `)
       .eq('status', 'active')
       .eq('is_live_active', true)  // ✅ 추가: 노출 중인 상품만 표시
@@ -60,23 +41,11 @@ async function getProducts() {
 
     console.log('✅ 서버: 상품 로딩 완료:', data.length, '개')
 
-    // 간단한 데이터 변환 + Variant 옵션 매핑
+    // 간단한 데이터 변환 (variants는 BuyBottomSheet에서 동적 로드)
     const productsFormatted = data.map(product => ({
       ...product,
       stock_quantity: product.inventory,
-      isLive: product.is_live_active || false,
-      hasOptions: product.product_variants && product.product_variants.length > 0,
-      optionCount: product.product_variants ? product.product_variants.length : 0,
-      // BuyBottomSheet가 필요로 하는 옵션 정보 포함
-      variants: product.product_variants?.map(variant => ({
-        ...variant,
-        options: variant.variant_option_values?.map(vov => ({
-          optionName: vov.product_option_values?.product_options?.name || '',
-          optionValue: vov.product_option_values?.value || '',
-          optionId: vov.product_option_values?.product_options?.id || '',
-          valueId: vov.product_option_values?.id || ''
-        })) || []
-      })) || []
+      isLive: product.is_live_active || false
     }))
 
     return productsFormatted
