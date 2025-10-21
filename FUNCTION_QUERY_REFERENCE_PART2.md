@@ -158,6 +158,22 @@
 
 ---
 
+### 3.7C ✅ OrderRepository.hasPendingOrders (신규 - Phase 4.1)
+
+| 항목 | 내용 |
+|------|------|
+| **✅ 신규 생성** | `lib/repositories/OrderRepository.js:212` |
+| **시그니처** | `async hasPendingOrders({ userId = null, kakaoId = null, excludeIds = [] })` |
+| **목적** | pending/verifying 상태 주문 조회 (무료배송 조건 확인용) |
+| **사용 페이지** | - `app/hooks/useCheckoutInit.js:335` (체크아웃 초기화)<br>- ✅ **Rule #0 준수**: 직접 supabase 호출 제거 |
+| **DB 접근** | `orders` (SELECT id, status, WHERE status IN ('pending', 'verifying'))<br>카카오: order_type LIKE 조회, Supabase: user_id = 조회 |
+| **파라미터** | userId (일반 사용자), kakaoId (카카오 사용자), excludeIds (일괄결제 시 제외할 주문 ID) |
+| **특징** | 무료배송 조건 확인 (기존 주문 존재 여부)<br>excludeIds로 일괄결제 주문 필터링<br>에러 시 false 반환 (조용한 실패) |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 4.1) |
+
+---
+
 ### 3.8 updateOrderItemQuantity
 
 | 항목 | 내용 |
