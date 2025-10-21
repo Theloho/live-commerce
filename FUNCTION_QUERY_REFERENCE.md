@@ -1032,10 +1032,11 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | `lib/services/QueueService.js` | **2개** | ~20 lines/함수 | ✅ Clean |
 | `lib/services/CacheService.js` | **3개** | ~15 lines/함수 | ✅ Clean |
 | `supabase/migrations/*.sql` (RPC) | **2개** | ~60 lines/함수 | ✅ Clean |
+| `lib/domain/order/Order.js` | **10개** | ~8 lines/메서드 | ✅ Clean |
 
-**총 함수 개수**: **91개** (89 + 2 RPC)
+**총 메서드 개수**: **101개** (91 + 10 Domain)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 함수**: **80개** (78 + 2 RPC)
+**유효 메서드**: **90개** (80 + 10 Domain)
 
 ---
 
@@ -1060,8 +1061,64 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | Queue | 2개 | - | QueueService (2) | - |
 | Cache | 3개 | - | CacheService (3) | - |
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
+| **주문 도메인 (Order Domain)** | **10개** | - | - | **Order Entity (10)** |
 
-**총 80개 함수 → 26개 파일로 분산 예정** (25 + 1 RPC migration)
+**총 90개 메서드 → 27개 파일로 분산 예정** (26 + 1 Domain Entity)
+
+---
+
+## 🎨 12.3 Domain Entities (Phase 2 - Domain Layer)
+
+### Order Entity ✅ (Phase 2.1 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/domain/order/Order.js` |
+| **목적** | 주문 도메인 모델 (비즈니스 로직 + 검증) |
+| **상속** | `Entity` (Base Entity) |
+| **파일 크기** | 143줄 (Rule 1 준수 ✅, 제한: 150줄) |
+| **마이그레이션** | Phase 2.1 완료 (2025-10-21) |
+
+#### 주문 상태 (OrderStatus)
+- PENDING - 입금 대기
+- VERIFYING - 입금 확인 중
+- DEPOSITED - 입금 완료
+- SHIPPED - 발송 완료
+- DELIVERED - 배송 완료
+- CANCELLED - 취소됨
+
+#### 메서드 목록 (10개)
+
+| 메서드 | 타입 | 목적 | 반환값 |
+|--------|------|------|--------|
+| `constructor()` | 생성자 | Order Entity 생성 | Order |
+| `validate()` | 검증 | 필수 필드 + 상태 + 금액 검증 | void (에러 던짐) |
+| `canBeCancelled()` | 비즈니스 규칙 | 취소 가능 여부 (pending/verifying만) | boolean |
+| `isPending()` | 상태 확인 | 입금 대기 상태 여부 | boolean |
+| `isVerifying()` | 상태 확인 | 입금 확인 중 상태 여부 | boolean |
+| `isDeposited()` | 상태 확인 | 입금 완료 상태 여부 | boolean |
+| `isDelivered()` | 상태 확인 | 배송 완료 상태 여부 | boolean |
+| `isCancelled()` | 상태 확인 | 취소된 상태 여부 | boolean |
+| `isKakaoOrder()` | 타입 확인 | 카카오 사용자 주문 여부 | boolean |
+| `toJSON()` | 직렬화 | Entity → Plain Object | Object |
+| `fromJSON(data)` | 역직렬화 | Plain Object → Entity | Order (static) |
+
+#### 검증 규칙
+- ✅ `customer_order_number` 필수
+- ✅ `status`는 OrderStatus 값만 허용
+- ✅ `total_amount` >= 0
+- ✅ `discount_amount` >= 0
+- ✅ `shipping_cost` >= 0
+- ✅ `user_id` 또는 `order_type` 중 하나는 필수 (카카오 사용자 대응)
+
+#### 비즈니스 규칙
+- **취소 가능**: pending 또는 verifying 상태에서만
+- **카카오 주문**: `user_id`가 null이고 `order_type`이 'direct:KAKAO:'로 시작
+
+#### 사용처 (예정)
+- `lib/use-cases/order/CreateOrderUseCase.js` (Phase 3.3)
+- `lib/use-cases/order/CancelOrderUseCase.js` (Phase 3.4)
+- `lib/use-cases/order/UpdateOrderUseCase.js` (Phase 3.5)
 
 ---
 
