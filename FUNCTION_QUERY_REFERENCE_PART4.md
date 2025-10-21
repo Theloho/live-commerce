@@ -44,9 +44,9 @@
 | `lib/domain/product/Product.js` | **9개** | ~10 lines/메서드 | ✅ Clean |
 | `lib/domain/product/Inventory.js` | **9개** | ~12 lines/메서드 | ✅ Clean |
 
-**총 메서드 개수**: **131개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 1 CreateOrderUseCase + 1 GetOrdersUseCase + 1 ApplyCouponUseCase)
+**총 메서드 개수**: **132개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 1 CreateOrderUseCase + 1 GetOrdersUseCase + 1 ApplyCouponUseCase + 1 CancelOrderUseCase)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **120개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 3 Use Cases)
+**유효 메서드**: **121개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 4 Use Cases)
 
 ---
 
@@ -73,9 +73,9 @@
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
 | **주문 도메인 (Order Domain)** | **20개** | - | - | **Order Entity (10) + OrderCalculator (6) + OrderValidator (4)** |
 | **상품 도메인 (Product Domain)** | **18개** | - | - | **Product Entity (9) + Inventory (9)** |
-| **Application Layer** | **3개** | - | **CreateOrderUseCase (1) + GetOrdersUseCase (1) + ApplyCouponUseCase (1)** | - |
+| **Application Layer** | **4개** | - | **CreateOrderUseCase (1) + GetOrdersUseCase (1) + ApplyCouponUseCase (1) + CancelOrderUseCase (1)** | - |
 
-**총 120개 메서드 → 31개 파일로 분산 예정** (26 + 5 Domain + 3 Application)
+**총 121개 메서드 → 31개 파일로 분산 예정** (26 + 5 Domain + 4 Application)
 
 ---
 
@@ -558,6 +558,96 @@ console.log(reserved.quantity)   // 7  (새 객체)
 | 메서드 | 목적 |
 |--------|------|
 | `_calculateItemsTotal(items)` | 주문 아이템 금액 합계 계산 (배송비 제외) |
+
+---
+
+### CancelOrderUseCase ✅ (Phase 3.4 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/use-cases/order/CancelOrderUseCase.js` |
+| **목적** | 주문 취소 (상태 확인 → 취소 → 재고 복원) |
+| **상속** | `BaseUseCase` |
+| **파일 크기** | 116줄 (Rule 1 준수 ✅, 제한: 120줄) |
+| **마이그레이션** | Phase 3.4 완료 (2025-10-21) |
+
+#### 의존성 주입 (2개)
+
+| 의존성 | 타입 | 목적 |
+|--------|------|------|
+| `OrderRepository` | Infrastructure | 주문 조회 및 취소 |
+| `ProductRepository` | Infrastructure | 재고 복원 |
+
+#### 실행 흐름 (6단계)
+
+1. **주문 조회** - OrderRepository.findById()
+   - 주문 존재 여부 확인
+   - Order Entity 생성
+
+2. **소유권 확인** - _checkOwnership()
+   - user_id 일치 확인
+   - 카카오 사용자: order_type 확인
+
+3. **취소 가능 여부 확인** - Order.canBeCancelled()
+   - pending 또는 verifying 상태만 취소 가능
+   - 다른 상태는 에러 던짐
+
+4. **재고 복원** - _restoreInventory()
+   - order_items 순회
+   - ProductRepository.updateInventory(product_id, +quantity)
+   - 실패 시 로그만 출력하고 계속 진행
+
+5. **주문 상태 변경** - OrderRepository.cancel()
+   - status = 'cancelled'
+   - cancelled_at = 현재 시간
+
+6. **완료**
+   - Order Entity 반환
+
+#### Public 메서드 (1개)
+
+| 메서드 | 목적 | 반환값 |
+|--------|------|--------|
+| `execute({ orderId, user })` | 주문 취소 실행 | Promise<Order> |
+
+#### Private 메서드 (2개)
+
+| 메서드 | 목적 |
+|--------|------|
+| `_checkOwnership(order, user)` | 소유권 확인 (user_id 또는 order_type) |
+| `_restoreInventory(orderItems)` | 재고 복원 (order_items 기반) |
+
+#### 취소 가능 상태
+
+- ✅ **PENDING** - 입금 대기 (취소 가능)
+- ✅ **VERIFYING** - 입금 확인 중 (취소 가능)
+- ❌ **DEPOSITED** - 입금 완료 (취소 불가)
+- ❌ **SHIPPED** - 발송 완료 (취소 불가)
+- ❌ **DELIVERED** - 배송 완료 (취소 불가)
+- ❌ **CANCELLED** - 이미 취소됨 (취소 불가)
+
+#### 재고 복원 로직
+
+- order_items 순회하며 각 상품의 재고 증가
+- `updateInventory(product_id, +quantity)`
+- 실패 시 로그만 출력하고 계속 진행 (다른 상품 복원 계속)
+
+#### 쿠폰 복구 로직
+
+- ⚠️ **TODO**: Phase 3.5에서 구현 예정
+- 현재는 주석 처리됨
+- CouponRepository.restoreCoupon() 메서드 필요
+
+#### 사용처 (예정)
+
+- `app/orders/page.js` - 주문 내역 페이지 취소 버튼 (Phase 4.2)
+- `app/api/orders/cancel/route.js` - API Route에서 호출 (Phase 4.2)
+
+#### 에러 처리
+
+- 주문 없음: "주문을 찾을 수 없습니다"
+- 소유권 없음: "주문 취소 권한이 없습니다"
+- 취소 불가: "주문 취소 불가: {status} 상태에서는 취소할 수 없습니다"
 
 ---
 
