@@ -665,22 +665,38 @@ npm run test:bugs:ui        # UI 모드
 **Phase 7: 완전한 테스트 환경 구축**
 - ✅ Jest 30.2.0 설치 + Next.js 통합
 - ✅ 테스트 설정 완료 (jest.config.js, jest.setup.js, jest.env.js)
-- ✅ **93개 테스트 케이스 작성** (Phase 7.1 Integration 테스트 추가):
+- ✅ **112개 테스트 케이스 작성** (Phase 7.1-7.2 Integration 테스트 추가):
   - Use Case 테스트: 14개 (CreateOrder, GetOrders, UpdateOrderStatus)
   - Repository 테스트: 55개 (Order, Product, User)
-  - **Integration 테스트 (신규): 24개** ⭐ (cancel, check-pending, create)
+  - **Integration 테스트 (신규): 43개** ⭐ (7.1: 24개, 7.2: 19개)
 - ✅ 커버리지 임계값 설정 (80% - branches, functions, lines, statements)
 - ✅ 테스트 스크립트 추가 (npm test, test:watch, test:coverage, test:unit)
 - ✅ Playwright E2E 테스트와 분리 (test:e2e:*)
-- **결과**: **64/93 테스트 통과** (Use Case 14/14, Integration 24/24, Repository 26/55)
+- **결과**: **83/112 테스트 통과** (Use Case 14/14, Integration 43/43, Repository 26/55)
 
-**Phase 7.1: Integration 테스트 작성 (2025-10-22 오후)** ⭐ NEW
+**Phase 7.1: Integration 테스트 작성 (2025-10-22 오후)** ⭐
 - ✅ `__tests__/api/orders/cancel.test.js` (10개 테스트)
 - ✅ `__tests__/api/orders/check-pending.test.js` (8개 테스트)
 - ✅ `__tests__/api/orders/create.test.js` (6개 테스트)
 - **결과**: Integration 테스트 24/24 통과 (100% ✅), API Layer 검증 완료
 
-**Phase 1-7.1 완료 체크**:
+**Phase 7.2: Admin API Integration 테스트 작성 (2025-10-22 야간)** ⭐⭐⭐
+- ✅ `__tests__/api/admin/orders.test.js` (7개 테스트)
+  - 관리자 인증 검증 (adminEmail, verifyAdminAuth)
+  - 필터링 기능 (status, paymentMethod)
+  - **INNER JOIN 조건부 적용 테스트** (과거 버그 재발 방지)
+- ✅ `__tests__/api/admin/products/create.test.js` (6개 테스트)
+  - 관리자 권한 검증
+  - 빠른등록 vs 상세등록 필드 처리
+- ✅ `__tests__/api/admin/coupons/create.test.js` (6개 테스트)
+  - 쿠폰 생성 필드 검증 (정액/정률, 웰컴 쿠폰)
+  - 파라미터 검증 (code 대문자 변환, 기본값 처리)
+- ✅ **API 아키텍처 개선**: `/app/api/admin/coupons/create/route.js` 리팩토링
+  - Local supabaseAdmin → `@/lib/supabaseAdmin` import로 변경
+  - 다른 admin API와 일관성 확보 (centralized pattern)
+- **결과**: Admin Integration 테스트 19/19 통과 (100% ✅), Rule #0 100% 준수
+
+**Phase 1-7.2 완료 체크**:
 - [x] Phase 1: Clean Architecture 도입 (5개 Use Case 생성)
 - [x] Phase 2: BaseRepository 패턴 구현
 - [x] Phase 3: OrderRepository 전환
@@ -688,11 +704,12 @@ npm run test:bugs:ui        # UI 모드
 - [x] Phase 5: ProductRepository + UserRepository 전환
 - [x] Phase 6: Layer Boundary 완전 분리
 - [x] Phase 7: 테스트 환경 구축
-- [x] Phase 7.1: Integration 테스트 작성 ⭐ NEW
+- [x] Phase 7.1: Integration 테스트 작성 (주문 API)
+- [x] Phase 7.2: Admin API Integration 테스트 작성 ⭐ NEW
 
 **다음 단계**: Phase 8 이후 작업 또는 추가 Integration 테스트 확장
 
-**상세 로그**: Git commit 1a19ab9 (Phase 6), 1d74268 (Phase 7), [다음 커밋] (Phase 7.1)
+**상세 로그**: Git commit 1a19ab9 (Phase 6), 1d74268 (Phase 7), [다음 커밋] (Phase 7.1-7.2)
 
 ---
 
