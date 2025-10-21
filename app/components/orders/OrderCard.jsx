@@ -1,0 +1,278 @@
+/**
+ * OrderCard - 주문 카드 컴포넌트
+ * @author Claude
+ * @since 2025-10-21
+ *
+ * 역할: 개별 주문 정보를 카드 형태로 표시
+ * - 주문 헤더 (주문번호, 상태 배지)
+ * - 상품 그룹핑 (제품번호 + 옵션 조합)
+ * - 가격 계산 (OrderCalculations)
+ * - 상품 목록 렌더링
+ * - 송장번호 추적 링크
+ * - 액션 버튼 (취소/상세보기)
+ *
+ * Clean Architecture:
+ * - Presentation Layer Component (UI만 담당)
+ * - 비즈니스 로직은 props로 전달받음
+ */
+
+import Image from 'next/image'
+import { motion } from 'framer-motion'
+import { formatDistanceToNow } from 'date-fns'
+import { ko } from 'date-fns/locale'
+import OrderCalculations from '@/lib/orderCalculations'
+import { formatShippingInfo } from '@/lib/shippingUtils'
+import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
+
+/**
+ * OrderCard Component
+ * @param {Object} props
+ * @param {Object} props.order - 주문 데이터
+ * @param {number} props.index - 인덱스 (애니메이션용)
+ * @param {Function} props.onOrderClick - 주문 클릭 핸들러
+ * @param {Function} props.onCancelOrder - 주문 취소 핸들러
+ * @param {Function} props.getStatusInfo - 상태 정보 조회 함수
+ */
+export default function OrderCard({
+  order,
+  index,
+  onOrderClick,
+  onCancelOrder,
+  getStatusInfo
+}) {
+  // 결제 방법 및 상태 정보
+  const paymentMethod = order.payment?.method || null
+  const statusInfo = getStatusInfo(order.status, paymentMethod)
+  const StatusIcon = statusInfo.icon
+
+  /**
+   * 상품 그룹핑 로직
+   * - 제품번호 + 옵션 조합으로 그룹화
+   * - 동일 상품+옵션은 수량 합산
+   */
+  const groupOrderItems = (items) => {
+    const groups = {}
+
+    items.forEach((item, originalIndex) => {
+      // 키 생성: product_number + 옵션 조합
+      const optionsKey = JSON.stringify(item.selectedOptions || {})
+      const groupKey = `${item.product_number || item.product_id || item.title}_${optionsKey}`
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          ...item,
+          quantity: 0,
+          totalPrice: 0,
+          originalIndices: [],  // 원본 아이템 인덱스 추적
+          originalItems: []     // 원본 아이템 저장
+        }
+      }
+
+      groups[groupKey].quantity += item.quantity || 1
+      groups[groupKey].totalPrice += ((item.price || 0) * (item.quantity || 1))
+      groups[groupKey].originalIndices.push(originalIndex)
+      groups[groupKey].originalItems.push(item)
+    })
+
+    return Object.values(groups)
+  }
+
+  const groupedItems = groupOrderItems(order.items || [])
+
+  // 🧮 배송비 포함 총 결제금액 계산 (OrderCalculations 사용)
+  const baseShippingFee = order.is_free_shipping ? 0 : 4000
+  const shippingInfo = formatShippingInfo(baseShippingFee, order.shipping?.postal_code)
+  const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
+    region: shippingInfo.region,
+    coupon: order.discount_amount > 0 ? {
+      type: 'fixed_amount',
+      value: order.discount_amount
+    } : null,
+    paymentMethod: order.payment?.method || 'transfer',
+    baseShippingFee: baseShippingFee
+  })
+  const finalAmount = orderCalc.finalAmount
+
+  return (
+    <motion.div
+      key={order.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      onClick={order.status !== 'pending' ? (e) => onOrderClick(e, order) : undefined}
+      className={`bg-white rounded-lg border border-gray-200 p-4 ${
+        order.status !== 'pending' ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+      }`}
+    >
+      {/* 주문 헤더 */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-900">
+            주문번호: {order.customer_order_number || order.id.slice(-8)}
+          </span>
+        </div>
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
+          <StatusIcon className="h-4 w-4" />
+          <span className="text-xs font-medium">{statusInfo.label}</span>
+        </div>
+      </div>
+
+      {/* 상품 정보 - 그룹화된 아이템들을 모두 표시 */}
+      <div className="space-y-3 mb-3">
+        {groupedItems.map((groupedItem, itemIndex) => (
+          <div key={itemIndex} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+            <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+              <Image
+                src={groupedItem.thumbnail_url || '/placeholder.png'}
+                alt={groupedItem.title}
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              {/* 제품번호 + 상품명 (한 줄) */}
+              <h3 className="mb-1 line-clamp-1 text-sm">
+                <span className="font-bold text-gray-900">{groupedItem.product_number || groupedItem.product_id}</span>
+                {groupedItem.title && groupedItem.title !== (groupedItem.product_number || groupedItem.product_id) && (
+                  <span className="text-xs text-gray-500"> {groupedItem.title}</span>
+                )}
+              </h3>
+
+              {/* 선택된 옵션 표시 */}
+              {groupedItem.selectedOptions && Object.keys(groupedItem.selectedOptions).length > 0 && (
+                <div className="mb-1">
+                  {Object.entries(groupedItem.selectedOptions).map(([optionId, value]) => (
+                    <span
+                      key={optionId}
+                      className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1 mb-1"
+                    >
+                      {value}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* 단가 표시 */}
+              <p className="text-xs text-gray-500 mb-1">
+                단가: ₩{groupedItem.price?.toLocaleString() || '0'}
+              </p>
+
+              {/* 수량 표시 - 읽기 전용 */}
+              <p className="text-xs text-gray-700 font-medium mb-1">
+                수량: {groupedItem.quantity}개
+              </p>
+
+              {/* 소계 표시 */}
+              <p className="text-xs text-gray-900 font-semibold mt-1">
+                소계: ₩{groupedItem.totalPrice?.toLocaleString() || '0'}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 송장번호 표시 (출고완료 상태인 경우) */}
+      {(order.status === 'delivered' || order.status === 'shipping') && order.shipping?.tracking_number && (
+        <div className="mb-2 pb-2 border-b border-gray-100">
+          <div className="flex items-center justify-between text-sm gap-2">
+            <span className="text-gray-600">배송조회</span>
+            <a
+              href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline text-xs flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="font-medium">{getCarrierName(order.shipping?.tracking_company)}</span>
+              <span className="font-mono">{order.shipping.tracking_number}</span>
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* 주문 정보 */}
+      <div className="flex items-center justify-between text-sm">
+        <div className="text-gray-500">
+          {formatDistanceToNow(new Date(order.created_at), {
+            addSuffix: true,
+            locale: ko
+          })}
+        </div>
+        <div className="font-semibold text-gray-900">
+          ₩{finalAmount.toLocaleString()}
+        </div>
+      </div>
+
+      {/* 액션 버튼들 */}
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        {order.status === 'pending' ? (
+          // 결제대기 상품에는 취소 버튼만 표시
+          <div className="flex justify-end">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onCancelOrder(order.id)
+              }}
+              className="bg-gray-100 text-gray-600 text-xs font-medium py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              취소
+            </button>
+          </div>
+        ) : order.status === 'verifying' ? (
+          // 결제 확인중 상태일 때 메시지 표시 (결제 방법별 색상 구분)
+          <div className={`${
+            order.payment?.method === 'card'
+              ? 'bg-blue-50 border border-blue-200'
+              : 'bg-orange-50 border border-orange-200'
+          } rounded-lg p-3`}>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 ${
+                order.payment?.method === 'card' ? 'bg-blue-500' : 'bg-orange-500'
+              } rounded-full animate-pulse`}></div>
+              <span className={`${
+                order.payment?.method === 'card' ? 'text-blue-700' : 'text-orange-700'
+              } text-sm font-medium`}>
+                {order.payment?.method === 'card' ? '카드결제 확인중' : '계좌입금 확인중'}
+              </span>
+            </div>
+            <p className={`${
+              order.payment?.method === 'card' ? 'text-blue-600' : 'text-orange-600'
+            } text-xs mt-1`}>
+              결제 확인이 완료되면 자동으로 처리됩니다
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>
+              {(() => {
+                const { status, payment } = order
+                const isCard = payment?.method === 'card'
+
+                switch (status) {
+                  case 'pending':
+                    return isCard ? '카드결제 대기중' : '입금대기'
+                  case 'verifying':
+                    return isCard ? '카드결제 확인중' : '입금확인중'
+                  case 'paid':
+                    return '결제완료'
+                  case 'preparing':
+                    return '결제완료 (배송준비중)'
+                  case 'shipped':
+                    return '결제완료 (배송중)'
+                  case 'delivered':
+                    return '결제완료 (출고완료)'
+                  case 'cancelled':
+                    return '결제취소'
+                  default:
+                    return isCard ? '카드결제 대기중' : '입금대기'
+                }
+              })()}
+            </span>
+            <span>{order.isGroup ? '상세목록 보기 →' : '상세보기 →'}</span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  )
+}
