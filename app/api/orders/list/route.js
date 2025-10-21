@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// 🚨 환경변수 디버깅 (2025-10-21 추가)
+console.log('🔍 [ENV CHECK] 환경변수 상태:', {
+  hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+  serviceRoleKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
+  supabaseUrlLength: process.env.NEXT_PUBLIC_SUPABASE_URL?.length || 0,
+  nodeEnv: process.env.NODE_ENV
+})
+
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('🚨 CRITICAL: SUPABASE_SERVICE_ROLE_KEY 환경변수 없음!')
+}
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  console.error('🚨 CRITICAL: NEXT_PUBLIC_SUPABASE_URL 환경변수 없음!')
+}
+
 // Service Role 클라이언트 생성 (RLS 우회)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -30,8 +47,20 @@ export async function POST(request) {
       specificOrderId: orderId || 'ALL',
       page,
       pageSize,
-      statusFilter: status
+      statusFilter: status,
+      // 🚨 디버깅: Service Role 클라이언트 상태
+      supabaseAdminExists: !!supabaseAdmin,
+      supabaseAdminHasAuth: !!supabaseAdmin?.auth
     })
+
+    // 🚨 Service Role 클라이언트 체크 (2025-10-21 추가)
+    if (!supabaseAdmin) {
+      console.error('🚨 CRITICAL: supabaseAdmin 클라이언트가 초기화되지 않음!')
+      return NextResponse.json(
+        { error: 'Server configuration error: Admin client not initialized' },
+        { status: 500 }
+      )
+    }
 
     // 1. 기본 유효성 검사
     if (!user || !user.id) {
