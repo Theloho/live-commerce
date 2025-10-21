@@ -1035,10 +1035,11 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | `lib/domain/order/Order.js` | **10개** | ~8 lines/메서드 | ✅ Clean |
 | `lib/domain/order/OrderCalculator.js` | **6개** | ~20 lines/메서드 | ✅ Clean |
 | `lib/domain/order/OrderValidator.js` | **4개** | ~30 lines/메서드 | ✅ Clean |
+| `lib/domain/product/Product.js` | **9개** | ~10 lines/메서드 | ✅ Clean |
 
-**총 메서드 개수**: **111개** (91 + 10 Entity + 6 Calculator + 4 Validator)
+**총 메서드 개수**: **120개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **100개** (80 + 10 Entity + 6 Calculator + 4 Validator)
+**유효 메서드**: **109개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity)
 
 ---
 
@@ -1064,8 +1065,9 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | Cache | 3개 | - | CacheService (3) | - |
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
 | **주문 도메인 (Order Domain)** | **20개** | - | - | **Order Entity (10) + OrderCalculator (6) + OrderValidator (4)** |
+| **상품 도메인 (Product Domain)** | **9개** | - | - | **Product Entity (9)** |
 
-**총 100개 메서드 → 29개 파일로 분산 예정** (26 + 3 Domain)
+**총 109개 메서드 → 30개 파일로 분산 예정** (26 + 4 Domain)
 
 ---
 
@@ -1230,6 +1232,69 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 - `lib/use-cases/order/CreateOrderUseCase.js` (Phase 3.3)
 - `app/checkout/page.js` (Phase 4.1 - 리팩토링 시)
 - `app/orders/page.js` (Phase 4.2 - 수량 변경 검증)
+
+---
+
+### Product Entity ✅ (Phase 2.4 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/domain/product/Product.js` |
+| **목적** | 상품 도메인 모델 (비즈니스 로직 + 검증) |
+| **상속** | `Entity` (Base Entity) |
+| **파일 크기** | 138줄 (Rule 1 준수 ✅, 제한: 200줄) |
+| **마이그레이션** | Phase 2.4 완료 (2025-10-21) |
+
+#### 상품 상태 (ProductStatus)
+- ACTIVE - 활성 (판매 중)
+- INACTIVE - 비활성 (일시 중단)
+- DELETED - 삭제됨 (소프트 삭제)
+
+#### 메서드 목록 (9개)
+
+| 메서드 | 타입 | 목적 | 반환값 |
+|--------|------|------|--------|
+| `constructor()` | 생성자 | Product Entity 생성 | Product |
+| `validate()` | 검증 | 필수 필드 + 가격 + 재고 + 상태 검증 | void (에러 던짐) |
+| `isActive()` | 상태 확인 | 활성 상품 여부 | boolean |
+| `isInactive()` | 상태 확인 | 비활성 상품 여부 | boolean |
+| `isDeleted()` | 상태 확인 | 삭제된 상품 여부 | boolean |
+| `isFeatured()` | 타입 확인 | 추천 상품 여부 | boolean |
+| `isLiveActive()` | 타입 확인 | 라이브 활성 상품 여부 | boolean |
+| `toJSON()` | 직렬화 | Entity → Plain Object | Object |
+| `fromJSON(data)` | 역직렬화 | Plain Object → Entity | Product (static) |
+
+#### 검증 규칙
+- ✅ `title` 필수, 빈 문자열 불가
+- ✅ `product_number` 필수
+- ✅ `price` >= 0
+- ✅ `inventory` >= 0
+- ✅ `status`는 ProductStatus 값만 허용
+
+#### 필드 목록
+- **id**: UUID (Entity에서 상속)
+- **title**: 상품명 (필수)
+- **product_number**: 상품 번호 (필수, 예: P0001)
+- **price**: 판매 가격 (필수, >= 0)
+- **compare_price**: 비교 가격 (선택, 정가 표시용)
+- **thumbnail_url**: 썸네일 이미지 URL (선택)
+- **inventory**: 재고 수량 (필수, >= 0)
+- **status**: 상품 상태 (ACTIVE/INACTIVE/DELETED)
+- **is_featured**: 추천 상품 여부 (boolean, 기본값: false)
+- **is_live_active**: 라이브 활성 여부 (boolean, 기본값: false)
+- **created_at**: 생성 시간
+- **updated_at**: 수정 시간
+
+#### 비즈니스 규칙
+- **활성 상품**: status = ACTIVE인 상품만 홈페이지에 표시
+- **추천 상품**: is_featured = true인 상품을 우선 표시
+- **라이브 활성**: is_live_active = true인 상품을 라이브 방송에 표시
+- **소프트 삭제**: status = DELETED로 변경, 실제 DELETE 사용 안 함
+
+#### 사용처 (예정)
+- `lib/use-cases/product/CreateProductUseCase.js` (Phase 3.x)
+- `lib/use-cases/product/UpdateProductUseCase.js` (Phase 3.x)
+- `lib/repositories/ProductRepository.js` (Entity 변환용)
 
 ---
 
