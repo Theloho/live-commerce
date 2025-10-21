@@ -29,6 +29,11 @@
 - 10.1 addJob() 수정
 - 10.2 getQueuePosition() 수정
 
+### Section 11: CacheService 수정 시나리오 ✅ NEW (Phase 1.6)
+- 11.1 get() 수정
+- 11.2 set() 수정
+- 11.3 invalidate() 수정
+
 ---
 
 ## Section 7: ProductRepository 수정 시나리오 ✅ NEW (Phase 1.2)
@@ -384,6 +389,7 @@
 
 **다음 추가 예정**:
 - ✅ Section 10: QueueService (Phase 1.5) - 추가 완료 (2025-10-21)
+- ✅ Section 11: CacheService (Phase 1.6) - 추가 완료 (2025-10-21)
 
 ---
 
@@ -507,4 +513,243 @@
 - **Redis 설정**: .env.local (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN)
 - **BullMQ 문서**: https://docs.bullmq.io/
 - **Upstash Redis 문서**: https://docs.upstash.com/redis
+
+---
+
+## Section 11: CacheService 수정 시나리오 ✅ NEW (Phase 1.6)
+
+### 📌 개요
+- **파일 위치**: `/lib/services/CacheService.js`
+- **목적**: 캐시 관리 레이어 (Infrastructure Layer) - Upstash Redis 기반 캐시 시스템
+- **클래스**: `CacheService` (static 메서드만 포함)
+- **마이그레이션**: Phase 1.6 (신규 생성, 기존 함수 없음)
+- **생성일**: 2025-10-21
+- **파일 크기**: 72줄 (Rule 1 준수 ✅, 제한: 80줄)
+
+### 🔍 상세 내용
+**Part 1 Section 12 참조** (3개 메서드 정의 및 사용처)
+
+### 📋 수정 시 전체 체크리스트
+
+- [ ] **1. 기본 확인**
+  - Redis 연결 정보 환경변수 확인 (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN)
+  - 파일 크기 80줄 이하 유지하는가? (현재: 72줄 ✅)
+  - JSDoc 주석 완료되었는가?
+  - try-catch로 모든 에러 처리하는가?
+
+- [ ] **2. Redis 설정 확인**
+  - Upstash Redis REST API 사용 확인
+  - QueueService와 동일한 Redis 인스턴스 사용 확인
+  - 환경변수 로드 확인 (process.env.UPSTASH_REDIS_REST_URL/TOKEN)
+  - 서버리스 환경 최적화 유지 (연결 풀 불필요)
+
+- [ ] **3. 비즈니스 로직 확인**
+  - 캐시 키 네이밍 컨벤션 준수하는가?
+    - `products:${productId}` (단일 상품)
+    - `products:list` (상품 목록)
+    - `profile:${userId}` (사용자 프로필)
+    - `api:${endpoint}:${hash}` (API 응답)
+  - TTL 값 적절한가?
+    - 상품 목록: 300초 (5분) - 재고 변동 빠름
+    - 사용자 프로필: 1800초 (30분) - 변경 빈도 낮음
+    - API 응답: 600초 (10분) - 일반적인 응답
+    - 정적 컨텐츠: 86400초 (24시간) - 거의 변경 없음
+  - JSON 직렬화 가능한 값만 저장하는가?
+  - 캐시 미스 시 적절히 처리하는가? (null 반환)
+
+- [ ] **4. 사용처 업데이트**
+  - Part 1 Section 12의 사용처 모두 업데이트했는가?
+  - Import 경로 정확한가? (`import { CacheService } from '@/lib/services/CacheService'`)
+  - Phase 3.x Use Cases에서 캐싱 로직 추가했는가?
+
+- [ ] **5. 영향받는 시스템 테스트**
+  - Phase 3.x Use Cases (상품, 사용자, API 응답 캐싱)
+  - Redis 연결 테스트 (환경변수 설정 확인)
+  - 캐시 히트율 모니터링 (✅/⚠️ 로그)
+  - 캐시 무효화 정상 작동 확인 (데이터 수정 시)
+
+- [ ] **6. 문서 업데이트**
+  - FUNCTION_QUERY_REFERENCE.md (Section 9.10 추가)
+  - Part 1 Section 12 추가
+  - Part 5-1_2 Section 11 (현재 문서) 추가
+
+### 🐛 주의사항
+
+**Redis 연결 의존성**:
+- Upstash Redis REST API 사용
+- 환경변수 누락 시 즉시 실패
+- 서버리스 환경 최적화 (연결 풀 불필요)
+- 로컬 개발 시 .env.local 설정 필수
+- QueueService와 동일한 Redis 인스턴스 공유
+
+**캐시 키 네이밍 컨벤션**:
+- 명확한 네이밍으로 관리 용이성 확보
+- 콜론(:)으로 계층 구분 (예: `products:list`, `products:123`)
+- 동적 값은 템플릿 리터럴 사용 (예: `products:${id}`)
+- 키 충돌 방지를 위한 prefix 사용 권장
+
+**TTL 전략**:
+- 너무 짧은 TTL: 캐시 효과 감소
+- 너무 긴 TTL: 오래된 데이터 위험
+- 데이터 특성에 맞는 TTL 설정 필수
+- 기본값 3600초(1시간)는 일반적인 응답에 적합
+
+**캐시 무효화 전략**:
+- 데이터 수정 시 반드시 관련 캐시 무효화
+- 리스트 캐시와 개별 캐시 모두 무효화 필요
+  ```javascript
+  // 상품 수정 시
+  await CacheService.invalidate(`products:${productId}`) // 개별
+  await CacheService.invalidate('products:list') // 리스트
+  ```
+- 무효화 실패 시에도 비즈니스 로직은 계속 진행
+
+**에러 처리 패턴**:
+- Redis 연결 실패: 에러 던짐 (try-catch 필수)
+- 캐시 미스: null 반환 (에러 아님!)
+- 캐시 저장 실패: 에러 던짐
+- 캐시 무효화 실패: 에러 던짐
+- 로깅: ✅ 성공, ⚠️ 캐시 미스, ❌ 실패
+
+### 🔧 메서드별 수정 시나리오
+
+#### 11.1 get() 수정
+
+**파라미터**:
+- key (string): 캐시 키
+
+**반환값**: `Promise<any|null>` (캐시된 값 또는 null)
+
+**수정 시 체크리스트**:
+- [ ] key 파라미터 검증하는가?
+- [ ] redis.get(key) 정상 호출하는가?
+- [ ] null 반환 시 캐시 미스 로깅하는가? (⚠️)
+- [ ] 성공 시 ✅ 로깅하는가?
+- [ ] 에러 발생 시 ❌ 로깅 및 에러 던지는가?
+- [ ] 반환값이 JSON 역직렬화 필요한지 확인하는가?
+
+**사용 패턴**:
+```javascript
+const cachedProducts = await CacheService.get('products:list')
+if (cachedProducts) {
+  return cachedProducts // 캐시 히트
+}
+// 캐시 미스 - DB 조회 후 캐시 저장
+const products = await ProductRepository.findAll()
+await CacheService.set('products:list', products, 300)
+return products
+```
+
+---
+
+#### 11.2 set() 수정
+
+**파라미터**:
+- key (string): 캐시 키
+- value (any): 저장할 값 (JSON 직렬화 가능)
+- ttl (number): TTL (초 단위, 기본값: 3600)
+
+**반환값**: `Promise<void>`
+
+**수정 시 체크리스트**:
+- [ ] key, value 파라미터 검증하는가?
+- [ ] ttl 기본값 3600초 적절한가?
+- [ ] redis.set(key, value, { ex: ttl }) 정상 호출하는가?
+- [ ] 성공 시 ✅ 로깅 (key + TTL 표시)하는가?
+- [ ] 에러 발생 시 ❌ 로깅 및 에러 던지는가?
+- [ ] value가 JSON 직렬화 가능한지 확인하는가?
+
+**TTL 가이드라인**:
+```javascript
+// 상품 목록 (재고 변동 빠름)
+await CacheService.set('products:list', products, 300) // 5분
+
+// 사용자 프로필 (변경 빈도 낮음)
+await CacheService.set(`profile:${userId}`, profile, 1800) // 30분
+
+// API 응답 (일반적)
+await CacheService.set(`api:${endpoint}`, response, 600) // 10분
+
+// 정적 컨텐츠 (거의 변경 없음)
+await CacheService.set('static:config', config, 86400) // 24시간
+```
+
+---
+
+#### 11.3 invalidate() 수정
+
+**파라미터**:
+- key (string): 캐시 키
+
+**반환값**: `Promise<number>` (삭제된 키 개수, 0 또는 1)
+
+**수정 시 체크리스트**:
+- [ ] key 파라미터 검증하는가?
+- [ ] redis.del(key) 정상 호출하는가?
+- [ ] 성공 시 ✅ 로깅하는가?
+- [ ] 에러 발생 시 ❌ 로깅 및 에러 던지는가?
+- [ ] 반환값 (삭제된 키 개수) 처리하는가?
+- [ ] 관련 캐시 모두 무효화하는가? (리스트 + 개별)
+
+**사용 패턴**:
+```javascript
+// 상품 수정 시 - 개별 캐시 + 리스트 캐시 모두 무효화
+await CacheService.invalidate(`products:${productId}`)
+await CacheService.invalidate('products:list')
+
+// 프로필 수정 시
+await CacheService.invalidate(`profile:${userId}`)
+
+// API 응답 캐시 무효화
+await CacheService.invalidate(`api:/products`)
+```
+
+**⚠️ 주의**: 무효화 실패 시에도 비즈니스 로직은 계속 진행되어야 함
+```javascript
+try {
+  await CacheService.invalidate(`products:${productId}`)
+} catch (error) {
+  console.error('캐시 무효화 실패 (무시):', error)
+  // 비즈니스 로직은 계속 진행
+}
+```
+
+---
+
+### 📚 크로스 레퍼런스
+
+- **Part 1 Section 12**: CacheService 정의 및 사용처
+- **FUNCTION_QUERY_REFERENCE.md Section 9.10**: CacheService (마이그레이션 완료)
+- **Redis 설정**: .env.local (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN)
+- **Upstash Redis 문서**: https://docs.upstash.com/redis
+- **관련 서비스**: QueueService (동일한 Redis 인스턴스 공유)
+
+---
+
+**다음 단계**: Part 5-2 (DB 테이블 수정 시나리오) 읽기
+
+**작성 완료**: 2025-10-21 (Section 7, 8, 9, 10, 11 추가)
+
+---
+
+## ✅ PART5_1_2 업데이트 완료 (2025-10-21)
+
+**이전 문서**: [SYSTEM_DEPENDENCY_COMPLETE_PART5_1.md](./SYSTEM_DEPENDENCY_COMPLETE_PART5_1.md) - 유틸리티 함수 수정 시나리오
+
+**PART5_1_2 요약**:
+- 총 5개 Section 문서화 (Repository + Service 수정 시나리오)
+- Section 7: ProductRepository (Phase 1.2)
+- Section 8: UserRepository (Phase 1.3)
+- Section 9: CouponRepository (Phase 1.4)
+- Section 10: QueueService (Phase 1.5)
+- Section 11: CacheService (Phase 1.6) ⭐ NEW
+- 모든 수정 시나리오에 체크리스트 및 주의사항 포함
+- Service Role, RLS, RPC 함수, Redis 설정 주의사항 포함
+
+**문서 크기**: 약 700 줄 (적정 크기 ✅)
+
+**다음 추가 예정**:
+- Phase 1.2: ProductRepository 추가 메서드
+- Phase 1.3: UserRepository 추가 메서드
+- Phase 1.4: CouponRepository 추가 메서드
 

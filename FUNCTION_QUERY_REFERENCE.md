@@ -910,6 +910,20 @@ Database (Supabase PostgreSQL)
 
 ---
 
+### 9.10 ✅ CacheService (마이그레이션 완료)
+
+| 항목 | 내용 |
+|------|------|
+| **✅ 마이그레이션 완료** | `lib/services/CacheService.js` (72줄) |
+| **목적** | 캐시 관리 - Upstash Redis 기반 캐시 시스템 |
+| **메서드** | `get(key)` - 캐시 조회<br>`set(key, value, ttl)` - 캐시 저장 (TTL 설정)<br>`invalidate(key)` - 캐시 무효화 |
+| **사용 페이지** | - Phase 3.x Use Cases에서 활용 예정<br>- 상품 목록, 사용자 프로필, API 응답 캐싱 |
+| **특징** | Upstash Redis REST API 사용<br>기본 TTL: 3600초 (1시간)<br>서버리스 환경 최적화 |
+| **완료 레이어** | `Infrastructure` → `lib/services/CacheService.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.6) |
+
+---
+
 ## 📋 10. 레거시 함수 목록 (삭제 예정)
 
 ### 10.1 레거시 파일 - supabaseApi.js.bak / supabaseApi.js.bak2
@@ -971,10 +985,11 @@ Database (Supabase PostgreSQL)
 | `lib/fulfillmentGrouping.js` | 2개 | ~80 lines/함수 | ✅ Clean |
 | `lib/trackingNumberUtils.js` | 6개 | ~50 lines/함수 | ✅ Clean |
 | `lib/services/QueueService.js` | **2개** | ~20 lines/함수 | ✅ Clean |
+| `lib/services/CacheService.js` | **3개** | ~15 lines/함수 | ✅ Clean |
 
-**총 함수 개수**: **86개**
+**총 함수 개수**: **89개**
 **레거시 함수**: 11개 (삭제 예정)
-**유효 함수**: **75개**
+**유효 함수**: **78개**
 
 ---
 
@@ -997,8 +1012,9 @@ Database (Supabase PostgreSQL)
 | 송장 (Tracking) | 6개 | - | TrackingService (6) | - |
 | 주문 계산 (OrderCalc) | 5개 | - | - | OrderCalculations (5) |
 | Queue | 2개 | - | QueueService (2) | - |
+| Cache | 3개 | - | CacheService (3) | - |
 
-**총 75개 함수 → 24개 파일로 분산 예정**
+**총 78개 함수 → 25개 파일로 분산 예정**
 
 ---
 

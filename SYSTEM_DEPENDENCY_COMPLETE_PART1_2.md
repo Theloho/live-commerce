@@ -34,6 +34,11 @@
 - [11.1 addJob()](#111-addjob)
 - [11.2 getQueuePosition()](#112-getqueueposition)
 
+### 12. CacheService.js (3개 메서드) ✅ NEW (Phase 1.6)
+- [12.1 get()](#121-get)
+- [12.2 set()](#122-set)
+- [12.3 invalidate()](#123-invalidate)
+
 ---
 
 # 7. OrderRepository.js ✅ NEW (Phase 1.1 - 2025-10-21)
@@ -255,6 +260,7 @@ async cancel(orderId)
 - Phase 1.3: UserRepository (2개 메서드)
 - Phase 1.4: CouponRepository (4개 메서드)
 - ✅ Phase 1.5: QueueService (2개 메서드) - 추가 완료 (2025-10-21)
+- ✅ Phase 1.6: CacheService (3개 메서드) - 추가 완료 (2025-10-21)
 
 ---
 
@@ -343,4 +349,175 @@ static async getQueuePosition(queueName, jobId)
 - [ ] try-catch로 모든 에러 처리
 - [ ] Queue 인스턴스 캐싱 유지 (성능 최적화)
 - [ ] BullMQ 기본 옵션 확인 (attempts, backoff, removeOnComplete, removeOnFail)
+
+---
+
+# 12. CacheService.js ✅ NEW (Phase 1.6 - 2025-10-21)
+
+**파일 위치**: `/lib/services/CacheService.js`
+**목적**: 캐시 관리 레이어 (Infrastructure Layer) - Upstash Redis 기반 캐시 시스템
+**클래스**: `CacheService` (static 메서드만 포함)
+**마이그레이션**: Phase 1.6 (신규 생성, 기존 함수 없음)
+
+---
+
+## 12.1 get()
+
+**목적**: 캐시에서 값 조회
+
+**함수 시그니처**:
+```javascript
+static async get(key)
+```
+
+**파라미터**:
+- `key` (string): 캐시 키
+
+**반환값**: `Promise<any|null>` - 캐시된 값 또는 null (캐시 미스)
+
+**사용처** (예정):
+- `lib/use-cases/product/GetProductsUseCase.js` (Phase 3.x) - 상품 목록 캐싱
+- `lib/use-cases/user/GetUserProfileUseCase.js` (Phase 3.x) - 사용자 프로필 캐싱
+- `/app/api/*/route.js` (Phase 3.x) - API 응답 캐싱
+
+**연관 시스템**:
+- Redis (Upstash Redis REST API)
+
+**내부 호출 함수**:
+- `redis.get(key)` - Upstash Redis 조회
+
+**로깅**:
+- ✅ 캐시 조회 성공: `key` 존재
+- ⚠️ 캐시 미스: `key` 없음
+- ❌ 캐시 조회 실패: 에러 발생
+
+**수정 시 체크리스트**:
+- [ ] Redis 연결 정보 (환경변수) 확인하는가?
+- [ ] try-catch로 에러 처리하는가?
+- [ ] 로깅 추가했는가? (✅/⚠️/❌ 이모지)
+- [ ] null 반환 시 적절히 처리하는가?
+
+---
+
+## 12.2 set()
+
+**목적**: 캐시에 값 저장 (TTL 설정 가능)
+
+**함수 시그니처**:
+```javascript
+static async set(key, value, ttl = 3600)
+```
+
+**파라미터**:
+- `key` (string): 캐시 키
+- `value` (any): 저장할 값 (JSON 직렬화 가능)
+- `ttl` (number): TTL (초 단위, 기본값: 3600초 = 1시간)
+
+**반환값**: `Promise<void>`
+
+**사용처** (예정):
+- `lib/use-cases/product/GetProductsUseCase.js` (Phase 3.x) - 상품 목록 캐싱 (TTL: 300초)
+- `lib/use-cases/user/GetUserProfileUseCase.js` (Phase 3.x) - 사용자 프로필 캐싱 (TTL: 1800초)
+- `/app/api/*/route.js` (Phase 3.x) - API 응답 캐싱 (TTL: 600초)
+
+**연관 시스템**:
+- Redis (Upstash Redis REST API)
+
+**내부 호출 함수**:
+- `redis.set(key, value, { ex: ttl })` - Upstash Redis 저장
+
+**TTL 가이드라인**:
+- 상품 목록: 300초 (5분) - 재고 변동 빠름
+- 사용자 프로필: 1800초 (30분) - 변경 빈도 낮음
+- API 응답: 600초 (10분) - 일반적인 응답
+- 정적 컨텐츠: 86400초 (24시간) - 거의 변경 없음
+
+**로깅**:
+- ✅ 캐시 저장 성공: `key` + TTL 표시
+- ❌ 캐시 저장 실패: 에러 발생
+
+**수정 시 체크리스트**:
+- [ ] Redis 연결 정보 확인하는가?
+- [ ] try-catch로 에러 처리하는가?
+- [ ] 로깅 추가했는가? (TTL 포함)
+- [ ] TTL 기본값 적절한가? (3600초)
+- [ ] value가 JSON 직렬화 가능한가?
+
+---
+
+## 12.3 invalidate()
+
+**목적**: 캐시 무효화 (삭제)
+
+**함수 시그니처**:
+```javascript
+static async invalidate(key)
+```
+
+**파라미터**:
+- `key` (string): 캐시 키
+
+**반환값**: `Promise<number>` - 삭제된 키 개수 (0 또는 1)
+
+**사용처** (예정):
+- `lib/use-cases/product/UpdateProductUseCase.js` (Phase 3.x) - 상품 수정 시 캐시 무효화
+- `lib/use-cases/user/UpdateUserProfileUseCase.js` (Phase 3.x) - 프로필 수정 시 캐시 무효화
+- `/app/api/admin/*/route.js` (Phase 3.x) - 관리자 수정 작업 후 캐시 무효화
+
+**연관 시스템**:
+- Redis (Upstash Redis REST API)
+
+**내부 호출 함수**:
+- `redis.del(key)` - Upstash Redis 삭제
+
+**사용 패턴**:
+```javascript
+// 상품 수정 후 캐시 무효화
+await CacheService.invalidate(`products:${productId}`)
+await CacheService.invalidate('products:list')
+
+// 프로필 수정 후 캐시 무효화
+await CacheService.invalidate(`profile:${userId}`)
+```
+
+**로깅**:
+- ✅ 캐시 무효화 완료: `key`
+- ❌ 캐시 무효화 실패: 에러 발생
+
+**수정 시 체크리스트**:
+- [ ] Redis 연결 정보 확인하는가?
+- [ ] try-catch로 에러 처리하는가?
+- [ ] 로깅 추가했는가?
+- [ ] 반환값 (삭제된 키 개수) 처리하는가?
+
+---
+
+**CacheService 수정 시 전체 체크리스트**:
+- [ ] Redis 연결 정보 환경변수 확인 (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN)
+- [ ] 파일 크기 80줄 이하 유지 (Rule 1) - 현재 72줄 ✅
+- [ ] JSDoc 주석 완료
+- [ ] try-catch로 모든 에러 처리
+- [ ] 로깅 패턴 일관성 유지 (✅/⚠️/❌ 이모지)
+- [ ] TTL 기본값 적절한가? (3600초 = 1시간)
+- [ ] JSON 직렬화 가능한 값만 저장하는가?
+
+---
+
+**✅ Part 1_2 업데이트 완료 (2025-10-21)**
+
+**이전 문서**: [SYSTEM_DEPENDENCY_COMPLETE_PART1.md](./SYSTEM_DEPENDENCY_COMPLETE_PART1.md) - 유틸리티 함수
+
+**Part 1_2 요약**:
+- 총 12개 메서드 문서화 (OrderRepository 7개 + QueueService 2개 + CacheService 3개)
+- 사용처 파일 경로 + 라인 번호 명시
+- 연관 DB 테이블, 수정 체크리스트 포함
+- Service Role 클라이언트로 RLS 우회 (OrderRepository)
+- Redis 기반 Infrastructure Layer (QueueService, CacheService)
+
+**문서 크기**: 약 400 줄 (적정 크기 ✅)
+
+**다음 추가 예정**:
+- Phase 1.2: ProductRepository (4개 메서드)
+- Phase 1.3: UserRepository (2개 메서드)
+- Phase 1.4: CouponRepository (4개 메서드)
 
