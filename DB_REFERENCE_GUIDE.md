@@ -430,14 +430,16 @@ CREATE TABLE orders (
     -- 사용자 정보
     user_id UUID REFERENCES auth.users(id),  -- ⚠️ NULL 가능 (카카오 사용자)
 
-    -- 주문 상태
+    -- 주문 상태 ⭐ 실제 사용하는 4가지 상태 (2025-10-20 명확화)
     status VARCHAR(20) DEFAULT 'pending',
-    -- 'pending' (결제대기)
-    -- 'verifying' (결제확인중)
-    -- 'deposited' (입금확인완료) ⭐ 발주 대상
-    -- 'paid' (결제완료)
+    -- 'pending' (결제대기 = 장바구니 역할 ⭐)
+    -- 'verifying' (결제확인중 = 입금 대기, 체크아웃 완료)
+    -- 'paid' (결제완료 = 입금 확인 완료 ⭐ 발주 대상)
     -- 'delivered' (발송완료)
     -- 'cancelled' (취소)
+    --
+    -- ⚠️ 'deposited'는 DB 스키마에 정의되어 있지만 실제로는 사용하지 않음
+    -- ⚠️ 입금 확인 시 'paid' 상태로 변경됨 (admin/deposits/page.js:380)
 
     -- 주문 타입 ⭐ 중요
     order_type VARCHAR(20) DEFAULT 'direct',
@@ -475,7 +477,11 @@ CREATE TABLE orders (
 - `user_id` NULL 가능 (카카오 사용자는 `order_type`에 ID 포함)
 - `discount_amount` = 쿠폰 할인 금액 (2025-10-04 추가)
 - **실제 결제 금액** = `total_amount - discount_amount`
-- `status = 'deposited'` → 발주 대상 상태
+- ⭐ **주문 상태 흐름** (2025-10-20 명확화):
+  - `pending` → 장바구니 역할 (여러 상품 담기 가능)
+  - `verifying` → 체크아웃 완료, 입금 대기
+  - `paid` → 입금 확인 완료, **발주 대상 상태** ⭐
+  - `delivered` → 출고 완료
 - 타임스탬프 흐름: `created_at` → `verifying_at` → `paid_at` → `delivered_at`
 
 **인덱스**:

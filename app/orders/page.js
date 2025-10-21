@@ -243,10 +243,12 @@ function OrdersContent() {
     )
   }
 
-  // 탭 변경 핸들러 (페이지 리셋)
+  // 탭 변경 핸들러 (페이지 리셋 + URL 업데이트)
   const handleTabChange = (newStatus) => {
     setFilterStatus(newStatus)
     setCurrentPage(1) // 페이지 1로 리셋
+    // ⚡ URL 업데이트 (리로드 없이, 스크롤 유지)
+    router.replace(`/orders?tab=${newStatus}`, { scroll: false })
   }
 
   // 페이지 변경 핸들러
