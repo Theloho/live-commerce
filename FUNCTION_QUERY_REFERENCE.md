@@ -957,16 +957,61 @@ Database (Supabase PostgreSQL)
 
 ## 🔍 11. Race Condition 위험 함수 (동시성 제어 필요)
 
-### 11.1 재고 감소 함수 (Phase 1.7에서 FOR UPDATE NOWAIT 추가)
+### 11.1 재고 감소 함수 ✅ (Phase 1.7 완료 - 2025-10-21)
 
-| 함수명 | 현재 구현 | 문제점 | 해결책 |
-|--------|-----------|--------|--------|
-| `updateProductInventory` | SELECT → UPDATE | ⚠️ Race Condition | FOR UPDATE NOWAIT + RPC |
-| `updateVariantInventory` | RPC (락 없음) | ⚠️ Race Condition | RPC 내부에 FOR UPDATE NOWAIT 추가 |
-| `createOrder` | 재고 체크 → 재고 감소 | ⚠️ Race Condition | 트랜잭션 + FOR UPDATE NOWAIT |
-| `updateOrderItemQuantity` | 재고 조정 | ⚠️ Race Condition | 트랜잭션 + FOR UPDATE NOWAIT |
+| 함수명 | 구현 방식 | 상태 | 비고 |
+|--------|-----------|------|------|
+| `update_product_inventory_with_lock` | FOR UPDATE NOWAIT | ✅ 완료 | RPC 함수 (Phase 1.7) |
+| `update_variant_inventory_with_lock` | FOR UPDATE NOWAIT | ✅ 완료 | RPC 함수 (Phase 1.7) |
+| `updateProductInventory` (레거시) | SELECT → UPDATE | ⚠️ Deprecated | Phase 3.x에서 제거 예정 |
+| `updateVariantInventory` (레거시) | RPC (락 없음) | ⚠️ Deprecated | Phase 3.x에서 제거 예정 |
 
-**마이그레이션**: Phase 1.7 (Step 1.7.1 ~ 1.7.6)
+**마이그레이션**: ✅ Phase 1.7 완료 (2025-10-21)
+**마이그레이션 파일**: `supabase/migrations/20251021223007_inventory_lock.sql`
+
+#### update_product_inventory_with_lock
+
+| 항목 | 내용 |
+|------|------|
+| **타입** | RPC 함수 (PostgreSQL) |
+| **시그니처** | `update_product_inventory_with_lock(p_product_id UUID, p_change INTEGER)` |
+| **반환값** | JSONB: `{product_id, old_inventory, new_inventory, change}` |
+| **Lock 방식** | FOR UPDATE NOWAIT (락 획득 실패 시 즉시 에러) |
+| **검증 로직** | 재고 부족 시 `insufficient_inventory` 에러 반환 |
+| **에러 타입** | `lock_not_available`, `insufficient_inventory`, `product_not_found` |
+| **사용처** | ProductRepository.updateInventory (Phase 3.x에서 마이그레이션) |
+| **권한** | Service Role 전용 (SECURITY DEFINER) |
+
+#### update_variant_inventory_with_lock
+
+| 항목 | 내용 |
+|------|------|
+| **타입** | RPC 함수 (PostgreSQL) |
+| **시그니처** | `update_variant_inventory_with_lock(p_variant_id UUID, p_change INTEGER)` |
+| **반환값** | JSONB: `{variant_id, product_id, old_inventory, new_inventory, change}` |
+| **Lock 방식** | FOR UPDATE NOWAIT (Variant + Product 모두 락) |
+| **검증 로직** | 재고 부족 시 `insufficient_inventory` 에러 반환 |
+| **Product 동기화** | Variant 재고 변경 시 Product 재고도 자동 업데이트 |
+| **데드락 방지** | 항상 Variant → Product 순서로 락 획득 |
+| **에러 타입** | `lock_not_available`, `insufficient_inventory`, `variant_not_found` |
+| **사용처** | VariantRepository.updateInventory (Phase 3.x에서 마이그레이션) |
+| **권한** | Service Role 전용 (SECURITY DEFINER) |
+
+**Race Condition 해결 방식**:
+```sql
+-- Before (Race Condition 위험)
+SELECT inventory FROM products WHERE id = product_id;  -- 동시 접속 시 같은 값 읽음
+UPDATE products SET inventory = inventory - change WHERE id = product_id;
+
+-- After (FOR UPDATE NOWAIT)
+SELECT inventory FROM products WHERE id = product_id FOR UPDATE NOWAIT;  -- 락 획득 (실패 시 즉시 에러)
+UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- 안전한 업데이트
+```
+
+**Phase 3.x 마이그레이션 계획**:
+- `ProductRepository.updateInventory` → `update_product_inventory_with_lock` RPC 호출로 변경
+- `VariantRepository.updateInventory` → `update_variant_inventory_with_lock` RPC 호출로 변경
+- `createOrder`, `updateOrderItemQuantity` → Use Case에서 RPC 함수 사용
 
 ---
 
@@ -986,10 +1031,11 @@ Database (Supabase PostgreSQL)
 | `lib/trackingNumberUtils.js` | 6개 | ~50 lines/함수 | ✅ Clean |
 | `lib/services/QueueService.js` | **2개** | ~20 lines/함수 | ✅ Clean |
 | `lib/services/CacheService.js` | **3개** | ~15 lines/함수 | ✅ Clean |
+| `supabase/migrations/*.sql` (RPC) | **2개** | ~60 lines/함수 | ✅ Clean |
 
-**총 함수 개수**: **89개**
+**총 함수 개수**: **91개** (89 + 2 RPC)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 함수**: **78개**
+**유효 함수**: **80개** (78 + 2 RPC)
 
 ---
 
@@ -1013,8 +1059,9 @@ Database (Supabase PostgreSQL)
 | 주문 계산 (OrderCalc) | 5개 | - | - | OrderCalculations (5) |
 | Queue | 2개 | - | QueueService (2) | - |
 | Cache | 3개 | - | CacheService (3) | - |
+| 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
 
-**총 78개 함수 → 25개 파일로 분산 예정**
+**총 80개 함수 → 26개 파일로 분산 예정** (25 + 1 RPC migration)
 
 ---
 
