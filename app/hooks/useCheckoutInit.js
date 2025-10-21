@@ -16,10 +16,9 @@
  * - ✅ Rule #0 준수: 직접 supabase 호출 제거, OrderRepository.hasPendingOrders() 사용
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { UserProfileManager } from '@/lib/userProfileManager'
 import { getUserCoupons } from '@/lib/couponApi'
-import { OrderRepository } from '@/lib/repositories/OrderRepository'
 import useAuthStore from '@/app/stores/authStore'
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
@@ -49,9 +48,6 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
   const [hasPendingOrders, setHasPendingOrders] = useState(false)
   const [enableCardPayment, setEnableCardPayment] = useState(false)
   const [userSession, setUserSession] = useState(null)
-
-  // OrderRepository 인스턴스
-  const orderRepository = useRef(new OrderRepository())
 
   // 초기화 함수
   useEffect(() => {
@@ -306,7 +302,7 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
   }
 
   /**
-   * ✅ Rule #0 준수: OrderRepository 사용 (직접 supabase 호출 제거)
+   * ✅ Rule #2 준수: API Route를 통한 Repository 접근 (Layer 경계)
    * 사용자의 pending/verifying 주문 확인 (무료배송 조건)
    * - 일괄결제인 경우: originalOrderIds에 포함된 주문 제외
    */
@@ -319,14 +315,23 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
         ? orderItem.originalOrderIds
         : []
 
-      // ✅ OrderRepository 사용 (Infrastructure Layer)
-      const hasPending = await orderRepository.current.hasPendingOrders({
-        userId: currentUser.provider === 'kakao' ? null : currentUser.id,
-        kakaoId: currentUser.provider === 'kakao' ? currentUser.kakao_id : null,
-        excludeIds
+      // ✅ API Route를 통한 Repository 접근 (Presentation → API → Infrastructure)
+      const response = await fetch('/api/orders/check-pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.provider === 'kakao' ? null : currentUser.id,
+          kakaoId: currentUser.provider === 'kakao' ? currentUser.kakao_id : null,
+          excludeIds
+        })
       })
 
-      return hasPending
+      if (!response.ok) {
+        throw new Error('pending 주문 확인 실패')
+      }
+
+      const data = await response.json()
+      return data.hasPendingOrders
     } catch (error) {
       logger.warn('주문 확인 중 오류:', error)
       return false

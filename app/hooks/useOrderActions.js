@@ -15,11 +15,7 @@
  * - ✅ Rule #0 준수: CancelOrderUseCase 사용 (직접 supabase 호출 제거)
  */
 
-import { useRef } from 'react'
 import { ClockIcon, CheckCircleIcon, TruckIcon } from '@heroicons/react/24/outline'
-import { CancelOrderUseCase } from '@/lib/use-cases/order/CancelOrderUseCase'
-import { OrderRepository } from '@/lib/repositories/OrderRepository'
-import { ProductRepository } from '@/lib/repositories/ProductRepository'
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
 
@@ -42,13 +38,6 @@ export function useOrderActions({
   refreshOrders,
   setSelectedGroupOrder
 }) {
-  // Use Case 인스턴스 (재사용)
-  const orderRepository = useRef(new OrderRepository())
-  const productRepository = useRef(new ProductRepository())
-  const cancelOrderUseCase = useRef(
-    new CancelOrderUseCase(orderRepository.current, productRepository.current)
-  )
-
   /**
    * 주문 상태 정보 조회
    * @param {string} status - 주문 상태
@@ -85,8 +74,8 @@ export function useOrderActions({
   }
 
   /**
-   * ✅ 주문 취소 핸들러 (CancelOrderUseCase 사용)
-   * - Use Case를 통해 비즈니스 로직 실행
+   * ✅ Rule #2 준수: API Route를 통한 Use Case 실행 (Layer 경계)
+   * - 주문 취소 비즈니스 로직 실행
    * - 재고 복원 자동 처리
    * - 취소 후 주문 목록 새로고침
    */
@@ -101,14 +90,23 @@ export function useOrderActions({
         return
       }
 
-      // ✅ CancelOrderUseCase 실행 (Infrastructure Layer 직접 호출 제거)
-      await cancelOrderUseCase.current.execute({
-        orderId,
-        user: {
-          id: currentUser.id,
-          kakaoId: currentUser.kakao_id || currentUser.kakaoId
-        }
+      // ✅ API Route를 통한 Use Case 실행 (Presentation → API → Use Case → Repository)
+      const response = await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          user: {
+            id: currentUser.id,
+            kakaoId: currentUser.kakao_id || currentUser.kakaoId
+          }
+        })
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '주문 취소 실패')
+      }
 
       toast.success('주문이 취소되었습니다')
 
