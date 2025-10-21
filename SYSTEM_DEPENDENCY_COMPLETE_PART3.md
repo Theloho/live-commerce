@@ -1,7 +1,8 @@
 # Part 3: API 엔드포인트 종속성 맵 (API Endpoint Dependency Map)
 
-> **버전**: 1.0
+> **버전**: 1.1
 > **작성일**: 2025-10-20
+> **최종 업데이트**: 2025-10-22 (Phase 6-7 - Layer Boundary API 2개 추가)
 > **목적**: 각 API 엔드포인트가 어떤 중앙 함수/DB 테이블을 사용하는지 완벽히 파악
 
 ---
@@ -9,7 +10,7 @@
 ## 📋 목차
 
 ### 핵심 프로덕션 API (상세 문서화)
-1. [주문 관련 API](#1-주문-관련-api) (3개)
+1. [주문 관련 API](#1-주문-관련-api) (5개)
 2. [관리자 주문 관리 API](#2-관리자-주문-관리-api) (2개)
 3. [관리자 상품 관리 API](#3-관리자-상품-관리-api) (5개)
 4. [관리자 쿠폰 관리 API](#4-관리자-쿠폰-관리-api) (4개)
@@ -398,6 +399,159 @@
 
 #### 📚 관련 문서
 - Part 2: Section 1, 2 - orders, order_items 테이블
+
+---
+
+### 1.4 POST /api/orders/cancel
+
+#### 📌 개요
+- **용도**: 주문 취소 및 재고 복원 (Service Role API)
+- **인증**: Service Role Key (RLS 우회)
+- **호출 페이지**: `/app/orders/page.js` (사용자 주문 목록)
+- **추가일**: 2025-10-22 (Phase 6 - Layer Boundary 분리)
+
+#### 📥 요청 파라미터
+```typescript
+{
+  orderId: string,              // 취소할 주문 ID
+  user: {
+    id: string,                 // Supabase User ID
+    kakaoId?: string            // 카카오 사용자 ID (선택)
+  }
+}
+```
+
+#### 📤 응답 형식
+```typescript
+{
+  success: true,
+  order: {
+    id: string,
+    status: 'cancelled',
+    ...                          // 업데이트된 주문 정보
+  }
+}
+```
+
+#### 🔧 호출하는 중앙 함수
+| 함수 | 위치 | 용도 |
+|------|------|------|
+| CancelOrderUseCase.execute() | /lib/use-cases/order/CancelOrderUseCase.js | 주문 취소 비즈니스 로직 |
+| OrderRepository | /lib/repositories/OrderRepository.js | 주문 데이터 접근 |
+| ProductRepository | /lib/repositories/ProductRepository.js | 재고 복원 |
+
+#### 💾 접근하는 DB 테이블
+| 테이블 | 작업 | 라인 |
+|--------|------|------|
+| orders | SELECT, UPDATE | Use Case 내부 |
+| order_items | SELECT | Use Case 내부 |
+| product_variants | UPDATE (재고 복원) | Use Case 내부 |
+
+#### 📍 주요 로직
+
+1. **Use Case 실행** (line 15-23):
+   - CancelOrderUseCase 인스턴스 생성
+   - Repository 주입 (OrderRepository, ProductRepository)
+   - execute({ orderId, user }) 호출
+
+2. **에러 처리** (line 25-35):
+   - 필수 파라미터 검증 (400)
+   - 취소 실패 시 500 에러
+
+#### ⚠️ 주의사항
+
+- [x] **Layer Boundary 준수**: Client → API Route → Use Case → Repository 흐름
+- [x] **Repository 인스턴스 주입**: API Route에서 생성
+- [x] **재고 복원**: ProductRepository를 통해 자동 처리
+- [x] **권한 확인**: Use Case 내부에서 user 검증
+
+#### 🐛 과거 버그 사례
+
+1. **Layer Violation** (2025-10-22 Phase 6 이전)
+   - 증상: useOrderActions.js가 직접 Use Case import
+   - 문제: Client 코드에서 서버 코드 직접 참조
+   - 해결: API Route 생성, fetch() 사용
+   - 커밋: 1a19ab9
+
+#### 📚 관련 문서
+- Part 1: Section 1.4 - CancelOrderUseCase
+- Part 2: Section 1, 5 - orders, product_variants 테이블
+
+---
+
+### 1.5 POST /api/orders/check-pending
+
+#### 📌 개요
+- **용도**: pending/verifying 주문 존재 확인 (무료배송 조건 체크)
+- **인증**: Service Role Key (RLS 우회)
+- **호출 페이지**: `/app/checkout/page.js` (체크아웃 페이지)
+- **추가일**: 2025-10-22 (Phase 6 - Layer Boundary 분리)
+
+#### 📥 요청 파라미터
+```typescript
+{
+  userId?: string,              // Supabase User ID (userId 또는 kakaoId 필수)
+  kakaoId?: string,             // 카카오 사용자 ID
+  excludeIds?: string[]         // 제외할 주문 ID 배열 (일괄결제 시)
+}
+```
+
+#### 📤 응답 형식
+```typescript
+{
+  success: true,
+  hasPendingOrders: boolean     // pending/verifying 주문 존재 여부
+}
+```
+
+#### 🔧 호출하는 중앙 함수
+| 함수 | 위치 | 용도 |
+|------|------|------|
+| OrderRepository.hasPendingOrders() | /lib/repositories/OrderRepository.js:223-254 | pending 주문 확인 |
+
+#### 💾 접근하는 DB 테이블
+| 테이블 | 작업 | 라인 |
+|--------|------|------|
+| orders | SELECT (count) | Repository 내부 |
+
+#### 📍 주요 로직
+
+1. **파라미터 검증** (line 13-19):
+   - userId 또는 kakaoId 필수
+   - 없으면 400 에러
+
+2. **Repository 호출** (line 21-25):
+   - OrderRepository.hasPendingOrders() 메서드 호출
+   - userId 또는 kakaoId로 필터링
+   - excludeIds로 특정 주문 제외 (일괄결제 시)
+
+3. **응답 반환** (line 27-30):
+   - hasPendingOrders: boolean
+
+#### ⚠️ 주의사항
+
+- [x] **Layer Boundary 준수**: Client → API Route → Repository 흐름
+- [x] **무료배송 조건**: 다른 pending 주문이 있으면 true 반환
+- [x] **일괄결제 지원**: excludeIds로 결제하려는 주문 제외
+- [x] **카카오 사용자 지원**: order_type LIKE '%KAKAO:kakaoId%' 패턴 매칭
+
+#### 🐛 과거 버그 사례
+
+1. **Layer Violation** (2025-10-22 Phase 6 이전)
+   - 증상: useCheckoutInit.js가 직접 OrderRepository import
+   - 문제: Client 코드에서 서버 코드 직접 참조
+   - 해결: API Route 생성, fetch() 사용
+   - 커밋: 1a19ab9
+
+2. **일괄결제 시 무료배송 미적용** (2025-10-16)
+   - 증상: 2개 일괄결제 + 1개 verifying 시 무료배송 X
+   - 원인: excludeIds 파라미터 미전달
+   - 해결: excludeIds 파라미터 추가
+   - 커밋: 64bcb81
+
+#### 📚 관련 문서
+- Part 1: Section 1.1 - OrderRepository.hasPendingOrders()
+- Part 2: Section 1 - orders 테이블
 
 ---
 
@@ -1500,6 +1654,8 @@
 | **/api/orders/create** | POST | SR | /checkout | orders, order_items, order_payments, order_shipping, product_variants | ✅ |
 | **/api/orders/update-status** | POST | SR | /checkout, /admin/orders/[id] | orders, order_payments, order_shipping, user_coupons | ✅ |
 | **/api/orders/list** | POST | SR | /orders | orders, order_items, products | ✅ |
+| **/api/orders/cancel** | POST | SR | /orders | orders, order_items, product_variants | ✅ |
+| **/api/orders/check-pending** | POST | SR | /checkout | orders | ✅ |
 | **/api/admin/orders** | GET | SR | /admin/orders, /admin/deposits, /admin/shipping | orders, order_items, products, suppliers | ✅ |
 | **/api/admin/products/create** | POST | SR+AE | /admin/products/new, /admin/products/detail-new | products, product_variants, product_options | ✅ |
 | **/api/admin/products/update** | POST | SR+AE | /admin/products/[id]/edit | products | ✅ |
