@@ -1034,10 +1034,11 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | `supabase/migrations/*.sql` (RPC) | **2개** | ~60 lines/함수 | ✅ Clean |
 | `lib/domain/order/Order.js` | **10개** | ~8 lines/메서드 | ✅ Clean |
 | `lib/domain/order/OrderCalculator.js` | **6개** | ~20 lines/메서드 | ✅ Clean |
+| `lib/domain/order/OrderValidator.js` | **4개** | ~30 lines/메서드 | ✅ Clean |
 
-**총 메서드 개수**: **107개** (91 + 10 Entity + 6 Calculator)
+**총 메서드 개수**: **111개** (91 + 10 Entity + 6 Calculator + 4 Validator)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **96개** (80 + 10 Entity + 6 Calculator)
+**유효 메서드**: **100개** (80 + 10 Entity + 6 Calculator + 4 Validator)
 
 ---
 
@@ -1062,9 +1063,9 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | Queue | 2개 | - | QueueService (2) | - |
 | Cache | 3개 | - | CacheService (3) | - |
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
-| **주문 도메인 (Order Domain)** | **16개** | - | - | **Order Entity (10) + OrderCalculator (6)** |
+| **주문 도메인 (Order Domain)** | **20개** | - | - | **Order Entity (10) + OrderCalculator (6) + OrderValidator (4)** |
 
-**총 96개 메서드 → 28개 파일로 분산 예정** (26 + 2 Domain)
+**총 100개 메서드 → 29개 파일로 분산 예정** (26 + 3 Domain)
 
 ---
 
@@ -1180,6 +1181,55 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 #### 레거시 파일
 - `lib/orderCalculations.js` (383줄) - Phase 3.x에서 @deprecated 처리 예정
 - OrderCalculator로 로직 이전 완료
+
+---
+
+### OrderValidator ✅ (Phase 2.3 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/domain/order/OrderValidator.js` |
+| **목적** | 주문 데이터 검증 도메인 서비스 |
+| **파일 크기** | 167줄 (Rule 1 준수 ✅, 제한: 200줄) |
+| **마이그레이션** | Phase 2.3 완료 (2025-10-21) |
+
+#### 메서드 목록 (4개)
+
+| 메서드 | 타입 | 목적 | 반환값 |
+|--------|------|------|--------|
+| `validateOrderData(orderData)` | 검증 | 주문 아이템 필수 필드 검증 | { isValid, errors } |
+| `validateShipping(shipping)` | 검증 | 배송지 정보 검증 (이름/연락처/주소/우편번호) | { isValid, errors } |
+| `validatePayment(payment)` | 검증 | 결제 정보 검증 (결제방법/입금자명) | { isValid, errors } |
+| `validateOrder(order)` | 검증 | 전체 주문 검증 (통합 메서드) | { isValid, errors } |
+
+#### 검증 규칙
+
+**주문 데이터 (validateOrderData)**:
+- ✅ items 배열 필수, 1개 이상
+- ✅ 각 아이템: title, price/unit_price/totalPrice 중 하나
+- ✅ 각 아이템: quantity >= 1
+- ✅ totalAmount >= 0 (선택적)
+
+**배송 정보 (validateShipping)**:
+- ✅ name 필수, 50자 이하
+- ✅ phone 필수, 숫자와 하이픈만 허용
+- ✅ address 필수
+- ✅ postalCode 선택적, 5자리 숫자
+
+**결제 정보 (validatePayment)**:
+- ✅ paymentMethod 필수 (card, transfer, bank_transfer, account_transfer)
+- ✅ 무통장입금 시 depositorName 필수
+- ✅ depositorName 50자 이하
+
+#### 특징
+- 순수 검증 로직 (DB 접근 없음, Side Effect 없음)
+- 에러 배열 반환 (여러 오류 한 번에 표시)
+- Domain Layer 순수 함수
+
+#### 사용처 (예정)
+- `lib/use-cases/order/CreateOrderUseCase.js` (Phase 3.3)
+- `app/checkout/page.js` (Phase 4.1 - 리팩토링 시)
+- `app/orders/page.js` (Phase 4.2 - 수량 변경 검증)
 
 ---
 
