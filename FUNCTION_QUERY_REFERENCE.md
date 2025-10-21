@@ -46,33 +46,33 @@ Database (Supabase PostgreSQL)
 
 ## 📦 1. 상품(Product) 관련 함수
 
-### 1.1 getProducts
+### 1.1 getProducts → ✅ ProductRepository.findAll
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:47` |
-| **시그니처** | `getProducts(filters = {})` |
+| **✅ 마이그레이션 완료** | `lib/repositories/ProductRepository.js:28` |
+| **시그니처** | `async findAll(filters = {})` |
 | **목적** | 활성 상품 목록 조회 (최대 50개, 최신순) |
 | **사용 페이지** | - `app/page.js:64` (홈페이지)<br>- `app/components/HomeClient.jsx` (useRealtimeProducts 경유) |
 | **DB 접근** | `products` (SELECT: id, title, product_number, price, compare_price, thumbnail_url, inventory, status, is_featured, is_live_active, created_at) |
-| **특징** | ⚡ 모바일 최적화: JOIN 제거, 필요한 컬럼만 SELECT |
-| **목표 레이어** | `Infrastructure` → `lib/repositories/ProductRepository.js` |
-| **마이그레이션** | Phase 1.2 (Step 1.2.1) |
+| **특징** | ⚡ 모바일 최적화: JOIN 제거, 필요한 컬럼만 SELECT<br>featuredOnly 필터 추가 (추천 상품 전용 조회) |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/ProductRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.2) |
 
 ---
 
-### 1.2 getProductById
+### 1.2 getProductById → ✅ ProductRepository.findById
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:101` |
-| **시그니처** | `getProductById(productId)` |
+| **✅ 마이그레이션 완료** | `lib/repositories/ProductRepository.js:64` |
+| **시그니처** | `async findById(productId)` |
 | **목적** | 특정 상품 상세 조회 (Variant 포함) |
 | **사용 페이지** | - `app/products/catalog/[id]/page.js`<br>- `app/products/catalog/[id]/edit/page.js`<br>- `app/admin/products/new/page.js` (복사 기능) |
 | **DB 접근** | `products` (SELECT *)<br>`product_variants` (JOIN, Variant 정보)<br>`product_options` (JOIN)<br>`product_option_values` (JOIN) |
-| **특징** | 4단계 중첩 JOIN (성능 이슈 가능) |
-| **목표 레이어** | `Infrastructure` → `lib/repositories/ProductRepository.js` |
-| **마이그레이션** | Phase 1.2 (Step 1.2.2) |
+| **특징** | 4단계 중첩 JOIN (성능 이슈 가능)<br>404 에러 시 null 반환 (PGRST116 처리) |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/ProductRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.2) |
 
 ---
 
@@ -121,18 +121,33 @@ Database (Supabase PostgreSQL)
 
 ---
 
-### 1.6 updateProductInventory
+### 1.6 updateProductInventory → ✅ ProductRepository.updateInventory
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:285` |
-| **시그니처** | `updateProductInventory(productId, quantityChange)` |
+| **✅ 마이그레이션 완료** | `lib/repositories/ProductRepository.js:150` |
+| **시그니처** | `async updateInventory(productId, change)` |
 | **목적** | 상품 전체 재고 증감 (주문 취소 시 복원용) |
 | **사용 페이지** | - `lib/supabaseApi.js:1456` (cancelOrder 내부)<br>- 직접 호출 없음 (내부 함수) |
-| **DB 접근** | `products` (UPDATE: inventory) |
-| **특징** | ⚠️ **Race Condition 위험** - 동시 주문 시 재고 부정합 가능<br>→ Phase 1.7에서 FOR UPDATE NOWAIT로 교체 필요 |
-| **목표 레이어** | `Infrastructure` → `lib/repositories/ProductRepository.js` |
-| **마이그레이션** | Phase 1.2 (Step 1.2.6) + Phase 1.7 (동시성 제어) |
+| **DB 접근** | `products` (SELECT: inventory, UPDATE: inventory) |
+| **특징** | ⚠️ **Race Condition 위험** - 동시 주문 시 재고 부정합 가능<br>→ Phase 1.7에서 FOR UPDATE NOWAIT로 교체 필요<br>현재: SELECT → 계산 → UPDATE (2단계) |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/ProductRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.2) |
+
+---
+
+### 1.6A ✅ ProductRepository.findByIds (신규)
+
+| 항목 | 내용 |
+|------|------|
+| **✅ 신규 생성** | `lib/repositories/ProductRepository.js:115` |
+| **시그니처** | `async findByIds(productIds)` |
+| **목적** | 여러 상품 배치 조회 (IN 쿼리) |
+| **사용 페이지** | - Phase 3.x Use Cases에서 활용 예정<br>- 장바구니 상품 일괄 조회 최적화 |
+| **DB 접근** | `products` (SELECT *, WHERE id IN (productIds)) |
+| **특징** | N+1 문제 해결 (단일 쿼리로 여러 상품 조회)<br>빈 배열 입력 시 빈 배열 반환 |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/ProductRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.2) |
 
 ---
 
@@ -517,18 +532,34 @@ Database (Supabase PostgreSQL)
 
 ---
 
-### 4.2 getUserById
+### 4.2 getUserById → ✅ UserRepository.findById
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:1932` |
-| **시그니처** | `getUserById(userId)` |
+| **✅ 마이그레이션 완료** | `lib/repositories/UserRepository.js:22` |
+| **시그니처** | `async findById(userId)` |
 | **목적** | 특정 사용자 프로필 조회 |
 | **사용 페이지** | - `app/admin/orders/[id]/page.js` (주문 상세에서 고객 정보 표시) |
-| **DB 접근** | `profiles` (SELECT *) |
-| **특징** | 카카오 사용자는 UserProfileManager.getProfile 권장 |
-| **목표 레이어** | `Infrastructure` → `lib/repositories/UserRepository.js` |
-| **마이그레이션** | Phase 1.4 (Step 1.4.1) |
+| **DB 접근** | `profiles` (SELECT *, WHERE id = userId) |
+| **특징** | 404 에러 시 null 반환 (PGRST116 처리) |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/UserRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.3) |
+
+---
+
+### 4.2A ✅ UserRepository.updateProfile (신규)
+
+| 항목 | 내용 |
+|------|------|
+| **✅ 신규 생성** | `lib/repositories/UserRepository.js:58` |
+| **시그니처** | `async updateProfile(userId, profile)` |
+| **목적** | 사용자 프로필 업데이트 |
+| **사용 페이지** | - `app/mypage/page.js` (Phase 4.x에서 마이그레이션)<br>- Phase 3.x Use Cases에서 활용 예정 |
+| **DB 접근** | `profiles` (UPDATE, WHERE id = userId) |
+| **파라미터** | name, phone, address, address_detail, postal_code |
+| **특징** | Service Role로 RLS 우회, 모든 필드 업데이트 가능 |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/UserRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.3) |
 
 ---
 
@@ -766,20 +797,33 @@ Database (Supabase PostgreSQL)
 
 ---
 
-### 9.3 couponApi (lib/couponApi.js)
+### 9.3A ✅ CouponRepository (마이그레이션 완료)
 
-| 함수명 | 목적 | 사용 페이지 |
-|--------|------|-------------|
-| `getUserCoupons(userId)` | 사용자 쿠폰 조회 | checkout, mypage |
-| `loadUserCouponsOptimized(user)` | 최적화된 쿠폰 로드 (병렬) | checkout |
-| `validateCoupon(coupon, orderData)` | 쿠폰 유효성 검증 | checkout |
-| `applyCouponUsage(couponId, orderId, userId)` | 쿠폰 사용 처리 | checkout |
-| `createCoupon(couponData)` | 관리자 쿠폰 생성 | admin/coupons |
-| `distributeCoupon(couponId, userIds)` | 쿠폰 배포 | admin/coupons/[id] |
+| 항목 | 내용 |
+|------|------|
+| **✅ 마이그레이션 완료** | `lib/repositories/CouponRepository.js` (139줄) |
+| **목적** | 쿠폰 데이터 접근 레이어 - Service Role로 RLS 우회 |
+| **메서드** | `findById(couponId)` - 쿠폰 상세 조회<br>`findUserCoupons(userId, filters)` - 사용자 쿠폰 목록 (user_coupons JOIN)<br>`validateCoupon(couponCode, userId, orderAmount)` - RPC: validate_coupon<br>`useCoupon(userId, couponId, orderId, discountAmount)` - RPC: use_coupon |
+| **사용 페이지** | - checkout/page.js (쿠폰 선택, 검증, 사용)<br>- mypage/page.js (보유 쿠폰 확인)<br>- Phase 3.x Use Cases에서 호출 예정 |
+| **RPC 함수** | `validate_coupon` - 쿠폰 유효성 검증 및 할인 계산<br>`use_coupon` - 쿠폰 사용 처리 (is_used = true, used_at, order_id 업데이트) |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/CouponRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.4) |
 
-**특징**: ✅ 이미 중앙화됨, RPC 함수(`use_coupon`) 사용
-**목표 레이어**: `Infrastructure` → `lib/repositories/CouponRepository.js`
-**마이그레이션**: Phase 1.7 (Step 1.7.1)
+---
+
+### 9.3B couponApi - 관리자 함수 (향후 마이그레이션)
+
+| 함수명 | 목적 | 목표 레이어 | 마이그레이션 |
+|--------|------|-------------|--------------|
+| `createCoupon(couponData)` | 관리자 쿠폰 생성 | Use Case | Phase 3.x |
+| `updateCoupon(couponId, updates)` | 쿠폰 수정 | Use Case | Phase 3.x |
+| `deleteCoupon(couponId)` | 쿠폰 삭제 | Use Case | Phase 3.x |
+| `distributeCoupon(couponId, userIds, adminEmail)` | 쿠폰 배포 | Use Case | Phase 3.x |
+| `distributeToAllCustomers(couponId, adminEmail)` | 전체 고객 배포 | Use Case | Phase 3.x |
+| `getCouponHolders(couponId, filters)` | 보유 고객 목록 | Repository | Phase 1.4 (추후) |
+| `getCouponStats(couponId)` | 쿠폰 통계 조회 | Use Case | Phase 3.x |
+
+**특징**: 관리자 함수는 API Route(/api/admin/coupons/*) 사용 (Service Role)
 
 ---
 
@@ -852,6 +896,20 @@ Database (Supabase PostgreSQL)
 
 ---
 
+### 9.9 ✅ QueueService (마이그레이션 완료)
+
+| 항목 | 내용 |
+|------|------|
+| **✅ 마이그레이션 완료** | `lib/services/QueueService.js` (91줄) |
+| **목적** | Queue 작업 관리 - BullMQ + Upstash Redis 기반 |
+| **메서드** | `addJob(queueName, data, options)` - Queue에 작업 추가<br>`getQueuePosition(queueName, jobId)` - 작업 위치 조회 |
+| **사용 페이지** | - Phase 3.x Use Cases에서 활용 예정<br>- 이메일, 알림, 배치 처리 등 비동기 작업 |
+| **특징** | BullMQ Queue 인스턴스 캐싱<br>재시도 로직 내장 (3회, exponential backoff)<br>완료/실패 작업 자동 제거 (100/50개 유지) |
+| **완료 레이어** | `Infrastructure` → `lib/services/QueueService.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.5) |
+
+---
+
 ## 📋 10. 레거시 함수 목록 (삭제 예정)
 
 ### 10.1 레거시 파일 - supabaseApi.js.bak / supabaseApi.js.bak2
@@ -912,10 +970,11 @@ Database (Supabase PostgreSQL)
 | `lib/logisticsAggregation.js` | 3개 | ~63 lines/함수 | ✅ Clean |
 | `lib/fulfillmentGrouping.js` | 2개 | ~80 lines/함수 | ✅ Clean |
 | `lib/trackingNumberUtils.js` | 6개 | ~50 lines/함수 | ✅ Clean |
+| `lib/services/QueueService.js` | **2개** | ~20 lines/함수 | ✅ Clean |
 
-**총 함수 개수**: **84개**
+**총 함수 개수**: **86개**
 **레거시 함수**: 11개 (삭제 예정)
-**유효 함수**: **73개**
+**유효 함수**: **75개**
 
 ---
 
@@ -937,8 +996,9 @@ Database (Supabase PostgreSQL)
 | 배송 취합 (Fulfillment) | 2개 | - | - | FulfillmentGrouper (2) |
 | 송장 (Tracking) | 6개 | - | TrackingService (6) | - |
 | 주문 계산 (OrderCalc) | 5개 | - | - | OrderCalculations (5) |
+| Queue | 2개 | - | QueueService (2) | - |
 
-**총 73개 함수 → 23개 파일로 분산 예정**
+**총 75개 함수 → 24개 파일로 분산 예정**
 
 ---
 
