@@ -44,9 +44,9 @@
 | `lib/domain/product/Product.js` | **9개** | ~10 lines/메서드 | ✅ Clean |
 | `lib/domain/product/Inventory.js` | **9개** | ~12 lines/메서드 | ✅ Clean |
 
-**총 메서드 개수**: **130개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 1 CreateOrderUseCase + 1 GetOrdersUseCase)
+**총 메서드 개수**: **131개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 1 CreateOrderUseCase + 1 GetOrdersUseCase + 1 ApplyCouponUseCase)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **119개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 2 Use Cases)
+**유효 메서드**: **120개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 3 Use Cases)
 
 ---
 
@@ -73,9 +73,9 @@
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
 | **주문 도메인 (Order Domain)** | **20개** | - | - | **Order Entity (10) + OrderCalculator (6) + OrderValidator (4)** |
 | **상품 도메인 (Product Domain)** | **18개** | - | - | **Product Entity (9) + Inventory (9)** |
-| **Application Layer** | **2개** | - | **CreateOrderUseCase (1) + GetOrdersUseCase (1)** | - |
+| **Application Layer** | **3개** | - | **CreateOrderUseCase (1) + GetOrdersUseCase (1) + ApplyCouponUseCase (1)** | - |
 
-**총 119개 메서드 → 31개 파일로 분산 예정** (26 + 5 Domain + 2 Application)
+**총 120개 메서드 → 31개 파일로 분산 예정** (26 + 5 Domain + 3 Application)
 
 ---
 
@@ -479,6 +479,85 @@ console.log(reserved.quantity)   // 7  (새 객체)
 | 메서드 | 목적 |
 |--------|------|
 | `_generateCacheKey(user, filters)` | 사용자별 + 필터별 캐시 키 생성 |
+
+---
+
+### ApplyCouponUseCase ✅ (Phase 3.3 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/use-cases/order/ApplyCouponUseCase.js` |
+| **목적** | 쿠폰 검증 및 할인 계산 (CouponRepository RPC 사용) |
+| **상속** | `BaseUseCase` |
+| **파일 크기** | 82줄 (Rule 1 준수 ✅, 제한: 100줄) |
+| **마이그레이션** | Phase 3.3 완료 (2025-10-21) |
+
+#### 의존성 주입 (1개)
+
+| 의존성 | 타입 | 목적 |
+|--------|------|------|
+| `CouponRepository` | Infrastructure | 쿠폰 검증 (RPC: validate_coupon) |
+
+#### 실행 흐름 (3단계)
+
+1. **상품 금액 계산** - _calculateItemsTotal()
+   - 주문 아이템의 금액 합계 (배송비 제외)
+   - price × quantity 합산
+
+2. **쿠폰 검증** - CouponRepository.validateCoupon()
+   - RPC 함수 호출 (validate_coupon)
+   - 쿠폰 유효성, 사용 조건, 할인 금액 계산
+   - 반환: { is_valid, error_message, discount_amount, coupon_id }
+
+3. **결과 반환**
+   - 성공: { success: true, couponId, discountAmount }
+   - 실패: { success: false, error }
+
+#### Public 메서드 (1개)
+
+| 메서드 | 목적 | 반환값 |
+|--------|------|--------|
+| `execute({ couponCode, userId, orderData })` | 쿠폰 검증 및 할인 계산 | Promise<Object> |
+
+#### 반환 객체 구조
+
+**검증 성공 시**:
+```javascript
+{
+  success: true,
+  couponId: 'uuid',
+  discountAmount: 5000
+}
+```
+
+**검증 실패 시**:
+```javascript
+{
+  success: false,
+  error: '쿠폰이 만료되었습니다'
+}
+```
+
+#### 검증 조건 (RPC 함수에서 처리)
+
+- ✅ 쿠폰 코드 존재 여부
+- ✅ 쿠폰 활성화 상태
+- ✅ 사용자 보유 여부
+- ✅ 사용 여부 (이미 사용 안 됨)
+- ✅ 유효 기간 (valid_from ~ valid_until)
+- ✅ 최소 주문 금액 (min_order_amount)
+- ✅ 사용 횟수 제한 (total_usage_limit, per_user_limit)
+
+#### 사용처 (예정)
+
+- `app/checkout/page.js` - 체크아웃 페이지 쿠폰 적용 (Phase 4.1)
+- `app/api/coupons/apply/route.js` - API Route에서 호출 (Phase 4.1)
+
+#### Private 메서드 (1개)
+
+| 메서드 | 목적 |
+|--------|------|
+| `_calculateItemsTotal(items)` | 주문 아이템 금액 합계 계산 (배송비 제외) |
 
 ---
 
