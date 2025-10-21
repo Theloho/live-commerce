@@ -1033,10 +1033,11 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | `lib/services/CacheService.js` | **3개** | ~15 lines/함수 | ✅ Clean |
 | `supabase/migrations/*.sql` (RPC) | **2개** | ~60 lines/함수 | ✅ Clean |
 | `lib/domain/order/Order.js` | **10개** | ~8 lines/메서드 | ✅ Clean |
+| `lib/domain/order/OrderCalculator.js` | **6개** | ~20 lines/메서드 | ✅ Clean |
 
-**총 메서드 개수**: **101개** (91 + 10 Domain)
+**총 메서드 개수**: **107개** (91 + 10 Entity + 6 Calculator)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **90개** (80 + 10 Domain)
+**유효 메서드**: **96개** (80 + 10 Entity + 6 Calculator)
 
 ---
 
@@ -1061,9 +1062,9 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | Queue | 2개 | - | QueueService (2) | - |
 | Cache | 3개 | - | CacheService (3) | - |
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
-| **주문 도메인 (Order Domain)** | **10개** | - | - | **Order Entity (10)** |
+| **주문 도메인 (Order Domain)** | **16개** | - | - | **Order Entity (10) + OrderCalculator (6)** |
 
-**총 90개 메서드 → 27개 파일로 분산 예정** (26 + 1 Domain Entity)
+**총 96개 메서드 → 28개 파일로 분산 예정** (26 + 2 Domain)
 
 ---
 
@@ -1119,6 +1120,66 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 - `lib/use-cases/order/CreateOrderUseCase.js` (Phase 3.3)
 - `lib/use-cases/order/CancelOrderUseCase.js` (Phase 3.4)
 - `lib/use-cases/order/UpdateOrderUseCase.js` (Phase 3.5)
+
+---
+
+### OrderCalculator ✅ (Phase 2.2 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/domain/order/OrderCalculator.js` |
+| **목적** | 주문 금액 계산 도메인 서비스 |
+| **파일 크기** | 192줄 (Rule 1 준수 ✅, 제한: 200줄) |
+| **마이그레이션** | Phase 2.2 완료 (2025-10-21) |
+
+#### 메서드 목록 (6개)
+
+| 메서드 | 타입 | 목적 | 반환값 |
+|--------|------|------|--------|
+| `calculateItemsTotal(items)` | 계산 | 상품 아이템 총액 계산 | number |
+| `calculateShipping(itemsTotal, postalCodeOrRegion, baseShippingFee)` | 계산 | 배송비 계산 (도서산간 추가비 포함) | number |
+| `calculateDiscount(itemsTotal, coupon)` | 계산 | 쿠폰 할인 계산 (배송비 제외) | Object |
+| `checkFreeShipping(itemsTotal, freeShippingThreshold)` | 검증 | 무료배송 조건 확인 | boolean |
+| `calculateFinalAmount(items, options)` | 계산 | 최종 주문 금액 계산 (쿠폰+배송비+VAT) | Object |
+| `normalizeItems(items)` | 유틸 | 주문 아이템 데이터 정규화 | Array |
+
+#### 계산 로직
+
+**상품 금액 계산**:
+- 다양한 스키마 지원 (total, price*quantity, totalPrice, unit_price*quantity)
+- Fallback 체인으로 호환성 보장
+
+**배송비 계산**:
+- 우편번호(5자리) 자동 인식
+- 도서산간 추가비 적용 (제주 +3,000, 울릉도/독도 +5,000, 기타 +5,000)
+- 무료배송 시 추가비도 무료
+- shippingUtils.formatShippingInfo() 사용
+
+**쿠폰 할인**:
+- ⚠️ **중요**: 배송비는 할인 대상 제외, 상품 금액에만 적용
+- percentage: 상품금액 × (value/100), maxDiscount 제한
+- fixed_amount: MIN(쿠폰금액, 상품금액)
+
+**무료배송**:
+- 기본 기준: 30,000원 이상
+- 기준 금액 커스터마이징 가능
+
+**최종 금액**:
+1. 상품 금액 계산
+2. 쿠폰 할인 적용 (상품 금액에만)
+3. 무료배송 조건 확인
+4. 배송비 계산
+5. 카드결제 시 부가세 10% 추가
+
+#### 사용처
+- `app/checkout/page.js` (체크아웃 금액 계산)
+- `app/orders/page.js` (주문 내역 금액 표시)
+- `app/orders/[id]/complete/page.js` (주문 완료 페이지)
+- `lib/use-cases/order/*` (Phase 3.x Use Cases에서 활용 예정)
+
+#### 레거시 파일
+- `lib/orderCalculations.js` (383줄) - Phase 3.x에서 @deprecated 처리 예정
+- OrderCalculator로 로직 이전 완료
 
 ---
 
