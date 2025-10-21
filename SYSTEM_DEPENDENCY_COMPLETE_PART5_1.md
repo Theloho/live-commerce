@@ -35,6 +35,15 @@
 
 ### Section 5: 새로운 중앙 함수 추가 시나리오
 
+### Section 6: OrderRepository 수정 시나리오 ✅ NEW (Phase 1.1)
+- 6.1 findByUser() 수정
+- 6.2 findById() 수정
+- 6.3 create() 수정
+- 6.4 update() 수정
+- 6.5 updateStatus() 수정
+- 6.6 updateMultipleStatus() 수정
+- 6.7 cancel() 수정
+
 ---
 
 ## Section 1: OrderCalculations 수정 시나리오
@@ -1696,6 +1705,69 @@ static applyPointDiscount(subtotal, points, availablePoints) {
 
 ---
 
+## Section 6: OrderRepository 수정 시나리오 ✅ NEW (Phase 1.1)
+
+### 📌 개요
+- **파일 위치**: `/lib/repositories/OrderRepository.js`
+- **목적**: 주문 데이터 접근 레이어 (Infrastructure Layer) - Service Role 클라이언트로 RLS 우회
+- **클래스**: `OrderRepository extends BaseRepository`
+- **마이그레이션**: Phase 1.1 (lib/supabaseApi.js 함수들을 Repository로 이동)
+- **생성일**: 2025-10-21
+
+### 🔍 상세 내용
+**Part 1 Section 7 참조** (7개 메서드 정의 및 사용처)
+
+### 📋 수정 시 전체 체크리스트
+
+- [ ] **1. 기본 확인**
+  - Service Role 클라이언트(supabaseAdmin) 사용하는가?
+  - DatabaseError로 에러 처리하는가?
+  - 파일 크기 250줄 이하 유지하는가? (Rule 1)
+  - JSDoc 주석 완료되었는가?
+
+- [ ] **2. 비즈니스 로직 확인**
+  - 트랜잭션이 필요한 작업인가? (Phase 3에서 Use Case로 이동)
+  - 재고 차감, 쿠폰 사용 등 복잡한 로직은 Repository에 포함하지 말 것
+  - Repository는 순수한 데이터 접근만 (CRUD)
+
+- [ ] **3. 사용처 업데이트**
+  - Part 1 Section 7의 사용처 모두 업데이트했는가?
+  - 기존 supabaseApi.js 호출을 Repository로 변경했는가?
+  - Import 경로 수정했는가? (`import { OrderRepository } from '@/lib/repositories/OrderRepository'`)
+
+- [ ] **4. 영향받는 페이지 테스트**
+  - `/app/orders/page.js` (주문 목록)
+  - `/app/orders/[id]/complete/page.js` (주문 상세)
+  - `/app/admin/orders/page.js` (관리자 주문 목록)
+  - `/app/admin/orders/[id]/page.js` (관리자 주문 상세)
+  - API Routes (주문 생성, 상태 변경)
+
+- [ ] **5. 문서 업데이트**
+  - Part 1 Section 7 업데이트
+  - Part 5-1 Section 6 (현재 문서) 업데이트
+
+### 🐛 주의사항
+
+**RLS 우회 확인 필수**:
+- OrderRepository는 Service Role 클라이언트(supabaseAdmin) 사용
+- RLS 정책 무시하고 모든 데이터 접근 가능
+- 보안 검증은 Use Case 레이어에서 처리 필요
+
+**트랜잭션 처리**:
+- `create()` 메서드는 4개 테이블 INSERT (orders, order_items, order_payments, order_shipping)
+- 현재는 순차 처리, Phase 3에서 트랜잭션으로 개선 예정
+
+### 📚 크로스 레퍼런스
+
+- **Part 1 Section 7**: OrderRepository 정의 및 사용처
+- **Part 2 Section 1**: orders 테이블 스키마
+- **Part 2 Section 2**: order_items 테이블 스키마
+- **Part 2 Section 3**: order_payments 테이블 스키마
+- **Part 2 Section 4**: order_shipping 테이블 스키마
+- **FUNCTION_QUERY_REFERENCE.md Section 3**: Order-related functions (마이그레이션 완료)
+
+---
+
 **다음 단계**: Part 5-2 (DB 테이블 수정 시나리오) 읽기
 
-**작성 완료**: 2025-10-20
+**작성 완료**: 2025-10-21 (Section 6 추가)
