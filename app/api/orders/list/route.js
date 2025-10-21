@@ -37,20 +37,12 @@ export async function POST(request) {
     }
 
     // 2. 기본 쿼리 구성
-    // ⚠️ products JOIN 필요: order_items에 데이터 누락된 레거시 주문 존재
+    // ⚡ products JOIN 제거 - order_items에 이미 데이터 있음 (성능 최적화)
     let query = supabaseAdmin
       .from('orders')
       .select(`
         *,
-        order_items (
-          *,
-          products (
-            product_number,
-            title,
-            thumbnail_url,
-            price
-          )
-        ),
+        order_items (*),
         order_shipping (*),
         order_payments (*)
       `)
@@ -90,15 +82,7 @@ export async function POST(request) {
         .from('orders')
         .select(`
           *,
-          order_items (
-            *,
-            products (
-              product_number,
-              title,
-              thumbnail_url,
-              price
-            )
-          ),
+          order_items (*),
           order_shipping (*),
           order_payments (*)
         `)
@@ -131,15 +115,7 @@ export async function POST(request) {
         .from('orders')
         .select(`
           *,
-          order_items (
-            *,
-            products (
-              product_number,
-              title,
-              thumbnail_url,
-              price
-            )
-          ),
+          order_items (*),
           order_shipping (*),
           order_payments (*)
         `)
@@ -185,14 +161,12 @@ export async function POST(request) {
       ...order,
       items: (order.order_items || []).map(item => ({
         ...item,
-        thumbnail_url: item.thumbnail_url || item.products?.thumbnail_url || '/placeholder.png',
-        title: item.title || item.products?.title || '상품명 없음',
-        price: item.price || item.unit_price || item.products?.price || 0,
+        thumbnail_url: item.thumbnail_url || '/placeholder.png',
+        title: item.title || '상품명 없음',
+        price: item.price || item.unit_price || 0,
         totalPrice: item.total_price || item.total || 0,
-        // ✅ selectedOptions 추가 (결제대기 페이지 옵션별 분리 표시용)
         selectedOptions: item.selected_options || {},
-        // ✅ product_number 우선순위: order_items.product_number > products.product_number > product_id (폴백)
-        product_number: item.product_number || item.products?.product_number || item.product_id,
+        product_number: item.product_number || item.product_id,
         product_id: item.product_id,
         variant_id: item.variant_id
       })),
