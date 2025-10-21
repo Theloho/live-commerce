@@ -1,189 +1,60 @@
+/**
+ * NewProductPage - 새 제품 등록 페이지 (Phase 4.4 리팩토링 완료)
+ * @author Claude
+ * @since 2025-10-21
+ *
+ * Clean Architecture 적용:
+ * - Presentation Layer: 이 파일 (Composition Layer, ≤ 300 lines, Rule 1)
+ * - Application Layer: useProductForm hook
+ * - Components: ProductImageUploader, ProductPriceInput, ProductOptions, ProductOptionalInfo
+ *
+ * ✅ Rule #0 준수:
+ * - Rule 1: 파일 크기 ≤300줄
+ * - Rule 2: Layer boundary 준수 (직접 DB 접근 금지)
+ * - Rule 4: 함수 개수 ≤10개 (컴포넌트로 분리)
+ */
+
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { ArrowLeftIcon, CameraIcon, PlusIcon, MinusIcon, PhotoIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
-import { supabase } from '@/lib/supabase'
+import { ArrowLeftIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
-import { getSuppliers } from '@/lib/supabaseApi'
-import { generateProductNumber } from '@/lib/productNumberGenerator'
+import { useProductForm } from '@/app/hooks/useProductForm'
+import ProductImageUploader from '@/app/components/admin/products/ProductImageUploader'
+import ProductPriceInput from '@/app/components/admin/products/ProductPriceInput'
+import ProductOptions from '@/app/components/admin/products/ProductOptions'
+import ProductOptionalInfo from '@/app/components/admin/products/ProductOptionalInfo'
 import toast from 'react-hot-toast'
-import SupplierManageSheet from '@/app/components/SupplierManageSheet'
 
 export default function NewProductPage() {
   const router = useRouter()
   const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
-  const fileInputRef = useRef(null)
-  const cameraInputRef = useRef(null)
 
-  const [loading, setLoading] = useState(false)
-  const [productNumber, setProductNumber] = useState('')
-  const [imagePreview, setImagePreview] = useState('')
-  const [selectedImage, setSelectedImage] = useState(null)
+  // ⚡ 비즈니스 로직 Hook
+  const {
+    loading,
+    productNumber,
+    imagePreview,
+    productData,
+    setProductData,
+    useThousandUnit,
+    setUseThousandUnit,
+    suppliers,
+    setSuppliers,
+    categories,
+    subCategories,
+    canSubmit,
+    showMissingFieldsAlert,
+    handleImageUpload,
+    handlePriceChange,
+    getDisplayPrice,
+    generateOptionCombinations,
+    loadSubCategories,
+    handleSaveProduct
+  } = useProductForm({ isAdminAuthenticated })
 
-  const [productData, setProductData] = useState({
-    title: '', // 선택적 제품명
-    price: '',
-    inventory: 10,
-    description: '',
-    supplier_id: null, // 업체 (선택사항)
-    supplier_product_code: '', // 업체 상품 코드 (선택사항)
-    category: '', // 대분류 (선택사항)
-    sub_category: '', // 소분류 (선택사항)
-    optionType: 'none', // 'none', 'size', 'color', 'both'
-    sizeOptions: [],
-    colorOptions: [],
-    optionInventories: {}
-  })
-
-  const [showSizeTemplateSelector, setShowSizeTemplateSelector] = useState(false)
-  const [useThousandUnit, setUseThousandUnit] = useState(true) // 천원단위 입력 기본값 true
-  const [suppliers, setSuppliers] = useState([])
-  const [showSupplierSheet, setShowSupplierSheet] = useState(false)
-  const [categories, setCategories] = useState([])
-  const [subCategories, setSubCategories] = useState([])
-
-  // 필수값 검증 함수
-  const validateRequiredFields = () => {
-    const errors = []
-
-    if (!imagePreview) {
-      errors.push('제품 이미지')
-    }
-    if (!productData.price || productData.price <= 0) {
-      errors.push('판매가격')
-    }
-    if (productData.optionType !== 'none') {
-      const totalOptionInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
-      if (totalOptionInventory === 0) {
-        errors.push('옵션별 재고')
-      }
-    }
-
-    return errors
-  }
-
-  // 등록 가능 여부 확인
-  const canSubmit = validateRequiredFields().length === 0
-
-  // 필수값 누락 알림
-  const showMissingFieldsAlert = () => {
-    const missingFields = validateRequiredFields()
-    if (missingFields.length > 0) {
-      toast.error(`다음 항목을 입력해주세요: ${missingFields.join(', ')}`)
-      return false
-    }
-    return true
-  }
-
-  // 미리 정의된 옵션 템플릿
-  const SIZE_TEMPLATES = {
-    number: ['55', '66', '77', '88', '99'],
-    alpha: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    free: ['FREE']
-  }
-
-  const COLOR_PRESETS = ['블랙', '화이트', '그레이', '베이지', '네이비', '브라운', '카키', '핑크', '레드', '블루']
-
-  // 사이즈 옵션 추가
-  const handleSizeOptionAdd = (templateType) => {
-    const selectedOptions = [...SIZE_TEMPLATES[templateType]]
-    setProductData(prev => ({
-      ...prev,
-      sizeOptions: selectedOptions,
-      optionType: prev.optionType === 'color' ? 'both' : 'size'
-    }))
-    setShowSizeTemplateSelector(false)
-    toast.success(`${templateType} 사이즈 템플릿이 적용되었습니다`)
-  }
-
-  // 컬러 옵션 추가
-  const handleColorOptionAdd = () => {
-    setProductData(prev => ({
-      ...prev,
-      colorOptions: [...COLOR_PRESETS],
-      optionType: prev.optionType === 'size' ? 'both' : 'color'
-    }))
-    toast.success('컬러 옵션이 추가되었습니다')
-  }
-
-  // 개별 사이즈 옵션 수정
-  const updateSizeOption = (index, value) => {
-    const newSizeOptions = [...productData.sizeOptions]
-    newSizeOptions[index] = value
-    setProductData(prev => ({
-      ...prev,
-      sizeOptions: newSizeOptions
-    }))
-  }
-
-  // 개별 사이즈 옵션 삭제
-  const removeSizeOption = (index) => {
-    const newSizeOptions = productData.sizeOptions.filter((_, i) => i !== index)
-    setProductData(prev => ({
-      ...prev,
-      sizeOptions: newSizeOptions,
-      optionType: newSizeOptions.length === 0 ? (prev.colorOptions.length > 0 ? 'color' : 'none') : prev.optionType
-    }))
-    toast.success('사이즈 옵션이 삭제되었습니다')
-  }
-
-  // 새 사이즈 옵션 추가
-  const addNewSizeOption = () => {
-    setProductData(prev => ({
-      ...prev,
-      sizeOptions: [...prev.sizeOptions, '']
-    }))
-  }
-
-  // 개별 컬러 옵션 수정
-  const updateColorOption = (index, value) => {
-    const newColorOptions = [...productData.colorOptions]
-    newColorOptions[index] = value
-    setProductData(prev => ({
-      ...prev,
-      colorOptions: newColorOptions
-    }))
-  }
-
-  // 개별 컬러 옵션 삭제
-  const removeColorOption = (index) => {
-    const newColorOptions = productData.colorOptions.filter((_, i) => i !== index)
-    setProductData(prev => ({
-      ...prev,
-      colorOptions: newColorOptions,
-      optionType: newColorOptions.length === 0 ? (prev.sizeOptions.length > 0 ? 'size' : 'none') : prev.optionType
-    }))
-    toast.success('컬러 옵션이 삭제되었습니다')
-  }
-
-  // 새 컬러 옵션 추가
-  const addNewColorOption = () => {
-    setProductData(prev => ({
-      ...prev,
-      colorOptions: [...prev.colorOptions, '']
-    }))
-  }
-
-  // 옵션 완전 제거
-  const removeAllSizeOptions = () => {
-    setProductData(prev => ({
-      ...prev,
-      sizeOptions: [],
-      optionType: prev.colorOptions.length > 0 ? 'color' : 'none'
-    }))
-    toast.success('모든 사이즈 옵션이 제거되었습니다')
-  }
-
-  const removeAllColorOptions = () => {
-    setProductData(prev => ({
-      ...prev,
-      colorOptions: [],
-      optionType: prev.sizeOptions.length > 0 ? 'size' : 'none'
-    }))
-    toast.success('모든 컬러 옵션이 제거되었습니다')
-  }
+  const combinations = generateOptionCombinations()
 
   // 권한 체크
   useEffect(() => {
@@ -193,289 +64,7 @@ export default function NewProductPage() {
     }
   }, [authLoading, isAdminAuthenticated, router])
 
-  // 서브 카테고리 로드
-  const loadSubCategories = async (categoryName) => {
-    try {
-      // DB에서 직접 대분류 찾기
-      const { data: mainCategoryData } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('name', categoryName)
-        .is('parent_id', null)
-        .single()
-
-      if (!mainCategoryData) return
-
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('parent_id', mainCategoryData.id)
-        .eq('is_active', true)
-        .order('name')
-
-      if (error) throw error
-      setSubCategories(data || [])
-    } catch (error) {
-      console.error('서브 카테고리 로딩 오류:', error)
-    }
-  }
-
-  // 페이지 로드 시 제품번호 자동 생성 & 업체/카테고리 데이터 로드
-  useEffect(() => {
-    if (isAdminAuthenticated) {
-      const autoGenerate = async () => {
-        try {
-          const number = await generateProductNumber()
-          setProductNumber(number)
-        } catch (error) {
-          console.error('제품번호 생성 오류:', error)
-          toast.error('상품번호 생성 실패')
-          setProductNumber('0001')
-        }
-      }
-
-      const loadSuppliers = async () => {
-        try {
-          const data = await getSuppliers()
-          setSuppliers(data || [])
-        } catch (error) {
-          console.error('업체 로드 오류:', error)
-        }
-      }
-
-      const loadCategories = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('categories')
-            .select('*')
-            .eq('is_active', true)
-            .order('name')
-
-          if (error) throw error
-          setCategories(data || [])
-        } catch (error) {
-          console.error('카테고리 로드 오류:', error)
-        }
-      }
-
-      autoGenerate()
-      loadSuppliers()
-      loadCategories()
-    }
-  }, [isAdminAuthenticated])
-
-  // 이미지 업로드 (갤러리)
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setSelectedImage(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImagePreview(e.target.result)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  // 카메라 촬영
-  const handleCameraCapture = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setSelectedImage(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImagePreview(e.target.result)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  // 가격 입력 처리
-  const handlePriceChange = (value) => {
-    // 빈 값 처리
-    if (!value || value === '') {
-      setProductData(prev => ({ ...prev, price: '' }))
-      return
-    }
-
-    if (useThousandUnit) {
-      // 천원 단위 모드: 숫자와 소수점만 허용
-      const filtered = value.replace(/[^\d.]/g, '')
-      const numValue = parseFloat(filtered)
-      if (!isNaN(numValue)) {
-        const actualPrice = Math.floor(numValue * 1000)
-        setProductData(prev => ({ ...prev, price: actualPrice }))
-      } else {
-        setProductData(prev => ({ ...prev, price: '' }))
-      }
-    } else {
-      // 일반 모드: 숫자만 허용
-      const filtered = value.replace(/[^\d]/g, '')
-      const numValue = parseInt(filtered)
-      if (!isNaN(numValue)) {
-        setProductData(prev => ({ ...prev, price: numValue }))
-      } else {
-        setProductData(prev => ({ ...prev, price: '' }))
-      }
-    }
-  }
-
-  // 가격 표시 값 계산
-  const getDisplayPrice = () => {
-    if (!productData.price) return ''
-
-    if (useThousandUnit) {
-      // 천원 단위로 표시 (19000 → 19)
-      return (productData.price / 1000).toString()
-    } else {
-      // 실제 금액 표시
-      return productData.price.toString()
-    }
-  }
-
-  // 옵션 타입 변경
-  const handleOptionTypeChange = (type) => {
-    setProductData(prev => ({
-      ...prev,
-      optionType: type,
-      sizeOptions: type === 'size' || type === 'both' ? SIZE_TEMPLATES.alpha : [],
-      colorOptions: type === 'color' || type === 'both' ? COLOR_PRESETS.slice(0, 5) : [],
-      optionInventories: {}
-    }))
-  }
-
-  // 옵션 조합 생성
-  const generateOptionCombinations = () => {
-    const { optionType, sizeOptions, colorOptions } = productData
-
-    if (optionType === 'none') {
-      return []
-    }
-
-    const combinations = []
-
-    if (optionType === 'size') {
-      sizeOptions.forEach(size => {
-        combinations.push({
-          key: `size:${size}`,
-          label: size,
-          type: 'size',
-          size: size  // ✅ 수정: API가 필요로 하는 size 필드 추가
-        })
-      })
-    } else if (optionType === 'color') {
-      colorOptions.forEach(color => {
-        combinations.push({
-          key: `color:${color}`,
-          label: color,
-          type: 'color',
-          color: color  // ✅ 수정: API가 필요로 하는 color 필드 추가
-        })
-      })
-    } else if (optionType === 'both') {
-      sizeOptions.forEach(size => {
-        colorOptions.forEach(color => {
-          combinations.push({
-            key: `size:${size}|color:${color}`,
-            label: `${size} × ${color}`,
-            type: 'both',
-            size,
-            color
-          })
-        })
-      })
-    }
-
-    return combinations
-  }
-
-  const combinations = generateOptionCombinations()
-
-  // 옵션별 재고 변경
-  const handleOptionInventoryChange = (comboKey, inventory) => {
-    setProductData(prev => ({
-      ...prev,
-      optionInventories: {
-        ...prev.optionInventories,
-        [comboKey]: parseInt(inventory) || 0
-      }
-    }))
-  }
-
-  // 제품 저장 (새 Variant 시스템)
-  const handleSaveProduct = async () => {
-    // 필수값 검증
-    if (!canSubmit) {
-      showMissingFieldsAlert()
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      console.log('🚀 [빠른등록] 상품 저장 시작 (Service Role API)')
-
-      // 총 재고 계산
-      let totalInventory = productData.inventory
-      if (productData.optionType !== 'none') {
-        totalInventory = Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)
-      }
-
-      // 🔍 디버깅: 옵션 데이터 확인
-      console.log('📦 [빠른등록] 옵션 데이터:', {
-        optionType: productData.optionType,
-        sizeOptions: productData.sizeOptions,
-        colorOptions: productData.colorOptions,
-        optionInventories: productData.optionInventories,
-        combinations: combinations,
-        combinationsLength: combinations.length
-      })
-
-      // Service Role API 호출 (관리자 권한 검증 포함)
-      const response = await fetch('/api/admin/products/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: productData.title,
-          product_number: productNumber,
-          price: productData.price,
-          inventory: totalInventory,
-          thumbnail_url: imagePreview,
-          description: productData.description,
-          supplier_id: productData.supplier_id || null,
-          supplier_product_code: productData.supplier_product_code || null,
-          category: productData.category || null,
-          sub_category: productData.sub_category || null,
-          optionType: productData.optionType,
-          sizeOptions: productData.sizeOptions,
-          colorOptions: productData.colorOptions,
-          optionInventories: productData.optionInventories,
-          combinations: combinations,
-          adminEmail: 'master@allok.world' // ⚠️ TODO: useAdminAuth hook에서 가져오도록 개선 필요
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '상품 등록 실패')
-      }
-
-      const { product } = await response.json()
-      console.log('✅ [빠른등록] 상품 등록 완료:', product.id)
-
-      toast.success(`제품 ${productNumber}이 등록되었습니다!`)
-      router.push('/admin/products')
-
-    } catch (error) {
-      console.error('❌ [빠른등록] 제품 저장 오류:', error)
-      toast.error(`제품 등록 실패: ${error.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // 로딩 상태
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -519,521 +108,46 @@ export default function NewProductPage() {
 
           {/* 왼쪽: 필수 정보 */}
           <div className="space-y-6">
-
             {/* 제품 이미지 */}
-            <div className="bg-white rounded-lg shadow-sm">
-              <h2 className="text-lg font-medium mb-4 p-6 pb-4">제품 이미지 *</h2>
-
-              {imagePreview ? (
-                <div className="space-y-4 px-6 pb-6">
-                  {/* 이미지 미리보기 - 작게 */}
-                  <div className="relative aspect-[4/3] max-w-xs mx-auto bg-gray-100 rounded-lg overflow-hidden">
-                    <Image
-                      src={imagePreview}
-                      alt="제품 이미지"
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-
-                  {/* 이미지 변경 버튼들 - 가로 배치 */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center justify-center gap-1.5 py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <PhotoIcon className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-700">사진보관함</span>
-                    </button>
-                    <button
-                      onClick={() => cameraInputRef.current?.click()}
-                      className="flex items-center justify-center gap-1.5 py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <CameraIcon className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-700">사진촬영</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="px-6 pb-6">
-                  {/* 업로드 옵션 버튼들 - 가로 배치, 작게 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 py-4 px-3 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
-                    >
-                      <PhotoIcon className="w-6 h-6 text-green-600" />
-                      <span className="text-sm font-medium text-green-700">사진보관함</span>
-                    </button>
-                    <button
-                      onClick={() => cameraInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center gap-2 py-4 px-3 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                    >
-                      <CameraIcon className="w-6 h-6 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-700">사진촬영</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 숨겨진 input 요소들 */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleCameraCapture}
-                className="hidden"
-              />
-            </div>
+            <ProductImageUploader
+              imagePreview={imagePreview}
+              onImageUpload={handleImageUpload}
+            />
 
             {/* 필수 정보 */}
-            <div className="bg-white rounded-lg shadow-sm">
-              <h2 className="text-lg font-medium mb-4 p-6 pb-4">필수 정보</h2>
-
-              <div className="space-y-6 px-6 pb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    제품번호 *
-                  </label>
-                  <input
-                    type="text"
-                    value={productNumber}
-                    disabled
-                    className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">자동으로 생성됩니다</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    판매가격 *
-                  </label>
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={getDisplayPrice()}
-                        onChange={(e) => handlePriceChange(e.target.value)}
-                        placeholder={useThousandUnit ? "19.5" : "19500"}
-                        className="w-full pl-8 pr-16 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      />
-                      <span className="absolute left-3 top-2.5 text-gray-500">₩</span>
-                      <span className="absolute right-3 top-2.5 text-sm text-gray-500">
-                        {useThousandUnit ? '천원' : '원'}
-                      </span>
-                    </div>
-
-                    {/* 천원단위 입력 체크박스 */}
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={useThousandUnit}
-                        onChange={(e) => setUseThousandUnit(e.target.checked)}
-                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
-                      />
-                      <span className="text-sm text-gray-700">천원 단위로 입력하기</span>
-                      <span className="text-xs text-gray-500">
-                        (예: 19.5 → 19,500원)
-                      </span>
-                    </label>
-
-                    {/* 실시간 가격 미리보기 */}
-                    {productData.price > 0 && (
-                      <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="text-sm text-blue-800">
-                          <span className="font-medium">최종 가격: </span>
-                          <span className="font-bold">₩{productData.price.toLocaleString()}원</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {productData.optionType === 'none' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      재고 수량 *
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setProductData(prev => ({
-                          ...prev,
-                          inventory: Math.max(0, prev.inventory - 1)
-                        }))}
-                        className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                      >
-                        <MinusIcon className="w-4 h-4" />
-                      </button>
-                      <input
-                        type="number"
-                        value={productData.inventory}
-                        onChange={(e) => setProductData(prev => ({ ...prev, inventory: parseInt(e.target.value) || 0 }))}
-                        className="flex-1 px-3 py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        min="0"
-                      />
-                      <button
-                        onClick={() => setProductData(prev => ({
-                          ...prev,
-                          inventory: prev.inventory + 1
-                        }))}
-                        className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                      >
-                        <PlusIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ProductPriceInput
+              productNumber={productNumber}
+              price={productData.price}
+              displayPrice={getDisplayPrice()}
+              onPriceChange={handlePriceChange}
+              useThousandUnit={useThousandUnit}
+              onThousandUnitChange={setUseThousandUnit}
+              inventory={productData.inventory}
+              onInventoryChange={(value) => setProductData(prev => ({ ...prev, inventory: value }))}
+              optionType={productData.optionType}
+            />
           </div>
 
           {/* 오른쪽: 옵션 설정 */}
-          <div className="space-y-6">
-
-            {/* 사이즈 옵션 */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium">사이즈 옵션</h2>
-                {productData.sizeOptions.length > 0 && (
-                  <button
-                    onClick={removeAllSizeOptions}
-                    className="text-red-600 hover:text-red-700 text-sm font-medium"
-                  >
-                    전체 삭제
-                  </button>
-                )}
-              </div>
-
-              {productData.sizeOptions.length === 0 ? (
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setShowSizeTemplateSelector(true)}
-                    className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600 transition-colors"
-                  >
-                    + 사이즈 템플릿 선택
-                  </button>
-
-                  {/* 사이즈 템플릿 선택 모달 */}
-                  {showSizeTemplateSelector && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                      <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-                        <h3 className="text-lg font-medium mb-4">사이즈 템플릿 선택</h3>
-                        <div className="space-y-3">
-                          <button
-                            onClick={() => handleSizeOptionAdd('number')}
-                            className="w-full p-3 border rounded-lg hover:bg-gray-50 text-left"
-                          >
-                            <div className="font-medium">숫자 사이즈</div>
-                            <div className="text-sm text-gray-500">55, 66, 77, 88, 99</div>
-                          </button>
-                          <button
-                            onClick={() => handleSizeOptionAdd('alpha')}
-                            className="w-full p-3 border rounded-lg hover:bg-gray-50 text-left"
-                          >
-                            <div className="font-medium">알파벳 사이즈</div>
-                            <div className="text-sm text-gray-500">XS, S, M, L, XL, XXL</div>
-                          </button>
-                          <button
-                            onClick={() => handleSizeOptionAdd('free')}
-                            className="w-full p-3 border rounded-lg hover:bg-gray-50 text-left"
-                          >
-                            <div className="font-medium">프리 사이즈</div>
-                            <div className="text-sm text-gray-500">FREE</div>
-                          </button>
-                        </div>
-                        <div className="flex gap-3 mt-6">
-                          <button
-                            onClick={() => setShowSizeTemplateSelector(false)}
-                            className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                          >
-                            취소
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {productData.sizeOptions.map((size, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={size}
-                        onChange={(e) => updateSizeOption(index, e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="사이즈명"
-                      />
-                      <button
-                        onClick={() => removeSizeOption(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        <MinusIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={addNewSizeOption}
-                    className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600"
-                  >
-                    + 사이즈 추가
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 컬러 옵션 */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium">컬러 옵션</h2>
-                {productData.colorOptions.length > 0 && (
-                  <button
-                    onClick={removeAllColorOptions}
-                    className="text-red-600 hover:text-red-700 text-sm font-medium"
-                  >
-                    전체 삭제
-                  </button>
-                )}
-              </div>
-
-              {productData.colorOptions.length === 0 ? (
-                <button
-                  onClick={handleColorOptionAdd}
-                  className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600 transition-colors"
-                >
-                  + 컬러 옵션 추가
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  {productData.colorOptions.map((color, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={color}
-                        onChange={(e) => updateColorOption(index, e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="컬러명"
-                      />
-                      <button
-                        onClick={() => removeColorOption(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        <MinusIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={addNewColorOption}
-                    className="w-full p-2 border border-dashed border-gray-300 rounded-lg hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600"
-                  >
-                    + 컬러 추가
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 옵션별 재고 설정 */}
-            {combinations.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-medium">옵션별 재고 설정</h2>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      id="bulkInventory"
-                      placeholder="일괄 입력"
-                      min="0"
-                      className="w-24 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    />
-                    <button
-                      onClick={() => {
-                        const bulkValue = document.getElementById('bulkInventory').value
-                        if (bulkValue) {
-                          const newInventories = {}
-                          combinations.forEach(combo => {
-                            newInventories[combo.key] = parseInt(bulkValue) || 0
-                          })
-                          setProductData(prev => ({
-                            ...prev,
-                            optionInventories: newInventories
-                          }))
-                          document.getElementById('bulkInventory').value = ''
-                        }
-                      }}
-                      className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                    >
-                      일괄 적용
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {combinations.map((combo) => (
-                    <div key={combo.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="font-medium">{combo.label}</span>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={productData.optionInventories[combo.key] || 0}
-                          onChange={(e) => handleOptionInventoryChange(combo.key, e.target.value)}
-                          min="0"
-                          className="w-20 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        />
-                        <span className="text-sm text-gray-500">개</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    💡 총 재고: {Object.values(productData.optionInventories).reduce((sum, qty) => sum + (qty || 0), 0)}개
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+          <ProductOptions
+            productData={productData}
+            setProductData={setProductData}
+            combinations={combinations}
+          />
         </div>
 
         {/* 선택 정보 (전체 폭) */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-medium mb-6">선택 정보</h2>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 업체 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                업체 (선택사항)
-              </label>
-              <div className="flex gap-2">
-                <select
-                  value={productData.supplier_id || ''}
-                  onChange={(e) => setProductData(prev => ({ ...prev, supplier_id: e.target.value || null }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                >
-                  <option value="">선택 안 함</option>
-                  {suppliers.map(supplier => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => setShowSupplierSheet(true)}
-                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  title="업체 관리"
-                >
-                  <Cog6ToothIcon className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-            </div>
-
-            {/* 카테고리 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                대분류 (선택사항)
-              </label>
-              <select
-                value={productData.category}
-                onChange={(e) => {
-                  const newCategory = e.target.value
-                  setProductData(prev => ({
-                    ...prev,
-                    category: newCategory,
-                    sub_category: ''
-                  }))
-                  if (newCategory) {
-                    loadSubCategories(newCategory)
-                  } else {
-                    setSubCategories([])
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              >
-                <option value="">선택 안 함</option>
-                {categories.filter(c => c.parent_id === null).map(category => (
-                  <option key={category.id} value={category.name}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 소분류 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                소분류 (선택사항)
-              </label>
-              <select
-                value={productData.sub_category}
-                onChange={(e) => setProductData(prev => ({ ...prev, sub_category: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                disabled={!productData.category}
-              >
-                <option value="">선택 안 함</option>
-                {subCategories.map(category => (
-                  <option key={category.id} value={category.name}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 업체 상품 코드 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                업체 상품 코드 (선택사항)
-              </label>
-              <input
-                type="text"
-                value={productData.supplier_product_code}
-                onChange={(e) => setProductData(prev => ({ ...prev, supplier_product_code: e.target.value }))}
-                placeholder="업체에서 사용하는 상품 코드"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              />
-            </div>
-
-            {/* 제품명 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                제품명 (선택사항)
-              </label>
-              <input
-                type="text"
-                value={productData.title}
-                onChange={(e) => setProductData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="예: 밍크자켓"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                maxLength={20}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                입력 시: {productNumber}/밍크자켓, 미입력 시: {productNumber}
-              </p>
-            </div>
-
-            {/* 상세 설명 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                상세 설명 (선택사항)
-              </label>
-              <textarea
-                value={productData.description}
-                onChange={(e) => setProductData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="제품에 대한 간단한 설명을 입력하세요"
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              />
-            </div>
-          </div>
+        <div className="mt-6">
+          <ProductOptionalInfo
+            productData={productData}
+            setProductData={setProductData}
+            suppliers={suppliers}
+            setSuppliers={setSuppliers}
+            categories={categories}
+            subCategories={subCategories}
+            loadSubCategories={loadSubCategories}
+            productNumber={productNumber}
+          />
         </div>
 
         {/* 하단 여백 (고정 네비바 공간 확보) */}
@@ -1090,18 +204,6 @@ export default function NewProductPage() {
           </div>
         </div>
       </div>
-
-      {/* 업체 관리 시트 */}
-      {showSupplierSheet && (
-        <SupplierManageSheet
-          isOpen={showSupplierSheet}
-          onClose={() => setShowSupplierSheet(false)}
-          onSuppliersUpdate={async () => {
-            const data = await getSuppliers()
-            setSuppliers(data || [])
-          }}
-        />
-      )}
     </div>
   )
 }
