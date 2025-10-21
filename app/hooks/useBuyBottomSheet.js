@@ -25,7 +25,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
-import { UserProfileManager } from '@/lib/UserProfileManager'
+import { UserProfileManager } from '@/lib/userProfileManager'
 
 // ⚠️ TODO: Repository pattern으로 전환 필요 (Rule #5)
 import { getProductVariants, checkOptionInventory, createOrderWithOptions } from '@/lib/supabaseApi'
