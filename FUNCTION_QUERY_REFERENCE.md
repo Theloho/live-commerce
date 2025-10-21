@@ -1037,10 +1037,11 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | `lib/domain/order/OrderValidator.js` | **4개** | ~30 lines/메서드 | ✅ Clean |
 | `lib/domain/product/Product.js` | **9개** | ~10 lines/메서드 | ✅ Clean |
 | `lib/domain/product/Inventory.js` | **9개** | ~12 lines/메서드 | ✅ Clean |
+| `lib/use-cases/order/CreateOrderUseCase.js` | **1개** | ~100 lines/메서드 | ✅ Clean |
 
-**총 메서드 개수**: **129개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory)
+**총 메서드 개수**: **130개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 1 CreateOrderUseCase)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **118개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory)
+**유효 메서드**: **119개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 1 CreateOrderUseCase)
 
 ---
 
@@ -1348,6 +1349,73 @@ console.log(reserved.quantity)   // 7  (새 객체)
 - `lib/use-cases/order/CreateOrderUseCase.js` (Phase 3.x - 주문 시 재고 예약)
 - `lib/use-cases/order/CancelOrderUseCase.js` (Phase 3.x - 취소 시 재고 해제)
 - `lib/repositories/ProductRepository.js` (재고 관리 로직)
+
+---
+
+## 🚀 12.4 Use Cases (Phase 3 - Application Layer)
+
+### CreateOrderUseCase ✅ (Phase 3.1 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/use-cases/order/CreateOrderUseCase.js` |
+| **목적** | 주문 생성 비즈니스 로직 (Application Layer) |
+| **상속** | `BaseUseCase` |
+| **파일 크기** | 137줄 (Rule 1 준수 ✅, 제한: 150줄) |
+| **마이그레이션** | Phase 3.1 완료 (2025-10-21) |
+
+#### 메서드 목록 (1개 public + 4개 private)
+
+| 메서드 | 타입 | 목적 | 반환값 |
+|--------|------|------|--------|
+| `execute({ orderData, shipping, payment, coupon?, user })` | 비즈니스 로직 | 주문 생성 전체 플로우 실행 | Promise\<Order\> |
+| `_validateInput()` | Private | OrderValidator로 입력 검증 | void (에러 던짐) |
+| `_checkInventory()` | Private | ProductRepository로 재고 확인 | Promise\<void\> |
+| `_generateOrderNumber()` | Private | 주문번호 생성 (S날짜-4자리) | string |
+
+#### 의존성 (Dependency Injection)
+- **OrderRepository**: DB 주문 생성
+- **ProductRepository**: 재고 확인 (findByIds)
+- **QueueService**: 재고 차감 작업 Queue 추가
+
+#### 실행 흐름
+1. **검증** - OrderValidator.validateOrder() 호출
+2. **금액 계산** - OrderCalculator.calculateFinalAmount() 호출
+3. **재고 확인** - ProductRepository.findByIds() → 재고 부족 시 InsufficientInventoryError
+4. **DB 저장** - OrderRepository.create() 호출 (4개 테이블 INSERT)
+5. **Queue 추가** - QueueService.addJob('order-processing', { orderId, items, action: 'deduct_inventory' })
+6. **Order Entity 반환** - Order.fromJSON(created)
+
+#### 에러 처리
+- **ValidationError**: 검증 실패 (주문 데이터, 배송지, 결제 정보)
+- **InsufficientInventoryError**: 재고 부족 또는 상품 없음
+- **DatabaseError**: DB 저장 실패 (OrderRepository에서 throw)
+
+#### Clean Architecture 적용
+- ✅ **Application Layer**: 비즈니스 플로우 조율
+- ✅ **Domain Layer 사용**: OrderValidator, OrderCalculator, Order Entity
+- ✅ **Infrastructure Layer 주입**: OrderRepository, ProductRepository, QueueService
+- ✅ **의존성 역전**: Repository는 Interface로 주입 (향후 Mock 가능)
+
+#### 주문번호 형식
+- 형식: `S날짜-랜덤4자리` (예: S251021-1234)
+- S = Single (단일 주문), 날짜 = YYMMDD
+- 랜덤 4자리로 중복 방지 (10,000개/일 가능)
+
+#### Queue 처리 (비동기)
+- **주문 생성**: 즉시 반환 (pending 상태)
+- **재고 차감**: Worker에서 비동기 처리 (update_inventory_with_lock RPC)
+- **쿠폰 사용**: Worker에서 처리 (is_used = true)
+- **재고 부족 시**: Worker에서 주문 상태를 cancelled로 변경
+
+#### 사용처 (예정)
+- `/app/api/orders/create/route.js` (Phase 5.2 - API Route 리팩토링)
+- `/app/checkout/page.js` (Phase 4.1 - Checkout 페이지 리팩토링)
+- `/app/components/product/BuyBottomSheet.jsx` (Phase 4.5 - 빠른 구매)
+
+#### 레거시 함수 대체
+- ❌ `lib/supabaseApi.js:createOrder()` - Phase 5.2에서 @deprecated 처리 예정
+- ✅ CreateOrderUseCase로 완전 대체
 
 ---
 
