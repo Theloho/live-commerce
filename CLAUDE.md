@@ -317,159 +317,6 @@ D. 페이지를 추가/수정했다면:
 
 ---
 
-### 📊 워크플로우 효과 비교
-
-| 항목 | Version 1.0 | Version 2.0 | 개선율 |
-|------|-------------|-------------|--------|
-| **문서 확인 시간** | 5분 (순차적) | 1분 (병렬) | **80% ↓** |
-| **영향도 파악** | 작업 중 발견 | 사전 완벽 파악 | **100% ↑** |
-| **체크리스트 생성** | 수동 | 자동 | **100% ↑** |
-| **놓친 파일 발견** | 작업 후 디버깅 | 작업 전 예방 | **0건** |
-| **디버깅 시간** | 10-20분 | 0분 | **100% ↓** |
-| **전체 작업 시간** | 30-40분 | 15-20분 | **50% ↓** |
-| **버그 발생률** | 10% | 0% | **100% ↓** |
-
-**→ 최종 결과: 작업 속도 2배 향상, 버그 발생 0%, 첫 시도 100% 성공**
-
----
-
-### 🎯 워크플로우 Version 2.0 실전 예시
-
-#### 예시 1: "체크아웃 페이지에 포인트 적용 기능 추가" (⚙️ 기능 추가)
-
-**Phase 0: 작업 분류 (10초)**
-```
-요청 분석: "체크아웃에 포인트 적용"
-→ 작업 타입: ⚙️ 기능 추가
-→ 관련 페이지: /checkout
-→ 워크플로우: 기능 추가용 선택
-```
-
-**Phase 1: 병렬 문서 로드 (1분)**
-```
-동시에 4개 문서 읽기:
-  ✅ FEATURE_REFERENCE_MAP_PART3 → 쿠폰 시스템 참고 (유사 기능)
-  ✅ USER_JOURNEY_MAP → 구매 시나리오 확인
-  ✅ DB_REFERENCE_GUIDE → profiles 테이블, orders 테이블
-  ✅ CODING_RULES.md → orderCalculations.js 확인
-
-→ 구현 방향 즉시 결정:
-  - 쿠폰과 유사하게 OrderCalculations에 함수 추가
-  - profiles.point 컬럼 필요
-  - order_points 테이블로 사용 내역 추적
-```
-
-**Phase 2: 자동 체크리스트 생성 (30초)**
-```
-📋 자동 생성된 체크리스트:
-
-□ DB 작업:
-  □ profiles.point DECIMAL(12,2) 컬럼 추가 (마이그레이션)
-  □ order_points 테이블 생성 (id, user_id, order_id, amount, created_at)
-  □ RLS 정책 추가 (SELECT, INSERT)
-
-□ 수정 파일:
-  □ /lib/orderCalculations.js - applyPointDiscount() 메서드 추가
-  □ /app/checkout/page.js - 포인트 입력 UI, handleApplyPoint()
-  □ /lib/supabaseApi.js - createOrder() 포인트 차감 로직
-  □ /app/api/points/use/route.js - 포인트 사용 API 생성
-
-□ 영향받는 페이지:
-  □ /mypage - 포인트 잔액 표시 추가
-
-□ 테스트 시나리오:
-  □ 포인트 부족 시 에러 처리
-  □ 포인트 + 쿠폰 동시 사용 가능?
-  □ 주문 취소 시 포인트 복구
-```
-
-**Phase 3: 코드 작성 (10분)**
-```
-체크리스트 순차 작업:
-  1. DB 마이그레이션 생성 및 실행
-  2. orderCalculations.js 수정
-  3. checkout 페이지 UI 추가
-  4. supabaseApi.js 수정
-  5. API Route 생성
-  6. mypage 포인트 표시
-→ 각 단계마다 검증
-```
-
-**Phase 4: 최종 검증 (1분)**
-```
-✅ 체크리스트 100% 완료
-✅ USER_JOURNEY_MAP 시나리오 통과
-✅ 문서 업데이트:
-  - FEATURE_REFERENCE_MAP_PART3.md (포인트 시스템 추가)
-  - PAGE_FEATURE_MATRIX_PART1.md (/checkout 업데이트)
-  - DB_REFERENCE_GUIDE.md (profiles, order_points 추가)
-→ 배포 준비 완료
-```
-
-**총 소요 시간: 12분 (기존 30분 → 60% 단축)**
-
----
-
-#### 예시 2: "주문 목록 페이지 로딩 느린 버그 수정" (🐛 버그 수정)
-
-**Phase 0: 작업 분류 (10초)**
-```
-요청 분석: "주문 목록 로딩 느림"
-→ 작업 타입: 🐛 버그 수정 (성능 문제)
-→ 관련 페이지: /orders
-```
-
-**Phase 1: 병렬 문서 로드 (1분)**
-```
-동시에 3개 문서 읽기:
-  ✅ PAGE_FEATURE_MATRIX_PART1 → /orders 페이지 구조
-  ✅ FEATURE_CONNECTIVITY_MAP_PART1 → 주문 시스템 연결성
-  ✅ BUG_REPORT_2025-10-06.md → 유사 성능 문제 사례
-
-→ 근본 원인 파악:
-  - N+1 쿼리 문제 의심 (order_items 별도 조회)
-  - RLS 정책 서브쿼리 중복 실행 가능성
-  - 인덱스 부족 (profiles.kakao_id, orders.order_type)
-```
-
-**Phase 2: 자동 체크리스트 (30초)**
-```
-📋 자동 생성된 체크리스트:
-
-□ 분석 작업:
-  □ /app/orders/page.js - 쿼리 로직 확인
-  □ /lib/supabaseApi.js - fetchUserOrders() 최적화 필요?
-
-□ 수정 방안:
-  □ JOIN 쿼리로 N+1 해결
-  □ 헬퍼 함수 사용 (get_current_user_kakao_id)
-  □ 인덱스 추가 (필요 시)
-
-□ 영향받는 기능:
-  □ 주문 상세 페이지 (동일한 쿼리 사용)
-  □ 관리자 주문 목록 (다른 쿼리, 영향 없음)
-```
-
-**Phase 3: 코드 수정 (5분)**
-```
-1. supabaseApi.js - JOIN 쿼리로 변경
-2. 테스트: 쿼리 시간 측정 (3초 → 0.5초)
-3. 인덱스 추가 마이그레이션 (필요 시)
-```
-
-**Phase 4: 최종 검증 (1분)**
-```
-✅ 성능 개선 확인 (6배 향상)
-✅ 주문 상세 페이지도 개선됨
-✅ 문서 업데이트:
-  - FEATURE_REFERENCE_MAP_PART1.md (최적화 내역)
-  - PAGE_FEATURE_MATRIX_PART1.md (/orders 성능 개선)
-```
-
-**총 소요 시간: 7분 (기존 20분 → 65% 단축)**
-
----
-
 ## 🚨 모든 작업 시작 전에 이 체크리스트를 확인하세요!
 
 ### 📋 작업 타입 확인
@@ -528,45 +375,6 @@ D. 페이지를 추가/수정했다면:
 
 ---
 
-## 🤖 체계적 개발 명령어 시스템
-
-### `/system-check` - 문제 해결 시 필수 실행
-**실행 단계**:
-1. **DB_REFERENCE_GUIDE.md** 확인 (DB 구조 및 데이터 흐름)
-2. SYSTEM_ARCHITECTURE.md 해당 페이지 섹션 확인 (페이지 기능, 연관관계)
-3. DATA_ARCHITECTURE.md 확인 (API 매핑, 시스템 상태)
-4. 연관된 페이지/컴포넌트 파악
-5. 데이터 흐름 경로 추적
-6. 영향도 분석 보고
-
-**사용법**: `/system-check [페이지명 또는 기능명]`
-
----
-
-### `/fix-with-system` - 체계적 수정 프로세스
-**실행 단계**:
-1. `/system-check` 자동 실행
-2. 문제 분석 및 근본 원인 파악
-3. 영향받는 모든 파일 식별
-4. 체계적 해결책 제시 및 적용
-5. `/update-docs` 자동 실행
-
-**사용법**: `/fix-with-system [문제 설명]`
-
----
-
-### `/update-docs` - 수정 후 필수 문서 업데이트
-**실행 단계**:
-1. SYSTEM_ARCHITECTURE.md 관련 섹션 업데이트
-2. DATA_ARCHITECTURE.md 시스템 상태 업데이트
-3. 변경사항이 다른 시스템에 미치는 영향 기록
-4. 커밋 메시지에 문서 업데이트 포함
-
-**사용법**: `/update-docs [변경사항 설명]`
-
----
-
-## 📖 문서 읽기 우선순위
 
 ### 🔴 작업 시작 전 (필수)
 1. 🗄️ **DB_REFERENCE_GUIDE.md** (DB 작업 시)
@@ -655,6 +463,41 @@ D. 페이지를 추가/수정했다면:
 - 기존 PART 파일이 가득 찬 경우 **절대 무리하게 추가하지 말 것**
 - Claude가 읽을 수 없으면 모든 워크플로우가 작동하지 않음
 - 파일 분할은 **예방이 치료보다 쉬움** → 여유 있게 분리
+
+---
+
+### 🚨 FUNCTION_QUERY_REFERENCE 파일 크기 제한 (필수!)
+
+**2025-10-21**: FUNCTION_QUERY_REFERENCE.md가 27,117 토큰으로 25,000 초과 → **인덱스 + 4개 PART로 분할 완료** ✅
+
+**현재 구조**:
+```
+FUNCTION_QUERY_REFERENCE.md (163줄) - 인덱스만
+├─ FUNCTION_QUERY_REFERENCE_PART1.md (312줄) - 상품 + Variant
+├─ FUNCTION_QUERY_REFERENCE_PART2.md (456줄) - 주문 + 사용자 + 기타
+├─ FUNCTION_QUERY_REFERENCE_PART3.md (272줄) - 중앙화 모듈 + 레거시
+└─ FUNCTION_QUERY_REFERENCE_PART4.md (447줄) - 통계 + Domain + Use Cases
+```
+
+**내용 추가 시 체크리스트:**
+- [ ] 파일 크기 확인 (Read 툴 사용 시 토큰 수 표시됨)
+- [ ] 25,000 토큰 근접 시 → 새로운 PART 파일로 분리
+- [ ] 새 PART 파일 생성 시:
+  1. `FUNCTION_QUERY_REFERENCE_PARTX.md` 파일 생성 (X는 숫자)
+  2. 파일 상단에 분할 안내 및 크기 제한 경고 추가
+  3. `FUNCTION_QUERY_REFERENCE.md` 인덱스에 새 PART 추가
+  4. `CLAUDE.md`의 문서 리스트 업데이트
+
+**분할 기준:**
+- PART1: 상품 + Variant (섹션 1-2)
+- PART2: 주문 + 사용자 + 기타 (섹션 3-8)
+- PART3: 중앙화 모듈 + 레거시 (섹션 9-11)
+- PART4: 통계 + Domain + Use Cases (섹션 12-15)
+- **PART5 이후**: 새로운 대규모 함수 카테고리 추가 시 (예: API Routes, Workers 등)
+
+**⚠️ 중요:**
+- Domain Entity나 Use Case 추가 시 PART4에 추가 (섹션 12.3, 12.4)
+- PART4가 25,000 토큰 근접 시 PART5로 분할 (Domain + Use Cases 전용)
 
 ---
 
@@ -805,789 +648,72 @@ npm run test:bugs:ui        # UI 모드
 
 ## 🎉 최근 주요 업데이트
 
-### 2025-10-20: ⚡ 전체 페이지 성능 긴급 최적화 (React.memo + Dynamic Import) ⭐⭐⭐
-
-**작업 시간**: 2025-10-20
-**해결한 문제**: 모든 이벤트와 페이지 이동이 매우 느림 (모바일/웹 모두) → 8-10% 빠름, 재렌더링 90% 감소 ⚡
-
-**문제 상황**:
-- 모든 페이지 이동과 이벤트가 매우 느림 (모바일/웹 모두)
-- 번들 크기 과다 (200+ kB per page)
-- 리스트 스크롤 시 불필요한 재렌더링 발생
-- 모달 컴포넌트가 초기 로딩에 포함됨
-
-**근본 원인 분석**:
-1. **React 성능 최적화 부족**:
-   - ProductCard에 memo 미적용 → 부모 업데이트 시 모든 카드 재렌더링
-   - 이벤트 핸들러 재생성 → 매 렌더링마다 새 함수 객체 생성
-   - 50+ 상품 리스트 = 50배 불필요한 재렌더링
-
-2. **번들 크기 과다**:
-   - 모달 컴포넌트들이 페이지 번들에 포함
-   - BuyBottomSheet, CardPaymentModal, GroupOrderModal 등
-   - 클릭 시에만 필요한 컴포넌트가 초기 로딩됨
-
-3. **useEffect 의존성 경고 30+개**:
-   - 불필요한 재실행 → 성능 저하
-
-**해결 방법 (3단계)**:
-
-#### 1단계: ✅ ProductCard 최적화 (커밋: 83537b6)
-- **React.memo 추가**:
-  ```javascript
-  // ⚡ React.memo: props 변경 시에만 재렌더링 (리스트 성능 대폭 향상)
-  export default memo(ProductCard, (prevProps, nextProps) => {
-    return (
-      prevProps.product.id === nextProps.product.id &&
-      prevProps.product.inventory === nextProps.product.inventory &&
-      prevProps.product.stock_quantity === nextProps.product.stock_quantity &&
-      prevProps.product.is_live_active === nextProps.product.is_live_active
-    )
-  })
-  ```
-
-- **useCallback 5개 함수 메모이제이션**:
-  ```javascript
-  const handleAddToCart = useCallback(async (e) => { ... }, [deps])
-  const handleDirectPurchase = useCallback(async (e) => { ... }, [deps])
-  const handleBuyClick = useCallback((e) => { ... }, [deps])
-  const handleMoreOrders = useCallback(() => { ... }, [router])
-  const handleOrderHistoryOnly = useCallback(() => { ... }, [router])
-  ```
-
-- **Dynamic Import 적용**:
-  ```javascript
-  // ⚡ Dynamic Import: 번들 크기 20-30% 감소 (바텀시트는 클릭 시에만 로드)
-  const BuyBottomSheet = dynamic(() => import('@/app/components/product/BuyBottomSheet'), {
-    loading: () => null,
-    ssr: false
-  })
-  const PurchaseChoiceModal = dynamic(() => import('@/app/components/common/PurchaseChoiceModal'), {
-    loading: () => null,
-    ssr: false
-  })
-  ```
-
-- **효과**:
-  - 홈페이지: 230 kB → 211 kB (**-19 kB, -8.3%**)
-  - 리스트 재렌더링: **90% 감소**
-
-#### 2단계: ✅ Checkout 페이지 Dynamic Import (커밋: 83537b6)
-- **변경**: `/app/checkout/page.js` - 모달 컴포넌트 지연 로드
-  ```javascript
-  // ⚡ Dynamic Import: 모달은 열릴 때만 로드 (번들 크기 15-20% 감소)
-  const CardPaymentModal = dynamic(() => import('@/app/components/common/CardPaymentModal'), {
-    loading: () => null,
-    ssr: false
-  })
-  const AddressManager = dynamic(() => import('@/app/components/address/AddressManager'), {
-    loading: () => null,
-    ssr: false
-  })
-  ```
-
-- **효과**:
-  - 체크아웃: 214 kB → 209 kB (**-5 kB, -2.3%**)
-
-#### 3단계: ✅ Orders 페이지 GroupOrderModal 분리 (커밋: 83537b6)
-- **변경**: 470 lines 모달을 별도 컴포넌트로 분리
-  - `/app/components/orders/GroupOrderModal.jsx` (신규 생성)
-  - `/app/orders/page.js` - Dynamic Import 적용
-  ```javascript
-  // ⚡ Dynamic Import: 모달은 열릴 때만 로드 (번들 크기 20-30KB 감소)
-  const GroupOrderModal = dynamic(() => import('@/app/components/orders/GroupOrderModal'), {
-    loading: () => null,
-    ssr: false
-  })
-  ```
-
-- **효과**:
-  - 초기 로딩: 모달 코드 제외 (On-demand 로딩)
-  - 메모리 사용량: 감소
-
-**성능 개선 결과**:
-
-| 항목 | 개선 전 | 개선 후 | 개선율 |
-|------|---------|---------|--------|
-| 홈페이지 번들 | 230 kB | **211 kB** | **-19 kB (-8.3%)** |
-| 체크아웃 번들 | 214 kB | **209 kB** | **-5 kB (-2.3%)** |
-| Orders 번들 | 212 kB | **212 kB** | On-demand 로딩 |
-| **총 번들 감소** | - | - | **-24 kB** |
-| 초기 로딩 속도 | 기준 | **8-10% 빠름** | **모달 지연 로드** |
-| 리스트 스크롤 | 100% | **10%** | **90% 재렌더링 감소** |
-| 이벤트 응답 | 기준 | **즉시** | **함수 재생성 제거** |
-| 모바일 메모리 | 기준 | **감소** | **코드 분할** |
-
-**빌드 결과**:
-```
-Route (app)                    Size  First Load JS
-┌ ○ /                       9.41 kB        211 kB  ✅ -19 kB
-├ ○ /checkout              11.1 kB         209 kB  ✅ -5 kB
-├ ○ /orders                13.6 kB         212 kB  ✅ 모달 On-demand
-```
-
-**배포 내역**:
-- 83537b6: perf: 모바일/웹 성능 긴급 최적화 (-24KB, 재렌더링 90% 감소)
-
-**영향**:
-- `/app/components/product/ProductCard.jsx` - memo + useCallback + dynamic imports
-- `/app/checkout/page.js` - CardPaymentModal + AddressManager dynamic imports
-- `/app/orders/page.js` - GroupOrderModal 분리 + dynamic import
-- `/app/components/orders/GroupOrderModal.jsx` - 신규 컴포넌트 (470 lines)
-
-**최종 결과**:
-- ✅ 초기 로딩: **8-10% 빠름** (모달 지연 로드)
-- ✅ 리스트 스크롤: **90% 재렌더링 감소** (React.memo)
-- ✅ 이벤트 응답: **즉시 개선** (useCallback)
-- ✅ 모바일 성능: **메모리 사용량 최적화** (코드 분할)
-- ✅ 번들 크기: **총 24 kB 감소**
+**📦 과거 업데이트**: `docs/archive/CLAUDE_UPDATES_ARCHIVE_2025-10-08.md` 참조
 
 ---
 
-### 2025-10-18: ⚡ 모바일 홈페이지 성능 최적화 + ISR 적용 ⭐⭐⭐
+### 2025-10-21: 🏗️ Phase 1.2 - ProductRepository 생성 완료 ⭐⭐⭐
 
-**작업 시간**: 2025-10-18
-**해결한 문제**: 모바일 첫 로딩 10초 타임아웃 → 즉시 표시 ⚡
+**완료 항목**:
+- ✅ BaseRepository 버그 수정 (constructor 파라미터 추가)
+- ✅ ProductRepository 생성 (207줄, 4 메서드)
+  - findAll(), findById(), findByIds(), updateInventory()
+- ✅ Phase 4 문서 업데이트 (3개 파일)
 
-**문제 상황**:
-- 모바일(LTE/4G): 홈페이지 상품 로딩 10-20초+ 타임아웃 ❌
-- 웹(WiFi): 정상 작동 (2-5초) ✅
-- 새로고침: 즉시 성공 ✅ (캐시 사용)
-- 콘솔 에러: "상품 로딩 시간 초과"
-
-**근본 원인 분석**:
-1. **불필요한 복잡한 쿼리**:
-   - `getProducts()`가 4단계 중첩 JOIN으로 variant 데이터까지 로드
-   - ProductCard는 variant 데이터를 전혀 사용하지 않음
-   - 데이터 전송량 과다 (약 200KB)
-
-2. **Cold Start 문제**:
-   - 첫 로딩: Supabase cold start + 모바일 네트워크 지연
-   - 새로고침: 캐시 사용으로 즉시 성공
-
-**해결 방법 (2단계)**:
-
-#### 1단계: ✅ 쿼리 최적화 (커밋: ac7f56c)
-- **변경**: `/lib/supabaseApi.js` - getProducts() 간소화
-  ```javascript
-  // BEFORE: 4단계 JOIN, SELECT *, 120줄 처리
-  .select(`*, product_variants(...nested 4 levels)`)
-
-  // AFTER: JOIN 제거, 필요한 11개 컬럼만
-  .select(`id, title, product_number, price, compare_price,
-          thumbnail_url, inventory, status, is_featured,
-          is_live_active, created_at`)
-  ```
-- **효과**:
-  - 데이터 전송량: 90% 감소 (200KB → 20KB)
-  - 쿼리 시간: 10-20배 향상 예상
-
-#### 2단계: ✅ ISR 적용 (커밋: fb8b0cd) - **정석 해결책**
-- **변경**: 홈페이지를 Server Component로 전환
-  - `app/page.js` (Server) - 상품 데이터 서버에서 fetch
-  - `app/components/HomeClient.jsx` (Client) - 인터랙티브 로직만
-- **ISR 설정**:
-  ```javascript
-  export const revalidate = 300 // 5분마다 재생성
-  ```
-- **구조**:
-  ```
-  빌드 시 → 서버에서 상품 fetch → HTML pre-render
-  모바일 접속 → HTML 즉시 전달 → 즉시 표시 ⚡
-  5분마다 → 자동 재생성 → 최신 데이터 유지
-  ```
-
-**성능 개선 결과**:
-
-| 항목 | 개선 전 | 개선 후 | 개선율 |
-|------|---------|---------|--------|
-| 데이터 전송량 | ~200KB | ~20KB | **90% ↓** |
-| 모바일 쿼리 시간 | 10-20초 | 즉시 (HTML) | **100% ↓** |
-| 타임아웃 에러 | 발생 | 제거 | **100% ↓** |
-| 첫 로딩 방식 | Client fetch | Server pre-render | **정석** |
-
-**빌드 결과**:
-```
-Route (app)              Size  First Load JS  Revalidate  Expire
-┌ ○ /                 30.1 kB      230 kB         5m        1y
-  ○ = Static (pre-rendered at build time)
-```
-
-**배포 내역**:
-- ac7f56c: perf: 홈페이지 상품 로딩 모바일 최적화 (JOIN 제거)
-- fb8b0cd: feat: ISR 적용으로 모바일 첫 로딩 타임아웃 완전 해결
-
-**영향**:
-- `/lib/supabaseApi.js` - getProducts() 쿼리 간소화
-- `/hooks/useRealtimeProducts.js` - 캐시 전략 원복 (localStorage 제거)
-- `/app/page.js` - Server Component로 전환 + ISR 적용
-- `/app/components/HomeClient.jsx` - Client 로직 분리 (신규)
-
-**최종 결과**:
-- ✅ 모바일 첫 로딩: **즉시 표시** (HTML pre-rendered)
-- ✅ 타임아웃 에러: **완전 제거**
-- ✅ 모바일 성능: **최적화 완료**
-- ✅ Next.js 정석 방법 적용 (ISR)
+**Phase 1 진행률**: 2/7 완료 (28.6%)
 
 ---
 
-### 2025-10-17: 🔧 관리자 페이지 API 에러 대량 수정 + 발주 시스템 완전 개선 ⭐⭐⭐
+### 2025-10-20: ⚡ 성능 최적화 (React.memo + Dynamic Import)
 
-**작업 시간**: 2025-10-17
-**해결한 문제**: 7개 ✅ | **총 커밋**: 7개
-
-**작업 배경**:
-- 관리자 페이지 500 에러 다수 발생 (`column products_2.image_url does not exist`)
-- 발주 페이지 데이터 0개 표시 (status 필터 불일치)
-- UI가 구버전 스타일로 일관성 부족
+**주요 개선**:
+- ProductCard React.memo 적용 → 재렌더링 90%↓
+- Dynamic Import로 모달 지연 로드 → 번들 -24KB
+- 홈페이지: 230kB → 211kB (-8.3%)
 
 ---
 
-**완료된 작업**:
+### 2025-10-18: ⚡ 모바일 성능 최적화 + ISR
 
-1. ✅ **관리자 주문 API image_url 제거** (커밋: 37c57e1)
-   - **문제**: `column products_2.image_url does not exist` - PostgreSQL 에러 42703
-   - **원인**: API 쿼리가 존재하지 않는 `image_url` 컬럼 참조
-   - **해결**: `image_url` 제거, `thumbnail_url` 사용
-   - **영향**: `/app/api/admin/orders/route.js` (lines 59, 67)
-
-2. ✅ **fulfillmentGrouping 이미지 수정** (커밋: 4cf8ef2)
-   - **문제**: 배송 취합 관리 페이지에서 이미지 안 나옴
-   - **해결**: `image_url` → `thumbnail_url`
-   - **영향**: `/lib/fulfillmentGrouping.js` (line 127)
-
-3. ✅ **관리자 주문 페이지 배열 인덱스 수정** (커밋: e8428f3)
-   - **문제**: "verifying" 상태 주문이 필터 탭에 안 나옴
-   - **원인**: `order.order_shipping` / `order.order_payments` 배열인데 `[0]` 인덱스 누락
-   - **해결**: `order.order_shipping?.[0]`, `order.order_payments?.[0]` 추가
-   - **영향**: `/app/admin/orders/page.js` (lines 102-103)
-
-4. ✅ **물류팀 + 관리자 주문 API 업체 정보 추가** (커밋: 050ae79)
-   - **문제**: 물류팀 집계 페이지에서 업체 정보 못 가져옴
-   - **해결**:
-     - `supplier_id` 및 `suppliers` JOIN 추가
-     - `image_url` → `thumbnail_url`
-   - **영향**:
-     - `/app/api/admin/orders/route.js` (lines 55-70)
-     - `/lib/logisticsAggregation.js` (line 28)
-
-5. ✅ **발주 상세 API supplier_sku 제거** (커밋: c5abc20)
-   - **문제**: `column products_2.supplier_sku does not exist`
-   - **해결**:
-     - `supplier_sku` 제거
-     - `thumbnail_url` 및 `suppliers` JOIN 추가
-   - **영향**: `/app/api/admin/purchase-orders/[supplierId]/route.js` (lines 61-73)
-
-6. ✅ **발주 관리 데이터 연결 및 UI 개선** (커밋: 6c6b870) ⭐
-   - **문제**: 발주 페이지 데이터 0개 (status 필터 불일치)
-     - 발주 API: `status = 'deposited'`만 조회
-     - 물류팀 API: `status = 'paid'` 조회
-     - → 데이터 불일치로 발주 페이지 빈 화면
-   - **해결**:
-     - **status 필터 통일**: `.in('status', ['paid', 'deposited'])`
-     - **UI 모던화** (suppliers 페이지 스타일 참고):
-       - framer-motion 애니메이션 추가
-       - 제품 이미지 표시 (12x12 썸네일)
-       - 헤더 카드 레이아웃 개선 (blue-100 아이콘 배경)
-       - 통계 카드 색상 조화 (gray-50, purple-50, green-50)
-       - 테이블 hover 효과 추가
-       - 빈 상태 UI 개선 (CubeIcon)
-       - 푸터 그라데이션 배경 (blue-50 to green-50)
-   - **영향**:
-     - `/app/api/admin/purchase-orders/route.js` (lines 31-77)
-     - `/app/api/admin/purchase-orders/[supplierId]/route.js` (lines 46-90)
-     - `/app/admin/purchase-orders/[supplierId]/page.js` (전면 개선)
-
-7. ✅ **발주 상세 모바일 최적화** (커밋: acf2447) ⭐
-   - **문제**:
-     - 헤더가 너무 큼 (카드 스타일)
-     - 통계가 모바일에서 비효율적 (3열 레이아웃)
-   - **해결**:
-     - **헤더를 배송 취합 관리 스타일로 변경**:
-       - 큰 카드 → 간단한 텍스트 헤더
-       - 🏢 이모지 추가
-       - 연락처 정보 추가
-       - 버튼 아이콘 크기 축소 (w-4 h-4)
-     - **통계 카드 모바일 최적화**:
-       - 3열 → 2x2 그리드 (모바일), 4열 (데스크톱)
-       - 라벨 폰트 축소 (text-xs)
-       - 값 폰트 적정화 (text-2xl)
-       - K 단위 표시 (예: ₩1,485K)
-       - **평균 단가 추가** (4번째 통계, 주황색)
-     - **매입가 디버깅 로그 추가**:
-       - 첫 번째 아이템 매입가 출력
-       - 전체 매입가 합계 출력
-   - **영향**: `/app/admin/purchase-orders/[supplierId]/page.js`
+**문제**: 모바일 첫 로딩 10초+ 타임아웃
+**해결**: ISR 적용 + 쿼리 최적화 (JOIN 제거)
+**결과**: 즉시 표시 (HTML pre-render), 데이터 전송량 90%↓
 
 ---
 
-**문제 해결 패턴**:
+### 2025-10-17: 🔧 관리자 API 에러 수정 + 발주 시스템 개선
 
-모든 문제가 **동일한 근본 원인**:
-- ❌ `image_url` 컬럼이 DB에 존재하지 않음
-- ✅ `thumbnail_url` 컬럼을 사용해야 함
-- ❌ `supplier_sku` 컬럼이 DB에 존재하지 않음
-- ✅ Supabase PostgREST JOIN은 배열 반환 → `[0]` 인덱스 필수
-
-**해결 전략**:
-1. `DB_REFERENCE_GUIDE.md` 확인 (실제 DB 스키마)
-2. 존재하는 컬럼만 쿼리
-3. JOIN 결과는 항상 배열로 처리
-4. 모든 API 엔드포인트 일관되게 수정
+**완료**: 7개 API 에러 수정, 발주 UI 모던화
+**주요**: image_url → thumbnail_url, 배열 인덱스 수정, status 필터 통일
 
 ---
 
-**최종 결과**:
+**📦 2025-10-08 이전 업데이트**:
+- 문서 체계 완성 + 워크플로우 Version 2.0
+- 핵심 버그 3개 수정 (장바구니, 수량 변경, 쿠폰)
+- E2E 테스트 환경 구축 (Playwright)
+- RLS 정책 수정 + 성능 최적화
+- 쿠폰 시스템 완전 구현
+- 우편번호 시스템 통합
+- 발주 시스템 구축
+- Variant 시스템 구축
 
-- ✅ 관리자 페이지 500 에러 완전 제거
-- ✅ 발주 시스템 데이터 정상 표시 (19개 주문)
-- ✅ UI 일관성 확보 (suppliers 스타일)
-- ✅ 모바일 최적화 (2x2 그리드, K 단위)
-- ✅ 평균 단가 통계 추가
+**상세 내역**: `docs/archive/CLAUDE_UPDATES_ARCHIVE_2025-10-08.md`
 
-**배포 내역**:
-- 37c57e1: admin orders image_url 제거
-- 4cf8ef2: fulfillmentGrouping image_url → thumbnail_url
-- e8428f3: admin orders 배열 인덱스 수정
-- 050ae79: logistics + orders API supplier 정보 추가
-- c5abc20: purchase orders API 수정
-- 6c6b870: purchase orders 데이터 연결 + UI 개선
-- acf2447: purchase orders 모바일 최적화
-
-**다음 작업**:
-- ⚠️ 매입가 데이터 확인 필요 (콘솔 로그로 디버깅 준비)
+**문서 상태**: 100% 최신 (2025-10-21 완전 동기화)
+**작업 철학**: 체계적 접근으로 근본 원인 해결
+**다음 세션**: Phase 1.3 UserRepository 생성
 
 ---
 
-### 2025-10-08: 📚 문서 체계 완성 + 워크플로우 Version 2.0 ⭐⭐⭐
+**마지막 업데이트**: 2025-10-21
+- 🗺️ **Phase 1.2 - ProductRepository 생성 완료** (2025-10-21 ⭐⭐⭐)
+  - ✅ BaseRepository 버그 수정 (constructor 파라미터 추가)
+  - ✅ ProductRepository 생성 (207줄, 4 메서드)
+  - ✅ Phase 4 문서 업데이트 (3개 파일)
+  - **Phase 1 진행률**: 2/7 완료 (28.6%)
+  - 관련 문서: FUNCTION_QUERY_REFERENCE.md, SYSTEM_DEPENDENCY_COMPLETE_PART1.md, SYSTEM_DEPENDENCY_COMPLETE_PART5_1.md
 
-**작업 목적**:
-- 기존 문서와 실제 프로덕션 코드 100% 동기화
-- Claude가 새 세션에서 빠르게 시스템 이해 및 개발 가능하도록
-- **최소 시간 + 최소 오류 + 한 번에 완벽한 작업** 달성
-
-**완료된 작업**:
-
-1. ✅ **기존 문서 전면 업데이트** (7개 파일)
-   - DB_REFERENCE_GUIDE.md → 22개 테이블 (실제 마이그레이션 기반)
-   - CODE_ANALYSIS_COMPLETE.md → 36 페이지 + 80+ 함수 (실제 코드 기반)
-   - DETAILED_DATA_FLOW.md → 7개 주요 페이지 (실제 파일 경로 + 라인 번호)
-   - SYSTEM_ARCHITECTURE.md → 8개 핵심 시스템 (Mermaid 다이어그램)
-   - FEATURE_REFERENCE_MAP 시리즈 → Version 2.0 (2025-10-07 버그 수정 반영)
-
-2. ✅ **새로운 분석 리포트 생성** (2개 파일)
-   - docs/DB_SCHEMA_ANALYSIS_COMPLETE.md (912 lines) - 완전한 DB 구조 분석
-   - CODEBASE_STRUCTURE_REPORT.md (1,122 lines) - 완전한 코드베이스 분석
-
-3. ✅ **Claude 전용 참조 문서 생성** (9개 파일) ⭐
-   - **PAGE_FEATURE_MATRIX 시리즈** (index + PART1/2/3)
-     - 36개 페이지 × 8개 섹션 (기능/컴포넌트/API/DB/연결성/이슈/체크리스트)
-     - 페이지 중심 빠른 참조
-   - **USER_JOURNEY_MAP.md** (단일 파일)
-     - 6개 주요 사용자 시나리오 (일반 구매, 카카오 구매, 관리자 운영 등)
-     - 단계별 상세 흐름 + 주의사항
-   - **FEATURE_CONNECTIVITY_MAP 시리즈** (index + PART1/2/3)
-     - 8개 핵심 시스템 연결성 맵
-     - 기능 간 영향도 + 의존성 분석
-
-4. ✅ **워크플로우 Version 2.0 개선** ⭐⭐⭐
-   - **Phase 0: 작업 타입 자동 분류** (페이지/기능/버그/DB)
-   - **Phase 1: 병렬 문서 로드** (순차적 5분 → 병렬 1분, **80% 단축**)
-   - **Phase 2: 자동 영향도 분석 및 체크리스트 생성** (놓친 파일 0%)
-   - **Phase 3: 코드 작성 및 검증** (중간 검증 추가)
-   - **Phase 4: 최종 검증 및 문서 업데이트** (자동 검증 + 자동 업데이트)
-
-**워크플로우 개선 효과**:
-
-| 항목 | Version 1.0 | Version 2.0 | 개선율 |
-|------|-------------|-------------|--------|
-| 문서 확인 시간 | 5분 (순차) | 1분 (병렬) | **80% ↓** |
-| 영향도 파악 | 작업 중 발견 | 사전 완벽 파악 | **100% ↑** |
-| 체크리스트 생성 | 수동 | 자동 | **100% ↑** |
-| 놓친 파일 발견 | 작업 후 | 작업 전 예방 | **0건** |
-| 디버깅 시간 | 10-20분 | 0분 | **100% ↓** |
-| 전체 작업 시간 | 30-40분 | 15-20분 | **50% ↓** |
-| 버그 발생률 | 10% | 0% | **100% ↓** |
-
-**문서 구조 철학**:
-- ✅ 일관된 이모지 기반 섹션 (📋🔧📞💾🔗📚🐛📝)
-- ✅ 실제 파일 경로 + 라인 번호 제공
-- ✅ Claude 전용 체크리스트
-- ✅ 문서 간 교차 참조
-- ✅ 25,000 토큰 제한 (PART 분할)
-- ✅ Ctrl+F 검색 최적화
-
-**최종 결과**:
-- ✅ **문서-코드 100% 일치** (실제 프로덕션 상태 반영)
-- ✅ **3단계 참조 시스템** 구축
-  - 기능 중심 (FEATURE_REFERENCE_MAP)
-  - 페이지 중심 (PAGE_FEATURE_MATRIX)
-  - 시나리오 중심 (USER_JOURNEY_MAP, FEATURE_CONNECTIVITY_MAP)
-- ✅ **작업 시간 50% 단축, 버그 발생 0%, 첫 시도 100% 성공**
-- ✅ **총 21개 문서** (7개 업데이트 + 2개 분석 + 12개 신규)
-
-**사용자 요구사항 완벽 충족**:
-> "최소한의 시간과 최소한의 오류로 가능한 한 번에 오류나 버그 없이 개발하고싶어"
-→ ✅ **작업 시간 50% 단축 + 버그 0% + 첫 시도 100% 성공 달성**
-
----
-
-### 2025-10-07 (야간): 🐛 핵심 버그 수정 세션 ⭐⭐⭐
-
-**작업 시간**: 2025-10-07 야간
-**해결한 문제**: 3개 ✅ | **부분 해결**: 1개 ⚠️ | **미해결**: 1개 ❌
-
-**완료된 작업**:
-
-1. ✅ **장바구니 주문 생성 버그 수정** (커밋: 0c1d41a)
-   - **문제**: `TypeError: a.supabase.raw is not a function`
-   - **증상**: 여러 상품 장바구니 추가 시 1개만 주문 생성
-   - **해결**: `supabase.raw()` → 직접 쿼리 + 계산으로 변경
-   - **영향**: `/lib/supabaseApi.js` (lines 627-651, 967-992)
-
-2. ✅ **수량 변경 시 variant 재고 검증 추가** (커밋: 0c1d41a)
-   - **문제**: 주문 수량 변경 시 variant 재고 무시
-   - **증상**: 재고 초과해도 수량 변경 가능
-   - **해결**: variant_id 추가 + variant 재고 검증 + 업데이트 로직
-   - **영향**: `/lib/supabaseApi.js` (line 2416, 2465-2491), `/app/orders/page.js` (line 311-364)
-
-3. ✅ **관리자 쿠폰 생성 Service Role API 전환** (커밋: 10ef437)
-   - **문제**: `POST /rest/v1/coupons 403 (Forbidden)` - RLS 정책 차단
-   - **근본 원인**: 클라이언트 Supabase (Anon Key) 사용 → RLS 적용
-   - **해결**: Service Role API 생성 + `createCoupon()` 함수 수정
-   - **영향**: `/app/api/admin/coupons/create/route.js` (생성), `/lib/couponApi.js` (수정)
-
-**미해결 문제** (다음 세션 최우선):
-
-❌ **관리자 쿠폰 배포 403 에러** (커밋: d96a616, 4dccd19)
-- **증상**: `POST /api/admin/coupons/distribute 403 (Forbidden)` - "관리자 권한이 없습니다"
-- **시도한 해결책**:
-  1. ✅ `verifyAdminAuth()` 로직 개선 (환경변수 → DB 플래그 직접 확인)
-  2. ✅ `master@allok.world` 계정 `is_admin = true` 설정 (SQL 실행 완료)
-  3. ✅ 디버깅 로그 추가 배포 (`/lib/supabaseAdmin.js`)
-  4. ✅ 관리자 권한 확인 API 생성 (`/api/admin/check-admin-status`)
-- **현재 상태**: DB 설정 완료, 로직 개선 완료, **하지만 여전히 403 에러**
-- **다음 단계**:
-  1. Vercel Functions 로그 확인 (디버깅 메시지 분석)
-  2. `SUPABASE_SERVICE_ROLE_KEY` 환경변수 로드 여부 확인
-  3. Service Role 클라이언트 초기화 상태 확인
-
-**상세 로그**: `docs/archive/work-logs/WORK_LOG_2025-10-07_BUGFIX_SESSION.md`
-
-**배포 내역**:
-- 0c1d41a: 장바구니 주문 생성 + 수량 변경 버그 수정
-- 6b6f675: 관리자 쿠폰 생성 RLS 정책 수정 (마이그레이션)
-- 10ef437: 관리자 쿠폰 생성 Service Role API 전환
-- d96a616: 관리자 권한 확인 로직 개선 (DB 플래그)
-- 750a795: 관리자 권한 확인/설정 API 추가
-- 4dccd19: 관리자 권한 확인 상세 로깅 추가
-
----
-
-### 2025-10-06 (야간): 🧪 본서버 전체 E2E 테스트 완료 ⭐
-
-**테스트 도구**: Playwright v1.55.1 (본서버 전용)
-**테스트 대상**: https://allok.shop
-
-**전체 결과**: 35개 테스트 중 26개 통과 (74.3%)
-
-**카테고리별 결과**:
-- ✅ **관리자 페이지**: 5/5 통과 (100% ✅)
-- ✅ **성능 테스트**: 4/4 통과 (로드 268ms ⚡)
-- ✅ **인증 시스템**: 3/3 통과
-- ✅ **체크아웃**: 3/3 통과
-- ⚠️ **사용자 페이지**: 7/13 통과 (53.8%)
-- ⚠️ **접근성**: 5/6 통과 (83.3%)
-- ⚠️ **SEO**: 5/7 통과 (71.4%)
-
-**주요 발견**:
-1. 🟡 **CSR 로딩 지연** - 홈페이지 데이터 로딩 3초+ 소요
-   - 해결책: SSR/SSG 적용 (`app/page.js`)
-2. 🟡 **SEO 메타 태그 부족** - Title: "Create Next App", Description: 28자
-   - 해결책: `app/layout.js` metadata 수정
-3. 🟡 **테스트 선택자 불일치** - 상품 카드에 data-testid 없음
-   - 해결책: `data-testid="product-card"` 추가
-
-**성능 측정**:
-- 홈페이지 로드: 268ms (우수 ⚡)
-- 네트워크 요청: 18개 (최적화됨)
-- Console 에러: 0개 (완벽)
-
-**전체 평가**: B+ (우수)
-- 핵심 기능 모두 정상 작동
-- SSR + SEO만 개선하면 A등급 달성 가능
-
-**상세 리포트**:
-- `docs/BUG_REPORT_2025-10-06.md` - 전체 버그 리포트 (13KB)
-- `docs/BUG_REPORT_SUMMARY_2025-10-06.md` - 요약 (2.7KB)
-
-**테스트 환경**:
-- 위치: `tests/` 폴더
-- 설정: `playwright.config.js` (본서버 전용)
-- 실행: `npm test` 또는 `npm run test:ui`
-
----
-
-### 2025-10-06 (주간): ❌ 8개 주요 버그 미해결 (전부 실패) ⚠️
-
-**상세 로그**: `docs/archive/work-logs/WORK_LOG_2025-10-06_UNSOLVED.md`
-
-**미해결 문제** (해결률 0/8):
-1. ❌ BuyBottomSheet 프로필 로딩 실패 (name, phone 빈값)
-2. ❌ 주문 수량 조정 실패 ("주문 아이템을 찾을 수 없습니다")
-3. ❌ 체크아웃 검증 실패 ("연락처" 에러)
-4. ❌ 배송비 계산 오류 (도서산간 비용 미반영)
-5. ❌ 장바구니 주문 병합 로직 (더 악화됨)
-6. ❌ 주문 생성 실패
-7. ❌ 관리자 쿠폰 배포 실패
-8. ❌ Auth 세션 디버깅 로그 (배포 안됨)
-
-**핵심 문제**:
-- Auth 세션 상태 불명확 (`auth.uid()` NULL 가능성)
-- 카카오 로그인 프로필 데이터 누락
-- 장바구니 로직 근본적 문제
-
-**다음 세션 최우선 작업**:
-1. Auth 세션 확인 (Supabase Dashboard)
-2. profiles 테이블 데이터 직접 확인
-3. 장바구니 로직 롤백 또는 재설계
-
-**수정 파일** (전부 실패):
-- `/app/components/product/BuyBottomSheet.jsx`
-- `/app/checkout/page.js`
-- `/app/orders/page.js`
-- `/lib/supabaseApi.js`
-- `/supabase/migrations/20251006_add_order_items_update_policy.sql`
-
----
-
-### 2025-10-05 (오후): 🚀 RLS 정책 긴급 수정 + 성능 최적화 ⭐⭐⭐
-**문제**:
-- 🔴 **관리자 로그인 불가** - UPDATE 정책에 관리자 예외 처리 누락
-- 🔴 **김진태 사용자 주문 조회 0개** (모바일) - 카카오 사용자 매칭 실패
-- 🔴 **보안 위험** - "Anyone can view orders" 정책으로 모든 사용자가 모든 주문 조회 가능
-- 🟡 **모바일 성능 저하** - 서브쿼리 중복 실행, 인덱스 부족
-
-**근본 원인**:
-1. 어제(10-04) 추가한 UPDATE 정책이 `user_id = auth.uid()`만 확인 → 관리자 제외
-2. SELECT 정책이 Supabase UUID로 매칭 시도 → 카카오 ID 매칭 실패
-   - `order_type LIKE '%' || auth.uid() || '%'` (❌)
-   - `auth.uid()` = 'abc-123-def' (Supabase UUID)
-   - `order_type` = 'direct:KAKAO:3456789012' (Kakao ID)
-   - → **매칭 실패!**
-3. 성능 최적화 전 자동 생성된 "Anyone can view orders" 정책 제거 누락
-4. profiles.kakao_id 서브쿼리 중복 실행 (페이지당 3-5회)
-
-**해결책** (5개 마이그레이션):
-1. ✅ `20251005_fix_rls_admin_policies.sql` - 관리자 권한 추가
-2. ✅ `20251005_remove_insecure_select_policy.sql` - 보안 위험 정책 제거
-3. ✅ `20251005_fix_kakao_user_order_select.sql` - 카카오 SELECT 매칭
-4. ✅ `20251005_fix_kakao_user_order_update.sql` - 카카오 UPDATE 매칭
-5. ✅ `20251005_optimize_all_rls_policies.sql` - 전체 성능 최적화
-
-**성능 최적화 내용**:
-```sql
--- 인덱스 추가
-✅ profiles(id, kakao_id) - 복합 인덱스
-✅ orders.order_type - GIN 인덱스 (LIKE 검색 최적화)
-✅ orders.user_id - 기본 인덱스
-
--- 헬퍼 함수 생성 (서브쿼리 캐싱)
-✅ get_current_user_kakao_id() - STABLE, 결과 캐시됨
-✅ is_order_owner(order_id) - STABLE, 결과 캐시됨
-
--- 정책 최적화
-✅ 모든 테이블 (orders, order_items, order_payments, order_shipping)
-✅ SELECT/UPDATE 정책 함수 기반으로 전환
-```
-
-**카카오 사용자 매칭 수정**:
-```sql
--- Before (잘못된 매칭)
-order_type LIKE '%' || auth.uid() || '%'
-
--- After (올바른 매칭)
-order_type LIKE '%KAKAO:' || get_current_user_kakao_id() || '%'
-```
-
-**결과**:
-- ✅ 관리자 로그인/관리 정상화
-- ✅ 김진태 사용자 브라우저에서 주문 조회 성공
-- ⏳ 모바일 테스트 대기 중 (성능 최적화 후)
-- ✅ 보안 강화 (각 사용자는 자기 주문만 조회)
-- ✅ 성능 **2-5배 향상** (서브쿼리 캐싱)
-- ✅ 모바일 환경 응답 속도 대폭 개선
-
-**🎟️ 추가 문제 발견 및 해결 (오후)**:
-- 🔴 **쿠폰 사용 완료 처리 실패** - `user_coupons.is_used = false` 유지
-- **근본 원인**: `use_coupon` 함수 내 `auth.uid()` 검증 문제
-  - SECURITY DEFINER 함수는 RLS 우회, 소유자 권한으로 실행
-  - 이 컨텍스트에서 `auth.uid()`는 사용자 세션 제대로 못 가져옴
-  - 파라미터 `p_user_id`는 올바른데 `auth.uid()` 비교 시 불일치 발생
-  - 결과: "다른 사용자의 쿠폰을 사용할 수 없습니다" 에러
-- **해결책**: `auth.uid()` 검증 완전 제거, RLS 정책만 사용
-  - `user_coupons` 테이블 RLS UPDATE 정책으로 보안 유지
-  - SECURITY DEFINER 함수는 애플리케이션 레이어에서 호출
-  - 파라미터 기반 보안으로 전환
-- ✅ **테스트 성공**:
-  - `user_coupons.is_used = true` 정상 저장
-  - 마이페이지 "사용 완료" 탭으로 쿠폰 이동
-  - 콘솔: `applyCouponUsage 결과: true` ✅
-
-**상세 로그**: `docs/archive/work-logs/WORK_LOG_2025-10-05_RLS_PERFORMANCE.md`
-
----
-
-### 2025-10-05 (오전): 📚 문서 업데이트 - 쿠폰 시스템 완전 반영 ⭐
-**변경사항**:
-- ✅ **CODE_ANALYSIS_COMPLETE.md** 업데이트
-  - lib 함수 개수 정정: 47개 → 80+ 개
-  - `orderCalculations.js` 상세 문서화 (11개 메서드, 쿠폰 할인 포함)
-  - `couponApi.js` 완전 문서화 (15개 함수, DB 함수 연동)
-- ✅ **DETAILED_DATA_FLOW.md** 체크아웃 페이지 업데이트
-  - 쿠폰 초기화: `loadUserCouponsOptimized()` 병렬 로드
-  - 쿠폰 적용: `handleApplyCoupon()` + `validateCoupon()` 흐름
-  - 주문 계산: `OrderCalculations.calculateFinalOrderAmount()` 사용
-  - 주문 생성: `discount_amount` 저장 + `applyCouponUsage()` 호출
-  - DB 컬럼 업데이트: `orders.discount_amount`, `user_coupons` UPDATE
-- ✅ **DETAILED_DATA_FLOW.md** 주문 완료 페이지 업데이트
-  - 쿠폰 할인 표시: `orderData.discount_amount` 사용
-  - OrderCalculations 재계산으로 정확한 금액 표시
-
-**결과**:
-- ✅ 실제 코드베이스와 문서 100% 일치
-- ✅ 쿠폰 시스템 전체 데이터 흐름 문서화
-- ✅ 향후 개발 시 정확한 참조 가능
-
----
-
-### 2025-10-04: 🎟️ 체크아웃 RLS UPDATE 정책 완전 해결 ⭐
-**문제**:
-- 체크아웃 시 PATCH 요청 204 성공하지만 **실제 DB 저장 안 됨**
-- discount_amount, postal_code, depositor_name이 0 또는 기본값으로 저장
-- 쿠폰 사용 처리 실패 (is_used = false 유지)
-
-**근본 원인**:
-1. **RLS UPDATE 정책 누락**: orders, order_payments, order_shipping, user_coupons 테이블
-2. **ANON KEY 사용**: `auth.uid()` = null → RLS 권한 없음 → 0 rows updated
-3. **discount_amount 컬럼 없음**: DB 스키마에 존재하지 않음
-
-**해결책**:
-- ✅ `discount_amount DECIMAL(12,2)` 컬럼 추가
-- ✅ `orders`, `order_payments`, `order_shipping` UPDATE RLS 정책 추가
-- ✅ `user_coupons` UPDATE RLS 정책 추가 (쿠폰 사용 처리)
-- ✅ 사용자 세션 토큰으로 인증 (`Authorization: Bearer ${accessToken}`)
-- ✅ 주문 상세 하단에 쿠폰 할인 표시 추가
-
-**결과**:
-- ✅ 체크아웃 데이터 즉시 저장 (204 성공 + DB 반영 ✅)
-- ✅ discount_amount, postal_code, depositor_name 정상 저장
-- ✅ 쿠폰 사용 완료 처리 (is_used = true, used_at, order_id)
-- ✅ 주문 상세 페이지 쿠폰 할인 정확히 표시
-
-**마이그레이션**:
-```
-supabase/migrations/20251004_add_discount_to_orders.sql
-supabase/migrations/20251004_fix_rls_update_policies.sql
-supabase/migrations/20251004_fix_user_coupons_rls.sql
-```
-
----
-
-### 2025-10-03 (야간): 🔐 관리자 RLS 문제 완전 해결 ⭐
-**문제**:
-- profiles 테이블 조회 10초+ 타임아웃
-- 새로고침 시 무한루프 → 로그인 페이지 리다이렉트
-- RLS 순환 참조 발생 (`is_admin()` 함수 → profiles → RLS → `is_admin()` → 무한)
-
-**해결책**:
-- ✅ Service Role API Route 생성 (`/api/admin/check-profile`)
-- ✅ `SUPABASE_SERVICE_ROLE_KEY` 환경변수 추가
-- ✅ `useAdminAuth.js`에서 API 호출로 변경 (RLS 우회)
-
-**결과**:
-- ✅ 로그인 즉시 성공 (10초+ → **1초 이내**)
-- ✅ 새로고침 시 세션 유지, 무한루프 완전 해결
-- ✅ 타임아웃 에러 제거
-
-**구조**:
-```
-브라우저 (anon key, RLS 적용)
-  ↓ fetch('/api/admin/check-profile')
-Next.js API Route (서버)
-  ↓ Service Role 클라이언트 (RLS 우회)
-Supabase profiles 테이블 ✅ 즉시 성공
-```
-
-**상세 로그**: `docs/archive/work-logs/WORK_LOG_2025-10-03_RLS_ISSUE.md`
-
----
-
-### 2025-10-03 (주간): 우편번호 시스템 완전 통합
-**변경사항**:
-- ✅ `profiles.postal_code` 컬럼 추가
-- ✅ 모든 페이지에 우편번호 표시 및 배송비 계산 적용
-- ✅ formatShippingInfo 함수로 도서산간 자동 계산
-- ✅ 모바일 입력 필드 가시성 문제 해결 (`globals.css` 전면 개선)
-- ✅ 라디오 버튼 `appearance: none` 문제 해결
-- ✅ MyPage AddressManager 구버전 → 신버전 전환
-
-**주요 함수**:
-```javascript
-// 모든 배송비 계산에 이 함수 사용 필수!
-import { formatShippingInfo } from '@/lib/shippingUtils'
-
-const shippingInfo = formatShippingInfo(baseShipping, postalCode)
-// 반환: { baseShipping, surcharge, totalShipping, region, isRemote }
-```
-
-**도서산간 배송비 규칙**:
-- 제주: 63000-63644 → +3,000원
-- 울릉도: 40200-40240 → +5,000원
-- 기타 도서산간 → +5,000원
-
-**적용 페이지**: 체크아웃, 주문 상세, 주문 목록, 관리자 주문 리스트/상세, 발송 관리
-
-**상세 로그**: `docs/archive/work-logs/WORK_LOG_2025-10-03.md`
-
----
-
-### 2025-10-02: 발주 시스템 구축
-**변경사항**:
-- ✅ `purchase_order_batches` 테이블 추가
-- ✅ 업체별 발주서 Excel 다운로드
-- ✅ 중복 발주 방지 로직 구현
-- ✅ 수량 조정 기능 추가
-- ✅ 발주 이력 추적 시스템
-
-**핵심 기능**:
-- 입금확인 완료 주문 자동 집계 (`status = 'deposited'`)
-- 업체별 그룹핑 및 요약 카드
-- Excel 다운로드 시 자동 완료 처리
-- GIN 인덱스로 order_ids 배열 검색 최적화
-
----
-
-### 2025-10-01: Variant 시스템 구축
-**변경사항**:
-- ✅ 8개 테이블 추가 (categories, suppliers, product_options, product_option_values, product_variants, variant_option_values, live_broadcasts, live_products)
-- ✅ 옵션 조합별 독립 재고 관리
-- ✅ FOR UPDATE 락으로 동시성 제어
-- ✅ SKU 자동 생성 (제품번호-옵션값1-옵션값2)
-- ✅ 트리거: Variant 재고 변경 시 자동으로 products.inventory 업데이트
-
-**핵심 구조**:
-```
-products (상품)
-  └─ product_options (옵션: 색상, 사이즈)
-      └─ product_option_values (옵션값: 빨강, 파랑, S, M, L)
-          └─ product_variants (SKU별 재고) ⭐ 핵심
-              └─ variant_option_values (매핑)
-```
-
----
-
----
 
 ## 🎯 핵심 요약: Claude의 작업 패턴 (Version 3.0) ⭐⭐⭐
 
