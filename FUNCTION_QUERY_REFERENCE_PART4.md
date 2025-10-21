@@ -44,9 +44,9 @@
 | `lib/domain/product/Product.js` | **9개** | ~10 lines/메서드 | ✅ Clean |
 | `lib/domain/product/Inventory.js` | **9개** | ~12 lines/메서드 | ✅ Clean |
 
-**총 메서드 개수**: **129개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory)
+**총 메서드 개수**: **130개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 1 CreateOrderUseCase + 1 GetOrdersUseCase)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **118개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory)
+**유효 메서드**: **119개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 2 Use Cases)
 
 ---
 
@@ -73,8 +73,9 @@
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
 | **주문 도메인 (Order Domain)** | **20개** | - | - | **Order Entity (10) + OrderCalculator (6) + OrderValidator (4)** |
 | **상품 도메인 (Product Domain)** | **18개** | - | - | **Product Entity (9) + Inventory (9)** |
+| **Application Layer** | **2개** | - | **CreateOrderUseCase (1) + GetOrdersUseCase (1)** | - |
 
-**총 118개 메서드 → 31개 파일로 분산 예정** (26 + 5 Domain)
+**총 119개 메서드 → 31개 파일로 분산 예정** (26 + 5 Domain + 2 Application)
 
 ---
 
@@ -354,6 +355,130 @@ console.log(reserved.quantity)   // 7  (새 객체)
 - `lib/use-cases/order/CreateOrderUseCase.js` (Phase 3.x - 주문 시 재고 예약)
 - `lib/use-cases/order/CancelOrderUseCase.js` (Phase 3.x - 취소 시 재고 해제)
 - `lib/repositories/ProductRepository.js` (재고 관리 로직)
+
+---
+
+## 🚀 12.4 Use Cases (Phase 3 - Application Layer)
+
+### CreateOrderUseCase ✅ (Phase 3.1 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/use-cases/order/CreateOrderUseCase.js` |
+| **목적** | 주문 생성 비즈니스 로직 (검증 → 계산 → 재고확인 → 저장 → Queue) |
+| **상속** | `BaseUseCase` |
+| **파일 크기** | 137줄 (Rule 1 준수 ✅, 제한: 150줄) |
+| **마이그레이션** | Phase 3.1 완료 (2025-10-21) |
+
+#### 의존성 주입 (3개)
+
+| 의존성 | 타입 | 목적 |
+|--------|------|------|
+| `OrderRepository` | Infrastructure | 주문 데이터 저장 |
+| `ProductRepository` | Infrastructure | 재고 확인 |
+| `QueueService` | Infrastructure | 비동기 작업 (재고 차감) |
+
+#### 실행 흐름 (5단계)
+
+1. **검증** - OrderValidator.validateOrder()
+   - 주문 데이터 검증 (items, shipping, payment)
+   - ValidationError 던짐 (검증 실패 시)
+
+2. **금액 계산** - OrderCalculator.calculateFinalAmount()
+   - 상품 금액 + 배송비 + 쿠폰 할인
+   - 도서산간 추가비 자동 계산
+
+3. **재고 확인** - ProductRepository.findByIds()
+   - 상품별 재고 수량 확인
+   - InsufficientInventoryError 던짐 (재고 부족 시)
+
+4. **DB 저장** - OrderRepository.create()
+   - orders, order_items, order_shipping, order_payments 테이블
+   - customer_order_number 자동 생성 (SYYMMDD-XXXX)
+
+5. **Queue 추가** - QueueService.addJob()
+   - 비동기 재고 차감 작업 등록
+   - order-processing 큐
+
+#### 사용처 (예정)
+
+- `app/checkout/page.js` - 체크아웃 페이지에서 주문 생성 시 (Phase 4.1)
+- `app/api/orders/create/route.js` - API Route에서 호출 (Phase 4.1)
+
+#### Private 메서드 (3개)
+
+| 메서드 | 목적 |
+|--------|------|
+| `_validateInput()` | OrderValidator 호출, 검증 실패 시 에러 |
+| `_checkInventory()` | ProductRepository 조회, 재고 부족 시 에러 |
+| `_generateOrderNumber()` | 주문번호 생성 (SYYMMDD-XXXX) |
+
+---
+
+### GetOrdersUseCase ✅ (Phase 3.2 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/use-cases/order/GetOrdersUseCase.js` |
+| **목적** | 주문 목록 조회 (캐시 → Repository → 캐시 저장) |
+| **상속** | `BaseUseCase` |
+| **파일 크기** | 86줄 (Rule 1 준수 ✅, 제한: 120줄) |
+| **마이그레이션** | Phase 3.2 완료 (2025-10-21) |
+
+#### 의존성 주입 (2개)
+
+| 의존성 | 타입 | 목적 |
+|--------|------|------|
+| `OrderRepository` | Infrastructure | 주문 데이터 조회 |
+| `CacheService` | Infrastructure | Redis 캐시 (1시간 TTL) |
+
+#### 실행 흐름 (5단계)
+
+1. **캐시 키 생성** - _generateCacheKey()
+   - 형식: `orders:${userId}:${orderType}:${filterStr}`
+   - 사용자별 + 필터별 분리
+
+2. **캐시 확인** - CacheService.get()
+   - 캐시 히트 시: Order Entity 배열 즉시 반환
+   - 로그: "캐시 히트" + 주문 개수
+
+3. **Repository 조회** - OrderRepository.findByUser()
+   - 캐시 미스 시 DB 조회
+   - user_id 또는 order_type 필터링
+
+4. **캐시 저장** - CacheService.set()
+   - JSON 데이터로 변환 후 저장
+   - TTL: 3600초 (1시간)
+
+5. **Entity 변환** - Order.fromJSON()
+   - Plain Object → Order Entity 변환
+   - 배열로 반환
+
+#### Public 메서드 (2개)
+
+| 메서드 | 목적 | 반환값 |
+|--------|------|--------|
+| `execute({ user, filters })` | 주문 목록 조회 (캐시 우선) | Promise<Order[]> |
+| `invalidateCache(user)` | 캐시 무효화 (주문 생성/수정 시) | Promise<void> |
+
+#### 캐시 전략
+
+- **캐시 키**: 사용자 ID + 주문 타입 + 필터 조건
+- **TTL**: 1시간 (3600초)
+- **무효화**: 주문 생성/수정/취소 시 invalidateCache() 호출
+- **캐시 히트 로그**: 디버깅용 로그 출력
+
+#### 사용처 (예정)
+
+- `app/orders/page.js` - 주문 내역 페이지 (Phase 4.2)
+- `app/api/orders/route.js` - API Route에서 호출 (Phase 4.2)
+- `app/admin/orders/page.js` - 관리자 주문 목록 (Phase 4.3)
+
+#### Private 메서드 (1개)
+
+| 메서드 | 목적 |
+|--------|------|
+| `_generateCacheKey(user, filters)` | 사용자별 + 필터별 캐시 키 생성 |
 
 ---
 

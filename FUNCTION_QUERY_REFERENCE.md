@@ -131,7 +131,7 @@ Database (Supabase PostgreSQL)
 - **총 메서드 개수**: **130개**
   - 레거시 (supabaseApi.js): 91개
   - Domain Layer: 38개 (Order 10 + OrderCalculator 6 + OrderValidator 4 + Product 9 + Inventory 9)
-  - Application Layer: 1개 (CreateOrderUseCase)
+  - Application Layer: 2개 (CreateOrderUseCase 1 + GetOrdersUseCase 1)
 - **레거시 함수**: 11개 (삭제 예정)
 - **유효 메서드**: **119개**
 
