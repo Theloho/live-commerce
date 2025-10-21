@@ -1036,10 +1036,11 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | `lib/domain/order/OrderCalculator.js` | **6개** | ~20 lines/메서드 | ✅ Clean |
 | `lib/domain/order/OrderValidator.js` | **4개** | ~30 lines/메서드 | ✅ Clean |
 | `lib/domain/product/Product.js` | **9개** | ~10 lines/메서드 | ✅ Clean |
+| `lib/domain/product/Inventory.js` | **9개** | ~12 lines/메서드 | ✅ Clean |
 
-**총 메서드 개수**: **120개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity)
+**총 메서드 개수**: **129개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **109개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity)
+**유효 메서드**: **118개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory)
 
 ---
 
@@ -1065,9 +1066,9 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 | Cache | 3개 | - | CacheService (3) | - |
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
 | **주문 도메인 (Order Domain)** | **20개** | - | - | **Order Entity (10) + OrderCalculator (6) + OrderValidator (4)** |
-| **상품 도메인 (Product Domain)** | **9개** | - | - | **Product Entity (9)** |
+| **상품 도메인 (Product Domain)** | **18개** | - | - | **Product Entity (9) + Inventory (9)** |
 
-**총 109개 메서드 → 30개 파일로 분산 예정** (26 + 4 Domain)
+**총 118개 메서드 → 31개 파일로 분산 예정** (26 + 5 Domain)
 
 ---
 
@@ -1295,6 +1296,58 @@ UPDATE products SET inventory = inventory - change WHERE id = product_id;  -- �
 - `lib/use-cases/product/CreateProductUseCase.js` (Phase 3.x)
 - `lib/use-cases/product/UpdateProductUseCase.js` (Phase 3.x)
 - `lib/repositories/ProductRepository.js` (Entity 변환용)
+
+---
+
+### Inventory Value Object ✅ (Phase 2.5 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/domain/product/Inventory.js` |
+| **목적** | 재고 관리 Value Object (불변성 + 재고 가용성 검증) |
+| **패턴** | Value Object (값으로 비교, 불변성, ID 없음) |
+| **파일 크기** | 161줄 (JSDoc 포함) |
+| **마이그레이션** | Phase 2.5 완료 (2025-10-21) |
+
+#### 메서드 목록 (9개)
+
+| 메서드 | 타입 | 목적 | 반환값 |
+|--------|------|------|--------|
+| `constructor(quantity)` | 생성자 | Inventory 생성 | Inventory |
+| `checkAvailability(required)` | 검증 | 재고 가용성 확인 | boolean |
+| `reserve(quantity)` | 변환 | 재고 예약 (감소) - 새 객체 반환 | Inventory |
+| `release(quantity)` | 변환 | 재고 해제 (증가) - 새 객체 반환 | Inventory |
+| `isAvailable()` | 상태 확인 | 재고가 있는지 확인 (> 0) | boolean |
+| `isEmpty()` | 상태 확인 | 재고가 없는지 확인 (= 0) | boolean |
+| `equals(other)` | 비교 | 값 비교 (Value Object) | boolean |
+| `toString()` | 직렬화 | 문자열 표현 | string |
+| `toNumber()` / `fromNumber()` | 변환 | Number ↔ Inventory | number / Inventory |
+
+#### Value Object 특징
+- **불변성 (Immutability)**: reserve/release는 원본을 변경하지 않고 새 객체 반환
+- **값 비교 (Equality by Value)**: equals()로 quantity 비교
+- **고유 ID 없음**: 재고 수량 자체가 값
+- **순수 함수**: Side Effect 없음, DB 접근 없음
+
+#### 불변성 예제
+```javascript
+const inventory = new Inventory(10)
+const reserved = inventory.reserve(3)  // Inventory(7)
+
+console.log(inventory.quantity)  // 10 (원본 불변)
+console.log(reserved.quantity)   // 7  (새 객체)
+```
+
+#### 검증 규칙
+- ✅ `quantity` >= 0 (생성 시)
+- ✅ `required` >= 0 (checkAvailability 시)
+- ✅ `reserve/release` > 0 (수량은 양수)
+- ✅ 재고 부족 시 reserve() 에러 던짐
+
+#### 사용처 (예정)
+- `lib/use-cases/order/CreateOrderUseCase.js` (Phase 3.x - 주문 시 재고 예약)
+- `lib/use-cases/order/CancelOrderUseCase.js` (Phase 3.x - 취소 시 재고 해제)
+- `lib/repositories/ProductRepository.js` (재고 관리 로직)
 
 ---
 
