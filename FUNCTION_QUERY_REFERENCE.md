@@ -335,18 +335,18 @@ Database (Supabase PostgreSQL)
 
 ---
 
-### 3.2 getOrders
+### 3.2 getOrders → ✅ OrderRepository.findByUser
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:673` |
-| **시그니처** | `getOrders(userId = null, options = {})` |
+| **✅ 마이그레이션 완료** | `lib/repositories/OrderRepository.js:22` |
+| **시그니처** | `async findByUser(userId = null, orderType = null)` |
 | **목적** | 사용자 주문 목록 조회 (order_type으로 카카오 사용자 매칭) |
 | **사용 페이지** | - `app/orders/page.js` (주문 내역 페이지)<br>- `app/mypage/page.js` (마이페이지 주문 요약) |
-| **DB 접근** | ⚠️ **성능 이슈** - API Route로 이동 완료 (`/api/orders/list`)<br>이 함수는 레거시, 사용 안 함 |
-| **특징** | 카카오 사용자: `order_type LIKE '%KAKAO:{kakao_id}%'`<br>Supabase Auth: `user_id = auth.uid()` |
-| **목표 레이어** | `Infrastructure` → 삭제 예정 (API Route로 대체됨) |
-| **마이그레이션** | Phase 0.6 (Step 0.6.2 - 레거시 파일 관리) |
+| **DB 접근** | `orders` (SELECT *)<br>`order_items` (JOIN)<br>`order_shipping` (JOIN)<br>`order_payments` (JOIN) |
+| **특징** | Service Role 클라이언트 사용 (RLS 우회)<br>카카오: orderType, Supabase: userId |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.1) |
 
 ---
 
@@ -365,63 +365,93 @@ Database (Supabase PostgreSQL)
 
 ---
 
-### 3.4 getOrderById
+### 3.4 getOrderById → ✅ OrderRepository.findById
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:1222` |
-| **시그니처** | `getOrderById(orderId)` |
+| **✅ 마이그레이션 완료** | `lib/repositories/OrderRepository.js:47` |
+| **시그니처** | `async findById(orderId)` |
 | **목적** | 특정 주문 상세 조회 (주문 완료 페이지용) |
 | **사용 페이지** | - `app/orders/[id]/complete/page.js` (주문 완료 페이지)<br>- `app/admin/orders/[id]/page.js` (관리자 주문 상세) |
-| **DB 접근** | `orders` (SELECT *)<br>`order_items` (JOIN)<br>`order_shipping` (JOIN)<br>`order_payments` (JOIN)<br>`products` (JOIN, fallback용) |
-| **특징** | products JOIN은 레거시 데이터 fallback용 (order_items에 데이터 누락 시) |
-| **목표 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
-| **마이그레이션** | Phase 1.1 (Step 1.1.3) |
+| **DB 접근** | `orders` (SELECT *)<br>`order_items` (JOIN)<br>`order_shipping` (JOIN)<br>`order_payments` (JOIN) |
+| **특징** | Service Role 클라이언트 사용 (RLS 우회) |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.1) |
 
 ---
 
-### 3.5 updateOrderStatus
+### 3.5 updateOrderStatus → ✅ OrderRepository.updateStatus
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:1515` |
-| **시그니처** | `updateOrderStatus(orderId, status, paymentData = null)` |
-| **목적** | 주문 상태 변경 (pending → deposited → shipped → delivered) |
+| **✅ 마이그레이션 완료** | `lib/repositories/OrderRepository.js:127` |
+| **시그니처** | `async updateStatus(orderId, status)` |
+| **목적** | 주문 상태 변경 (pending → deposited → shipped → delivered → cancelled) |
 | **사용 페이지** | - `app/admin/orders/page.js` (관리자 상태 변경)<br>- `app/admin/orders/[id]/page.js` (관리자 주문 상세)<br>- `app/admin/deposits/page.js` (입금확인) |
-| **DB 접근** | `orders` (UPDATE: status, {status}_at 타임스탬프)<br>`order_payments` (UPDATE, paymentData 제공 시) |
-| **특징** | 타임스탬프 자동 기록 (deposited_at, shipped_at, delivered_at)<br>로깅: 🕐 pending, 💰 deposited, 🚚 shipped, ✅ delivered |
-| **목표 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
-| **마이그레이션** | Phase 1.1 (Step 1.1.6) |
+| **DB 접근** | `orders` (UPDATE: status, {status}_at 타임스탬프) |
+| **특징** | 타임스탬프 자동 기록 (deposited_at, shipped_at, delivered_at, cancelled_at)<br>로깅: 🕐 pending, 💰 deposited, 🚚 shipped, ✅ delivered, ❌ cancelled |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.1) |
 
 ---
 
-### 3.6 updateMultipleOrderStatus
+### 3.6 updateMultipleOrderStatus → ✅ OrderRepository.updateMultipleStatus
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:1552` |
-| **시그니처** | `updateMultipleOrderStatus(orderIds, status, paymentData = null)` |
+| **✅ 마이그레이션 완료** | `lib/repositories/OrderRepository.js:164` |
+| **시그니처** | `async updateMultipleStatus(orderIds, status)` |
 | **목적** | 여러 주문 일괄 상태 변경 (입금확인 시 사용) |
 | **사용 페이지** | - `app/admin/deposits/page.js` (일괄 입금확인) |
-| **DB 접근** | `orders` (UPDATE: status, WHERE id IN (orderIds))<br>`order_payments` (UPDATE, paymentData 제공 시) |
-| **특징** | 내부적으로 updateOrderStatus 호출 (반복문) |
-| **목표 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
-| **마이그레이션** | Phase 1.1 (Step 1.1.7) |
+| **DB 접근** | `orders` (UPDATE: status, WHERE id IN (orderIds)) |
+| **특징** | 단일 쿼리로 일괄 업데이트<br>deposited 상태는 타임스탬프 자동 기록 |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.1) |
 
 ---
 
-### 3.7 cancelOrder
+### 3.7 cancelOrder → ✅ OrderRepository.cancel (부분 완료)
 
 | 항목 | 내용 |
 |------|------|
-| **현재 위치** | `lib/supabaseApi.js:1456` |
-| **시그니처** | `cancelOrder(orderId)` |
-| **목적** | 주문 취소 + 재고 복원 + 쿠폰 복구 |
+| **✅ 마이그레이션 완료** | `lib/repositories/OrderRepository.js:190` |
+| **시그니처** | `async cancel(orderId)` |
+| **목적** | 주문 취소 (상태만 변경) |
 | **사용 페이지** | - `app/orders/page.js` (주문 내역 취소 버튼)<br>- `app/admin/orders/[id]/page.js` (관리자 취소) |
-| **DB 접근** | `orders` (UPDATE: status = 'cancelled', cancelled_at)<br>`products` (UPDATE: inventory + quantity)<br>`product_variants` (RPC: update_variant_inventory_rpc)<br>`user_coupons` (UPDATE: is_used = false, used_at = NULL, order_id = NULL) |
-| **특징** | ⚠️ **트랜잭션 필요** (재고 복원 실패 시 롤백 필요)<br>쿠폰 복구 로직 포함 |
-| **목표 레이어** | `Application` → `lib/use-cases/order/CancelOrderUseCase.js` |
-| **마이그레이션** | Phase 3.3 (Step 3.3.2) |
+| **DB 접근** | `orders` (UPDATE: status = 'cancelled', cancelled_at) |
+| **특징** | ⚠️ **재고 복원, 쿠폰 복구는 Phase 3.4 CancelOrderUseCase에서 처리 예정**<br>Repository는 단순 상태 변경만 담당 |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` (부분) |
+| **완료 일자** | 2025-10-21 (Phase 1.1) |
+
+---
+
+### 3.7A ✅ OrderRepository.create (신규)
+
+| 항목 | 내용 |
+|------|------|
+| **✅ 신규 생성** | `lib/repositories/OrderRepository.js:68` |
+| **시그니처** | `async create({ orderData, orderItems, payment, shipping })` |
+| **목적** | 새 주문 생성 (4개 테이블 INSERT) |
+| **사용 페이지** | - Phase 3.3 CreateOrderUseCase에서 호출 예정 |
+| **DB 접근** | `orders` (INSERT)<br>`order_items` (INSERT)<br>`order_shipping` (INSERT)<br>`order_payments` (INSERT) |
+| **특징** | ⚠️ **트랜잭션 미구현** - Phase 3.3에서 Use Case로 이동 시 추가<br>재고 감소는 Use Case에서 처리 |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.1) |
+
+---
+
+### 3.7B ✅ OrderRepository.update (신규)
+
+| 항목 | 내용 |
+|------|------|
+| **✅ 신규 생성** | `lib/repositories/OrderRepository.js:104` |
+| **시그니처** | `async update(orderId, data)` |
+| **목적** | 주문 정보 수정 (일반 필드) |
+| **사용 페이지** | - 현재 미사용 (향후 확장용) |
+| **DB 접근** | `orders` (UPDATE) |
+| **특징** | 범용 수정 메서드 (상태 변경은 updateStatus 권장) |
+| **완료 레이어** | `Infrastructure` → `lib/repositories/OrderRepository.js` |
+| **완료 일자** | 2025-10-21 (Phase 1.1) |
 
 ---
 
