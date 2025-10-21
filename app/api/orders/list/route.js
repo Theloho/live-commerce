@@ -69,23 +69,21 @@ export async function POST(request) {
     let data = []
 
     if (user.kakao_id) {
-      // 카카오 사용자: order_type으로 조회
-      console.log('📱 카카오 사용자 주문 조회:', user.kakao_id)
+      // ⚡ 카카오 사용자: 3개 쿼리를 병렬 실행 (순차 15초 → 병렬 5초)
+      console.log('📱 카카오 사용자 주문 조회 (병렬):', user.kakao_id)
 
-      // 기본 조회 (direct:KAKAO:kakao_id)
-      const primaryPattern = `direct:KAKAO:${user.kakao_id}`
-      const { data: primaryData, error: primaryError } = await query
-        .eq('order_type', primaryPattern)
-
-      if (primaryError) {
-        console.error('❌ 기본 조회 오류:', primaryError)
-        throw primaryError
-      }
-
-      data = primaryData || []
-
-      // 대체 조회 (cart:KAKAO:kakao_id)
+      // 3가지 패턴 정의
+      const directPattern = `direct:KAKAO:${user.kakao_id}`
       const cartPattern = `cart:KAKAO:${user.kakao_id}`
+      const idPattern = `%KAKAO:${user.id}%`
+
+      // ✅ Promise.all()로 3개 쿼리 동시 실행
+      const queries = [
+        // 쿼리 1: direct:KAKAO:xxx
+        query.eq('order_type', directPattern),
+      ]
+
+      // 쿼리 2: cart:KAKAO:xxx%
       let cartQuery = supabaseAdmin
         .from('orders')
         .select(`
@@ -103,7 +101,6 @@ export async function POST(request) {
           order_payments (*)
         `)
 
-      // ✅ orderId가 제공된 경우 특정 주문만 조회
       if (orderId) {
         cartQuery = cartQuery.eq('id', orderId)
       } else {
@@ -111,22 +108,9 @@ export async function POST(request) {
           .neq('status', 'cancelled')
           .order('created_at', { ascending: false })
       }
+      queries.push(cartQuery.like('order_type', `${cartPattern}%`))
 
-      const { data: cartData, error: cartError } = await cartQuery
-        .like('order_type', `${cartPattern}%`)
-
-      if (cartError) {
-        console.warn('⚠️ 장바구니 조회 오류:', cartError)
-      } else if (cartData && cartData.length > 0) {
-        // 중복 제거 후 병합
-        const existingIds = new Set(data.map(o => o.id))
-        const newCartOrders = cartData.filter(o => !existingIds.has(o.id))
-        data = [...data, ...newCartOrders]
-        console.log(`✅ 장바구니 주문 ${newCartOrders.length}개 추가`)
-      }
-
-      // 추가 대체 조회 (user.id 기반)
-      const idPattern = `%KAKAO:${user.id}%`
+      // 쿼리 3: %KAKAO:user.id%
       let idQuery = supabaseAdmin
         .from('orders')
         .select(`
@@ -144,7 +128,6 @@ export async function POST(request) {
           order_payments (*)
         `)
 
-      // ✅ orderId가 제공된 경우 특정 주문만 조회
       if (orderId) {
         idQuery = idQuery.eq('id', orderId)
       } else {
@@ -152,13 +135,32 @@ export async function POST(request) {
           .neq('status', 'cancelled')
           .order('created_at', { ascending: false })
       }
+      queries.push(idQuery.like('order_type', idPattern))
 
-      const { data: idData, error: idError } = await idQuery
-        .like('order_type', idPattern)
+      // 병렬 실행
+      const [
+        { data: primaryData, error: primaryError },
+        { data: cartData, error: cartError },
+        { data: idData, error: idError }
+      ] = await Promise.all(queries)
 
-      if (idError) {
-        console.warn('⚠️ ID 기반 조회 오류:', idError)
-      } else if (idData && idData.length > 0) {
+      // 에러 처리
+      if (primaryError) {
+        console.error('❌ 기본 조회 오류:', primaryError)
+        throw primaryError
+      }
+
+      // 결과 병합 (중복 제거)
+      data = primaryData || []
+
+      if (cartData && cartData.length > 0) {
+        const existingIds = new Set(data.map(o => o.id))
+        const newCartOrders = cartData.filter(o => !existingIds.has(o.id))
+        data = [...data, ...newCartOrders]
+        console.log(`✅ 장바구니 주문 ${newCartOrders.length}개 추가`)
+      }
+
+      if (idData && idData.length > 0) {
         const existingIds = new Set(data.map(o => o.id))
         const newIdOrders = idData.filter(o => !existingIds.has(o.id))
         data = [...data, ...newIdOrders]
