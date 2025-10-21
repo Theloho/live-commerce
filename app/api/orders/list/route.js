@@ -36,13 +36,21 @@ export async function POST(request) {
       )
     }
 
-    // 2. 기본 쿼리 구성 (⚡ products JOIN 제거 - 성능 최적화 2025-10-21)
-    // order_items에 이미 title, thumbnail_url, price 저장되어 있음
+    // 2. 기본 쿼리 구성
+    // ⚠️ products JOIN 필요: order_items에 데이터 누락된 레거시 주문 존재
     let query = supabaseAdmin
       .from('orders')
       .select(`
         *,
-        order_items (*),
+        order_items (
+          *,
+          products (
+            product_number,
+            title,
+            thumbnail_url,
+            price
+          )
+        ),
         order_shipping (*),
         order_payments (*)
       `)
@@ -82,7 +90,15 @@ export async function POST(request) {
         .from('orders')
         .select(`
           *,
-          order_items (*),
+          order_items (
+            *,
+            products (
+              product_number,
+              title,
+              thumbnail_url,
+              price
+            )
+          ),
           order_shipping (*),
           order_payments (*)
         `)
@@ -115,7 +131,15 @@ export async function POST(request) {
         .from('orders')
         .select(`
           *,
-          order_items (*),
+          order_items (
+            *,
+            products (
+              product_number,
+              title,
+              thumbnail_url,
+              price
+            )
+          ),
           order_shipping (*),
           order_payments (*)
         `)
