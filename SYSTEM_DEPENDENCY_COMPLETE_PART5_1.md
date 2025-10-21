@@ -1,7 +1,8 @@
-# SYSTEM_DEPENDENCY_COMPLETE_PART5_1 - 중앙 함수 수정 시나리오
+# SYSTEM_DEPENDENCY_COMPLETE_PART5_1 - 중앙 함수 수정 시나리오 (유틸리티)
 
 **작성일**: 2025-10-20
-**버전**: 1.0
+**버전**: 2.0 (2025-10-21 분할)
+**총 PART5 중 PART5_1 (유틸리티 함수)**
 **목적**: 중앙 함수 수정 시 영향받는 모든 요소를 체크리스트로 관리
 
 ---
@@ -43,6 +44,10 @@
 - 6.5 updateStatus() 수정
 - 6.6 updateMultipleStatus() 수정
 - 6.7 cancel() 수정
+
+---
+
+**Repository 수정 시나리오는**: [SYSTEM_DEPENDENCY_COMPLETE_PART5_1_2.md](./SYSTEM_DEPENDENCY_COMPLETE_PART5_1_2.md) 참조
 
 ---
 
@@ -1768,6 +1773,29 @@ static applyPointDiscount(subtotal, points, availablePoints) {
 
 ---
 
-**다음 단계**: Part 5-2 (DB 테이블 수정 시나리오) 읽기
+---
 
-**작성 완료**: 2025-10-21 (Section 6 추가)
+## Section 7: ProductRepository 수정 시나리오 ✅ NEW (Phase 1.2)
+
+### 📌 개요
+- **파일 위치**: `/lib/repositories/ProductRepository.js`
+- **목적**: 상품 데이터 접근 레이어 (Infrastructure Layer) - Service Role 클라이언트로 RLS 우회
+- **클래스**: `ProductRepository extends BaseRepository`
+- **마이그레이션**: Phase 1.2 (lib/supabaseApi.js 함수들을 Repository로 이동)
+- **생성일**: 2025-10-21
+- **파일 크기**: 207줄 (Rule 1 준수 ✅)
+
+### 🔍 상세 내용
+
+## ✅ PART5_1 작성 완료
+
+**다음 문서**: [SYSTEM_DEPENDENCY_COMPLETE_PART5_1_2.md](./SYSTEM_DEPENDENCY_COMPLETE_PART5_1_2.md) - Repository 수정 시나리오
+
+**PART5_1 요약**:
+- 총 6개 Section 문서화 (유틸리티 함수 수정 시나리오)
+- Section 1-5: 기존 유틸리티 함수 수정 시나리오
+- Section 6: OrderRepository 수정 시나리오 (Phase 1.1)
+- 모든 수정 시나리오에 체크리스트 포함
+- 실제 버그 사례 및 주의사항 포함
+
+**문서 크기**: 약 1,800 줄 (**1,500줄 제한 준수** ✅)

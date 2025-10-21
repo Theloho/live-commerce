@@ -69,52 +69,29 @@ Part 5: 수정 영향도 매트릭스 (79개 시나리오)
 
 ## 📚 전체 목차 (Complete Table of Contents)
 
-### Part 1: 중앙 함수 종속성 맵 (SYSTEM_DEPENDENCY_COMPLETE_PART1.md)
+### Part 1: 중앙 함수 종속성 맵
 
-**총 41개 함수** - lib 폴더 중앙화 모듈
+**⚠️ 2025-10-21 분할**: Part 1 문서가 크기 제한으로 인해 2개로 분할되었습니다.
 
-#### Section 1: OrderCalculations (lib/orderCalculations.js)
-- 1.1 calculateFinalOrderAmount()
-- 1.2 calculateProductSubtotal()
-- 1.3 calculateShipping()
-- 1.4 applyCouponDiscount()
-- 1.5 calculateTotalQuantity()
-- 1.6 calculateTotalPrice()
-- 1.7 getDiscountInfo()
-- 1.8 formatOrderSummary()
+#### Part 1 (유틸리티): SYSTEM_DEPENDENCY_COMPLETE_PART1.md
+**총 47개 유틸리티 함수** - lib 폴더 중앙화 모듈
 
-#### Section 2: Shipping Utils (lib/shippingUtils.js)
-- 2.1 formatShippingInfo()
+- Section 1: orderCalculations.js (11개 메서드)
+- Section 2: couponApi.js (15개 함수)
+- Section 3: shippingUtils.js (2개 함수)
+- Section 4: UserProfileManager.js (12개 메서드)
+- Section 5: fulfillmentGrouping.js (4개 함수)
+- Section 6: logisticsAggregation.js (3개 함수)
 
-#### Section 3: UserProfileManager (lib/userProfileManager.js)
-- 3.1 getUserProfileWithCache()
-- 3.2 updateUserProfileCache()
-- 3.3 clearUserProfileCache()
-- 3.4 prefetchUserProfile()
+**문서 크기**: ~1,800줄 ✅
 
-#### Section 4: Coupon API (lib/couponApi.js)
-- 4.1 getCoupons()
-- 4.2 getCouponById()
-- 4.3 validateCoupon()
-- 4.4 applyCouponUsage()
-- 4.5 loadUserCouponsOptimized()
+#### Part 1_2 (Repository): SYSTEM_DEPENDENCY_COMPLETE_PART1_2.md
+**총 7개 Repository 메서드** - Infrastructure Layer
 
-#### Section 5: Supabase API (lib/supabaseApi.js)
-- 5.1 **주문 생성**: createOrder()
-- 5.2 **주문 조회**: getOrders(), getOrderById()
-- 5.3 **주문 상태 변경**: updateOrderStatus()
-- 5.4 **주문 수량 변경**: updateOrderQuantity()
-- 5.5 **주문 취소**: cancelOrder()
-- 5.6 **상품 조회**: getProducts(), getProductById()
-- 5.7 **재고 관리**: updateVariantInventory()
-- 5.8 **프로필 관리**: getUserProfile(), updateUserProfile()
-- 5.9 **쿠폰 검증**: validateCouponForUser()
-- 5.10 **발주 관리**: getPurchaseOrders(), createPurchaseBatch()
+- Section 7: OrderRepository.js (7개 메서드) - Phase 1.1 ✅
+- Section 8-10: ProductRepository, UserRepository, CouponRepository (향후 추가 예정)
 
-(더 많은 함수... 총 41개)
-
-#### Section 6: 기타 유틸리티 함수
-- formatDate(), formatCurrency(), truncateText() 등
+**문서 크기**: ~250줄 ✅
 
 ---
 
@@ -361,38 +338,30 @@ Part 5: 수정 영향도 매트릭스 (79개 시나리오)
 - 빠른 참조 테이블
 - 수정 작업 4대 원칙
 
-#### Part 5-1: 중앙 함수 수정 시나리오 (SYSTEM_DEPENDENCY_COMPLETE_PART5_1.md)
+#### Part 5-1: 중앙 함수 수정 시나리오
 
-**Section 1: OrderCalculations 수정 (8개 시나리오)**
-- 1.1 calculateFinalOrderAmount() 수정 시
-- 1.2 calculateProductSubtotal() 수정 시
-- 1.3 calculateShipping() 수정 시
-- 1.4 applyCouponDiscount() 수정 시
-- 1.5 calculateTotalQuantity() 수정 시
-- 1.6 calculateTotalPrice() 수정 시
-- 1.7 getDiscountInfo() 수정 시
-- 1.8 formatOrderSummary() 수정 시
+**⚠️ 2025-10-21 분할**: Part 5-1 문서가 크기 제한으로 인해 2개로 분할되었습니다.
 
-**Section 2: formatShippingInfo 수정 (1개 시나리오)**
-- 2.1 도서산간 배송비 로직 변경 시
+##### Part 5-1 (유틸리티): SYSTEM_DEPENDENCY_COMPLETE_PART5_1.md
+**Section 1-6** - 유틸리티 함수 수정 시나리오
 
-**Section 3: UserProfileManager 수정 (4개 시나리오)**
-- 3.1 getUserProfileWithCache() 수정 시
-- 3.2 updateUserProfileCache() 수정 시
-- 3.3 clearUserProfileCache() 수정 시
-- 3.4 prefetchUserProfile() 수정 시
+- Section 1: OrderCalculations 수정 (8개 시나리오)
+- Section 2: formatShippingInfo 수정 (1개 시나리오)
+- Section 3: UserProfileManager 수정 (4개 시나리오)
+- Section 4: Coupon API 수정 (5개 시나리오)
+- Section 5: 신규 함수 추가 시 (1개 시나리오)
+- Section 6: OrderRepository 수정 (7개 시나리오) - Phase 1.1 ✅
 
-**Section 4: Coupon API 수정 (5개 시나리오)**
-- 4.1 validateCoupon() 수정 시
-- 4.2 applyCouponUsage() 수정 시
-- 4.3 loadUserCouponsOptimized() 수정 시
-- 4.4 getCouponById() 수정 시
-- 4.5 getCoupons() 수정 시
+**문서 크기**: ~1,800줄 ✅
 
-**Section 5: 신규 함수 추가 시 (1개 시나리오)**
-- 5.1 새로운 중앙 함수를 lib/에 추가할 때
+##### Part 5-1_2 (Repository): SYSTEM_DEPENDENCY_COMPLETE_PART5_1_2.md
+**Section 7-9** - Repository 수정 시나리오
 
-**총 18개 시나리오**
+- Section 7: ProductRepository 수정 (4개 시나리오) - Phase 1.2 ✅
+- Section 8: UserRepository 수정 (2개 시나리오) - Phase 1.3 ✅
+- Section 9: CouponRepository 수정 (4개 시나리오) - Phase 1.4 ✅
+
+**문서 크기**: ~380줄 ✅
 
 #### Part 5-2: DB 테이블 수정 시나리오 (SYSTEM_DEPENDENCY_COMPLETE_PART5_2.md)
 
