@@ -1,23 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// 🚨 환경변수 디버깅 (2025-10-21 추가)
-console.log('🔍 [ENV CHECK] 환경변수 상태:', {
-  hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-  hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-  serviceRoleKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
-  supabaseUrlLength: process.env.NEXT_PUBLIC_SUPABASE_URL?.length || 0,
-  nodeEnv: process.env.NODE_ENV
-})
-
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('🚨 CRITICAL: SUPABASE_SERVICE_ROLE_KEY 환경변수 없음!')
-}
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  console.error('🚨 CRITICAL: NEXT_PUBLIC_SUPABASE_URL 환경변수 없음!')
-}
-
 // Service Role 클라이언트 생성 (RLS 우회)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -37,30 +20,12 @@ const supabaseAdmin = createClient(
  * 모두 지원
  */
 export async function POST(request) {
+  const startTime = Date.now()  // ⚡ 성능 측정 시작
+
   try {
     const { user, orderId, page = 1, pageSize = 10, status = null } = await request.json()
 
-    console.log('🚀 [Service Role API] 주문 조회 시작:', {
-      userId: user?.id,
-      userName: user?.name,
-      hasKakaoId: !!user?.kakao_id,
-      specificOrderId: orderId || 'ALL',
-      page,
-      pageSize,
-      statusFilter: status,
-      // 🚨 디버깅: Service Role 클라이언트 상태
-      supabaseAdminExists: !!supabaseAdmin,
-      supabaseAdminHasAuth: !!supabaseAdmin?.auth
-    })
-
-    // 🚨 Service Role 클라이언트 체크 (2025-10-21 추가)
-    if (!supabaseAdmin) {
-      console.error('🚨 CRITICAL: supabaseAdmin 클라이언트가 초기화되지 않음!')
-      return NextResponse.json(
-        { error: 'Server configuration error: Admin client not initialized' },
-        { status: 500 }
-      )
-    }
+    console.log(`🚀 주문 조회 시작: user=${user?.id?.substring(0, 8)}... ${orderId ? `order=${orderId}` : `page=${page}`}`)
 
     // 1. 기본 유효성 검사
     if (!user || !user.id) {
@@ -71,20 +36,13 @@ export async function POST(request) {
       )
     }
 
-    // 2. 기본 쿼리 구성 (⚡ product_variants JOIN 제거 - 성능 개선)
+    // 2. 기본 쿼리 구성 (⚡ products JOIN 제거 - 성능 최적화 2025-10-21)
+    // order_items에 이미 title, thumbnail_url, price 저장되어 있음
     let query = supabaseAdmin
       .from('orders')
       .select(`
         *,
-        order_items (
-          *,
-          products (
-            product_number,
-            title,
-            thumbnail_url,
-            price
-          )
-        ),
+        order_items (*),
         order_shipping (*),
         order_payments (*)
       `)
@@ -124,15 +82,7 @@ export async function POST(request) {
         .from('orders')
         .select(`
           *,
-          order_items (
-            *,
-            products (
-              product_number,
-              title,
-              thumbnail_url,
-              price
-            )
-          ),
+          order_items (*),
           order_shipping (*),
           order_payments (*)
         `)
@@ -165,15 +115,7 @@ export async function POST(request) {
         .from('orders')
         .select(`
           *,
-          order_items (
-            *,
-            products (
-              product_number,
-              title,
-              thumbnail_url,
-              price
-            )
-          ),
+          order_items (*),
           order_shipping (*),
           order_payments (*)
         `)
@@ -256,7 +198,9 @@ export async function POST(request) {
     const offset = (page - 1) * pageSize
     const paginatedOrders = filteredOrders.slice(offset, offset + pageSize)
 
-    console.log(`✅ [Service Role API] 주문 조회 완료: 전체 ${totalCount}건 중 ${paginatedOrders.length}건 반환 (${page}/${totalPages} 페이지)`)
+    // ⚡ 성능 측정 완료
+    const elapsed = Date.now() - startTime
+    console.log(`✅ 주문 조회 완료: ${paginatedOrders.length}건 반환 (${elapsed}ms)`)
 
     return NextResponse.json({
       success: true,
