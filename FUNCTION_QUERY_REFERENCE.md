@@ -128,12 +128,13 @@ Database (Supabase PostgreSQL)
 
 ## 📊 전체 통계 (2025-10-21 기준)
 
-- **총 메서드 개수**: **132개**
+- **총 메서드 개수**: **133개**
   - 레거시 (supabaseApi.js): 91개
   - Domain Layer: 38개 (Order 10 + OrderCalculator 6 + OrderValidator 4 + Product 9 + Inventory 9)
   - Application Layer: 4개 (CreateOrderUseCase 1 + GetOrdersUseCase 1 + ApplyCouponUseCase 1 + CancelOrderUseCase 1)
+  - Infrastructure Layer (Workers): 1개 (OrderWorker 1)
 - **레거시 함수**: 11개 (삭제 예정)
-- **유효 메서드**: **121개**
+- **유효 메서드**: **122개**
 
 ---
 

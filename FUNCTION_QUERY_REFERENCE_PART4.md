@@ -43,10 +43,11 @@
 | `lib/domain/order/OrderValidator.js` | **4개** | ~30 lines/메서드 | ✅ Clean |
 | `lib/domain/product/Product.js` | **9개** | ~10 lines/메서드 | ✅ Clean |
 | `lib/domain/product/Inventory.js` | **9개** | ~12 lines/메서드 | ✅ Clean |
+| `lib/workers/orderWorker.js` | **1개** | ~129 lines/함수 | ✅ Clean |
 
-**총 메서드 개수**: **132개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 1 CreateOrderUseCase + 1 GetOrdersUseCase + 1 ApplyCouponUseCase + 1 CancelOrderUseCase)
+**총 메서드 개수**: **133개** (91 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 4 Use Cases + 1 OrderWorker)
 **레거시 함수**: 11개 (삭제 예정)
-**유효 메서드**: **121개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 4 Use Cases)
+**유효 메서드**: **122개** (80 + 10 Order Entity + 6 Calculator + 4 Validator + 9 Product Entity + 9 Inventory + 4 Use Cases + 1 OrderWorker)
 
 ---
 
@@ -70,12 +71,13 @@
 | 주문 계산 (OrderCalc) | 5개 | - | - | OrderCalculations (5) |
 | Queue | 2개 | - | QueueService (2) | - |
 | Cache | 3개 | - | CacheService (3) | - |
+| Worker (Background Jobs) | 1개 | - | OrderWorker (1) | - |
 | 동시성 제어 (Concurrency) | 2개 | RPC Functions (2) | - | - |
 | **주문 도메인 (Order Domain)** | **20개** | - | - | **Order Entity (10) + OrderCalculator (6) + OrderValidator (4)** |
 | **상품 도메인 (Product Domain)** | **18개** | - | - | **Product Entity (9) + Inventory (9)** |
 | **Application Layer** | **4개** | - | **CreateOrderUseCase (1) + GetOrdersUseCase (1) + ApplyCouponUseCase (1) + CancelOrderUseCase (1)** | - |
 
-**총 121개 메서드 → 31개 파일로 분산 예정** (26 + 5 Domain + 4 Application)
+**총 122개 메서드 → 32개 파일로 분산 예정** (26 + 5 Domain + 4 Application + 1 Worker)
 
 ---
 
@@ -648,6 +650,94 @@ console.log(reserved.quantity)   // 7  (새 객체)
 - 주문 없음: "주문을 찾을 수 없습니다"
 - 소유권 없음: "주문 취소 권한이 없습니다"
 - 취소 불가: "주문 취소 불가: {status} 상태에서는 취소할 수 없습니다"
+
+---
+
+### OrderWorker ✅ (Phase 3.5 완료 - 2025-10-21)
+
+| 항목 | 내용 |
+|------|------|
+| **파일 위치** | `lib/workers/orderWorker.js` |
+| **목적** | 주문 생성 비동기 작업 처리 (BullMQ Worker) |
+| **타입** | BullMQ Worker (Infrastructure Layer) |
+| **파일 크기** | 129줄 (Rule 1 준수 ✅, 제한: 150줄) |
+| **마이그레이션** | Phase 3.5 완료 (2025-10-21) |
+
+#### 의존성 주입 (3개)
+
+| 의존성 | 타입 | 목적 |
+|--------|------|------|
+| `OrderRepository` | Infrastructure | 주문 생성 (4개 테이블 INSERT) |
+| `ProductRepository` | Infrastructure | 재고 차감 |
+| `CouponRepository` | Infrastructure | 쿠폰 사용 처리 |
+
+#### Worker 설정
+
+| 항목 | 값 | 설명 |
+|------|-------|------|
+| **Queue 이름** | `orders` | QueueService와 동일 |
+| **Concurrency** | 5 | 동시 처리 작업 수 |
+| **Rate Limiter** | 10/sec | 초당 최대 10개 작업 |
+| **Retry 설정** | attempts: 3 | QueueService 기본 설정 상속 |
+
+#### processCreateOrder(job) 흐름 (3단계)
+
+1. **재고 차감** - ProductRepository.updateInventory()
+   - 각 order_items 순회
+   - 음수로 재고 차감 (`-item.quantity`)
+   - TODO: Phase 1.7에서 update_inventory_with_lock RPC로 교체
+
+2. **주문 생성** - OrderRepository.create()
+   - 4개 테이블 INSERT (orders, order_items, order_shipping, order_payments)
+   - customer_order_number 자동 생성
+
+3. **쿠폰 사용** - CouponRepository.useCoupon()
+   - couponData가 있는 경우만 실행
+   - RPC: use_coupon
+   - 실패 시 경고 로그 (주문은 생성됨)
+
+#### 이벤트 핸들러 (4개)
+
+| 이벤트 | 목적 |
+|--------|------|
+| `completed` | 작업 완료 로그 (orderId 출력) |
+| `failed` | 작업 실패 로그 (시도 횟수 출력) |
+| `error` | Worker 에러 로그 |
+| `stalled` | 정체 감지 로그 (처리 중단 감지) |
+
+#### Graceful Shutdown
+
+- SIGTERM / SIGINT 시그널 수신
+- `orderWorker.close()` 호출
+- 진행 중인 작업 완료 대기
+- process.exit(0)
+
+#### 에러 처리
+
+- 재고 차감 실패 시: 에러 던짐 → BullMQ 재시도
+- 주문 생성 실패 시: 에러 던짐 → BullMQ 재시도
+- 쿠폰 사용 실패 시: 경고 로그만 출력 (주문은 생성됨)
+- BullMQ 재시도: exponential backoff (1000ms, 2000ms, 4000ms)
+
+#### 재고 롤백 전략
+
+- ⚠️ **현재**: BullMQ 재시도 메커니즘에 의존
+- ⚠️ **문제**: 재고 차감 후 주문 생성 실패 시 재고 복원 안 됨
+- ✅ **해결 예정**: Phase 5에서 Saga 패턴 또는 트랜잭션 롤백 구현
+
+#### 사용처
+
+- `lib/use-cases/order/CreateOrderUseCase.js` - QueueService.addJob('orders', ...) 호출
+- Vercel Serverless Functions에서는 Worker 직접 실행 불가 → 별도 Worker 서버 필요
+
+#### Redis 연결
+
+```javascript
+const redisConnection = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+})
+```
 
 ---
 
