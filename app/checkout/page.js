@@ -19,7 +19,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { motion } from 'framer-motion'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
 import { useCheckoutInit } from '@/app/hooks/useCheckoutInit'
@@ -29,6 +28,8 @@ import ShippingForm from '@/app/components/checkout/ShippingForm'
 import CouponSelector from '@/app/components/checkout/CouponSelector'
 import PaymentMethodSelector from '@/app/components/checkout/PaymentMethodSelector'
 import PriceBreakdown from '@/app/components/checkout/PriceBreakdown'
+import DepositNameModal from '@/app/components/checkout/DepositNameModal'
+import CheckoutLoadingState from '@/app/components/checkout/CheckoutLoadingState'
 import { OrderCalculations } from '@/lib/orderCalculations'
 import { trackBeginCheckout } from '@/lib/analytics'
 
@@ -134,27 +135,7 @@ export default function CheckoutPage() {
 
   // 로딩 상태
   if ((authLoading && !userSession) || pageLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-800 font-medium text-lg mb-2">결제 준비 중</p>
-          <p className="text-gray-500 text-sm">잠시만 기다려주세요...</p>
-
-          {/* 진행 단계 표시 */}
-          <div className="mt-6 max-w-xs mx-auto">
-            <div className="flex justify-between text-xs text-gray-400 mb-2">
-              <span>인증확인</span>
-              <span>주문정보</span>
-              <span>사용자정보</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-red-500 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return <CheckoutLoadingState />
   }
 
   // 데이터 없음
@@ -227,88 +208,19 @@ export default function CheckoutPage() {
       </div>
 
       {/* 입금자명 선택 모달 */}
-      {showDepositModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg max-w-md w-full p-6"
-          >
-            <h2 className="text-lg font-semibold mb-4">입금자명 선택</h2>
-
-            <div className="space-y-3 mb-6">
-              {/* 고객 이름으로 입금 (기본값) */}
-              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                style={{ borderColor: depositOption === 'name' ? '#ef4444' : '#e5e7eb' }}>
-                <input
-                  type="radio"
-                  name="depositOption"
-                  value="name"
-                  checked={depositOption === 'name'}
-                  onChange={() => {
-                    setDepositOption('name')
-                    setDepositName(userProfile.name)
-                  }}
-                  className="w-4 h-4 text-red-500 mr-3"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">{userProfile.name}</p>
-                  <p className="text-sm text-gray-500">고객 이름으로 입금</p>
-                </div>
-              </label>
-
-              {/* 직접 입력 */}
-              <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                style={{ borderColor: depositOption === 'custom' ? '#ef4444' : '#e5e7eb' }}>
-                <input
-                  type="radio"
-                  name="depositOption"
-                  value="custom"
-                  checked={depositOption === 'custom'}
-                  onChange={() => {
-                    setDepositOption('custom')
-                    setDepositName('')
-                  }}
-                  className="w-4 h-4 text-red-500 mr-3 mt-1"
-                />
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 mb-2">직접 입력</p>
-                  {depositOption === 'custom' && (
-                    <input
-                      type="text"
-                      value={customDepositName}
-                      onChange={(e) => {
-                        setCustomDepositName(e.target.value)
-                        setDepositName(e.target.value)
-                      }}
-                      placeholder="입금자명 입력"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      autoFocus
-                    />
-                  )}
-                </div>
-              </label>
-            </div>
-
-            {/* 버튼 */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowDepositModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={confirmBankTransfer}
-                disabled={!depositName || processing}
-                className="flex-1 px-4 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {processing ? '처리 중...' : '확인'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <DepositNameModal
+        isOpen={showDepositModal}
+        userProfile={userProfile}
+        depositOption={depositOption}
+        setDepositOption={setDepositOption}
+        depositName={depositName}
+        setDepositName={setDepositName}
+        customDepositName={customDepositName}
+        setCustomDepositName={setCustomDepositName}
+        onConfirm={confirmBankTransfer}
+        onCancel={() => setShowDepositModal(false)}
+        processing={processing}
+      />
 
       {/* 카드결제 모달 */}
       {showCardModal && (
