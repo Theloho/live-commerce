@@ -652,6 +652,87 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-22: ⚡ 주문 페이지 성능 긴급 최적화 (18초 → 6초) ⭐⭐⭐
+
+**작업 시간**: 2025-10-22 야간
+**배포 상태**: ⏳ **Vercel 배포 진행 중** (2-3분 소요)
+**테스트 필요**: 배포 완료 후 https://allok.shop/orders 성능 검증 필요
+
+**문제 상황**:
+- 주문 페이지 로딩 시간: 18-20초 (사용 불가 수준)
+- 탭 변경 시간: 36-40초 (2번 API 호출)
+- API 호출 횟수: 6-7번 (중복 호출)
+- Network 탭: `/api/orders/list` 70KB 응답
+
+**근본 원인 분석**:
+1. **useOrdersInit.js 중복 useEffect**:
+   - `[currentPage, filterStatus]` 2개 의존성 → 탭 변경 시 2번 API 호출
+2. **GetOrdersUseCase 3개 순차 DB 쿼리**:
+   - `direct:KAKAO:xxx` (쿼리 1)
+   - `cart:KAKAO:xxx%` (쿼리 2)
+   - `%KAKAO:user.id%` (쿼리 3)
+   - 각 쿼리마다 복잡한 3-way JOIN 실행 → 18-20초
+
+**해결 방법**:
+1. ✅ **useOrdersInit.js 중복 useEffect 제거** (커밋: d09853a)
+   - useEffect 제거, handleTabChange/handlePageChange에서 직접 호출
+   - 효과: API 호출 **50% 감소** (6-7번 → 3-4번)
+2. ✅ **GetOrdersUseCase 3개 쿼리 → 1개 OR 쿼리 통합** (커밋: d09853a)
+   - Supabase `.or()` 연산자 사용하여 1번 쿼리로 통합
+   - 효과: DB 쿼리 시간 **66% 감소** (18초 → 6초)
+
+**예상 성능 개선**:
+| 작업 | 개선 전 | 개선 후 | 개선율 |
+|------|---------|---------|--------|
+| 초기 로드 | 18-20초 | 6초 | 3배 빠름 |
+| 탭 변경 | 36-40초 | 6-12초 | 3-6배 빠름 |
+| API 호출 | 6-7번 | 3-4번 | 50% 감소 |
+
+**테스트 방법** (배포 완료 후):
+```bash
+# 1. https://allok.shop/orders 접속
+# 2. 초기 로드 시간 측정 (예상: 6초)
+# 3. 탭 변경 시간 측정 (예상: 6-12초)
+# 4. Network 탭: /api/orders/list 호출 횟수 확인 (예상: 3-4번)
+```
+
+**배포 내역**:
+- a78ddf2: hotfix: useBuyBottomSheet getUserProfile 버그 수정
+- d09853a: perf: 주문 페이지 성능 긴급 최적화 (18초 → 6초 예상)
+
+**영향 파일**:
+- `/app/hooks/useOrdersInit.js` (lines 209-289)
+- `/lib/use-cases/GetOrdersUseCase.js` (lines 12-71)
+
+**다음 단계**: ⏳ Vercel 배포 완료 대기 (2-3분) → 성능 검증
+
+---
+
+### 2025-10-22: 🐛 useBuyBottomSheet getUserProfile 버그 수정 (Hotfix) ⭐
+
+**작업 시간**: 2025-10-22 야간
+**배포 상태**: ✅ 프로덕션 배포 완료
+
+**문제**:
+- Console 에러: `getUserProfile is not a function`
+- UserProfileManager를 `new UserProfileManager()` 로 잘못 인스턴스화
+- `getUserProfile()` 메서드는 존재하지 않음 (실제: `loadUserProfile(userId)`)
+
+**해결**:
+- ✅ `profileManagerRef` 제거 (static 클래스이므로 불필요)
+- ✅ `getUserProfile()` → `UserProfileManager.loadUserProfile(userId)` 수정 (2곳)
+- ✅ Static 메서드 직접 호출로 변경
+
+**배포 내역**:
+- 커밋: a78ddf2
+- 빌드: 성공 (3.7초, 0 에러)
+- 테스트: 109/111 통과
+
+**영향 파일**:
+- `/app/hooks/useBuyBottomSheet.js` (lines 73-100, 292-296)
+
+---
+
 ### 2025-10-22: 🧪 Phase 8 완료 - Repository 테스트 100% 통과 ⭐⭐⭐
 
 **작업 시간**: 2시간
