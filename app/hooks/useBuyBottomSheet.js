@@ -342,6 +342,8 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
           return
         }
 
+        // ✅ 성능 최적화: thumbnail_url 제거 (3.6MB → 1KB)
+        // - CreateOrderUseCase가 DB에서 자동으로 조회
         cartItems = selectedCombinations.map(combo => ({
           product_id: product.id,
           product_number: product.product_number,
@@ -349,7 +351,7 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
           price: combo.price,
           quantity: combo.quantity,
           totalPrice: combo.price * combo.quantity,
-          thumbnail_url: image,
+          // thumbnail_url: image,  // ← 제거 (3.6MB base64 이미지)
           selectedOptions: combo.options,
           variant_id: combo.variantId
         }))
@@ -361,6 +363,8 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
           return
         }
 
+        // ✅ 성능 최적화: thumbnail_url 제거 (3.6MB → 1KB)
+        // - CreateOrderUseCase가 DB에서 자동으로 조회
         cartItems = [{
           product_id: product.id,
           product_number: product.product_number,
@@ -368,7 +372,7 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
           price: price,
           quantity: quantity,
           totalPrice: price * quantity,
-          thumbnail_url: image,
+          // thumbnail_url: image,  // ← 제거 (3.6MB base64 이미지)
           selectedOptions: {},
           variant_id: null
         }]
