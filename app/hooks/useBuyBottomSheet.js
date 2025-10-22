@@ -379,12 +379,19 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         // ⚠️ TODO: InventoryUseCase.check(item)로 전환
         const inventoryCheck = await checkOptionInventory(
           product.id,
-          item.selectedOptions,
-          item.quantity
+          item.selectedOptions
         )
 
-        if (!inventoryCheck.success) {
-          toast.error(inventoryCheck.message || '재고가 부족합니다')
+        // ✅ checkOptionInventory는 { available, inventory } 반환
+        if (!inventoryCheck.available) {
+          toast.error('선택하신 옵션의 재고가 없습니다')
+          setIsLoading(false)
+          return
+        }
+
+        // ✅ 수량 검증 추가
+        if (inventoryCheck.inventory < item.quantity) {
+          toast.error(`재고가 부족합니다 (재고: ${inventoryCheck.inventory}개, 요청: ${item.quantity}개)`)
           setIsLoading(false)
           return
         }
