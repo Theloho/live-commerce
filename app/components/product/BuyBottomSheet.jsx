@@ -200,7 +200,12 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
         <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4">
           <Button
             onClick={handleBuyNow}
-            disabled={stock === 0 || isLoading || totalQuantity === 0}
+            disabled={
+              isLoading ||
+              totalQuantity === 0 ||
+              (options.length === 0 && stock === 0) ||
+              (options.length > 0 && selectedCombinations.length === 0)
+            }
             fullWidth
           >
             {isLoading
