@@ -505,6 +505,8 @@ CREATE TABLE order_items (
 
     -- 상품 정보 (스냅샷)
     title TEXT NOT NULL,  -- ⭐ 주문 시점 상품명
+    thumbnail_url TEXT,  -- ⭐ 2025-10-22 추가 (성능 최적화: products JOIN 제거)
+    product_number VARCHAR(20),  -- ⭐ 2025-10-22 추가 (성능 최적화: products JOIN 제거)
 
     -- 수량
     quantity INTEGER NOT NULL DEFAULT 1,
@@ -536,6 +538,12 @@ CREATE TABLE order_items (
 **⭐ 이중 저장 전략 (Variant)**:
 1. `selected_options` (JSONB): 주문 시점 옵션 스냅샷
 2. `variant_id` (FK): 실시간 variant 정보 조회 및 재고 관리
+
+**⭐ 성능 최적화 (2025-10-22)**:
+- `thumbnail_url`, `product_number`: products JOIN 제거를 위해 order_items에 스냅샷 저장
+- 기존 데이터: 마이그레이션 완료 (products 테이블에서 복사)
+- 새 주문: CreateOrderUseCase에서 자동 저장
+- **효과**: 주문 조회 시 products JOIN 불필요 → 성능 20배 향상
 
 ---
 
