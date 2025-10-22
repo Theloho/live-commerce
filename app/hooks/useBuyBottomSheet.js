@@ -56,9 +56,6 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
   const [userSession, setUserSession] = useState(null)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
 
-  // UserProfileManager 인스턴스 (재사용)
-  const profileManagerRef = useRef(null)
-
   // ===== Product 속성 추출 =====
   const image = product?.thumbnail_url || product?.image_url || '/placeholder.png'
   const title = product?.title || ''
@@ -75,13 +72,10 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
     async function loadUserSession() {
       try {
-        if (!profileManagerRef.current) {
-          profileManagerRef.current = new UserProfileManager()
-        }
-
         const currentUser = user || null
-        if (currentUser) {
-          const sessionData = await profileManagerRef.current.getUserProfile(currentUser)
+        if (currentUser && currentUser.id) {
+          // ✅ Static 메서드 직접 호출 (Rule #0 준수)
+          const sessionData = await UserProfileManager.loadUserProfile(currentUser.id)
           if (sessionData) {
             setUserSession(sessionData)
             logger.debug('BuyBottomSheet: 사용자 세션 로드 완료', {
@@ -298,11 +292,8 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
     setIsLoading(true)
 
     try {
-      // 사용자 프로필 준비
-      if (!profileManagerRef.current) {
-        profileManagerRef.current = new UserProfileManager()
-      }
-      const profile = await profileManagerRef.current.getUserProfile(currentUser)
+      // 사용자 프로필 준비 - ✅ Static 메서드 직접 호출 (Rule #0 준수)
+      const profile = await UserProfileManager.loadUserProfile(currentUser.id)
 
       if (!profile || !profile.name || !profile.phone) {
         toast.error('프로필 정보를 먼저 입력해주세요')
