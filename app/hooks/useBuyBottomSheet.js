@@ -399,22 +399,13 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
       // 주문 생성 (장바구니 대신 pending 주문 생성)
       for (const item of cartItems) {
+        // ✅ CreateOrderUseCase는 orderData가 직접 상품 정보를 가져야 함
         const orderData = {
-          user_id: currentUser.id || null,
-          order_type: currentUser.kakao_id
-            ? `direct:KAKAO:${currentUser.kakao_id}`
-            : currentUser.kakaoId
-            ? `direct:KAKAO:${currentUser.kakaoId}`
-            : 'direct',
-          status: 'pending',
-          items: [item],
-          shipping: {
-            name: profile.name,
-            phone: profile.phone,
-            address: profile.address || '',
-            postal_code: profile.postal_code || '',
-            delivery_memo: ''
-          }
+          // 상품 정보 (item의 모든 필드)
+          id: item.product_id,  // ✅ CreateOrderUseCase는 'id' 사용
+          ...item,
+          // 주문 타입 (CreateOrderUseCase가 order_type 자동 생성에 사용)
+          orderType: 'direct'
         }
 
         // ⚠️ TODO: CreateOrderUseCase.execute(orderData)로 전환
