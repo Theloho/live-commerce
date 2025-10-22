@@ -161,22 +161,11 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
       }
     }
 
-    // 포커스 이벤트 리스너
-    const setupFocusRefresh = () => {
-      const handleFocus = () => {
-        if (!pageLoading && (userSession || isAuthenticated)) {
-          loadOrdersDataFast(userSession || user).catch(err => logger.warn('주문 새로고침 실패:', err))
-        }
-      }
-
-      window.addEventListener('focus', handleFocus)
-      return () => window.removeEventListener('focus', handleFocus)
-    }
-
-    const cleanup = setupFocusRefresh()
+    // ✅ window focus 이벤트 제거 - 불필요한 재호출 방지
     initOrdersPageFast()
 
-    return cleanup
+    // cleanup 함수 제거 (더 이상 이벤트 리스너 없음)
+    return () => {}
   }, [isAuthenticated, user, authLoading, router, searchParams])
 
   // ⚡ 주문 새로고침 함수
@@ -211,79 +200,79 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
 
   // 탭 변경 핸들러
   const handleTabChange = async (newStatus) => {
+    // ✅ 중복 호출 방지
+    if (pageLoading) return
+
     // ✅ 상태를 먼저 일괄 업데이트 (React 18 automatic batching)
     setFilterStatus(newStatus)
     setCurrentPage(1)
     router.replace(`/orders?tab=${newStatus}`, { scroll: false })
 
-    // ✅ 상태 업데이트 후 한 번만 API 호출
-    if (!pageLoading && (userSession || isAuthenticated)) {
-      // 다음 tick에서 실행하여 상태 업데이트 완료 보장
-      setTimeout(async () => {
-        try {
-          setPageLoading(true)
-          const currentUser = userSession || user
+    // ✅ setTimeout 제거 - React 18 automatic batching이 이미 처리
+    if (userSession || isAuthenticated) {
+      try {
+        setPageLoading(true)
+        const currentUser = userSession || user
 
-          if (!currentUser || !currentUser.id) {
-            toast.error('사용자 정보를 찾을 수 없습니다')
-            setPageLoading(false)
-            return
-          }
-
-          const result = await getOrders(currentUser.id, {
-            page: 1, // 항상 1페이지로
-            pageSize: 10,
-            status: newStatus
-          })
-
-          setOrders(result.orders || [])
-          setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
-          setStatusCounts(result.statusCounts || {})
-        } catch (error) {
-          logger.warn('주문 로드 실패:', error)
-          toast.error('주문 내역을 불러오는데 실패했습니다')
-        } finally {
+        if (!currentUser || !currentUser.id) {
+          toast.error('사용자 정보를 찾을 수 없습니다')
           setPageLoading(false)
+          return
         }
-      }, 0)
+
+        const result = await getOrders(currentUser.id, {
+          page: 1, // 항상 1페이지로
+          pageSize: 10,
+          status: newStatus
+        })
+
+        setOrders(result.orders || [])
+        setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
+        setStatusCounts(result.statusCounts || {})
+      } catch (error) {
+        logger.warn('주문 로드 실패:', error)
+        toast.error('주문 내역을 불러오는데 실패했습니다')
+      } finally {
+        setPageLoading(false)
+      }
     }
   }
 
   // 페이지 변경 핸들러
   const handlePageChange = async (newPage) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      setCurrentPage(newPage)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+    // ✅ 중복 호출 방지
+    if (pageLoading) return
+    if (newPage < 1 || newPage > pagination.totalPages) return
 
-      // ✅ 페이지 변경 시에도 한 번만 API 호출
-      if (!pageLoading && (userSession || isAuthenticated)) {
-        setTimeout(async () => {
-          try {
-            setPageLoading(true)
-            const currentUser = userSession || user
+    setCurrentPage(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
 
-            if (!currentUser || !currentUser.id) {
-              toast.error('사용자 정보를 찾을 수 없습니다')
-              setPageLoading(false)
-              return
-            }
+    // ✅ setTimeout 제거 - React 18 automatic batching이 이미 처리
+    if (userSession || isAuthenticated) {
+      try {
+        setPageLoading(true)
+        const currentUser = userSession || user
 
-            const result = await getOrders(currentUser.id, {
-              page: newPage,
-              pageSize: 10,
-              status: filterStatus
-            })
+        if (!currentUser || !currentUser.id) {
+          toast.error('사용자 정보를 찾을 수 없습니다')
+          setPageLoading(false)
+          return
+        }
 
-            setOrders(result.orders || [])
-            setPagination(result.pagination || { currentPage: newPage, totalPages: 0, totalCount: 0, pageSize: 10 })
-            setStatusCounts(result.statusCounts || {})
-          } catch (error) {
-            logger.warn('주문 로드 실패:', error)
-            toast.error('주문 내역을 불러오는데 실패했습니다')
-          } finally {
-            setPageLoading(false)
-          }
-        }, 0)
+        const result = await getOrders(currentUser.id, {
+          page: newPage,
+          pageSize: 10,
+          status: filterStatus
+        })
+
+        setOrders(result.orders || [])
+        setPagination(result.pagination || { currentPage: newPage, totalPages: 0, totalCount: 0, pageSize: 10 })
+        setStatusCounts(result.statusCounts || {})
+      } catch (error) {
+        logger.warn('주문 로드 실패:', error)
+        toast.error('주문 내역을 불러오는데 실패했습니다')
+      } finally {
+        setPageLoading(false)
       }
     }
   }
