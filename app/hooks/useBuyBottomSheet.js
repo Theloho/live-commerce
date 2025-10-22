@@ -418,10 +418,11 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         }
 
         // ⚠️ TODO: CreateOrderUseCase.execute(orderData)로 전환
-        const result = await createOrderWithOptions(orderData)
+        const result = await createOrderWithOptions(orderData, profile, profile.name)
 
-        if (!result.success) {
-          throw new Error(result.message || '주문 생성 실패')
+        // ✅ createOrderWithOptions는 성공 시 order 객체 반환, 실패 시 throw Error
+        if (!result) {
+          throw new Error('주문 생성 실패')
         }
       }
 
