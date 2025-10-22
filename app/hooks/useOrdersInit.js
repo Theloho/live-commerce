@@ -43,6 +43,8 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
 
   // 초기화 완료 플래그
   const hasInitialized = useRef(false)
+  // 로딩 중복 방지 플래그 (race condition 방지)
+  const isLoadingRef = useRef(false)
 
   // 🚀 통합된 고성능 초기화
   useEffect(() => {
@@ -52,6 +54,13 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
     }
 
     const initOrdersPageFast = async () => {
+      // 중복 호출 방지 (race condition 방지)
+      if (isLoadingRef.current) {
+        logger.info('⚠️ 이미 로딩 중 - 중복 호출 차단')
+        return
+      }
+
+      isLoadingRef.current = true
       setPageLoading(true)
 
       try {
@@ -78,6 +87,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         setOrders([])
       } finally {
         hasInitialized.current = true
+        isLoadingRef.current = false
         setPageLoading(false)
       }
     }
@@ -166,7 +176,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
 
     // cleanup 함수 제거 (더 이상 이벤트 리스너 없음)
     return () => {}
-  }, [isAuthenticated, user, authLoading, router, searchParams])
+  }, [isAuthenticated, user?.id, authLoading, router, searchParams])
 
   // ⚡ 주문 새로고침 함수
   const refreshOrders = async () => {
@@ -200,8 +210,8 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
 
   // 탭 변경 핸들러
   const handleTabChange = async (newStatus) => {
-    // ✅ 중복 호출 방지
-    if (pageLoading) return
+    // ✅ 중복 호출 방지 (race condition 방지)
+    if (pageLoading || isLoadingRef.current) return
 
     // ✅ 상태를 먼저 일괄 업데이트 (React 18 automatic batching)
     setFilterStatus(newStatus)
@@ -211,6 +221,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
     // ✅ setTimeout 제거 - React 18 automatic batching이 이미 처리
     if (userSession || isAuthenticated) {
       try {
+        isLoadingRef.current = true
         setPageLoading(true)
         const currentUser = userSession || user
 
@@ -233,6 +244,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         logger.warn('주문 로드 실패:', error)
         toast.error('주문 내역을 불러오는데 실패했습니다')
       } finally {
+        isLoadingRef.current = false
         setPageLoading(false)
       }
     }
@@ -240,8 +252,8 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
 
   // 페이지 변경 핸들러
   const handlePageChange = async (newPage) => {
-    // ✅ 중복 호출 방지
-    if (pageLoading) return
+    // ✅ 중복 호출 방지 (race condition 방지)
+    if (pageLoading || isLoadingRef.current) return
     if (newPage < 1 || newPage > pagination.totalPages) return
 
     setCurrentPage(newPage)
@@ -250,11 +262,13 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
     // ✅ setTimeout 제거 - React 18 automatic batching이 이미 처리
     if (userSession || isAuthenticated) {
       try {
+        isLoadingRef.current = true
         setPageLoading(true)
         const currentUser = userSession || user
 
         if (!currentUser || !currentUser.id) {
           toast.error('사용자 정보를 찾을 수 없습니다')
+          isLoadingRef.current = false
           setPageLoading(false)
           return
         }
@@ -272,6 +286,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         logger.warn('주문 로드 실패:', error)
         toast.error('주문 내역을 불러오는데 실패했습니다')
       } finally {
+        isLoadingRef.current = false
         setPageLoading(false)
       }
     }
