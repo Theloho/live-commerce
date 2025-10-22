@@ -177,8 +177,8 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
               </motion.div>
             )}
 
-            {/* Stock Warning */}
-            {stock < 10 && stock > 0 && (
+            {/* Stock Warning - 옵션 없는 상품만 또는 옵션 선택 완료 시 */}
+            {stock < 10 && stock > 0 && (options.length === 0 || Object.keys(selectedOptions).length === options.length) && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
                 <p className="text-yellow-700 text-sm font-medium">
                   ⚠️ 품절 임박! 남은 수량: {stock}개
@@ -186,8 +186,8 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
               </div>
             )}
 
-            {/* Out of Stock */}
-            {stock === 0 && (
+            {/* Out of Stock - 옵션 없는 상품만 또는 옵션 선택 완료 시 */}
+            {stock === 0 && (options.length === 0 || Object.keys(selectedOptions).length === options.length) && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
                 <p className="text-red-700 font-medium">일시 품절</p>
                 <p className="text-red-600 text-sm">재입고 알림을 설정하세요</p>

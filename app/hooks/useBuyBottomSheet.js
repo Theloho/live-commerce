@@ -149,11 +149,10 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
             setOptions(optionsArray)
           }
 
-          // 전체 재고 합계
-          const totalStock = processedVariants.reduce((sum, v) => sum + (v.inventory || 0), 0)
-          setStock(totalStock)
+          // ✅ 옵션 상품: 초기 stock은 0 (옵션 선택 후 업데이트)
+          setStock(0)
         } else {
-          // 옵션 없는 상품
+          // 옵션 없는 상품: 기본 재고 설정
           setOptions([])
           setVariants([])
           setStock(product.inventory || product.stock_quantity || 0)
@@ -211,6 +210,35 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
       }, 500)
     }
   }, [selectedOptions, options, selectedCombinations, variants, stock, price])
+
+  // ===== useEffect 4: 선택된 Variant의 재고 업데이트 =====
+  useEffect(() => {
+    if (options.length === 0 || !variants || variants.length === 0) return
+
+    // 모든 옵션이 선택되었는지 확인
+    const allOptionsSelected = options.every(opt => selectedOptions[opt.name])
+
+    if (allOptionsSelected) {
+      // 선택된 Variant 찾기
+      const variant = variants.find(v => {
+        if (!v.options || v.options.length !== options.length) return false
+        return Object.entries(selectedOptions).every(([optName, optValue]) => {
+          return v.options.some(opt => opt.optionName === optName && opt.optionValue === optValue)
+        })
+      })
+
+      if (variant) {
+        // ✅ 선택된 Variant의 재고로 업데이트
+        setStock(variant.inventory || 0)
+      } else {
+        // Variant를 찾지 못한 경우 0
+        setStock(0)
+      }
+    } else {
+      // 옵션 미선택 시 0 (재고 표시하지 않음)
+      setStock(0)
+    }
+  }, [selectedOptions, options, variants])
 
   // ===== 합계 계산 useEffect =====
   useEffect(() => {
