@@ -18,7 +18,7 @@ import { describe, test, expect, beforeAll, afterAll } from '@jest/globals'
 import ProductRepository from '@/lib/repositories/ProductRepository'
 
 // 테스트 데이터
-const testProductNumber = 'TEST-' + Date.now()
+const testProductNumber = 'TEST-' + (Date.now() % 1000000)
 let createdProductId = null
 
 describe('ProductRepository 단위 테스트', () => {
@@ -77,7 +77,7 @@ describe('ProductRepository 단위 테스트', () => {
 
     test('존재하지 않는 상품 ID로 조회 시 에러를 던진다', async () => {
       await expect(
-        ProductRepository.findById('non-existent-id-12345')
+        ProductRepository.findById(crypto.randomUUID())
       ).rejects.toThrow()
     })
   })
@@ -203,7 +203,7 @@ describe('ProductRepository 단위 테스트', () => {
 
     test('존재하지 않는 상품의 재고 조회 시 에러를 던진다', async () => {
       await expect(
-        ProductRepository.checkInventory('non-existent-id-12345')
+        ProductRepository.checkInventory(crypto.randomUUID())
       ).rejects.toThrow()
     })
   })
@@ -215,7 +215,7 @@ describe('ProductRepository 단위 테스트', () => {
     test('상품을 삭제할 수 있다', async () => {
       // 삭제용 상품 생성
       const deleteProduct = await ProductRepository.create({
-        product_number: 'DELETE-TEST-' + Date.now(),
+        product_number: 'DEL-' + (Date.now() % 1000000),
         title: '삭제 테스트 상품',
         price: 10000,
         inventory: 50,
@@ -230,7 +230,7 @@ describe('ProductRepository 단위 테스트', () => {
     test('이미 삭제된 상품은 조회되지 않는다', async () => {
       // 삭제 테스트용 상품 생성 및 삭제
       const tempProduct = await ProductRepository.create({
-        product_number: 'TEMP-' + Date.now(),
+        product_number: 'TEMP-' + (Date.now() % 1000000),
         title: '임시 상품',
         price: 5000,
         inventory: 10,
@@ -253,7 +253,7 @@ describe('ProductRepository 단위 테스트', () => {
     test('주문 시나리오: 재고 차감 → 주문 취소 → 재고 복원', async () => {
       // 1. 테스트 상품 생성
       const product = await ProductRepository.create({
-        product_number: 'SCENARIO-' + Date.now(),
+        product_number: 'SCN-' + (Date.now() % 1000000),
         title: '시나리오 테스트 상품',
         price: 30000,
         inventory: 50,
@@ -274,7 +274,7 @@ describe('ProductRepository 단위 테스트', () => {
     test('재고 부족 상황 처리', async () => {
       // 1. 재고 1개만 있는 상품 생성
       const lowStockProduct = await ProductRepository.create({
-        product_number: 'LOW-STOCK-' + Date.now(),
+        product_number: 'LOW-' + (Date.now() % 1000000),
         title: '재고 부족 테스트 상품',
         price: 20000,
         inventory: 1,
