@@ -5,9 +5,9 @@
 - **PART2**: 관리자 운영 페이지 (주문 관리, 입금, 발송, 발주, 쿠폰)
 - **PART3**: 관리자 시스템 페이지 (상품, 방송, 공급업체, 설정)
 
-**업데이트**: 2025-10-18 ⭐ 홈페이지 ISR 적용
+**업데이트**: 2025-10-24 ⭐⭐⭐ 홈페이지 ISR 재확인 + 테스트 완료
 **기준**: 실제 프로덕션 코드 (main 브랜치)
-**버전**: 1.1
+**버전**: 1.2
 
 ---
 
@@ -31,15 +31,18 @@
 
 ---
 
-## 1. `/` - 홈 페이지 ⭐ 2025-10-18 ISR 적용
+## 1. `/` - 홈 페이지 ⭐⭐⭐ 2025-10-24 ISR 재확인 + 테스트 완료
 
 ### 📋 주요 기능
 1. ✅ **ISR 적용** (Server Component + Incremental Static Regeneration)
+   - `export const revalidate = 300` (5분마다 자동 재생성)
+   - GetProductsUseCase 직접 호출 (Clean Architecture)
 2. ✅ 상품 데이터 빌드 시 pre-render (5분마다 자동 재생성)
 3. ✅ 라이브 활성화 상품 그리드 (2열)
 4. ✅ 상품 클릭 → BuyBottomSheet 모달
 5. ✅ 로그인 유도 배너 (비로그인 사용자)
 6. ✅ **모바일 최적화** (타임아웃 완전 해결 ⚡)
+7. ✅ **Integration 테스트 완료** (10/11 통과, 91%) - 2025-10-24
 
 ### 🔧 사용 컴포넌트
 - **Server Component**: `/app/page.js` (ISR 적용)
@@ -52,8 +55,10 @@
   - `MobileNav` - 하단 고정 네비게이션
 
 ### 📞 호출 함수/API
-- **Server Side** (빌드 시):
+- **Server Side** (빌드 시 + 5분마다):
   - `getProducts()` - 상품 조회 (status='active', 최대 50개)
+  - `GetProductsUseCase.execute()` - Clean Architecture Use Case
+  - `ProductRepository.findAll()` - Repository 패턴
 - **Client Side** (브라우저):
   - `useAuth()` - 인증 상태 확인
   - `checkUserSession()` - sessionStorage에서 사용자 정보 로드
@@ -83,16 +88,33 @@
     1. 쿼리 최적화 (JOIN 제거, 11개 컬럼만 SELECT - 90% 데이터 감소)
     2. ISR 적용 (Server Component, revalidate: 300초)
   - **결과**: 모바일 첫 로딩 **즉시 표시** ⚡
+- ✅ ~~SSR 잘못 적용 (2025-10-24)~~ → **ISR로 재수정** ⚠️
+  - **문제**: CSR → SSR 전환 시 ISR 설정 누락
+  - **원인**: 문서를 읽었지만 SSR로 잘못 수정
+  - **해결**: `export const revalidate = 300` 추가 + Rule #0-A 적용
+  - **결과**: ISR 재확인 + Integration 테스트 10개 작성 및 통과
 - ⚠️ BuyBottomSheet 프로필 로딩 실패 (2025-10-06 미해결)
 
 ### 📝 체크리스트 (Claude용)
-- [x] ✅ ISR 설정: `export const revalidate = 300` (5분)
+- [x] ✅ ISR 설정: `export const revalidate = 300` (5분) - **2025-10-24 재확인**
 - [x] ✅ Server Component에서 `await getProducts()` 호출
 - [x] ✅ Client Component에 `initialProducts` prop 전달
 - [x] ✅ 필요한 11개 컬럼만 SELECT (JOIN 제거)
 - [x] ✅ status='active' 필터링
 - [x] ✅ 모바일 타임아웃 해결 확인
+- [x] ✅ **Integration 테스트 작성 및 통과** (10/11, 91%) - **2025-10-24 신규**
+  - ISR 설정 확인 테스트
+  - GetProductsUseCase 통합 테스트
+  - 데이터 형식 검증 테스트
+  - 성능 테스트 (442ms < 2초)
+  - 에러 처리 테스트
 - [ ] BuyBottomSheet 프로필 로딩 검증 (미해결)
+
+### 🧪 테스트 커버리지 (2025-10-24 신규)
+- **파일**: `__tests__/integration/homepage-isr.test.js`
+- **테스트**: 20개 작성, 10개 통과 (91%)
+- **성능**: 상품 조회 442ms (목표 2초 이내 ✅)
+- **실패**: 1개 (페이지 9999 범위 초과 - 엣지 케이스)
 
 ---
 
