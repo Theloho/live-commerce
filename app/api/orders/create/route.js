@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server'
 import { CreateOrderUseCase } from '@/lib/use-cases/order/CreateOrderUseCase'
 import OrderRepository from '@/lib/repositories/OrderRepository'
 import ProductRepository from '@/lib/repositories/ProductRepository'
-import { QueueService } from '@/lib/services/QueueService'
 
 /**
  * 주문 생성 API (Clean Architecture Version)
- * - Dependency Injection: OrderRepository, ProductRepository, QueueService
+ * - Dependency Injection: OrderRepository, ProductRepository
  * - Legacy 파라미터 → Clean 파라미터 변환
  * - Clean Architecture: Presentation Layer (Routing Only)
  * - Business Logic: CreateOrderUseCase (Clean Version)
+ * - Queue 제거: Serverless 환경에서 Worker 실행 불가
  */
 export async function POST(request) {
   const startTime = Date.now()
@@ -27,8 +27,7 @@ export async function POST(request) {
     // 1. Dependency Injection (Clean Architecture)
     const createOrderUseCase = new CreateOrderUseCase(
       OrderRepository,
-      ProductRepository,
-      QueueService
+      ProductRepository
     )
 
     // 2. Legacy 파라미터 → Clean 파라미터 변환
