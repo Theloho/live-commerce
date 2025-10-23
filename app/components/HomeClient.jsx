@@ -117,7 +117,7 @@ export default function HomeClient({ initialProducts }) {
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
               <p className="text-gray-800">
                 <span className="font-semibold text-green-600">
-                  {userSession?.user_metadata?.name || userSession?.name || '사용자'}
+                  {userSession?.name || userSession?.user_metadata?.name || '사용자'}
                 </span>님 환영합니다! 🎉
               </p>
             </div>

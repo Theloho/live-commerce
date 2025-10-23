@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import useAuthStore from '@/app/stores/authStore' // ⚡ Zustand store 사용
 import toast from 'react-hot-toast'
+import { UserProfileManager } from '@/lib/UserProfileManager' // ⚡ 프로필 관리 모듈
 
 // 전역 구독 관리 (싱글톤 패턴)
 let globalSubscription = null
@@ -75,7 +76,7 @@ export default function useAuth() {
     subscriberCount++
 
     // 커스텀 이벤트 리스너
-    const handleAuthStateChanged = (event) => {
+    const handleAuthStateChanged = async (event) => {
       const { user: newUser, event: authEvent } = event.detail
       if (authEvent === 'INITIAL_SESSION' || authEvent === 'SIGNED_IN' || authEvent === 'TOKEN_REFRESHED') {
         setUser(newUser)
@@ -83,7 +84,30 @@ export default function useAuth() {
         // ⚡ sessionStorage 업데이트 (HomeClient 등에서 사용)
         if (newUser && typeof window !== 'undefined') {
           try {
-            sessionStorage.setItem('user', JSON.stringify(newUser))
+            // ⚡ profiles 테이블에서 최신 정보 조회 (마이페이지에서 수정한 이름 반영)
+            let updatedUser = { ...newUser }
+
+            try {
+              const dbProfile = await UserProfileManager.loadUserProfile(newUser.id)
+              if (dbProfile) {
+                // profiles 데이터를 user 객체에 병합
+                updatedUser = {
+                  ...newUser,
+                  name: dbProfile.name || newUser.user_metadata?.name || newUser.name,
+                  phone: dbProfile.phone || newUser.user_metadata?.phone || newUser.phone,
+                  nickname: dbProfile.nickname || newUser.user_metadata?.nickname || newUser.name,
+                  address: dbProfile.address || '',
+                  detail_address: dbProfile.detail_address || '',
+                  addresses: dbProfile.addresses || [],
+                  postal_code: dbProfile.postal_code || ''
+                }
+              }
+            } catch (profileError) {
+              // profiles 조회 실패 시 원본 user 사용
+              console.warn('프로필 조회 실패, 기본 정보 사용:', profileError)
+            }
+
+            sessionStorage.setItem('user', JSON.stringify(updatedUser))
           } catch (error) {
             console.warn('sessionStorage 저장 실패:', error)
           }
