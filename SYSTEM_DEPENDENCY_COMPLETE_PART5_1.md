@@ -1762,6 +1762,118 @@ static applyPointDiscount(subtotal, points, availablePoints) {
 - `create()` 메서드는 4개 테이블 INSERT (orders, order_items, order_payments, order_shipping)
 - 현재는 순차 처리, Phase 3에서 트랜잭션으로 개선 예정
 
+### 🐛 실제 버그 사례 (Rule #0-A Stage 5 기록)
+
+#### 버그 #1: create() 파라미터 구조 불일치 (2025-10-23) ⭐
+
+**증상**:
+```
+POST /api/orders/create 500 (Internal Server Error)
+Error: Could not find the 'orderData' column of 'orders' in the schema cache
+```
+
+**발생 위치**:
+- CreateOrderUseCase.execute() Line 89
+- 장바구니 추가 / 구매하기 버튼 클릭 시
+
+**근본 원인**:
+- OrderRepository.create()가 `{ orderData, orderItems, payment, shipping }` 구조의 객체를 받음
+- 하지만 내부에서 전체 객체를 orders 테이블에 INSERT 시도
+- orders 테이블에는 orderData, orderItems 등의 컬럼이 없음
+
+**해결 방법**:
+1. create() 메서드를 4개 테이블 INSERT로 완전 재작성
+2. 각 테이블에 정확한 필드만 전달:
+   - orders 테이블: orderData 내부 필드들
+   - order_items 테이블: orderItems 배열 (order_id 추가)
+   - order_shipping 테이블: shipping 객체 (order_id 추가)
+   - order_payments 테이블: payment 객체 (order_id 추가)
+
+**커밋**: `76df3a5`
+
+**교훈**:
+- Repository는 DB 스키마에 정확히 맞춰야 함
+- 4개 테이블 INSERT를 순차적으로 처리
+- Phase 3에서 트랜잭션으로 개선 필요
+
+---
+
+#### 버그 #2: recipient_name 컬럼 불일치 (2025-10-23) ⭐
+
+**증상**:
+```
+POST /api/orders/create 500 (Internal Server Error)
+Error: Could not find the 'recipient_name' column of 'order_shipping'
+```
+
+**발생 위치**:
+- CreateOrderUseCase.execute() Line 111
+- OrderRepository.create() → order_shipping INSERT
+
+**근본 원인**:
+- DB 스키마 (DB_REFERENCE_GUIDE.md): `order_shipping.name` ✅
+- 코드 사용: `recipient_name` ❌
+- Legacy 코드 제거 후 DB 스키마와 불일치
+
+**영향 범위**:
+- CreateOrderUseCase.js Line 111
+- GetOrdersUseCase.js Line 156
+- /app/orders/[id]/complete/page.js Line 127
+
+**해결 방법** (Rule #0-A 5단계 프로세스):
+- Stage 1: DB Bug 타입 분류
+- Stage 2: DB_REFERENCE_GUIDE.md 확인 → `name` 컬럼 확인
+- Stage 3: 소스코드 확인 → 3개 파일에서 `recipient_name` 사용 발견
+- Stage 4: 영향도 분석 → CreateOrderUseCase, GetOrdersUseCase, complete/page.js
+- Stage 5: 모든 파일 수정 + 테스트
+
+**커밋**: `8729ed9`
+
+**교훈**:
+- DB 스키마가 source of truth
+- Legacy 코드 제거 후 DB 스키마 재확인 필수
+- Rule #0-A 워크플로우 적용으로 영향받는 모든 곳 한 번에 수정
+
+---
+
+#### 버그 #3: payment_method 컬럼 불일치 (2025-10-23) ⭐⭐
+
+**증상**:
+```
+POST /api/orders/create 500 (Internal Server Error)
+Error: Could not find the 'payment_method' column of 'order_payments'
+```
+
+**발생 위치**:
+- CreateOrderUseCase.execute() Line 118
+- OrderRepository.create() → order_payments INSERT
+
+**근본 원인**:
+- DB 스키마 (DB_REFERENCE_GUIDE.md): `order_payments.method` ✅
+- 코드 사용: `payment_method` ❌
+- 동일한 패턴 반복 (recipient_name 버그와 동일)
+
+**사용자 피드백**:
+> "동일한 에러를 몇번을 수정하는건지... Rule #0-A 확인후 시작하는데 이제 우리는 레거시부분을 다 제거했으니 그부분을 잘인지해서 작업하도록"
+
+**개선된 해결 방법** (체계적 접근):
+1. 단일 버그만 수정하는 대신 **전체 DB 스키마 검증** 수행
+2. 3개 테이블 모두 확인:
+   - order_items: 9개 필드 ✅ 일치
+   - order_shipping: 8개 필드 ✅ 일치 (recipient_name 이미 수정됨)
+   - order_payments: 3개 필드 ❌ `payment_method` → `method` 수정 필요
+3. 영향받는 파일 한 번에 수정:
+   - CreateOrderUseCase.js Line 118
+   - GetOrdersUseCase.js Line 173
+
+**커밋**: `6c6d6e2`
+
+**교훈**:
+- 동일한 패턴의 버그가 반복되면 **근본 원인을 찾아 체계적으로 해결**
+- 하나씩 수정하지 말고 **전체 DB 스키마 대조 후 한 번에 수정**
+- Legacy 코드 제거 후 모든 DB 컬럼명 재확인 필수
+- DB_REFERENCE_GUIDE.md를 source of truth로 사용
+
 ### 📚 크로스 레퍼런스
 
 - **Part 1 Section 7**: OrderRepository 정의 및 사용처
