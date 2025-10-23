@@ -69,17 +69,6 @@ export default function HomeClient({ initialProducts }) {
     }
   }, [])
 
-  if (sessionLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">세션 확인 중...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 pb-24 max-w-md mx-auto relative">
       {/* 헤더 */}
@@ -87,6 +76,16 @@ export default function HomeClient({ initialProducts }) {
 
       {/* 메인 콘텐츠 */}
       <main className="px-4 pt-4">
+        {/* 세션 로딩 중 작은 메시지 */}
+        {sessionLoading && (
+          <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400 mr-2"></div>
+              <p className="text-gray-600 text-sm">세션 확인 중...</p>
+            </div>
+          </div>
+        )}
+
         {/* 로그인/회원가입 배너 (비로그인 사용자만) */}
         {!sessionLoading && !userSession && !isAuthenticated && (
           <div className="bg-gradient-to-r from-red-500 to-pink-500 rounded-lg p-6 mb-6 text-white text-center">
