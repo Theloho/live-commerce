@@ -1,55 +1,64 @@
+/**
+ * 상품 수정 API (Clean Architecture Version)
+ * - Dependency Injection: ProductRepository
+ * - Clean Architecture: Presentation Layer (Routing + Auth Only)
+ * - Business Logic: UpdateProductUseCase
+ *
+ * @author Claude
+ * @since 2025-10-23
+ */
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { verifyAdminAuth } from '@/lib/supabaseAdmin'
+import { UpdateProductUseCase } from '@/lib/use-cases/product/UpdateProductUseCase'
+import ProductRepository from '@/lib/repositories/ProductRepository'
 
-// Service Role Key를 사용하여 RLS 우회
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim(),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.replace(/[\r\n\s]+/g, '')
-)
-
-export async function PATCH(request) {
+export async function POST(request) {
   try {
-    const { productId, updateData } = await request.json()
+    const params = await request.json()
+    const { productId, adminEmail } = params
 
-    console.log('🔍 상품 업데이트 요청:', { productId, updateData })
+    console.log('🔄 [상품수정 API] 상품 수정 시작:', productId)
 
+    // 🔐 1. 관리자 권한 확인 (Presentation Layer)
+    if (!adminEmail) {
+      console.error('❌ adminEmail 누락')
+      return NextResponse.json(
+        { error: '관리자 인증 정보가 필요합니다' },
+        { status: 401 }
+      )
+    }
+
+    const isAdmin = await verifyAdminAuth(adminEmail)
+    if (!isAdmin) {
+      console.warn(`⚠️ 권한 없는 상품 수정 시도: ${adminEmail}`)
+      return NextResponse.json(
+        { error: '관리자 권한이 없습니다' },
+        { status: 403 }
+      )
+    }
+    console.log('✅ 관리자 권한 확인 완료:', adminEmail)
+
+    // 2. productId 검증
     if (!productId) {
       return NextResponse.json(
-        { success: false, error: '상품 ID가 필요합니다' },
+        { error: '상품 ID가 필요합니다' },
         { status: 400 }
       )
     }
 
-    // Service Role로 직접 업데이트 (RLS 우회)
-    const { data, error } = await supabaseAdmin
-      .from('products')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', productId)
-      .select()
+    // 3. Dependency Injection
+    const updateProductUseCase = new UpdateProductUseCase(ProductRepository)
 
-    if (error) {
-      console.error('상품 업데이트 오류:', error)
-      throw error
-    }
+    // 4. Use Case 실행 (Application Layer)
+    const result = await updateProductUseCase.execute(productId, params)
 
-    console.log('✅ 상품 업데이트 성공:', data)
+    console.log('✅ [상품수정 API] 상품 수정 완료:', productId)
 
-    return NextResponse.json({
-      success: true,
-      data: data[0],
-      message: '상품 정보가 수정되었습니다'
-    })
-
+    return NextResponse.json(result)
   } catch (error) {
-    console.error('상품 업데이트 실패:', error)
+    console.error('❌ [상품수정 API] 에러:', error)
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || '상품 수정에 실패했습니다'
-      },
+      { error: error.message },
       { status: 500 }
     )
   }

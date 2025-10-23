@@ -26,7 +26,9 @@ const config = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/.next/',
-    '/tests/' // Playwright 테스트 폴더
+    '/tests/', // Playwright 테스트 폴더
+    '/__tests__/archive/', // Legacy 테스트 제외
+    '/docs/archive/' // Legacy UseCase 제외
   ],
 
   // 모듈 경로 alias (@/ 지원)

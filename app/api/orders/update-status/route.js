@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import UpdateOrderStatusUseCase from '@/lib/use-cases/UpdateOrderStatusUseCase'
+import { UpdateOrderStatusUseCase } from '@/lib/use-cases/order/UpdateOrderStatusUseCase'
+import OrderRepository from '@/lib/repositories/OrderRepository'
 
 /**
- * 주문 상태 업데이트 API (Phase 5.2.4 - Use Case Pattern)
+ * 주문 상태 업데이트 API (Clean Architecture Version)
+ * - Dependency Injection: OrderRepository
  * - Clean Architecture: Presentation Layer (Routing Only)
  * - Business Logic: UpdateOrderStatusUseCase
  */
@@ -10,10 +12,13 @@ export async function POST(request) {
   try {
     const { orderIds, status, paymentData } = await request.json()
 
-    const result = await UpdateOrderStatusUseCase.execute({
+    // Dependency Injection
+    const updateOrderStatusUseCase = new UpdateOrderStatusUseCase(OrderRepository)
+
+    const result = await updateOrderStatusUseCase.execute({
       orderIds,
       status,
-      paymentData
+      paymentData,
     })
 
     return NextResponse.json(result)

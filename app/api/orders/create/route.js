@@ -1,21 +1,49 @@
 import { NextResponse } from 'next/server'
-import CreateOrderUseCase from '@/lib/use-cases/CreateOrderUseCase'
+import { CreateOrderUseCase } from '@/lib/use-cases/order/CreateOrderUseCase'
+import OrderRepository from '@/lib/repositories/OrderRepository'
+import ProductRepository from '@/lib/repositories/ProductRepository'
+import { QueueService } from '@/lib/services/QueueService'
 
 /**
- * 주문 생성 API (Phase 5.2.4 - Use Case Pattern)
+ * 주문 생성 API (Clean Architecture Version)
+ * - Dependency Injection: OrderRepository, ProductRepository, QueueService
+ * - Legacy 파라미터 → Clean 파라미터 변환
  * - Clean Architecture: Presentation Layer (Routing Only)
- * - Business Logic: CreateOrderUseCase
+ * - Business Logic: CreateOrderUseCase (Clean Version)
  */
 export async function POST(request) {
   try {
     const { orderData, userProfile, depositName, user } = await request.json()
 
-    const result = await CreateOrderUseCase.execute({
-      orderData,
-      userProfile,
-      depositName,
-      user
-    })
+    // 1. Dependency Injection (Clean Architecture)
+    const createOrderUseCase = new CreateOrderUseCase(
+      OrderRepository,
+      ProductRepository,
+      QueueService
+    )
+
+    // 2. Legacy 파라미터 → Clean 파라미터 변환
+    const cleanParams = {
+      orderData: {
+        items: [orderData], // 단일 상품을 배열로 변환
+        orderType: orderData.orderType || 'direct',
+      },
+      shipping: {
+        name: userProfile.name,
+        phone: userProfile.phone,
+        address: userProfile.address,
+        postalCode: userProfile.postal_code,
+      },
+      payment: {
+        paymentMethod: 'bank_transfer', // 현재는 무통장입금만
+        depositorName: depositName,
+      },
+      coupon: null, // 추후 쿠폰 시스템 통합 시 추가
+      user,
+    }
+
+    // 3. Clean CreateOrderUseCase 실행
+    const result = await createOrderUseCase.execute(cleanParams)
 
     return NextResponse.json(result)
   } catch (error) {

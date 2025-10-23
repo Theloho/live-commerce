@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import GetOrdersUseCase from '@/lib/use-cases/GetOrdersUseCase'
+import { GetOrdersUseCase } from '@/lib/use-cases/order/GetOrdersUseCase'
+import OrderRepository from '@/lib/repositories/OrderRepository'
 
 /**
- * 주문 목록 조회 API (Phase 5.2.4 - Use Case Pattern)
+ * 주문 목록 조회 API (Clean Architecture Version)
+ * - Dependency Injection: OrderRepository
  * - Clean Architecture: Presentation Layer (Routing Only)
  * - Business Logic: GetOrdersUseCase
  */
@@ -10,12 +12,15 @@ export async function POST(request) {
   try {
     const { user, orderId, page = 1, pageSize = 10, status = null } = await request.json()
 
-    const result = await GetOrdersUseCase.execute({
+    // Dependency Injection
+    const getOrdersUseCase = new GetOrdersUseCase(OrderRepository)
+
+    const result = await getOrdersUseCase.execute({
       user,
       orderId,
       page,
       pageSize,
-      status
+      status,
     })
 
     return NextResponse.json(result)
