@@ -54,6 +54,9 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
   const [userSession, setUserSession] = useState(null)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
 
+  // ✅ 중복 실행 방지 플래그 (React Strict Mode 대응)
+  const isAddingCombination = useRef(false)
+
   // ===== Product 속성 추출 =====
   const image = product?.thumbnail_url || product?.image_url || '/placeholder.png'
   const title = product?.title || ''
@@ -189,8 +192,10 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
       const optionKey = Object.values(selectedOptions).join(' / ')
       const isDuplicate = selectedCombinations.some(combo => combo.key === optionKey)
 
-      if (!isDuplicate) {
-        // 중복이 아닐 때만 추가
+      // ✅ React Strict Mode 대응: 이미 실행 중이면 무시
+      if (!isDuplicate && !isAddingCombination.current) {
+        isAddingCombination.current = true
+
         setTimeout(() => {
           // Variant ID 찾기
           const variant = variants?.find(v => {
@@ -205,6 +210,7 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
           if (variantInventory === 0) {
             toast.error('선택하신 옵션의 재고가 없습니다')
+            isAddingCombination.current = false
             return
           }
 
@@ -220,6 +226,9 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
           setSelectedOptions({})
 
           toast.success(`${optionKey} 추가됨`)
+
+          // ✅ 플래그 초기화 (다음 조합 추가 가능)
+          isAddingCombination.current = false
         }, 500)
       }
     }
