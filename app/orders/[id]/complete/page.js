@@ -105,30 +105,26 @@ export default function OrderCompletePage() {
       try {
         let order = null
 
-        // 통합된 주문 조회 방식 - supabaseApi.getOrderById 사용
+        // ⚡ Clean Architecture: API Route를 통한 주문 조회
         try {
-          const { getOrderById } = await import('@/lib/supabaseApi')
-          order = await getOrderById(params.id)
-          console.log('📋 NEW CODE: 주문 상세 데이터 조회 완료:', order)
-        } catch (error) {
-          console.error('📋 supabaseApi 주문 조회 실패:', error)
+          const response = await fetch(`/api/orders/${params.id}`)
 
-          // 폴백: sessionStorage에서 최근 주문 확인 (디버깅용으로 일시 비활성화)
-          console.log('📋 sessionStorage 폴백 건너뛰기 - getOrderById 우선 사용')
-          // const recentOrder = sessionStorage.getItem('recentOrder')
-          // if (recentOrder) {
-          //   const orderInfo = JSON.parse(recentOrder)
-          //   if (orderInfo.id === params.id) {
-          //     order = orderInfo
-          //     console.log('📋 sessionStorage에서 주문 데이터 복원:', order)
-          //   }
-          // }
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || '주문 조회 실패')
+          }
+
+          const result = await response.json()
+          order = result.order
+          console.log('📋 Clean Architecture: 주문 상세 데이터 조회 완료:', order)
+        } catch (error) {
+          console.error('📋 API Route 주문 조회 실패:', error)
         }
 
         if (order) {
           setOrderData(order)
           setShippingForm({
-            name: order.shipping?.name || '',
+            name: order.shipping?.name || order.shipping?.recipient_name || '',
             phone: order.shipping?.phone || '',
             address: order.shipping?.address || '',
             detail_address: order.shipping?.detail_address || ''
