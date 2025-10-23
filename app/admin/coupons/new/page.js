@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ArrowLeftIcon, TicketIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { createCoupon } from '@/lib/couponApi'
 
 export default function NewCouponPage() {
   const router = useRouter()
@@ -94,10 +93,22 @@ export default function NewCouponPage() {
 
       console.log('쿠폰 생성 데이터:', couponData)
 
-      const result = await createCoupon(couponData)
+      // API Route 호출 (Clean Architecture)
+      const response = await fetch('/api/admin/coupons/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(couponData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '쿠폰 생성 실패')
+      }
+
+      const result = await response.json()
 
       toast.success('쿠폰이 발행되었습니다')
-      router.push(`/admin/coupons/${result.id}`)
+      router.push(`/admin/coupons/${result.coupon.id}`)
     } catch (error) {
       console.error('쿠폰 생성 실패:', error)
 

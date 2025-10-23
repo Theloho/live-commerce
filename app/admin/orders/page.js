@@ -190,9 +190,20 @@ export default function AdminOrdersPage() {
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      // Supabase로 직접 상태 업데이트
-      const { updateOrderStatus: updateStatus } = await import('@/lib/supabaseApi')
-      await updateStatus(orderId, newStatus)
+      // API Route 호출 (Clean Architecture)
+      const response = await fetch('/api/orders/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderIds: [orderId],
+          status: newStatus
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '주문 상태 변경 실패')
+      }
 
       // UI 업데이트
       const updatedOrders = orders.map(order =>

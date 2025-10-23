@@ -15,7 +15,6 @@
  */
 
 import { useState } from 'react'
-import { createOrder, updateMultipleOrderStatus, updateOrderStatus } from '@/lib/supabaseApi'
 import { validateCoupon, applyCouponUsage } from '@/lib/couponApi'
 import { OrderCalculations } from '@/lib/orderCalculations'
 import toast from 'react-hot-toast'
@@ -133,11 +132,23 @@ export function useCheckoutPayment({
           }
         }
 
-        const updateResult = await updateMultipleOrderStatus(
-          orderItem.originalOrderIds,
-          'verifying',
-          paymentUpdateData
-        )
+        // API Route 호출 (Clean Architecture)
+        const response = await fetch('/api/orders/update-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderIds: orderItem.originalOrderIds,
+            status: 'verifying',
+            paymentData: paymentUpdateData
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || '주문 상태 업데이트 실패')
+        }
+
+        const updateResult = await response.json()
 
         // 첫 번째 주문 ID를 사용 (일괄결제의 대표 ID)
         orderId = orderItem.originalOrderIds[0]
@@ -170,7 +181,24 @@ export function useCheckoutPayment({
           isFreeShipping: hasPendingOrders
         }
 
-        const newOrder = await createOrder(orderItemWithCoupon, orderProfile, depositName)
+        // API Route 호출 (Clean Architecture)
+        const response = await fetch('/api/orders/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderData: orderItemWithCoupon,
+            userProfile: orderProfile,
+            depositName,
+            user
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || '주문 생성 실패')
+        }
+
+        const { order: newOrder } = await response.json()
         orderId = newOrder.id
       }
 
@@ -205,8 +233,18 @@ export function useCheckoutPayment({
 
       // 주문 상태를 'verifying'으로 변경 (입금 확인중)
       try {
-        await updateOrderStatus(orderId, 'verifying')
-        logger.debug('주문 상태 변경: pending → verifying', { orderId })
+        // API Route 호출 (Clean Architecture)
+        const response = await fetch('/api/orders/update-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, status: 'verifying' })
+        })
+
+        if (response.ok) {
+          logger.debug('주문 상태 변경: pending → verifying', { orderId })
+        } else {
+          throw new Error('Status update failed')
+        }
       } catch (error) {
         logger.error('주문 상태 변경 실패:', error)
         // 상태 변경 실패해도 주문은 진행

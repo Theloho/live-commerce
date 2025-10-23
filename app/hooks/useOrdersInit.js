@@ -2,6 +2,7 @@
  * useOrdersInit - 주문 내역 초기화 Custom Hook
  * @author Claude
  * @since 2025-10-21
+ * @updated 2025-10-23 - Clean Architecture API Route 연동
  *
  * 역할: 주문 내역 페이지의 초기화 및 데이터 로드 로직 관리
  * - 세션 데이터 로드 (user)
@@ -12,12 +13,12 @@
  * - 포커스 새로고침
  *
  * Clean Architecture:
- * - Presentation Layer (Page) → Application Layer (Hook) → Infrastructure (Repository)
- * - ✅ Rule #0 준수: OrderRepository 사용 (직접 supabase 호출 제거)
+ * - Presentation Layer (Hook) → API Route (/api/orders/list) → Application Layer (GetOrdersUseCase) → Infrastructure (OrderRepository)
+ * - ✅ Legacy API 제거 완료: getOrders() → fetch('/api/orders/list')
+ * - ✅ Rule #0 준수: Clean Architecture 완전 연동
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { getOrders } from '@/lib/supabaseApi' // ⚠️ 임시로 유지, 향후 OrderRepository로 전환 예정
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
 
@@ -147,13 +148,24 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         console.log('🔍 [DEBUG] 주문 로딩 시작:', { userId: currentUser.id, page: currentPage, status: filterStatus })
         const startTime = Date.now()
 
-        // 🚀 통합 API 사용 (페이지네이션 포함)
-        // ⚠️ TODO: OrderRepository.findByUser()로 전환 필요
-        const result = await getOrders(currentUser.id, {
-          page: currentPage,
-          pageSize: 10,
-          status: filterStatus
+        // 🚀 Clean Architecture API Route 사용
+        const response = await fetch('/api/orders/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: currentUser,
+            page: currentPage,
+            pageSize: 10,
+            status: filterStatus
+          })
         })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || '주문 조회 실패')
+        }
+
+        const result = await response.json()
 
         const elapsed = Date.now() - startTime
         console.log('✅ [DEBUG] 주문 로딩 완료:', { count: result.orders?.length, elapsed: `${elapsed}ms` })
@@ -186,12 +198,24 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         if (currentUser?.id) {
           setPageLoading(true)
 
-          // ⚠️ TODO: OrderRepository.findByUser()로 전환 필요
-          const result = await getOrders(currentUser.id, {
-            page: currentPage,
-            pageSize: 10,
-            status: filterStatus
+          // Clean Architecture API Route 사용
+          const response = await fetch('/api/orders/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: currentUser,
+              page: currentPage,
+              pageSize: 10,
+              status: filterStatus
+            })
           })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || '주문 조회 실패')
+          }
+
+          const result = await response.json()
 
           setOrders(result.orders || [])
           setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
@@ -231,11 +255,23 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
           return
         }
 
-        const result = await getOrders(currentUser.id, {
-          page: 1, // 항상 1페이지로
-          pageSize: 10,
-          status: newStatus
+        const response = await fetch('/api/orders/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: currentUser,
+            page: 1,
+            pageSize: 10,
+            status: newStatus
+          })
         })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || '주문 조회 실패')
+        }
+
+        const result = await response.json()
 
         setOrders(result.orders || [])
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
@@ -273,11 +309,23 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
           return
         }
 
-        const result = await getOrders(currentUser.id, {
-          page: newPage,
-          pageSize: 10,
-          status: filterStatus
+        const response = await fetch('/api/orders/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: currentUser,
+            page: newPage,
+            pageSize: 10,
+            status: filterStatus
+          })
         })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || '주문 조회 실패')
+        }
+
+        const result = await response.json()
 
         setOrders(result.orders || [])
         setPagination(result.pagination || { currentPage: newPage, totalPages: 0, totalCount: 0, pageSize: 10 })

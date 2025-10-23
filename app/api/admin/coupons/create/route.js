@@ -1,46 +1,42 @@
+/**
+ * 쿠폰 생성 API (Clean Architecture Version)
+ * - Dependency Injection: CouponRepository
+ * - Clean Architecture: Presentation Layer (Routing + Validation)
+ * - Business Logic: CreateCouponUseCase
+ *
+ * @author Claude
+ * @since 2025-10-23
+ */
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { CreateCouponUseCase } from '@/lib/use-cases/coupon/CreateCouponUseCase'
+import CouponRepository from '@/lib/repositories/CouponRepository'
 
 export async function POST(request) {
   try {
     const couponData = await request.json()
 
-    console.log('🎫 쿠폰 생성 요청 (Service Role):', couponData)
+    console.log('🎫 [Coupon Create API] Request received:', couponData.code)
 
-    // Service Role로 쿠폰 생성 (RLS 우회)
-    const { data, error } = await supabaseAdmin
-      .from('coupons')
-      .insert({
-        code: couponData.code.toUpperCase(),
-        name: couponData.name,
-        description: couponData.description || null,
-        discount_type: couponData.discount_type,
-        discount_value: couponData.discount_value,
-        min_purchase_amount: couponData.min_purchase_amount || 0,
-        max_discount_amount: couponData.max_discount_amount || null,
-        valid_from: couponData.valid_from,
-        valid_until: couponData.valid_until,
-        usage_limit_per_user: couponData.usage_limit_per_user || 1,
-        total_usage_limit: couponData.total_usage_limit || null,
-        is_active: couponData.is_active !== false,
-        is_welcome_coupon: couponData.is_welcome_coupon || false,
-        created_by: couponData.created_by || null
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('❌ 쿠폰 생성 실패 (Service Role):', error)
+    // 1. Basic parameter validation (Presentation Layer)
+    if (!couponData.code || !couponData.name || !couponData.discount_type) {
       return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
+        { error: 'Required fields: code, name, discount_type' },
+        { status: 400 }
       )
     }
 
-    console.log('✅ 쿠폰 생성 완료 (Service Role):', data.code)
-    return NextResponse.json({ coupon: data })
+    // 2. Dependency Injection
+    const createCouponUseCase = new CreateCouponUseCase(CouponRepository)
+
+    // 3. Execute Use Case (Application Layer)
+    const result = await createCouponUseCase.execute(couponData)
+
+    console.log('✅ [Coupon Create API] Success:', result.coupon.code)
+
+    // 4. Return result (Presentation Layer)
+    return NextResponse.json(result)
   } catch (error) {
-    console.error('❌ API 에러:', error)
+    console.error('❌ [Coupon Create API] Error:', error)
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
