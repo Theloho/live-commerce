@@ -145,14 +145,16 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
                     </span>
                     <button
                       onClick={() => handleQuantityChange(quantity + 1)}
-                      disabled={quantity >= Math.min(maxOrder, stock)}
+                      disabled={stock === null || quantity >= Math.min(maxOrder, stock || 0)}
                       className="p-3 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg transition-colors"
                     >
                       <PlusIcon className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">재고: {stock}개</p>
+                    <p className="text-sm text-gray-500">
+                      재고: {stock === null ? '...' : `${stock}개`}
+                    </p>
                     <p className="text-lg font-bold text-gray-900">
                       ₩{totalPrice.toLocaleString()}
                     </p>
@@ -178,7 +180,7 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
             )}
 
             {/* Stock Warning - 옵션 없는 상품만 또는 옵션 선택 완료 시 */}
-            {stock < 10 && stock > 0 && (options.length === 0 || Object.keys(selectedOptions).length === options.length) && (
+            {stock !== null && stock < 10 && stock > 0 && (options.length === 0 || Object.keys(selectedOptions).length === options.length) && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
                 <p className="text-yellow-700 text-sm font-medium">
                   ⚠️ 품절 임박! 남은 수량: {stock}개
@@ -203,7 +205,7 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
             disabled={
               isLoading ||
               totalQuantity === 0 ||
-              (options.length === 0 && stock === 0) ||
+              (options.length === 0 && (stock === null || stock === 0)) ||
               (options.length > 0 && selectedCombinations.length === 0)
             }
             fullWidth

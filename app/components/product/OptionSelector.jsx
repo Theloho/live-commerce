@@ -70,6 +70,7 @@ export default function OptionSelector({
                   const isLastOption = index === options.length - 1
                   let inventory = stock
                   let isSoldOut = false
+                  let isLoading = stock === null // ⚡ 로딩 상태 체크
 
                   if (isLastOption) {
                     // 이전 옵션들이 모두 선택되었는지 확인
@@ -139,14 +140,16 @@ export default function OptionSelector({
                         {isLastOption && (
                           <span
                             className={`text-xs mt-0.5 ${
-                              isSoldOut
+                              isLoading
+                                ? 'text-gray-400'
+                                : isSoldOut
                                 ? 'text-red-500 font-medium'
                                 : inventory < 5 && inventory > 0
                                 ? 'text-orange-500'
                                 : 'text-gray-500'
                             }`}
                           >
-                            {isSoldOut ? '품절' : `${inventory}개`}
+                            {isLoading ? '...' : isSoldOut ? '품절' : `${inventory}개`}
                           </span>
                         )}
                       </div>

@@ -49,7 +49,7 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
   const [totalPrice, setTotalPrice] = useState(0)
   const [options, setOptions] = useState([])
   const [variants, setVariants] = useState([])
-  const [stock, setStock] = useState(0)
+  const [stock, setStock] = useState(null) // null = 로딩 중, 0 = 품절, 1+ = 재고 있음
   const [isLoading, setIsLoading] = useState(false)
   const [userSession, setUserSession] = useState(null)
   const [showChoiceModal, setShowChoiceModal] = useState(false)
@@ -162,8 +162,9 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
             setOptions(optionsArray)
           }
 
-          // ✅ 옵션 상품: 초기 stock은 0 (옵션 선택 후 업데이트)
-          setStock(0)
+          // ⚡ 옵션 상품: 로딩 완료 후 null 유지 (옵션 선택 시 업데이트)
+          // null = 아직 옵션 선택 안 함, 0 = 품절, 1+ = 재고 있음
+          setStock(null)
         } else {
           // 옵션 없는 상품: 기본 재고 설정
           setOptions([])
@@ -281,12 +282,12 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         // ✅ 선택된 Variant의 재고로 업데이트
         setStock(variant.inventory || 0)
       } else {
-        // Variant를 찾지 못한 경우 0
+        // Variant를 찾지 못한 경우 0 (품절)
         setStock(0)
       }
     } else {
-      // 옵션 미선택 시 0 (재고 표시하지 않음)
-      setStock(0)
+      // ⚡ 옵션 미선택 시 null (로딩 상태 표시)
+      setStock(null)
     }
   }, [selectedOptions, options, variants])
 
