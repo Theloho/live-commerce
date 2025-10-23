@@ -15,7 +15,6 @@
  */
 
 import { useState } from 'react'
-import { validateCoupon, applyCouponUsage } from '@/lib/couponApi'
 import { OrderCalculations } from '@/lib/orderCalculations'
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
@@ -202,28 +201,32 @@ export function useCheckoutPayment({
         orderId = newOrder.id
       }
 
-      // 쿠폰 사용 처리
+      // 쿠폰 사용 처리 (Clean Architecture API Route)
       if (selectedCoupon && orderCalc.couponDiscount > 0) {
         try {
           const currentUserId = selectedCoupon.user_id
 
-          const couponUsed = await applyCouponUsage(
-            currentUserId,
-            selectedCoupon.coupon_id,
-            orderId,
-            orderCalc.couponDiscount
-          )
+          const response = await fetch('/api/coupons/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              couponCode: selectedCoupon.coupon.code,
+              userId: currentUserId,
+              orderId: orderId,
+              orderAmount: orderCalc.totalPrice // 배송비 포함 총액
+            })
+          })
 
-          if (couponUsed) {
+          if (response.ok) {
+            const result = await response.json()
             logger.debug('🎟️ 쿠폰 사용 완료', {
               coupon: selectedCoupon.coupon.code,
-              discount: orderCalc.couponDiscount,
+              discount: result.discount,
               orderId
             })
           } else {
-            logger.warn('⚠️ 쿠폰 사용 처리 실패 (이미 사용됨)', {
-              coupon: selectedCoupon.coupon.code
-            })
+            const errorData = await response.json()
+            logger.warn('⚠️ 쿠폰 사용 처리 실패:', errorData.error)
           }
         } catch (error) {
           logger.error('쿠폰 사용 처리 중 오류:', error)
@@ -301,24 +304,40 @@ export function useCheckoutPayment({
         return
       }
 
-      // DB 함수로 쿠폰 검증 (상품 금액만 전달, 배송비 제외)
-      const result = await validateCoupon(coupon.code, user?.id, orderItem.totalPrice)
+      // Clean Architecture API Route로 쿠폰 검증 (상품 금액만 전달, 배송비 제외)
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          couponCode: coupon.code,
+          userId: user?.id,
+          orderAmount: orderItem.totalPrice
+        })
+      })
 
-      if (!result.is_valid) {
-        toast.error(result.error_message || '쿠폰을 사용할 수 없습니다')
+      if (!response.ok) {
+        const errorData = await response.json()
+        toast.error(errorData.error || '쿠폰 검증에 실패했습니다')
+        return
+      }
+
+      const result = await response.json()
+
+      if (!result.valid) {
+        toast.error(result.error || '쿠폰을 사용할 수 없습니다')
         return
       }
 
       setSelectedCoupon(userCoupon)
-      toast.success(`${coupon.name} 쿠폰이 적용되었습니다 (₩${result.discount_amount.toLocaleString()} 할인)`)
+      toast.success(`${coupon.name} 쿠폰이 적용되었습니다 (₩${result.discount.toLocaleString()} 할인)`)
 
       // Google Analytics: 쿠폰 사용 이벤트
-      trackCouponUse(coupon, result.discount_amount)
+      trackCouponUse(coupon, result.discount)
 
       logger.debug('🎟️ 쿠폰 적용 완료', {
         code: coupon.code,
         type: coupon.discount_type,
-        discountAmount: result.discount_amount,
+        discountAmount: result.discount,
         productAmount: orderItem.totalPrice
       })
     } catch (error) {
