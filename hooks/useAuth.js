@@ -150,15 +150,26 @@ export default function useAuth() {
   const signOut = async () => {
     try {
       setLoading(true)
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
 
-      clearUser() // ⚡ authStore 클리어 (user + profile)
+      // ⚡ 세션이 없어도 에러 없이 처리 (AuthSessionMissingError 방지)
+      const { error } = await supabase.auth.signOut()
+
+      // AuthSessionMissingError는 무시 (이미 로그아웃된 상태)
+      if (error && error.message !== 'Auth session missing!') {
+        console.warn('로그아웃 경고:', error.message)
+      }
+
+      // ⚡ 에러 여부와 관계없이 항상 클라이언트 상태 클리어
+      clearUser() // authStore 클리어 (user + profile)
+
       return { success: true }
     } catch (error) {
+      // 예상치 못한 에러도 클라이언트 상태는 클리어
       console.error('로그아웃 오류:', error)
-      toast.error(error.message || '로그아웃에 실패했습니다')
-      return { success: false, error: error.message }
+      clearUser()
+
+      // 사용자에게는 성공으로 표시 (클라이언트 상태는 정리됨)
+      return { success: true }
     } finally {
       setLoading(false)
     }
