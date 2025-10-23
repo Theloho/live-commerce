@@ -124,7 +124,7 @@ export default function OrderCompletePage() {
         if (order) {
           setOrderData(order)
           setShippingForm({
-            name: order.shipping?.name || order.shipping?.recipient_name || '',
+            name: order.shipping?.name || '',
             phone: order.shipping?.phone || '',
             address: order.shipping?.address || '',
             detail_address: order.shipping?.detail_address || ''
