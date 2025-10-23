@@ -151,12 +151,17 @@ export default function useAuth() {
     try {
       setLoading(true)
 
-      // ⚡ 세션이 없어도 에러 없이 처리 (AuthSessionMissingError 방지)
+      // ⚡ 세션이 없어도 에러 없이 처리
       const { error } = await supabase.auth.signOut()
 
-      // AuthSessionMissingError는 무시 (이미 로그아웃된 상태)
-      if (error && error.message !== 'Auth session missing!') {
-        console.warn('로그아웃 경고:', error.message)
+      // 로그아웃 관련 에러는 모두 무시 (이미 로그아웃된 상태일 수 있음)
+      // - AuthSessionMissingError: 세션이 없음
+      // - 403 Forbidden: 토큰이 유효하지 않거나 없음
+      if (error) {
+        // 403이나 세션 관련 에러가 아닌 경우만 경고 출력
+        if (error.status !== 403 && error.message !== 'Auth session missing!') {
+          console.warn('로그아웃 경고:', error.message, error.status)
+        }
       }
 
       // ⚡ 에러 여부와 관계없이 항상 클라이언트 상태 클리어
