@@ -1250,15 +1250,17 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
-### 2025-10-24: 🔧 로그아웃 AuthSessionMissingError 수정 ⭐
+### 2025-10-24: 🔧 로그아웃 403 Forbidden 완전 해결 (근본 해결) ⭐⭐
 
-**문제**: 로그아웃 시 `AuthSessionMissingError` 에러
-**원인**: mypage.js에서 세션 클리어 후 signOut() 호출
-**해결**: signOut()에서 AuthSessionMissingError 무시 + 항상 상태 클리어
-**결과**: 세션 상태 관계없이 안전한 로그아웃
-**커밋**: `9df4931`
+**문제**: 로그아웃 시 `403 Forbidden` 에러 반복 발생
+**원인**: localStorage 먼저 삭제 → 토큰 없이 logout API 호출
+**해결**: signOut() 먼저 호출 → 커스텀 데이터 삭제로 순서 변경 (Option B)
+**결과**: 403 에러 제거 + 모든 탭 자동 로그아웃 + 근본적 해결
+**커밋**: `f1f7a74`
 
-**📝 상세 로그**: [WORK_LOG_2025-10-24.md#4](docs/work-logs/WORK_LOG_2025-10-24.md#4-로그아웃-authsessionmissingerror-수정)
+**📝 상세 로그**: [WORK_LOG_2025-10-24.md#5](docs/work-logs/WORK_LOG_2025-10-24.md#-5-로그아웃-403-forbidden-에러-완전-해결-rule-0-a-재적용)
+
+**핵심**: 이전 수정(9df4931)은 증상 치료였으나, 이번 수정은 근본 원인 해결! 🎯
 
 ---
 
