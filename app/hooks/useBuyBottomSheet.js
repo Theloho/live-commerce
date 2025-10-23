@@ -428,75 +428,78 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         }]
       }
 
-      // 재고 확인
-      for (const item of cartItems) {
-        // ✅ Clean Architecture API Route 사용
-        const response = await fetch('/api/inventory/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productId: product.id,
-            selectedOptions: item.selectedOptions
+      // ✅ 성능 최적화: 재고 확인 병렬 처리
+      const inventoryChecks = await Promise.all(
+        cartItems.map(async (item) => {
+          const response = await fetch('/api/inventory/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              productId: product.id,
+              selectedOptions: item.selectedOptions
+            })
           })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || '재고 확인 실패')
+          }
+
+          const inventoryCheck = await response.json()
+
+          // ✅ API는 { available, inventory, variantId? } 반환
+          if (!inventoryCheck.available) {
+            throw new Error('선택하신 옵션의 재고가 없습니다')
+          }
+
+          // ✅ 수량 검증 추가
+          if (inventoryCheck.inventory < item.quantity) {
+            throw new Error(`재고가 부족합니다 (재고: ${inventoryCheck.inventory}개, 요청: ${item.quantity}개)`)
+          }
+
+          return inventoryCheck
         })
+      )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || '재고 확인 실패')
-        }
+      // ✅ 성능 최적화: 주문 생성 병렬 처리
+      const results = await Promise.all(
+        cartItems.map(async (item) => {
+          // ✅ CreateOrderUseCase는 orderData가 직접 상품 정보를 가져야 함
+          const orderData = {
+            // 상품 정보 (item의 모든 필드)
+            id: item.product_id,  // ✅ CreateOrderUseCase는 'id' 사용
+            ...item,
+            // 주문 타입 (CreateOrderUseCase가 order_type 자동 생성에 사용)
+            orderType: 'direct'
+          }
 
-        const inventoryCheck = await response.json()
-
-        // ✅ API는 { available, inventory, variantId? } 반환
-        if (!inventoryCheck.available) {
-          toast.error('선택하신 옵션의 재고가 없습니다')
-          setIsLoading(false)
-          return
-        }
-
-        // ✅ 수량 검증 추가
-        if (inventoryCheck.inventory < item.quantity) {
-          toast.error(`재고가 부족합니다 (재고: ${inventoryCheck.inventory}개, 요청: ${item.quantity}개)`)
-          setIsLoading(false)
-          return
-        }
-      }
-
-      // 주문 생성 (장바구니 대신 pending 주문 생성)
-      for (const item of cartItems) {
-        // ✅ CreateOrderUseCase는 orderData가 직접 상품 정보를 가져야 함
-        const orderData = {
-          // 상품 정보 (item의 모든 필드)
-          id: item.product_id,  // ✅ CreateOrderUseCase는 'id' 사용
-          ...item,
-          // 주문 타입 (CreateOrderUseCase가 order_type 자동 생성에 사용)
-          orderType: 'direct'
-        }
-
-        // ✅ Clean Architecture API Route 사용
-        const response = await fetch('/api/orders/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderData,
-            userProfile: profile,
-            depositName: profile.name,
-            user: userSession || user
+          // ✅ Clean Architecture API Route 사용
+          const response = await fetch('/api/orders/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderData,
+              userProfile: profile,
+              depositName: profile.name,
+              user: userSession || user
+            })
           })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || '주문 생성 실패')
+          }
+
+          const result = await response.json()
+
+          // ✅ API는 { order: {...} } 반환
+          if (!result.order) {
+            throw new Error('주문 생성 실패')
+          }
+
+          return result
         })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || '주문 생성 실패')
-        }
-
-        const result = await response.json()
-
-        // ✅ API는 { order: {...} } 반환
-        if (!result.order) {
-          throw new Error('주문 생성 실패')
-        }
-      }
+      )
 
       // 이벤트 발송 (장바구니 갱신)
       if (typeof window !== 'undefined') {
