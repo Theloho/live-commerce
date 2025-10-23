@@ -1,18 +1,15 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import useAuth from '@/app/hooks/useAuth'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import SignupPromptModal from '@/app/components/common/SignupPromptModal'
 
 export default function LoginPage() {
   const router = useRouter()
   const { signInWithKakao } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [showSignupPrompt, setShowSignupPrompt] = useState(false)
-  const modalTimerRef = useRef(null)
 
 
 
@@ -97,16 +94,6 @@ export default function LoginPage() {
         */}
 
       </motion.div>
-
-      {/* 회원가입 유도 모달 */}
-      <SignupPromptModal
-        isOpen={showSignupPrompt}
-        onClose={() => {
-          console.log('모달 닫기 요청됨')
-          setShowSignupPrompt(false)
-        }}
-        phone=""
-      />
     </div>
   )
 }
