@@ -59,7 +59,14 @@ export async function POST(request) {
     const elapsed = Date.now() - startTime
     console.log('✅ [API /orders/create] 완료:', { elapsed: `${elapsed}ms` })
 
-    return NextResponse.json(result)
+    // 🔵 디버깅: timings를 응답에 포함
+    return NextResponse.json({
+      ...result,
+      _debug: {
+        elapsed: `${elapsed}ms`,
+        timestamp: new Date().toISOString()
+      }
+    })
   } catch (error) {
     const elapsed = Date.now() - startTime
     console.error('❌ [API /orders/create] 실패:', {
