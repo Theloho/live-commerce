@@ -2007,24 +2007,236 @@ const distributeCouponUseCase = new DistributeCouponUseCase(
 
 ---
 
+## ✅ Phase 8: 본서버 테스트 + 버그 수정 3개 ⭐⭐⭐
+
+**작업 시간**: 약 30분
+**테스트 환경**: https://allok.shop (Production)
+**테스트 방법**: curl 명령어로 API 직접 호출
+
+---
+
+### 📋 테스트 시나리오
+
+**API**: `POST /api/admin/coupons/distribute`
+**목표**: 전체 고객(50명)에게 쿠폰 일괄 배포
+**테스트 데이터**:
+- `couponId`: `79746955-4736-48fb-8c9f-d138cf2ada62` (실제 DB UUID)
+- `distributeToAll`: true
+- `adminEmail`: `master@allok.world`
+
+---
+
+### 🐛 발견된 버그 3개 + 수정
+
+#### Bug 1: d.map is not a function (커밋: 0b2d341)
+
+**에러**:
+```json
+{"error":"d.map is not a function"}
+```
+
+**근본 원인**:
+- `UserRepository.findAll()` returns object `{ users: [], totalCount, ... }`
+- `DistributeCouponUseCase.distributeToAll()` expected direct array
+
+**수정 전** (`DistributeCouponUseCase.js:97-105`):
+```javascript
+const allCustomers = await this.userRepository.findAll({ role: 'customer' })
+const userIds = allCustomers.map((user) => user.id) // TypeError!
+```
+
+**수정 후**:
+```javascript
+const result = await this.userRepository.findAll({ role: 'customer' })
+const allCustomers = result.users || []
+const userIds = allCustomers.map((user) => user.id) // Works!
+```
+
+**부수 수정** (`UserRepository.js:112, 119`):
+- `role` 파라미터 추가 (원래 없었음)
+- `if (role) query = query.eq('role', role)`
+
+**커밋 메시지**:
+```
+fix: Coupon distribute API - 2 critical bugs
+
+Bug 1: UserRepository.findAll() returns object not array
+- Fixed: Extract result.users array in DistributeCouponUseCase
+
+Bug 2: UserRepository.findAll() missing role filter
+- Added: role parameter support
+```
+
+---
+
+#### Bug 2: Template literal bugs x9 (커밋: 816789f)
+
+**에러**:
+```json
+{"error":"사용자 목록 조회 실패: ${error.message}"}
+```
+
+**근본 원인**:
+- Template literals with escaped backslash: `\${error.message}`
+- JavaScript doesn't evaluate escaped template literals
+
+**영향받은 파일**:
+- `UserRepository.js` (9곳)
+
+**수정 위치** (9곳):
+- Line 54: `findById`
+- Line 78: `findByKakaoId`
+- Line 102: `findByEmail`
+- Line 135: `findAll` ← **현재 에러 발생 지점**
+- Line 158: `create`
+- Line 182: `update`
+- Line 204: `delete`
+- Line 226: `exists`
+
+**수정 전**:
+```javascript
+throw new Error(`사용자 목록 조회 실패: \${error.message}`)
+```
+
+**수정 후**:
+```javascript
+throw new Error(`사용자 목록 조회 실패: ${error.message}`)
+```
+
+**커밋 메시지**:
+```
+fix: UserRepository template literal bugs (9 places)
+
+Bug: Template literals with escaped \${error.message} not evaluating
+
+Affected methods: findById, findByKakaoId, findByEmail, findAll,
+create, update, delete, exists
+
+Fixed: Removed backslashes from all 9 locations
+
+Related: Same bug as ProductRepository (2025-10-22)
+Impact: Error messages now display actual error details
+```
+
+---
+
+#### Bug 3: column profiles.role does not exist (커밋: d823678)
+
+**에러**:
+```json
+{"error":"사용자 목록 조회 실패: column profiles.role does not exist"}
+```
+
+**근본 원인**:
+- DB 스키마: `profiles` 테이블에 `role` 컬럼 없음
+- 실제 컬럼: `is_admin` BOOLEAN (true/false)
+
+**수정 전** (`UserRepository.js:119`):
+```javascript
+if (role) query = query.eq('role', role) // ❌ role 컬럼 없음!
+```
+
+**수정 후** (`UserRepository.js:119-121`):
+```javascript
+// role filter: 'customer' → is_admin = false, 'admin' → is_admin = true
+if (role === 'customer') query = query.eq('is_admin', false)
+if (role === 'admin') query = query.eq('is_admin', true)
+```
+
+**커밋 메시지**:
+```
+fix: UserRepository role filter - use is_admin instead of role column
+
+Bug: column profiles.role does not exist (DB schema mismatch)
+
+Root cause: profiles table has is_admin BOOLEAN, not role column
+
+Fixed (line 119-121):
+- role='customer' → is_admin=false
+- role='admin' → is_admin=true
+
+Impact: Coupon distribution to all customers now works
+
+Related: DB_REFERENCE_GUIDE.md profiles schema
+```
+
+---
+
+### ✅ 최종 테스트 결과 (성공!)
+
+**curl 명령어**:
+```bash
+curl -X POST https://allok.shop/api/admin/coupons/distribute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "couponId": "79746955-4736-48fb-8c9f-d138cf2ada62",
+    "distributeToAll": true,
+    "adminEmail": "master@allok.world"
+  }'
+```
+
+**응답** (성공!):
+```json
+{
+  "success": true,
+  "totalCustomers": 50,
+  "totalIssued": 50,
+  "totalFailed": 0,
+  "totalSkipped": 0,
+  "results": {
+    "issued": [/* 50개 user_coupon 레코드 */],
+    "failed": [],
+    "skipped": []
+  },
+  "message": "쿠폰이 성공적으로 배포되었습니다 (50개 성공, 0개 중복, 0개 실패)"
+}
+```
+
+**검증**:
+- ✅ 50명의 고객에게 쿠폰 배포 성공
+- ✅ 실패 0개, 중복 0개
+- ✅ 50개의 `user_coupons` 레코드 생성됨
+- ✅ 배포 속도: 약 2-3초 (병렬 처리)
+
+---
+
+### 📊 Phase 8 요약
+
+**버그 수정**:
+1. ✅ d.map is not a function (0b2d341)
+2. ✅ Template literal bugs x9 (816789f)
+3. ✅ role column does not exist (d823678)
+
+**커밋**:
+- `0b2d341`: Bug 1 (array 추출 + role 필터 추가)
+- `816789f`: Bug 2 (템플릿 리터럴 9곳)
+- `d823678`: Bug 3 (role → is_admin)
+
+**결과**:
+- ✅ Production 테스트 성공
+- ✅ 50명 쿠폰 배포 완료
+- ✅ Clean Architecture 검증 완료
+
+---
+
 ## 🚀 다음 작업
 
-### 즉시 작업 (Priority 1)
-- [ ] 커밋 + 푸시
-- [ ] 본서버 테스트 (https://allok.shop)
-  1. 관리자 로그인
-  2. 쿠폰 배포 (개별/전체)
-  3. **목표**: 정상 작동 + 배포 성공
+### 완료된 작업 (Priority 1) ✅
+- ✅ 커밋 + 푸시 (3개 버그 수정)
+- ✅ 본서버 테스트 (https://allok.shop)
+  1. ✅ 관리자 인증
+  2. ✅ 쿠폰 전체 배포 (50명)
+  3. ✅ **결과**: 정상 작동 + 배포 성공 🎉
 
 ### 향후 개선 (Priority 2)
 - [ ] Coupon UseCase 단위 테스트 (2개)
-- [ ] Repository Layer 테스트 확장 (OrderRepository, ProductRepository, CouponRepository)
+- [ ] Repository Layer 테스트 확장 (CouponRepository 추가)
 - [ ] Integration 테스트 (API Route + UseCase + Repository)
 
 ---
 
-**Session 5 완료 시간**: 2025-10-23 (약 1시간)
-**최종 상태**: ✅ 모든 Phase 완료, Build 성공
+**Session 5 완료 시간**: 2025-10-23 (약 1.5시간)
+**최종 상태**: ✅ 모든 Phase 완료, Production 테스트 성공 🎉
 **다음 세션**: Repository 테스트 확장 또는 다른 Domain 마이그레이션
 
 ---
@@ -2037,12 +2249,13 @@ const distributeCouponUseCase = new DistributeCouponUseCase(
 | **Session 2** | Order | 3개 | N/A | 1.5시간 | UpdateOrderStatus, GetOrders + Legacy 제거 |
 | **Session 3** | Product | 1개 | N/A | 1.5시간 | CreateProduct + Variant 시스템 |
 | **Session 4** | Product | 1개 | 11개 | 2시간 | UpdateProduct + Testing 100% ⭐ |
-| **Session 5** | Coupon | 2개 | N/A | 1시간 | Coupon 배포/검증 + Pragmatic Approach ⭐ |
+| **Session 5** | Coupon | 2개 | Production | 1.5시간 | Coupon 배포/검증 + 버그 수정 3개 ⭐⭐⭐ |
 
-**총 소요 시간**: 7시간
+**총 소요 시간**: 7.5시간
 **총 UseCase**: 8개 (Order 4개 + Product 2개 + Coupon 2개)
-**총 테스트**: 16개 (Order 5개 + Product 11개)
-**테스트 통과율**: 100% (16/16)
+**총 테스트**: 16개 단위 테스트 + 1개 Production 테스트
+**테스트 통과율**: 100% (16/16 + Production)
 **Architecture 일관성**: ✅ 완전 확보
+**Production 검증**: ✅ 50명 쿠폰 배포 성공
 
 **최종 상태**: ✅ Order domain + Product domain + Coupon domain Clean Architecture 완료
