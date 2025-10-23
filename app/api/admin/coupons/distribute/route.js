@@ -1,72 +1,39 @@
 /**
- * 관리자 전용 API: 쿠폰 배포
+ * 쿠폰 배포 API (Clean Architecture Version)
+ * - Dependency Injection: CouponRepository, UserRepository
+ * - Clean Architecture: Presentation Layer (Routing + Auth Only)
+ * - Business Logic: DistributeCouponUseCase
  *
- * POST /api/admin/coupons/distribute
- *
- * 목적: 관리자가 특정 사용자들에게 쿠폰을 안전하게 배포
- * 보안: 관리자 이메일 검증 + Service Role Key 사용
- *
- * 작성일: 2025-10-03
+ * @author Claude
+ * @since 2025-10-23
  */
-
 import { NextResponse } from 'next/server'
-import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
-
-const isDevelopment = process.env.NODE_ENV === 'development'
+import { verifyAdminAuth } from '@/lib/supabaseAdmin'
+import { DistributeCouponUseCase } from '@/lib/use-cases/coupon/DistributeCouponUseCase'
+import CouponRepository from '@/lib/repositories/CouponRepository'
+import UserRepository from '@/lib/repositories/UserRepository'
 
 export async function POST(request) {
   try {
-    console.log('🚀 쿠폰 배포 API 시작')
-
-    // 0. supabaseAdmin 클라이언트 확인
-    if (!supabaseAdmin) {
-      console.error('❌ supabaseAdmin 클라이언트가 초기화되지 않음')
-      return NextResponse.json(
-        { error: 'Service configuration error' },
-        { status: 500 }
-      )
-    }
-    console.log('✅ Step 0: supabaseAdmin 클라이언트 확인 완료')
-
-    // 1. 요청 바디 파싱
     const body = await request.json()
-    const { couponId, userIds, adminEmail } = body
+    const { couponId, userIds, adminEmail, distributeToAll } = body
 
-    console.log('📮 쿠폰 배포 API 호출:', {
+    console.log('🎫 [쿠폰배포 API] 쿠폰 배포 시작:', {
       couponId,
-      userIdsCount: userIds?.length,
-      adminEmail
+      userCount: userIds?.length,
+      distributeToAll,
+      adminEmail,
     })
-    console.log('✅ Step 1: 요청 바디 파싱 완료')
 
-    // 2. 필수 파라미터 검증
-    if (!couponId) {
-      console.error('❌ Step 2: couponId 누락')
-      return NextResponse.json(
-        { error: 'couponId가 필요합니다' },
-        { status: 400 }
-      )
-    }
-
-    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      console.error('❌ Step 2: userIds 누락 또는 비어있음')
-      return NextResponse.json(
-        { error: 'userIds 배열이 필요합니다' },
-        { status: 400 }
-      )
-    }
-
+    // 🔐 1. 관리자 권한 확인 (Presentation Layer)
     if (!adminEmail) {
-      console.error('❌ Step 2: adminEmail 누락')
+      console.error('❌ adminEmail 누락')
       return NextResponse.json(
-        { error: '관리자 이메일이 필요합니다' },
+        { error: '관리자 인증 정보가 필요합니다' },
         { status: 401 }
       )
     }
-    console.log('✅ Step 2: 필수 파라미터 검증 완료')
 
-    // 3. 관리자 권한 확인
-    console.log('🔐 Step 3: 관리자 권한 확인 시작:', adminEmail)
     const isAdmin = await verifyAdminAuth(adminEmail)
     if (!isAdmin) {
       console.warn(`⚠️ 권한 없는 쿠폰 배포 시도: ${adminEmail}`)
@@ -75,103 +42,65 @@ export async function POST(request) {
         { status: 403 }
       )
     }
-    console.log('✅ Step 3: 관리자 권한 확인 완료')
+    console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
-    // 4. 쿠폰 존재 및 활성화 상태 확인
-    console.log('📋 Step 4: 쿠폰 조회 시작:', couponId)
-    const { data: coupon, error: couponError } = await supabaseAdmin
-      .from('coupons')
-      .select('id, code, is_active')
-      .eq('id', couponId)
-      .single()
-
-    if (couponError || !coupon) {
-      console.error('❌ Step 4: 쿠폰 조회 실패:', couponError)
+    // 2. 파라미터 검증 (Presentation Layer)
+    if (!couponId) {
       return NextResponse.json(
-        { error: '쿠폰을 찾을 수 없습니다', details: couponError?.message },
-        { status: 404 }
-      )
-    }
-
-    if (!coupon.is_active) {
-      console.error('❌ Step 4: 비활성화된 쿠폰:', coupon.code)
-      return NextResponse.json(
-        { error: '비활성화된 쿠폰입니다' },
+        { error: 'couponId가 필요합니다' },
         { status: 400 }
       )
     }
-    console.log('✅ Step 4: 쿠폰 조회 완료:', coupon.code)
 
-    // 5. 배포할 사용자 쿠폰 데이터 생성
-    console.log(`📝 Step 5: 사용자 쿠폰 데이터 생성 시작 (${userIds.length}명)`)
-    const userCoupons = userIds.map(userId => ({
-      user_id: userId,
-      coupon_id: couponId,
-      issued_by: null, // 현재는 null, 향후 관리자 ID 저장 가능
-      issued_at: new Date().toISOString()
-    }))
-    console.log('✅ Step 5: 사용자 쿠폰 데이터 생성 완료')
-
-    // 6. Service Role로 쿠폰 배포 (중복 시 무시)
-    console.log(`💾 Step 6: DB INSERT 시작 (${userCoupons.length}개 레코드)`)
-
-    const results = []
-    let duplicateCount = 0
-
-    for (const userCoupon of userCoupons) {
-      const { data: inserted, error: insertError } = await supabaseAdmin
-        .from('user_coupons')
-        .insert(userCoupon)
-        .select()
-        .single()
-
-      if (insertError) {
-        if (insertError.code === '23505') {
-          // UNIQUE 제약 위반 (중복) - 무시하고 계속
-          console.log(`ℹ️  중복 건너뜀: user_id=${userCoupon.user_id}`)
-          duplicateCount++
-        } else {
-          console.error(`❌ INSERT 실패: user_id=${userCoupon.user_id}`, insertError)
-        }
-      } else if (inserted) {
-        results.push(inserted)
-      }
-    }
-
-    console.log(`✅ Step 6: DB INSERT 완료 (${results.length}개 성공, ${duplicateCount}개 중복)`)
-
-    // 결과 정리
-    const data = results
-
-    // 성공한 건이 하나도 없고 모두 중복이 아닌 에러라면 실패로 처리
-    if (results.length === 0 && duplicateCount === 0) {
-      console.error('❌ Step 6: 모든 INSERT 실패')
+    if (!distributeToAll && (!userIds || !Array.isArray(userIds) || userIds.length === 0)) {
       return NextResponse.json(
-        { error: '쿠폰 배포에 실패했습니다' },
-        { status: 500 }
+        { error: 'userIds 배열이 필요합니다 (또는 distributeToAll=true)' },
+        { status: 400 }
       )
     }
 
-    // 7. 결과 반환
-    const result = {
-      success: true,
-      distributedCount: results.length,
-      duplicates: duplicateCount,
-      requestedCount: userIds.length,
-      couponCode: coupon.code,
-      message: `쿠폰이 성공적으로 배포되었습니다 (${results.length}개 성공, ${duplicateCount}개 중복)`
+    // 3. Dependency Injection
+    const distributeCouponUseCase = new DistributeCouponUseCase(
+      CouponRepository,
+      UserRepository
+    )
+
+    // 4. Use Case 실행 (Application Layer)
+    let result
+
+    if (distributeToAll) {
+      // 전체 고객에게 배포
+      console.log('📢 전체 고객 배포 모드')
+      result = await distributeCouponUseCase.distributeToAll(
+        couponId,
+        null // adminId (향후 개선: adminEmail → adminId 변환)
+      )
+    } else {
+      // 특정 사용자들에게 배포
+      console.log(`👥 개별 배포 모드 (${userIds.length}명)`)
+      result = await distributeCouponUseCase.distributeToUsers(
+        couponId,
+        userIds,
+        null // adminId (향후 개선: adminEmail → adminId 변환)
+      )
     }
 
-    console.log('✅ Step 7: 쿠폰 배포 완료:', result)
+    console.log('✅ [쿠폰배포 API] 쿠폰 배포 완료:', {
+      totalIssued: result.totalIssued,
+      totalFailed: result.totalFailed,
+      totalSkipped: result.totalSkipped,
+    })
 
-    return NextResponse.json(result, { status: 200 })
-
+    // 5. 결과 반환 (Presentation Layer)
+    return NextResponse.json({
+      success: true,
+      ...result,
+      message: `쿠폰이 성공적으로 배포되었습니다 (${result.totalIssued}개 성공, ${result.totalSkipped}개 중복, ${result.totalFailed}개 실패)`,
+    })
   } catch (error) {
-    console.error('❌ 쿠폰 배포 API 에러 (catch):', error)
-    console.error('에러 메시지:', error.message)
-    console.error('에러 스택:', error.stack)
+    console.error('❌ [쿠폰배포 API] 에러:', error)
     return NextResponse.json(
-      { error: '서버 오류가 발생했습니다', details: error.message, stack: error.stack },
+      { error: error.message },
       { status: 500 }
     )
   }
