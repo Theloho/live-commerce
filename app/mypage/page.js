@@ -270,10 +270,14 @@ export default function MyPage() {
     const confirmed = window.confirm('로그아웃하시겠습니까?')
     if (confirmed) {
       try {
-        // 1. sessionStorage 정리
-        sessionStorage.removeItem('user')
+        // 1. Supabase Auth 로그아웃 먼저 실행
+        // → 서버에 로그아웃 API 호출 (토큰이 있을 때)
+        // → localStorage의 인증 토큰 자동 삭제
+        // → onAuthStateChange 이벤트로 모든 탭에 전파
+        await signOut()
 
-        // 2. localStorage 정리 (카카오 인증 흔적 제거)
+        // 2. 커스텀 데이터 정리 (카카오 인증 흔적 등)
+        sessionStorage.removeItem('user')
         localStorage.removeItem('unified_user_session')
 
         // 3. 로컬 상태 정리
@@ -283,10 +287,7 @@ export default function MyPage() {
         // 4. 다른 컴포넌트에 로그아웃 알림 (이벤트 발생)
         window.dispatchEvent(new CustomEvent('userLoggedOut'))
 
-        // 5. Supabase Auth 로그아웃 (자동으로 localStorage의 인증 토큰 정리)
-        await signOut()
-
-        // 6. 성공 메시지 및 리다이렉트
+        // 5. 성공 메시지 및 리다이렉트
         toast.success('로그아웃되었습니다')
         router.push('/')
 

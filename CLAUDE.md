@@ -1238,6 +1238,30 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-24: ⚡ BuyBottomSheet 로딩 UI 개선 (품절 flash 제거) ⭐⭐
+
+**문제**: 바텀시트 열릴 때 "품절" 표시 flash 후 데이터 로드
+**원인**: `setStock(0)` 초기화 + DB 인덱스 없음 (3-way JOIN 느림)
+**해결**: DB 인덱스 4개 추가 + `setStock(null)` + 로딩 UI ("...")
+**성능**: 쿼리 2-5배 빠름 + UX 개선 (품절 flash 제거)
+**커밋**: `a174e55`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-24.md#3](docs/work-logs/WORK_LOG_2025-10-24.md#3-buybottomsheet-성능-최적화-db-인덱스--로딩-ui)
+
+---
+
+### 2025-10-24: 🔧 로그아웃 AuthSessionMissingError 수정 ⭐
+
+**문제**: 로그아웃 시 `AuthSessionMissingError` 에러
+**원인**: mypage.js에서 세션 클리어 후 signOut() 호출
+**해결**: signOut()에서 AuthSessionMissingError 무시 + 항상 상태 클리어
+**결과**: 세션 상태 관계없이 안전한 로그아웃
+**커밋**: `9df4931`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-24.md#4](docs/work-logs/WORK_LOG_2025-10-24.md#4-로그아웃-authsessionmissingerror-수정)
+
+---
+
 ### 2025-10-23: 🚀 타임아웃 해결 + BuyBottomSheet 최적화 (6개 버그 수정) ⭐⭐⭐
 
 **문제**: 주문 생성 504 타임아웃 (30초+) + 옵션 선택 UX 문제
