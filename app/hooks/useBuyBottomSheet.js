@@ -2,6 +2,7 @@
  * useBuyBottomSheet - BuyBottomSheet 비즈니스 로직 Custom Hook
  * @author Claude
  * @since 2025-10-21
+ * @updated 2025-10-23 - Clean Architecture API Routes 완전 연동
  *
  * 역할: BuyBottomSheet의 모든 상태 관리 및 비즈니스 로직
  * - 사용자 세션 로드 (UserProfileManager)
@@ -12,11 +13,11 @@
  * - 수량 조절
  *
  * Clean Architecture:
- * - Presentation Layer (BuyBottomSheet) → Application Layer (이 Hook)
- * - ⚠️ TODO: Infrastructure Layer 직접 호출 제거 필요
- *   - getProductVariants → VariantRepository.findByProduct()
- *   - checkOptionInventory → InventoryUseCase.check()
- *   - createOrderWithOptions → CreateOrderUseCase.execute()
+ * - Presentation Layer (BuyBottomSheet) → API Routes → UseCases → Repository
+ * - ✅ Legacy API 제거 완료:
+ *   - getProductVariants → /api/products/variants (GetProductVariantsUseCase)
+ *   - checkOptionInventory → /api/inventory/check (CheckInventoryUseCase)
+ *   - createOrderWithOptions → /api/orders/create (CreateOrderUseCase)
  */
 
 'use client'
@@ -26,9 +27,6 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
 import { UserProfileManager } from '@/lib/userProfileManager'
-
-// ⚠️ TODO: Repository pattern으로 전환 필요 (Rule #5)
-import { getProductVariants, checkOptionInventory, createOrderWithOptions } from '@/lib/supabaseApi'
 
 /**
  * useBuyBottomSheet Hook
@@ -108,8 +106,20 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
     async function loadVariants() {
       try {
-        // ⚠️ TODO: VariantRepository.findByProduct(product.id)로 전환
-        const variantData = await getProductVariants(product.id)
+        // ✅ Clean Architecture API Route 사용
+        const response = await fetch('/api/products/variants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: product.id })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Variant 조회 실패')
+        }
+
+        const result = await response.json()
+        const variantData = result.variants
 
         if (variantData && variantData.length > 0) {
           // Dynamic variant 변환 (옵션 구조 통일)
@@ -380,13 +390,24 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
       // 재고 확인
       for (const item of cartItems) {
-        // ⚠️ TODO: InventoryUseCase.check(item)로 전환
-        const inventoryCheck = await checkOptionInventory(
-          product.id,
-          item.selectedOptions
-        )
+        // ✅ Clean Architecture API Route 사용
+        const response = await fetch('/api/inventory/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: product.id,
+            selectedOptions: item.selectedOptions
+          })
+        })
 
-        // ✅ checkOptionInventory는 { available, inventory } 반환
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || '재고 확인 실패')
+        }
+
+        const inventoryCheck = await response.json()
+
+        // ✅ API는 { available, inventory, variantId? } 반환
         if (!inventoryCheck.available) {
           toast.error('선택하신 옵션의 재고가 없습니다')
           setIsLoading(false)
@@ -412,11 +433,27 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
           orderType: 'direct'
         }
 
-        // ⚠️ TODO: CreateOrderUseCase.execute(orderData)로 전환
-        const result = await createOrderWithOptions(orderData, profile, profile.name)
+        // ✅ Clean Architecture API Route 사용
+        const response = await fetch('/api/orders/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderData,
+            userProfile: profile,
+            depositName: profile.name,
+            user: userSession || user
+          })
+        })
 
-        // ✅ createOrderWithOptions는 성공 시 order 객체 반환, 실패 시 throw Error
-        if (!result) {
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || '주문 생성 실패')
+        }
+
+        const result = await response.json()
+
+        // ✅ API는 { order: {...} } 반환
+        if (!result.order) {
           throw new Error('주문 생성 실패')
         }
       }

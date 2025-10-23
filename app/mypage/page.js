@@ -17,7 +17,6 @@ import {
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
 import useAuthStore from '@/app/stores/authStore' // ⚡ Zustand store
-import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import AddressManager from '@/app/components/address/AddressManager'
 import { UserProfileManager } from '@/lib/userProfileManager' // ⚡ 중앙화 모듈
@@ -151,43 +150,39 @@ export default function MyPage() {
         setUserProfile(profile)
         setEditValues(profile)
       } else {
-        // 실제 Supabase에서 프로필 정보 가져오기
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', currentUser.id)
-          .maybeSingle() // single() 대신 maybeSingle() 사용 (없어도 오류 안남)
+        // ⚡ 실제 Supabase에서 프로필 정보 가져오기 (중앙화 모듈 사용)
+        try {
+          const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
 
-        if (error) {
+          if (dbProfile) {
+            setUserProfile(dbProfile)
+            setEditValues(dbProfile)
+          } else {
+            // 프로필이 없으면 기본값 설정
+            const defaultProfile = {
+              id: currentUser.id,
+              name: currentUser.user_metadata?.name || '',
+              phone: currentUser.user_metadata?.phone || '',
+              nickname: currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || '',
+              address: '',
+              detail_address: '',
+              addresses: [],
+              postal_code: ''
+            }
+
+            // 프로필이 없는 경우 추가 정보 입력 페이지로 리다이렉트
+            if (!defaultProfile.phone) {
+              toast.error('프로필 정보를 완성해주세요')
+              router.push('/auth/complete-profile')
+              return
+            }
+
+            setUserProfile(defaultProfile)
+            setEditValues(defaultProfile)
+          }
+        } catch (error) {
           toast.error('프로필 정보를 불러올 수 없습니다')
           return
-        }
-
-        // 프로필이 없으면 기본값 설정
-        if (!data) {
-          const defaultProfile = {
-            id: currentUser.id,
-            name: currentUser.user_metadata?.name || '',
-            phone: currentUser.user_metadata?.phone || '',
-            nickname: currentUser.user_metadata?.nickname || currentUser.user_metadata?.name || '',
-            address: '',
-            detail_address: '',
-            addresses: [],
-            postal_code: ''
-          }
-
-          // 프로필이 없는 경우 추가 정보 입력 페이지로 리다이렉트
-          if (!defaultProfile.phone) {
-            toast.error('프로필 정보를 완성해주세요')
-            router.push('/auth/complete-profile')
-            return
-          }
-
-          setUserProfile(defaultProfile)
-          setEditValues(defaultProfile)
-        } else {
-          setUserProfile(data)
-          setEditValues(data)
         }
       }
     } catch (error) {
