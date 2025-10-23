@@ -184,40 +184,44 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
     const allOptionsSelected = options.every(opt => selectedOptions[opt.name])
 
-    if (allOptionsSelected && selectedCombinations.length === 0) {
-      // 모든 옵션이 선택되었고 아직 조합이 추가되지 않았을 때
-      setTimeout(() => {
-        const optionKey = Object.values(selectedOptions).join(' / ')
+    if (allOptionsSelected) {
+      // ✅ 중복 체크: 이미 추가된 조합인지 확인
+      const optionKey = Object.values(selectedOptions).join(' / ')
+      const isDuplicate = selectedCombinations.some(combo => combo.key === optionKey)
 
-        // Variant ID 찾기
-        const variant = variants?.find(v => {
-          if (!v.options || v.options.length !== options.length) return false
-          return Object.entries(selectedOptions).every(([optName, optValue]) => {
-            return v.options.some(opt => opt.optionName === optName && opt.optionValue === optValue)
+      if (!isDuplicate) {
+        // 중복이 아닐 때만 추가
+        setTimeout(() => {
+          // Variant ID 찾기
+          const variant = variants?.find(v => {
+            if (!v.options || v.options.length !== options.length) return false
+            return Object.entries(selectedOptions).every(([optName, optValue]) => {
+              return v.options.some(opt => opt.optionName === optName && opt.optionValue === optValue)
+            })
           })
-        })
 
-        const variantInventory = variant ? variant.inventory : stock
-        const variantId = variant ? variant.id : null
+          const variantInventory = variant ? variant.inventory : stock
+          const variantId = variant ? variant.id : null
 
-        if (variantInventory === 0) {
-          toast.error('선택하신 옵션의 재고가 없습니다')
-          return
-        }
+          if (variantInventory === 0) {
+            toast.error('선택하신 옵션의 재고가 없습니다')
+            return
+          }
 
-        setSelectedCombinations([{
-          key: optionKey,
-          options: { ...selectedOptions },
-          quantity: 1,
-          price: price,
-          variantId: variantId
-        }])
+          setSelectedCombinations(prev => [...prev, {
+            key: optionKey,
+            options: { ...selectedOptions },
+            quantity: 1,
+            price: price,
+            variantId: variantId
+          }])
 
-        // 선택 초기화 (다음 조합 선택 가능하도록)
-        setSelectedOptions({})
+          // 선택 초기화 (다음 조합 선택 가능하도록)
+          setSelectedOptions({})
 
-        toast.success(`${optionKey} 추가됨`)
-      }, 500)
+          toast.success(`${optionKey} 추가됨`)
+        }, 500)
+      }
     }
   }, [selectedOptions, options, selectedCombinations, variants, stock, price])
 
