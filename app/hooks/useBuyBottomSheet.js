@@ -188,47 +188,74 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
     const allOptionsSelected = options.every(opt => selectedOptions[opt.name])
 
     if (allOptionsSelected) {
-      // ✅ 중복 체크: 이미 추가된 조합인지 확인
+      // ✅ 중복 체크: 이미 추가된 조합 찾기
       const optionKey = Object.values(selectedOptions).join(' / ')
-      const isDuplicate = selectedCombinations.some(combo => combo.key === optionKey)
+      const duplicateIndex = selectedCombinations.findIndex(combo => combo.key === optionKey)
 
       // ✅ React Strict Mode 대응: 이미 실행 중이면 무시
-      if (!isDuplicate && !isAddingCombination.current) {
+      if (!isAddingCombination.current) {
         isAddingCombination.current = true
 
         setTimeout(() => {
-          // Variant ID 찾기
-          const variant = variants?.find(v => {
-            if (!v.options || v.options.length !== options.length) return false
-            return Object.entries(selectedOptions).every(([optName, optValue]) => {
-              return v.options.some(opt => opt.optionName === optName && opt.optionValue === optValue)
+          if (duplicateIndex !== -1) {
+            // ✅ 중복 조합 발견 → 수량 +1
+            const existingCombo = selectedCombinations[duplicateIndex]
+
+            // Variant 재고 확인
+            const variant = existingCombo.variantId
+              ? variants?.find(v => v.id === existingCombo.variantId)
+              : null
+            const maxInventory = variant ? variant.inventory : stock
+
+            if (existingCombo.quantity + 1 > maxInventory) {
+              toast.error(`재고가 부족합니다 (최대 ${maxInventory}개)`)
+              isAddingCombination.current = false
+              return
+            }
+
+            setSelectedCombinations(prev => {
+              const updated = [...prev]
+              updated[duplicateIndex] = {
+                ...updated[duplicateIndex],
+                quantity: updated[duplicateIndex].quantity + 1
+              }
+              return updated
             })
-          })
 
-          const variantInventory = variant ? variant.inventory : stock
-          const variantId = variant ? variant.id : null
-
-          if (variantInventory === 0) {
-            toast.error('선택하신 옵션의 재고가 없습니다')
+            setSelectedOptions({})
+            toast.success(`${optionKey} 수량 +1`)
             isAddingCombination.current = false
-            return
+          } else {
+            // ✅ 새로운 조합 추가
+            // Variant ID 찾기
+            const variant = variants?.find(v => {
+              if (!v.options || v.options.length !== options.length) return false
+              return Object.entries(selectedOptions).every(([optName, optValue]) => {
+                return v.options.some(opt => opt.optionName === optName && opt.optionValue === optValue)
+              })
+            })
+
+            const variantInventory = variant ? variant.inventory : stock
+            const variantId = variant ? variant.id : null
+
+            if (variantInventory === 0) {
+              toast.error('선택하신 옵션의 재고가 없습니다')
+              isAddingCombination.current = false
+              return
+            }
+
+            setSelectedCombinations(prev => [...prev, {
+              key: optionKey,
+              options: { ...selectedOptions },
+              quantity: 1,
+              price: price,
+              variantId: variantId
+            }])
+
+            setSelectedOptions({})
+            toast.success(`${optionKey} 추가됨`)
+            isAddingCombination.current = false
           }
-
-          setSelectedCombinations(prev => [...prev, {
-            key: optionKey,
-            options: { ...selectedOptions },
-            quantity: 1,
-            price: price,
-            variantId: variantId
-          }])
-
-          // 선택 초기화 (다음 조합 선택 가능하도록)
-          setSelectedOptions({})
-
-          toast.success(`${optionKey} 추가됨`)
-
-          // ✅ 플래그 초기화 (다음 조합 추가 가능)
-          isAddingCombination.current = false
         }, 500)
       }
     }
