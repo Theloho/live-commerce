@@ -39,6 +39,12 @@
 - [12.2 set()](#122-set)
 - [12.3 invalidate()](#123-invalidate)
 
+### 8. ProductRepository.js (4개 메서드) ✅ NEW (Phase 1.2)
+- [8.1 findAll()](#81-findall)
+- [8.2 findById()](#82-findbyid)
+- [8.3 findByIds()](#83-findbyids) ⭐ **NEW (2025-10-23)**
+- [8.4 updateInventory()](#84-updateinventory)
+
 ---
 
 # 7. OrderRepository.js ✅ NEW (Phase 1.1 - 2025-10-21)
@@ -503,21 +509,212 @@ await CacheService.invalidate(`profile:${userId}`)
 
 ---
 
-**✅ Part 1_2 업데이트 완료 (2025-10-21)**
+# 8. ProductRepository.js ✅ NEW (Phase 1.2 - 2025-10-21, 업데이트: 2025-10-23)
+
+**파일 위치**: `/lib/repositories/ProductRepository.js`
+**목적**: 상품 데이터 접근 레이어 (Infrastructure Layer) - Service Role 클라이언트로 RLS 우회
+**클래스**: `ProductRepository` (Singleton 패턴)
+**마이그레이션**: Phase 1.2 (lib/supabaseApi.js 함수들을 Repository로 이동)
+**생성일**: 2025-10-21
+**최근 업데이트**: 2025-10-23 (findByIds 메서드 추가)
+
+---
+
+## 8.1 findAll()
+
+**목적**: 상품 목록 조회 (페이지네이션 포함)
+
+**함수 시그니처**:
+```javascript
+async findAll(filters = {})
+```
+
+**파라미터**:
+- `filters` (Object):
+  - `status` (string | null): 상품 상태 필터 (active, inactive 등)
+  - `isLive` (boolean | undefined): 라이브 활성화 상태
+  - `page` (number): 페이지 번호 (기본값: 1)
+  - `pageSize` (number): 페이지 크기 (기본값: 50)
+
+**반환값**:
+```javascript
+Promise<{
+  products: Array,
+  totalCount: number,
+  currentPage: number,
+  totalPages: number
+}>
+```
+
+**사용처**:
+- `/app/api/products/list/route.js` (Line 46) - 상품 목록 API
+  - `GetProductsUseCase`를 통해 호출
+- `/app/page.js` - 홈페이지 상품 목록 (Phase 4.2 마이그레이션 예정)
+
+**연관 DB 테이블**:
+- `products` (SELECT * with pagination)
+
+**수정 시 체크리스트**:
+- [ ] Service Role 클라이언트 사용하는가?
+- [ ] 페이지네이션 제대로 동작하는가?
+- [ ] `count: 'exact'` 옵션으로 전체 개수 조회하는가?
+- [ ] 정렬 순서 확인 (created_at DESC)
+
+---
+
+## 8.2 findById()
+
+**목적**: 단일 상품 조회
+
+**함수 시그니처**:
+```javascript
+async findById(productId)
+```
+
+**파라미터**:
+- `productId` (string): 상품 ID (UUID)
+
+**반환값**: `Promise<Object>` - 상품 객체 또는 null
+
+**사용처**:
+- `CreateOrderUseCase._checkInventory()` (Line 154 후속 작업)
+- `/app/products/catalog/[id]/page.js` - 상품 상세 페이지
+- `/app/products/catalog/[id]/edit/page.js` - 상품 수정 페이지
+- `/app/admin/products/new/page.js` - 상품 복사 기능
+
+**연관 DB 테이블**:
+- `products` (SELECT * WHERE id = ?)
+
+**수정 시 체크리스트**:
+- [ ] .single() 사용하여 단일 객체 반환하는가?
+- [ ] 존재하지 않는 ID 처리하는가?
+- [ ] 에러 메시지 명확한가?
+
+---
+
+## 8.3 findByIds() ⭐ **NEW (2025-10-23)**
+
+**목적**: 복수 상품 조회 (N+1 문제 해결)
+
+**함수 시그니처**:
+```javascript
+async findByIds(productIds)
+```
+
+**파라미터**:
+- `productIds` (string[]): 상품 ID 배열 (UUID 배열)
+
+**반환값**: `Promise<Array>` - 상품 배열 (빈 배열 가능)
+
+**특징**:
+- 빈 배열 입력 시 빈 배열 반환 (빠른 종료)
+- Supabase `.in('id', ids)` 쿼리로 배치 조회
+- N+1 쿼리 문제 해결
+
+**사용처** ⭐:
+- `CreateOrderUseCase._checkInventory()` (Line 154) - 주문 생성 시 재고 확인
+  ```javascript
+  const ids = items.map((item) => item.product_id)
+  const products = await this.productRepository.findByIds(ids)
+  ```
+- 장바구니 추가 API
+- 구매하기 버튼 처리
+
+**연관 DB 테이블**:
+- `products` (SELECT * WHERE id IN (...))
+
+**버그 이력**:
+- **2025-10-23**: 메서드 누락으로 주문 생성 500 에러 발생
+  - 증상: `this.productRepository.findByIds is not a function`
+  - 원인: CreateOrderUseCase가 호출했으나 메서드 미구현
+  - 해결: Supabase .in() 쿼리로 구현
+  - 커밋: `e09fe09`
+
+**수정 시 체크리스트**:
+- [ ] 빈 배열 입력 검증하는가?
+- [ ] .in() 쿼리로 배치 조회하는가?
+- [ ] 결과 배열 null 체크하는가? (data || [])
+- [ ] 디버그 로깅 포함하는가?
+
+---
+
+## 8.4 updateInventory()
+
+**목적**: 상품 재고 업데이트 (products.inventory)
+
+**함수 시그니처**:
+```javascript
+async updateInventory(productId, quantityChange)
+```
+
+**파라미터**:
+- `productId` (string): 상품 ID
+- `quantityChange` (number): 재고 변경량 (양수: 증가, 음수: 감소)
+
+**반환값**:
+```javascript
+Promise<{
+  success: boolean,
+  newInventory: number
+}>
+```
+
+**동작 순서**:
+1. 현재 재고 조회 (SELECT)
+2. 새 재고 계산 (current + change)
+3. 재고 부족 검증 (newInventory < 0 → 에러)
+4. 재고 업데이트 (UPDATE)
+
+**사용처**:
+- `CancelOrderUseCase` - 주문 취소 시 재고 복원
+- `CreateOrderUseCase` - 주문 생성 시 재고 차감 (옵션 없는 상품)
+
+**연관 DB 테이블**:
+- `products.inventory` (UPDATE)
+
+**주의사항**:
+- ⚠️ **Race Condition 위험**: SELECT → UPDATE (2단계)
+- ⚠️ 동시 주문 시 재고 부정합 가능
+- **Variant 재고와 구분**: 이 메서드는 `products.inventory` 전용
+- Variant 재고는 `updateVariantInventory()` 사용
+
+**수정 시 체크리스트**:
+- [ ] 재고 부족 검증하는가? (newInventory < 0)
+- [ ] 에러 메시지 명확한가?
+- [ ] 로깅 포함하는가? (old → new 재고)
+- [ ] **Variant 재고와 혼동하지 않았는가?**
+
+---
+
+**ProductRepository 수정 시 전체 체크리스트**:
+- [ ] Service Role 클라이언트(supabaseAdmin) 사용하는가?
+- [ ] 파일 크기 650줄 이하 유지 (Rule 1) - 현재 600줄 ✅
+- [ ] JSDoc 주석 완료되었는가?
+- [ ] try-catch로 모든 에러 처리하는가?
+- [ ] 로깅 패턴 일관성 유지 (✅/⚠️/❌ 이모지)
+- [ ] Variant 재고와 Product 재고 혼동하지 않았는가?
+  - `products.inventory` = 전체 상품 재고
+  - `product_variants.inventory` = Variant별 재고 (SKU별)
+- [ ] RLS 우회 확인 (Service Role이므로 RLS 정책 무시)
+- [ ] Use Case에서 재고 검증 로직 있는가? (Repository는 DB 접근만)
+
+---
+
+**✅ Part 1_2 업데이트 완료 (최근: 2025-10-23)**
 
 **이전 문서**: [SYSTEM_DEPENDENCY_COMPLETE_PART1.md](./SYSTEM_DEPENDENCY_COMPLETE_PART1.md) - 유틸리티 함수
 
 **Part 1_2 요약**:
-- 총 12개 메서드 문서화 (OrderRepository 7개 + QueueService 2개 + CacheService 3개)
+- 총 16개 메서드 문서화 (OrderRepository 7개 + ProductRepository 4개 + QueueService 2개 + CacheService 3개)
 - 사용처 파일 경로 + 라인 번호 명시
 - 연관 DB 테이블, 수정 체크리스트 포함
-- Service Role 클라이언트로 RLS 우회 (OrderRepository)
+- Service Role 클라이언트로 RLS 우회 (OrderRepository, ProductRepository)
 - Redis 기반 Infrastructure Layer (QueueService, CacheService)
+- **최신 버그 이력 포함** (ProductRepository.findByIds - 2025-10-23)
 
-**문서 크기**: 약 400 줄 (적정 크기 ✅)
+**문서 크기**: 약 650 줄 (적정 크기 ✅)
 
 **다음 추가 예정**:
-- Phase 1.2: ProductRepository (4개 메서드)
 - Phase 1.3: UserRepository (2개 메서드)
 - Phase 1.4: CouponRepository (4개 메서드)
 

@@ -41,13 +41,15 @@
 ### 📌 개요
 - **파일 위치**: `/lib/repositories/ProductRepository.js`
 - **목적**: 상품 데이터 접근 레이어 (Infrastructure Layer) - Service Role 클라이언트로 RLS 우회
-- **클래스**: `ProductRepository extends BaseRepository`
+- **클래스**: `ProductRepository` (Singleton 패턴)
 - **마이그레이션**: Phase 1.2 (lib/supabaseApi.js 함수들을 Repository로 이동)
 - **생성일**: 2025-10-21
-- **파일 크기**: 207줄 (Rule 1 준수 ✅)
+- **최근 업데이트**: 2025-10-23 (findByIds 메서드 추가)
+- **파일 크기**: 600줄 (Rule 1 준수 ✅)
 
 ### 🔍 상세 내용
-**Part 1 Section 8 참조** (4개 메서드 정의 및 사용처)
+**Part 1_2 Section 8 참조** (4개 주요 메서드 정의 및 사용처)
+- findAll(), findById(), **findByIds()** ⭐, updateInventory()
 
 ### 📋 수정 시 전체 체크리스트
 
@@ -103,16 +105,49 @@
 - Variant 재고는 `VariantRepository.updateInventory()` 사용 (Phase 1.3)
 - **절대 혼동하지 말 것!**
 
+### 🐛 실제 버그 사례 (Rule #0-A Stage 5 기록)
+
+#### 버그 #1: findByIds() 메서드 누락 (2025-10-23) ⭐
+
+**증상**:
+```
+POST /api/orders/create 500 (Internal Server Error)
+Error: this.productRepository.findByIds is not a function
+```
+
+**발생 위치**:
+- CreateOrderUseCase._checkInventory() Line 154
+- 장바구니 추가 / 구매하기 버튼 클릭 시
+
+**근본 원인**:
+- Use Case에서 `findByIds()` 호출
+- ProductRepository에는 `findById()` (단수)만 존재
+- 복수 조회 메서드 미구현
+
+**해결 방법**:
+1. Supabase `.in('id', ids)` 쿼리 사용
+2. 빈 배열 입력 검증 추가
+3. 반환값 null 체크 (data || [])
+
+**커밋**: `e09fe09`
+
+**교훈**:
+- Use Case 작성 시 Repository 메서드 먼저 확인
+- 배치 조회가 필요하면 findByIds() 구현 필수
+- N+1 쿼리 문제 방지
+
+---
+
 ### 📚 크로스 레퍼런스
 
-- **Part 1 Section 8**: ProductRepository 정의 및 사용처
+- **Part 1_2 Section 8**: ProductRepository 정의 및 사용처 (findByIds 포함)
 - **Part 2 Section X**: products 테이블 스키마
 - **Part 2 Section Y**: product_variants 테이블 스키마
 - **FUNCTION_QUERY_REFERENCE.md Section 1**: Product-related functions (마이그레이션 완료)
   - 1.1 getProducts → findAll
   - 1.2 getProductById → findById
   - 1.6 updateProductInventory → updateInventory
-  - 1.6A findByIds (신규)
+  - 1.6A findByIds (신규 - 2025-10-23)
 
 ---
 
