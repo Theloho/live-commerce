@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import useAuthStore from '@/app/stores/authStore' // ⚡ Zustand store 사용
 import toast from 'react-hot-toast'
-import { UserProfileManager } from '@/lib/UserProfileManager' // ⚡ 프로필 관리 모듈
+import { UserProfileManager } from '@/lib/userProfileManager' // ⚡ 프로필 관리 모듈
 
 // 전역 구독 관리 (싱글톤 패턴)
 let globalSubscription = null
