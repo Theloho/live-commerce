@@ -12,8 +12,17 @@ import { QueueService } from '@/lib/services/QueueService'
  * - Business Logic: CreateOrderUseCase (Clean Version)
  */
 export async function POST(request) {
+  const startTime = Date.now()
+  console.log('🔵 [API /orders/create] 시작:', new Date().toISOString())
+
   try {
     const { orderData, userProfile, depositName, user } = await request.json()
+
+    console.log('🔵 [API /orders/create] 파라미터 수신:', {
+      orderId: orderData?.id,
+      userId: user?.id,
+      hasUserProfile: !!userProfile
+    })
 
     // 1. Dependency Injection (Clean Architecture)
     const createOrderUseCase = new CreateOrderUseCase(
@@ -42,13 +51,30 @@ export async function POST(request) {
       user,
     }
 
+    console.log('🔵 [API /orders/create] Use Case 실행 시작')
+
     // 3. Clean CreateOrderUseCase 실행
     const result = await createOrderUseCase.execute(cleanParams)
 
+    const elapsed = Date.now() - startTime
+    console.log('✅ [API /orders/create] 완료:', { elapsed: `${elapsed}ms` })
+
     return NextResponse.json(result)
   } catch (error) {
+    const elapsed = Date.now() - startTime
+    console.error('❌ [API /orders/create] 실패:', {
+      elapsed: `${elapsed}ms`,
+      message: error.message,
+      stack: error.stack
+    })
+
     return NextResponse.json(
-      { error: error.message || '주문 생성에 실패했습니다', details: error.toString() },
+      {
+        error: error.message || '주문 생성에 실패했습니다',
+        details: error.toString(),
+        elapsed: `${elapsed}ms`,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }
