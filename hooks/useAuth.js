@@ -79,8 +79,26 @@ export default function useAuth() {
       const { user: newUser, event: authEvent } = event.detail
       if (authEvent === 'INITIAL_SESSION' || authEvent === 'SIGNED_IN' || authEvent === 'TOKEN_REFRESHED') {
         setUser(newUser)
+
+        // ⚡ sessionStorage 업데이트 (HomeClient 등에서 사용)
+        if (newUser && typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('user', JSON.stringify(newUser))
+          } catch (error) {
+            console.warn('sessionStorage 저장 실패:', error)
+          }
+        }
       } else if (authEvent === 'SIGNED_OUT') {
         setUser(null)
+
+        // ⚡ sessionStorage 클리어
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('user')
+          } catch (error) {
+            console.warn('sessionStorage 삭제 실패:', error)
+          }
+        }
       }
     }
 
