@@ -164,22 +164,27 @@ export default function AddressManager({ addresses = [], onAddressesChange, onSe
   // 주소 검색 함수
   const openAddressSearch = () => {
     if (typeof window !== 'undefined' && window.daum && window.daum.Postcode) {
-      new window.daum.Postcode({
-        oncomplete: function(data) {
-          // 선택한 주소와 우편번호를 폼에 설정
-          setFormData(prev => ({
-            ...prev,
-            address: `${data.sido} ${data.sigungu} ${data.roadname || data.jibunAddress}`,
-            postal_code: data.zonecode // 우편번호 저장
-          }))
-          setShowAddressSearch(false)
-        },
-        onclose: function() {
-          setShowAddressSearch(false)
-        },
-        width: '100%',
-        height: '100%'
-      }).open()
+      setShowAddressSearch(true)
+
+      // 약간의 지연 후 embed 실행 (div가 렌더링된 후)
+      setTimeout(() => {
+        const container = document.getElementById('address-search-container')
+        if (container) {
+          new window.daum.Postcode({
+            oncomplete: function(data) {
+              // 선택한 주소와 우편번호를 폼에 설정
+              setFormData(prev => ({
+                ...prev,
+                address: `${data.sido} ${data.sigungu} ${data.roadname || data.jibunAddress}`,
+                postal_code: data.zonecode // 우편번호 저장
+              }))
+              setShowAddressSearch(false)
+            },
+            width: '100%',
+            height: '100%'
+          }).embed(container)
+        }
+      }, 100)
     } else {
       // 카카오맵 API가 로드되지 않은 경우
       toast.error('주소 검색 서비스를 불러올 수 없습니다')
@@ -439,6 +444,24 @@ export default function AddressManager({ addresses = [], onAddressesChange, onSe
           >
             첫 배송지 추가하기
           </button>
+        </div>
+      )}
+
+      {/* 주소 검색 모달 */}
+      {showAddressSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white w-full h-full md:max-w-[500px] md:h-[600px] rounded-lg overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold text-gray-900">주소 검색</h3>
+              <button
+                onClick={() => setShowAddressSearch(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div id="address-search-container" className="flex-1"></div>
+          </div>
         </div>
       )}
     </div>

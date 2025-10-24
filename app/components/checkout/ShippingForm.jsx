@@ -140,7 +140,7 @@ export default function ShippingForm({
                 addresses={userProfile.addresses || []}
                 selectMode={true}
                 onAddressesChange={handleAddressesChange}
-                onSelectAddress={(addr) => {
+                onSelect={(addr) => {
                   setTempSelectedAddress(addr)
                 }}
               />
