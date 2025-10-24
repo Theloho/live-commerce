@@ -128,9 +128,31 @@ export default function useAuth() {
 
     window.addEventListener('authStateChanged', handleAuthStateChanged)
 
+    // ⚡ profileUpdated 이벤트 리스너 (마이페이지 프로필 수정 시)
+    const handleProfileUpdated = (event) => {
+      const { field, value } = event.detail
+
+      // sessionStorage 자동 동기화
+      if (typeof window !== 'undefined') {
+        try {
+          const storedUser = sessionStorage.getItem('user')
+          if (storedUser) {
+            const user = JSON.parse(storedUser)
+            user[field] = value
+            sessionStorage.setItem('user', JSON.stringify(user))
+          }
+        } catch (error) {
+          console.warn('profileUpdated sessionStorage 동기화 실패:', error)
+        }
+      }
+    }
+
+    window.addEventListener('profileUpdated', handleProfileUpdated)
+
     return () => {
       subscriberCount--
       window.removeEventListener('authStateChanged', handleAuthStateChanged)
+      window.removeEventListener('profileUpdated', handleProfileUpdated)
 
       // 모든 구독자가 없어지면 전역 구독 해제
       if (subscriberCount === 0 && globalSubscription) {
