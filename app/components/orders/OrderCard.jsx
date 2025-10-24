@@ -21,7 +21,6 @@ import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import OrderCalculations from '@/lib/orderCalculations'
-import { formatShippingInfo } from '@/lib/shippingUtils'
 import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 
 /**
@@ -79,17 +78,16 @@ export default function OrderCard({
 
   const groupedItems = groupOrderItems(order.items || [])
 
-  // 🧮 배송비 포함 총 결제금액 계산 (OrderCalculations 사용)
-  const baseShippingFee = order.is_free_shipping ? 0 : 4000
-  const shippingInfo = formatShippingInfo(baseShippingFee, order.shipping?.postal_code)
+  // 🧮 상품금액만 계산 (배송비 제외) - 2025-10-24 수정
+  // ✅ 배송비는 체크아웃 페이지에서 계산 (OrderFilter와 동일)
   const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
-    region: shippingInfo.region,
+    region: 'normal', // 배송비 0원 계산용
     coupon: order.discount_amount > 0 ? {
       type: 'fixed_amount',
       value: order.discount_amount
     } : null,
     paymentMethod: order.payment?.method || 'transfer',
-    baseShippingFee: baseShippingFee
+    baseShippingFee: 0  // ✅ 배송비 제외
   })
   const finalAmount = orderCalc.finalAmount
 
