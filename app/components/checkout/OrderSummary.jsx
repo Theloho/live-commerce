@@ -35,7 +35,7 @@ export default function OrderSummary({ orderItem, hasPendingOrders }) {
           <div className="flex gap-3">
             <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
               <Image
-                src={orderItem.product?.thumbnail_url || '/placeholder-product.png'}
+                src={orderItem.thumbnail_url || '/placeholder-product.png'}
                 alt={orderItem.title || '상품 이미지'}
                 fill
                 sizes="80px"
@@ -68,7 +68,7 @@ export default function OrderSummary({ orderItem, hasPendingOrders }) {
         <div className="flex gap-3">
           <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
             <Image
-              src={orderItem.product?.thumbnail_url || '/placeholder-product.png'}
+              src={orderItem.thumbnail_url || '/placeholder-product.png'}
               alt={orderItem.title || '상품 이미지'}
               fill
               sizes="80px"

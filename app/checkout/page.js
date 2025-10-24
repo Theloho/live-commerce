@@ -195,10 +195,6 @@ export default function CheckoutPage() {
 
           {/* 결제 수단 선택 */}
           <PaymentMethodSelector
-            itemsTotal={orderCalc?.itemsTotal || 0}
-            shippingFee={orderCalc?.shippingFee || 0}
-            couponDiscount={orderCalc?.couponDiscount || 0}
-            finalTotal={orderCalc?.finalAmount || 0}
             onBankTransfer={handleBankTransfer}
             onCardPayment={handleCardPayment}
             enableCardPayment={enableCardPayment}

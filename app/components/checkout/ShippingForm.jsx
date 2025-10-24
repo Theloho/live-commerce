@@ -36,6 +36,7 @@ export default function ShippingForm({
   user
 }) {
   const [showAddressModal, setShowAddressModal] = useState(false)
+  const [tempSelectedAddress, setTempSelectedAddress] = useState(null)
 
   const handleAddressesChange = async (newAddresses) => {
     try {
@@ -120,26 +121,55 @@ export default function ShippingForm({
       {/* 주소 선택 모달 */}
       {showAddressModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold">배송지 선택</h2>
               <button
-                onClick={() => setShowAddressModal(false)}
+                onClick={() => {
+                  setShowAddressModal(false)
+                  setTempSelectedAddress(null)
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 ✕
               </button>
             </div>
 
-            <AddressManager
-              addresses={userProfile.addresses || []}
-              selectMode={true}
-              onAddressesChange={handleAddressesChange}
-              onSelectAddress={(addr) => {
-                onAddressSelect(addr)
-                setShowAddressModal(false)
-              }}
-            />
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <AddressManager
+                addresses={userProfile.addresses || []}
+                selectMode={true}
+                onAddressesChange={handleAddressesChange}
+                onSelectAddress={(addr) => {
+                  setTempSelectedAddress(addr)
+                }}
+              />
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-2">
+              <button
+                onClick={() => {
+                  setShowAddressModal(false)
+                  setTempSelectedAddress(null)
+                }}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  if (tempSelectedAddress) {
+                    onAddressSelect(tempSelectedAddress)
+                  }
+                  setShowAddressModal(false)
+                  setTempSelectedAddress(null)
+                }}
+                disabled={!tempSelectedAddress}
+                className="flex-1 px-4 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                확인
+              </button>
+            </div>
           </div>
         </div>
       )}
