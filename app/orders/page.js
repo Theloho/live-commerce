@@ -125,6 +125,7 @@ function OrdersContent() {
                   onOrderClick={handleOrderClick}
                   onCancelOrder={handleCancelOrder}
                   getStatusInfo={getStatusInfo}
+                  bulkPaymentInfo={order.bulkPaymentInfo || null}
                 />
               ))}
             </div>

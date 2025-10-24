@@ -31,13 +31,19 @@ import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
  * @param {Function} props.onOrderClick - 주문 클릭 핸들러
  * @param {Function} props.onCancelOrder - 주문 취소 핸들러
  * @param {Function} props.getStatusInfo - 상태 정보 조회 함수
+ * @param {Object} props.bulkPaymentInfo - 일괄결제 정보 (선택)
+ * @param {boolean} props.bulkPaymentInfo.isBulkPayment - 일괄결제 여부
+ * @param {boolean} props.bulkPaymentInfo.isRepresentativeOrder - 대표 주문 여부
+ * @param {number} props.bulkPaymentInfo.groupOrderCount - 그룹 내 총 주문 수
+ * @param {string} props.bulkPaymentInfo.representativeOrderNumber - 대표 주문 번호
  */
 export default function OrderCard({
   order,
   index,
   onOrderClick,
   onCancelOrder,
-  getStatusInfo
+  getStatusInfo,
+  bulkPaymentInfo = null
 }) {
   // 결제 방법 및 상태 정보
   const paymentMethod = order.payment?.method || null
@@ -108,6 +114,12 @@ export default function OrderCard({
           {order.status !== 'pending' && order.customer_order_number && (
             <span className="text-sm font-medium text-gray-900">
               주문번호: {order.customer_order_number}
+            </span>
+          )}
+          {/* ⭐ 대표 주문 배지 */}
+          {bulkPaymentInfo?.isRepresentativeOrder && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              대표 주문
             </span>
           )}
         </div>
@@ -186,6 +198,32 @@ export default function OrderCard({
               <span className="font-medium">{getCarrierName(order.shipping?.tracking_company)}</span>
               <span className="font-mono">{order.shipping.tracking_number}</span>
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* ⭐ 배송비 정보 (일괄결제) */}
+      {bulkPaymentInfo?.isBulkPayment && (
+        <div className="mb-2 pb-2 border-b border-gray-100">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">배송비</span>
+            {bulkPaymentInfo.isRepresentativeOrder ? (
+              // 대표 주문: "배송비: ₩4,000 (3건 합배)"
+              <span className="text-gray-900 font-medium flex items-center gap-1">
+                ₩{order.shipping_fee?.toLocaleString() || '0'}
+                <span className="text-xs text-blue-600 font-semibold">
+                  ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
+                </span>
+              </span>
+            ) : (
+              // 다른 주문: "배송비: ₩0 (주문번호에 포함)"
+              <span className="text-gray-500 text-xs flex items-center gap-1">
+                ₩0
+                <span className="text-blue-600">
+                  ({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                </span>
+              </span>
+            )}
           </div>
         </div>
       )}
