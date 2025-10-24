@@ -87,9 +87,23 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
 
           console.log('🔍 [체크아웃] 프로필+주소 로드 성공:', { profile, addresses })
 
+          // ⚡ addresses 배열이 비어있지만 기본 주소가 있는 경우 자동 변환 (마이페이지와 동일)
+          let finalAddresses = addresses
+          if ((!addresses || addresses.length === 0) && profile.address) {
+            console.log('🔄 [체크아웃] Legacy 주소 → addresses 배열 자동 변환')
+            finalAddresses = [{
+              id: Date.now(),
+              label: '기본 배송지',
+              address: profile.address,
+              detail_address: profile.detail_address || '',
+              postal_code: profile.postal_code || '',
+              is_default: true
+            }]
+          }
+
           // 주소가 있으면 기본 주소 선택
-          if (addresses && addresses.length > 0) {
-            const defaultAddress = addresses.find(addr => addr.is_default) || addresses[0]
+          if (finalAddresses && finalAddresses.length > 0) {
+            const defaultAddress = finalAddresses.find(addr => addr.is_default) || finalAddresses[0]
 
             console.log('✅ [체크아웃] 기본 주소 선택:', defaultAddress)
 
@@ -101,13 +115,13 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
                 address: defaultAddress.address,
                 detail_address: defaultAddress.detail_address,
                 postal_code: defaultAddress.postal_code,
-                addresses: addresses
+                addresses: finalAddresses
               })
             } else {
-              setUserProfile({ ...profile, addresses })
+              setUserProfile({ ...profile, addresses: finalAddresses })
             }
           } else {
-            console.warn('⚠️ [체크아웃] 주소 없음:', { addresses })
+            console.warn('⚠️ [체크아웃] 주소 없음 (legacy 주소도 없음):', { addresses })
             setUserProfile({ ...profile, addresses: [] })
           }
         } else {
