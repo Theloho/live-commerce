@@ -207,8 +207,11 @@ export default function OrderCard({
       {/* 액션 버튼들 */}
       <div className="mt-2 pt-2 border-t border-gray-100">
         {order.status === 'pending' ? (
-          // 결제대기 상품에는 취소 버튼만 표시
-          <div className="flex justify-end">
+          // 결제대기 라벨 + 취소 버튼 (한 줄 배치로 카드 높이 절약)
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">
+              {order.payment?.method === 'card' ? '카드결제 대기중' : '입금대기'}
+            </span>
             <button
               onClick={(e) => {
                 e.stopPropagation()
