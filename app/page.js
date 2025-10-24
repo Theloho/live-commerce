@@ -2,13 +2,13 @@ import HomeClient from './components/HomeClient'
 import { GetProductsUseCase } from '@/lib/use-cases/product/GetProductsUseCase'
 import ProductRepository from '@/lib/repositories/ProductRepository'
 
-// ⚡ ISR 설정: 5분마다 자동 재생성 (빌드 시 pre-render + 백그라운드 재생성)
-export const revalidate = 300 // 300초 = 5분
+// ⚡ Dynamic Rendering: 매 요청마다 최신 데이터 조회 (ISR 캐시 문제 해결)
+export const revalidate = 0 // 0 = Dynamic Rendering (항상 최신 데이터)
 
-// ⚡ Clean Architecture: ISR로 직접 UseCase 호출 (CSR → ISR 전환)
+// ⚡ Clean Architecture: Dynamic Rendering으로 직접 UseCase 호출
 async function getProducts() {
   try {
-    console.log('🏠 서버: 상품 데이터 로드 중... (ISR)')
+    console.log('🏠 서버: 상품 데이터 로드 중... (Dynamic Rendering)')
 
     // Server-side: Use Case로 직접 데이터 조회
     const getProductsUseCase = new GetProductsUseCase(ProductRepository)
@@ -39,9 +39,9 @@ async function getProducts() {
   }
 }
 
-// ⚡ ISR: 빌드 시 pre-render + 5분마다 자동 재생성 (최고 성능!)
+// ⚡ Dynamic Rendering: 매 요청마다 최신 데이터 조회 (product_number 항상 최신!)
 export default async function Home() {
-  // ISR: 빌드 시 + 5분마다 자동 재생성
+  // Dynamic Rendering: 매 요청마다 DB에서 최신 데이터 조회
   const products = await getProducts()
 
   return <HomeClient initialProducts={products} />
