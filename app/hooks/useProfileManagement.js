@@ -41,7 +41,7 @@ export function useProfileManagement({ user, userSession, router }) {
       // 카카오 사용자인 경우
       if (currentUser.provider === 'kakao') {
         try {
-          const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
+          const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id, true) // ⭐ 강제 갱신
 
           if (dbProfile) {
             const profile = {
@@ -97,7 +97,7 @@ export function useProfileManagement({ user, userSession, router }) {
       } else {
         // Supabase 사용자
         try {
-          const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
+          const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id, true) // ⭐ 강제 갱신
 
           if (dbProfile) {
             setUserProfile(dbProfile)

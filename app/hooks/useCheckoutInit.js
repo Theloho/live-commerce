@@ -239,40 +239,18 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
   }
 
   /**
-   * authStore 캐시 우선 프로필 + 주소 로드 (중복 제거!)
-   * - 1️⃣ authStore 캐시 확인 (DB 쿼리 생략)
-   * - 2️⃣ 캐시 미스: DB에서 1번만 조회
-   * - 3️⃣ 주소 마이그레이션 (legacy address → addresses 배열)
+   * 프로필 + 주소 로드 (체크아웃 전용 - 캐시 비활성화)
+   * - ⚡ 체크아웃에서는 항상 DB에서 최신 데이터 로드 (캐시 사용 안 함)
+   * - 이유: 새 배송지 추가 후 캐시가 오래될 수 있음
+   * - 주소 마이그레이션 (legacy address → addresses 배열)
    */
   const loadUserProfileAndAddresses = async (currentUser) => {
     try {
-      // 1️⃣ authStore 캐시 확인 (즉시 반환, DB 쿼리 생략!)
-      const cachedProfile = useAuthStore.getState().profile
-
-      console.log('🔍 [loadUserProfileAndAddresses] 캐시 확인:', {
-        hasCachedProfile: !!cachedProfile,
-        cachedId: cachedProfile?.id,
-        currentId: currentUser.id,
-        cachedAddresses: cachedProfile?.addresses,
-        hasAddressesField: 'addresses' in (cachedProfile || {})
+      // ⚡ 체크아웃에서는 캐시 건너뛰고 항상 DB에서 최신 데이터 로드
+      console.log('🔍 [loadUserProfileAndAddresses] DB 직접 조회 (캐시 비활성화):', {
+        currentId: currentUser.id
       })
 
-      // ⚡ 캐시 사용 조건: ID 일치 + addresses 필드 존재
-      if (cachedProfile &&
-          cachedProfile.id === currentUser.id &&
-          'addresses' in cachedProfile) {
-        logger.debug('⚡ 캐시에서 프로필+주소 로드 (DB 쿼리 생략)')
-
-        const normalizedProfile = UserProfileManager.normalizeProfile(cachedProfile)
-        const addresses = cachedProfile.addresses || []
-
-        console.log('✅ [loadUserProfileAndAddresses] 캐시에서 반환:', { addresses })
-
-        return { profile: normalizedProfile, addresses }
-      }
-
-      // 2️⃣ 캐시 미스 또는 addresses 필드 없음: DB에서 조회
-      console.log('🔍 [loadUserProfileAndAddresses] 캐시 미스 → DB 조회')
       const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id, true) // ⭐ 강제 갱신
 
       console.log('🔍 [loadUserProfileAndAddresses] DB에서 조회:', {
