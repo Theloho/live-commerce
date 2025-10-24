@@ -44,7 +44,7 @@ export default function OrderFilter({
     { key: 'delivered', label: '출고완료' }
   ]
 
-  // 결제대기 주문 요약 계산
+  // 결제대기 주문 요약 계산 (배송비는 체크아웃에서 계산)
   const calculatePendingSummary = () => {
     const pendingOrders = orders.filter(order => order.status === 'pending')
 
@@ -58,16 +58,13 @@ export default function OrderFilter({
       return sum + order.items.reduce((itemSum, item) => itemSum + (item.quantity || 1), 0)
     }, 0)
 
-    // 무료배송 조건 체크
-    const hasFreeShipping = pendingOrders.some(order => order.is_free_shipping === true)
-    const shippingFee = hasFreeShipping ? 0 : 4000
-    const finalTotal = totalProductPrice + shippingFee
+    // ✅ 배송비 제거: 체크아웃 페이지에서 계산
+    // finalTotal = 상품금액만 (배송비는 "전체 결제하기" 후 계산)
+    const finalTotal = totalProductPrice
 
     return {
       totalProductPrice,
       totalItemCount,
-      hasFreeShipping,
-      shippingFee,
       finalTotal
     }
   }
@@ -112,34 +109,15 @@ export default function OrderFilter({
             <h3 className="font-semibold text-gray-900 mb-3">결제 정보</h3>
 
             <div className="space-y-2">
-              {/* 무료배송 배지 */}
-              {summary.hasFreeShipping && (
-                <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-xs font-medium text-green-800">
-                    🎉 무료배송 혜택 적용!
-                  </p>
-                </div>
-              )}
-
               {/* 상품금액 */}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">상품금액 ({summary.totalItemCount}개)</span>
                 <span className="text-gray-900">₩{summary.totalProductPrice.toLocaleString()}</span>
               </div>
 
-              {/* 배송비 */}
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">배송비</span>
-                <span className="text-gray-900">
-                  {summary.shippingFee === 0 ? (
-                    <span className="text-green-600 font-semibold">무료</span>
-                  ) : (
-                    `₩${summary.shippingFee.toLocaleString()}`
-                  )}
-                </span>
-              </div>
+              {/* ✅ 배송비 제거: 체크아웃 페이지에서 계산 */}
 
-              {/* 총 결제금액 */}
+              {/* 총 결제금액 (배송비는 체크아웃에서 추가) */}
               <div className="border-t border-red-200 pt-2">
                 <div className="flex justify-between font-semibold">
                   <span className="text-gray-900">총 결제금액</span>
