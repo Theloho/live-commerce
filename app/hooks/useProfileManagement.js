@@ -198,6 +198,12 @@ export function useProfileManagement({ user, userSession, router }) {
     setEditingField(null)
   }
 
+  // 로컬 프로필 상태 업데이트 (DB 저장 없이 UI만 즉시 반영)
+  const updateLocalProfile = (updates) => {
+    setUserProfile(prev => ({ ...prev, ...updates }))
+    setEditValues(prev => ({ ...prev, ...updates }))
+  }
+
   return {
     userProfile,
     profileLoading,
@@ -207,6 +213,7 @@ export function useProfileManagement({ user, userSession, router }) {
     handleEdit,
     handleSave,
     handleCancel,
-    fetchUserProfile
+    fetchUserProfile,
+    updateLocalProfile // ⭐ 추가
   }
 }

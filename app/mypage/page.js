@@ -49,7 +49,8 @@ export default function MyPage() {
     setEditValues,
     handleEdit,
     handleSave,
-    handleCancel
+    handleCancel,
+    updateLocalProfile // ⭐ 추가
   } = useProfileManagement({ user, userSession, router })
 
   // 다음 주소 API 스크립트 로드
@@ -127,11 +128,11 @@ export default function MyPage() {
     }
   }
 
-  // 프로필 업데이트 콜백
+  // 프로필 업데이트 콜백 (AddressSection에서 호출)
   const handleProfileUpdate = (updates) => {
-    // AddressSection에서 호출 시 사용
-    // userProfile 상태는 useProfileManagement에서 관리하므로
-    // 여기서는 추가 작업 불필요
+    // DB 저장은 AddressSection에서 완료됨
+    // 여기서는 로컬 상태만 즉시 업데이트하여 UI 반영
+    updateLocalProfile(updates)
   }
 
   // 로딩 UI
