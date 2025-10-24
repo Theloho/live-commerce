@@ -160,6 +160,7 @@ export default function AdminDepositsPage() {
         ITEMS_PER_PAGE={ITEMS_PER_PAGE}
         onLoadPage={loadPendingOrders}
         onQuickSearch={handleQuickSearch}
+        onConfirmGroupPayment={confirmPayment}
       />
     </div>
   )

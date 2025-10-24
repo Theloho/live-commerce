@@ -86,14 +86,18 @@ export function useDepositMatching({ adminUser }) {
         depositName: order.deposit_name || order.depositor_name || order.order_payments?.[0]?.depositor_name
       }))
 
-      setPendingOrders(ordersWithUsers)
+      // ⚡ 일괄결제 그룹핑 처리
+      const groupedOrders = groupOrdersByPaymentGroupId(ordersWithUsers)
+
+      setPendingOrders(groupedOrders)
       setTotalCount(apiTotalCount || 0)
       setHasMore(apiHasMore || false)
       setCurrentPage(page)
 
       console.log('📄 페이지네이션 정보:', {
         currentPage: page,
-        itemsLoaded: ordersWithUsers.length,
+        itemsLoaded: groupedOrders.length,
+        originalCount: ordersWithUsers.length,
         totalCount: apiTotalCount,
         hasMore: apiHasMore
       })
@@ -103,6 +107,52 @@ export function useDepositMatching({ adminUser }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  // ========================================
+  // 일괄결제 그룹핑 헬퍼 함수
+  // ========================================
+  const groupOrdersByPaymentGroupId = (orders) => {
+    const groups = {}
+    const result = []
+
+    orders.forEach(order => {
+      if (order.payment_group_id) {
+        if (!groups[order.payment_group_id]) {
+          groups[order.payment_group_id] = []
+        }
+        groups[order.payment_group_id].push(order)
+      } else {
+        // 일괄결제 아닌 개별 주문
+        result.push(order)
+      }
+    })
+
+    // 그룹 주문 변환
+    Object.entries(groups).forEach(([groupId, groupOrders]) => {
+      // 대표 주문 찾기 (배송비 포함한 주문)
+      const representativeOrder = groupOrders.find(o => {
+        const shipping = o.order_shipping?.[0] || o.shipping
+        return (shipping?.shipping_fee || 0) > 0
+      }) || groupOrders[0]
+
+      // 총 금액 계산
+      const totalAmount = groupOrders.reduce((sum, o) => sum + (o.payment?.amount || 0), 0)
+
+      result.push({
+        ...representativeOrder,
+        isGroup: true,
+        groupOrderCount: groupOrders.length,
+        originalOrders: groupOrders,
+        totalAmount: totalAmount,
+        payment: {
+          ...representativeOrder.payment,
+          amount: totalAmount // ⭐ 그룹 총액으로 덮어쓰기
+        }
+      })
+    })
+
+    return result
   }
 
   // ========================================
@@ -238,7 +288,8 @@ export function useDepositMatching({ adminUser }) {
       // 1차: 이름 + 금액 정확 매칭
       let matchingOrder = pendingOrders.find(order => {
         const orderUser = order.user || {}
-        const orderAmount = order.payment?.amount || 0
+        // ⚡ 그룹 주문은 totalAmount, 개별 주문은 payment.amount
+        const orderAmount = order.isGroup ? order.totalAmount : (order.payment?.amount || 0)
 
         const namesToMatch = [
           order.depositName || '',
@@ -280,7 +331,8 @@ export function useDepositMatching({ adminUser }) {
         } else {
           // 3차: 금액만 매칭
           matchingOrder = pendingOrders.find(order => {
-            const orderAmount = order.payment?.amount || 0
+            // ⚡ 그룹 주문은 totalAmount, 개별 주문은 payment.amount
+            const orderAmount = order.isGroup ? order.totalAmount : (order.payment?.amount || 0)
             return orderAmount === transaction.amount
           })
 
@@ -300,26 +352,33 @@ export function useDepositMatching({ adminUser }) {
   // ========================================
   // 5. 입금 확인 처리
   // ========================================
-  const confirmPayment = async (matchedItem) => {
+  const confirmPayment = async (matchedItemOrOrder) => {
     try {
+      // ⚡ 유연한 입력 처리: matchedItem 객체 또는 order 객체 직접
+      const order = matchedItemOrOrder.order || matchedItemOrOrder
+
       // 그룹 주문인지 확인
-      if (matchedItem.order.isGroup && matchedItem.order.originalOrders) {
+      if (order.isGroup && order.originalOrders) {
         console.log('그룹 주문 입금확인:', {
-          groupId: matchedItem.order.id,
-          individualOrders: matchedItem.order.originalOrders.length
+          groupId: order.id,
+          individualOrders: order.originalOrders.length
         })
 
-        for (const individualOrder of matchedItem.order.originalOrders) {
+        for (const individualOrder of order.originalOrders) {
           await updateOrderStatus(individualOrder.id, 'paid')
         }
 
-        toast.success(`그룹 주문 ${matchedItem.order.originalOrders.length}건의 입금이 확인되었습니다`)
+        toast.success(`그룹 주문 ${order.originalOrders.length}건의 입금이 확인되었습니다`)
       } else {
-        await updateOrderStatus(matchedItem.order.id, 'paid')
+        await updateOrderStatus(order.id, 'paid')
         toast.success('입금이 확인되었습니다')
       }
 
-      setMatchedTransactions(prev => prev.filter(item => item.order.id !== matchedItem.order.id))
+      // matchedTransactions에서 제거 (matchedItem인 경우만)
+      if (matchedItemOrOrder.order) {
+        setMatchedTransactions(prev => prev.filter(item => item.order.id !== order.id))
+      }
+
       loadPendingOrders()
 
     } catch (error) {
