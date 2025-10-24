@@ -160,13 +160,8 @@ export default function OrderCard({
               </p>
 
               {/* 수량 표시 - 읽기 전용 */}
-              <p className="text-xs text-gray-700 font-medium mb-1">
+              <p className="text-xs text-gray-700 font-medium">
                 수량: {groupedItem.quantity}개
-              </p>
-
-              {/* 소계 표시 */}
-              <p className="text-xs text-gray-900 font-semibold mt-1">
-                소계: ₩{groupedItem.totalPrice?.toLocaleString() || '0'}
               </p>
             </div>
           </div>
