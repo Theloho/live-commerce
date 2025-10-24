@@ -98,7 +98,7 @@ export default function OrderCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       onClick={order.status !== 'pending' ? (e) => onOrderClick(e, order) : undefined}
-      className={`bg-white rounded-lg border border-gray-200 p-3 ${
+      className={`bg-white rounded-lg border border-gray-200 pt-2 px-3 pb-3 ${
         order.status !== 'pending' ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
       }`}
     >
