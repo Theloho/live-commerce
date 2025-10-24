@@ -239,10 +239,14 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
         hasCachedProfile: !!cachedProfile,
         cachedId: cachedProfile?.id,
         currentId: currentUser.id,
-        cachedAddresses: cachedProfile?.addresses
+        cachedAddresses: cachedProfile?.addresses,
+        hasAddressesField: 'addresses' in (cachedProfile || {})
       })
 
-      if (cachedProfile && cachedProfile.id === currentUser.id) {
+      // ⚡ 캐시 사용 조건: ID 일치 + addresses 필드 존재
+      if (cachedProfile &&
+          cachedProfile.id === currentUser.id &&
+          'addresses' in cachedProfile) {
         logger.debug('⚡ 캐시에서 프로필+주소 로드 (DB 쿼리 생략)')
 
         const normalizedProfile = UserProfileManager.normalizeProfile(cachedProfile)
@@ -253,8 +257,8 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
         return { profile: normalizedProfile, addresses }
       }
 
-      // 2️⃣ 캐시 미스: DB에서 1번만 조회 (UserProfileManager가 자동으로 authStore에 저장)
-      logger.debug('🔍 DB에서 프로필+주소 조회 (1번만!)')
+      // 2️⃣ 캐시 미스 또는 addresses 필드 없음: DB에서 조회
+      console.log('🔍 [loadUserProfileAndAddresses] 캐시 미스 → DB 조회')
       const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
 
       console.log('🔍 [loadUserProfileAndAddresses] DB에서 조회:', {
