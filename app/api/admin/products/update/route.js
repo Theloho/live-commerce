@@ -8,6 +8,7 @@
  * @since 2025-10-23
  */
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { verifyAdminAuth } from '@/lib/supabaseAdmin'
 import { UpdateProductUseCase } from '@/lib/use-cases/product/UpdateProductUseCase'
 import ProductRepository from '@/lib/repositories/ProductRepository'
@@ -53,6 +54,10 @@ export async function POST(request) {
     const result = await updateProductUseCase.execute(productId, params)
 
     console.log('✅ [상품수정 API] 상품 수정 완료:', productId)
+
+    // 5. 홈페이지 캐시 즉시 무효화 (사용자가 바로 변경사항 확인 가능)
+    revalidatePath('/')
+    console.log('🔄 홈페이지 캐시 무효화 완료')
 
     return NextResponse.json(result)
   } catch (error) {
