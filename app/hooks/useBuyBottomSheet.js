@@ -416,6 +416,16 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
         // ✅ 성능 최적화: thumbnail_url 제거 (3.6MB → 1KB)
         // - CreateOrderUseCase가 DB에서 자동으로 조회
+
+        // 🐛 DEBUG: product 객체에 product_number가 있는지 확인
+        console.log('🐛 [DEBUG useBuyBottomSheet] product 전체:', JSON.stringify({
+          id: product.id,
+          title: product.title,
+          product_number: product.product_number,
+          thumbnail_url: product.thumbnail_url,
+          image_url: product.image_url
+        }, null, 2))
+
         cartItems = [{
           product_id: product.id,
           product_number: product.product_number,

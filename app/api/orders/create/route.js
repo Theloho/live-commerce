@@ -24,6 +24,11 @@ export async function POST(request) {
       hasUserProfile: !!userProfile
     })
 
+    // 🐛 DEBUG: orderData에 product_number가 있는지 확인
+    console.log('🐛 [DEBUG] orderData 전체:', JSON.stringify(orderData, null, 2))
+    console.log('🐛 [DEBUG] orderData.product_number:', orderData?.product_number)
+    console.log('🐛 [DEBUG] orderData.product_id:', orderData?.product_id)
+
     // 1. Dependency Injection (Clean Architecture)
     const createOrderUseCase = new CreateOrderUseCase(
       OrderRepository,
