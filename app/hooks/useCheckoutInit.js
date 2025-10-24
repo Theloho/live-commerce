@@ -273,12 +273,13 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
 
       // 2️⃣ 캐시 미스 또는 addresses 필드 없음: DB에서 조회
       console.log('🔍 [loadUserProfileAndAddresses] 캐시 미스 → DB 조회')
-      const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
+      const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id, true) // ⭐ 강제 갱신
 
       console.log('🔍 [loadUserProfileAndAddresses] DB에서 조회:', {
         dbProfile,
         hasAddresses: !!dbProfile?.addresses,
-        addressesLength: dbProfile?.addresses?.length
+        addressesLength: dbProfile?.addresses?.length,
+        addressesRaw: dbProfile?.addresses // ⭐ 전체 배열 출력
       })
 
       if (!dbProfile) {
