@@ -40,7 +40,11 @@ export default function ShippingForm({
 
   const handleAddressesChange = async (newAddresses) => {
     try {
-      console.log('📱 [배송지] 주소 업데이트 API 호출:', newAddresses)
+      console.log('📱 [배송지] 주소 업데이트 API 호출:', { newAddresses, user })
+
+      if (!user || !user.id) {
+        throw new Error('사용자 정보를 찾을 수 없습니다')
+      }
 
       const response = await fetch('/api/profile/complete', {
         method: 'POST',

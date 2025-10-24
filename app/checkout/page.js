@@ -189,6 +189,7 @@ export default function CheckoutPage() {
           <PriceBreakdown
             itemsTotal={orderCalc?.itemsTotal || 0}
             shippingFee={orderCalc?.shippingFee || 0}
+            shippingBreakdown={orderCalc?.shippingBreakdown}
             couponDiscount={orderCalc?.couponDiscount || 0}
             finalTotal={orderCalc?.finalAmount || 0}
           />

@@ -66,8 +66,22 @@ export default function AddressManager({ addresses = [], onAddressesChange, onSe
     const updatedAddresses = [...addresses, newAddress]
 
     // 부모 컴포넌트에 업데이트 알림
+    console.log('🔵 [AddressManager] onAddressesChange 호출:', {
+      exists: !!onAddressesChange,
+      updatedAddresses
+    })
+
     if (onAddressesChange) {
-      await onAddressesChange(updatedAddresses)
+      try {
+        await onAddressesChange(updatedAddresses)
+        console.log('✅ [AddressManager] onAddressesChange 완료')
+      } catch (error) {
+        console.error('❌ [AddressManager] onAddressesChange 실패:', error)
+        toast.error('주소 저장에 실패했습니다')
+        return // 실패 시 폼 초기화 안 함
+      }
+    } else {
+      console.warn('⚠️ [AddressManager] onAddressesChange prop 없음!')
     }
 
     // 폼 초기화 및 성공 메시지

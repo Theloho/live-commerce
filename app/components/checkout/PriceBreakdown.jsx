@@ -13,6 +13,7 @@ import { motion } from 'framer-motion'
  * @param {Object} props
  * @param {number} props.itemsTotal - 상품 금액
  * @param {number} props.shippingFee - 배송비
+ * @param {Object} props.shippingBreakdown - 배송비 breakdown { baseShipping, surcharge, region }
  * @param {number} props.couponDiscount - 쿠폰 할인
  * @param {number} props.finalTotal - 최종 금액
  * @returns {JSX.Element}
@@ -20,6 +21,7 @@ import { motion } from 'framer-motion'
 export default function PriceBreakdown({
   itemsTotal,
   shippingFee,
+  shippingBreakdown,
   couponDiscount,
   finalTotal
 }) {
@@ -37,10 +39,28 @@ export default function PriceBreakdown({
           <span>상품 금액</span>
           <span>₩{itemsTotal.toLocaleString()}</span>
         </div>
-        <div className="flex justify-between text-gray-600">
-          <span>배송비</span>
-          <span>₩{shippingFee.toLocaleString()}</span>
-        </div>
+
+        {/* 배송비 breakdown이 있으면 상세 표시 */}
+        {shippingBreakdown ? (
+          <>
+            <div className="flex justify-between text-gray-600">
+              <span>배송비(기본)</span>
+              <span>₩{shippingBreakdown.baseShipping.toLocaleString()}</span>
+            </div>
+            {shippingBreakdown.surcharge > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>추가배송비 ({shippingBreakdown.region})</span>
+                <span>₩{shippingBreakdown.surcharge.toLocaleString()}</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex justify-between text-gray-600">
+            <span>배송비</span>
+            <span>₩{shippingFee.toLocaleString()}</span>
+          </div>
+        )}
+
         {couponDiscount > 0 && (
           <div className="flex justify-between text-red-600">
             <span>쿠폰 할인</span>
