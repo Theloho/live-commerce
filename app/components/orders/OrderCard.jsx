@@ -111,10 +111,13 @@ export default function OrderCard({
             </span>
           )}
         </div>
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
-          <StatusIcon className="h-4 w-4" />
-          <span className="text-xs font-medium">{statusInfo.label}</span>
-        </div>
+        {/* pending/verifying은 하단에 표시하므로 배지 숨김 */}
+        {order.status !== 'pending' && order.status !== 'verifying' && (
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
+            <StatusIcon className="h-4 w-4" />
+            <span className="text-xs font-medium">{statusInfo.label}</span>
+          </div>
+        )}
       </div>
 
       {/* 상품 정보 - 그룹화된 아이템들을 모두 표시 */}
@@ -223,27 +226,17 @@ export default function OrderCard({
             </button>
           </div>
         ) : order.status === 'verifying' ? (
-          // 결제 확인중 상태일 때 메시지 표시 (결제 방법별 색상 구분)
-          <div className={`${
-            order.payment?.method === 'card'
-              ? 'bg-blue-50 border border-blue-200'
-              : 'bg-orange-50 border border-orange-200'
-          } rounded-lg p-3`}>
+          // 입금확인중 라벨 (한 줄 배치로 카드 높이 절약)
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 ${
                 order.payment?.method === 'card' ? 'bg-blue-500' : 'bg-orange-500'
               } rounded-full animate-pulse`}></div>
-              <span className={`${
-                order.payment?.method === 'card' ? 'text-blue-700' : 'text-orange-700'
-              } text-sm font-medium`}>
-                {order.payment?.method === 'card' ? '카드결제 확인중' : '계좌입금 확인중'}
+              <span className="text-xs text-gray-700">
+                {order.payment?.method === 'card' ? '카드결제 확인중' : '입금확인중'}
               </span>
             </div>
-            <p className={`${
-              order.payment?.method === 'card' ? 'text-blue-600' : 'text-orange-600'
-            } text-xs mt-1`}>
-              결제 확인이 완료되면 자동으로 처리됩니다
-            </p>
+            <span className="text-xs text-gray-400">처리 대기중</span>
           </div>
         ) : (
           <div className="flex items-center justify-between text-xs text-gray-500">
