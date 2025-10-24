@@ -85,24 +85,33 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
         if (profileAndAddressResult.status === 'fulfilled') {
           const { profile, addresses } = profileAndAddressResult.value
 
-          setUserProfile(profile)
+          console.log('🔍 [체크아웃] 프로필+주소 로드 성공:', { profile, addresses })
 
           // 주소가 있으면 기본 주소 선택
           if (addresses && addresses.length > 0) {
             const defaultAddress = addresses.find(addr => addr.is_default) || addresses[0]
 
+            console.log('✅ [체크아웃] 기본 주소 선택:', defaultAddress)
+
             if (defaultAddress) {
+              // ⚡ 한 번에 모든 상태 설정 (Race Condition 방지)
               setSelectedAddress(defaultAddress)
-              setUserProfile(prev => ({
-                ...prev,
+              setUserProfile({
+                ...profile,
                 address: defaultAddress.address,
                 detail_address: defaultAddress.detail_address,
                 postal_code: defaultAddress.postal_code,
                 addresses: addresses
-              }))
+              })
+            } else {
+              setUserProfile({ ...profile, addresses })
             }
+          } else {
+            console.warn('⚠️ [체크아웃] 주소 없음:', { addresses })
+            setUserProfile({ ...profile, addresses: [] })
           }
         } else {
+          console.error('❌ [체크아웃] 프로필+주소 로드 실패:', profileAndAddressResult.reason)
           setUserProfile(UserProfileManager.normalizeProfile(validationResult.currentUser))
         }
 
