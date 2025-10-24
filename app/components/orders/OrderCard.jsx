@@ -98,12 +98,12 @@ export default function OrderCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       onClick={order.status !== 'pending' ? (e) => onOrderClick(e, order) : undefined}
-      className={`bg-white rounded-lg border border-gray-200 p-4 ${
+      className={`bg-white rounded-lg border border-gray-200 p-3 ${
         order.status !== 'pending' ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
       }`}
     >
       {/* 주문 헤더 */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           {order.status !== 'pending' && order.customer_order_number && (
             <span className="text-sm font-medium text-gray-900">
@@ -119,9 +119,9 @@ export default function OrderCard({
       </div>
 
       {/* 상품 정보 - 그룹화된 아이템들을 모두 표시 */}
-      <div className="space-y-3 mb-3">
+      <div className="space-y-2 mb-2">
         {groupedItems.map((groupedItem, itemIndex) => (
-          <div key={itemIndex} className="flex gap-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+          <div key={itemIndex} className="flex gap-2 pb-2 border-b border-gray-100 last:border-0 last:pb-0">
             <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
               <Image
                 src={groupedItem.thumbnail_url || '/placeholder.png'}
@@ -133,7 +133,7 @@ export default function OrderCard({
             </div>
             <div className="flex-1 min-w-0">
               {/* 제품번호 + 상품명 (한 줄) */}
-              <h3 className="mb-1 line-clamp-1 text-sm">
+              <h3 className="line-clamp-1 text-sm">
                 <span className="font-bold text-gray-900">{groupedItem.product_number || groupedItem.product_id}</span>
                 {groupedItem.title && groupedItem.title !== (groupedItem.product_number || groupedItem.product_id) && (
                   <span className="text-xs text-gray-500"> {groupedItem.title}</span>
@@ -142,7 +142,7 @@ export default function OrderCard({
 
               {/* 선택된 옵션 표시 */}
               {groupedItem.selectedOptions && Object.keys(groupedItem.selectedOptions).length > 0 && (
-                <div className="mb-1">
+                <div className="mt-0.5">
                   {Object.entries(groupedItem.selectedOptions).map(([optionId, value]) => (
                     <span
                       key={optionId}
@@ -154,15 +154,16 @@ export default function OrderCard({
                 </div>
               )}
 
-              {/* 단가 표시 */}
-              <p className="text-xs text-gray-500 mb-1">
-                단가: ₩{groupedItem.price?.toLocaleString() || '0'}
-              </p>
-
-              {/* 수량 표시 - 읽기 전용 */}
-              <p className="text-xs text-gray-700 font-medium">
-                수량: {groupedItem.quantity}개
-              </p>
+              {/* 단가 + 수량 한 줄로 */}
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs text-gray-500">
+                  단가: ₩{groupedItem.price?.toLocaleString() || '0'}
+                </p>
+                <span className="text-gray-300">|</span>
+                <p className="text-xs text-gray-700 font-medium">
+                  수량: {groupedItem.quantity}개
+                </p>
+              </div>
             </div>
           </div>
         ))}
@@ -201,7 +202,7 @@ export default function OrderCard({
       </div>
 
       {/* 액션 버튼들 */}
-      <div className="mt-2 pt-2 border-t border-gray-100">
+      <div className="mt-1.5 pt-1.5 border-t border-gray-100">
         {order.status === 'pending' ? (
           // 결제대기 상품에는 취소 버튼만 표시
           <div className="flex justify-end">
