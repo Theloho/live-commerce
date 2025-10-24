@@ -235,11 +235,20 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
       // 1️⃣ authStore 캐시 확인 (즉시 반환, DB 쿼리 생략!)
       const cachedProfile = useAuthStore.getState().profile
 
+      console.log('🔍 [loadUserProfileAndAddresses] 캐시 확인:', {
+        hasCachedProfile: !!cachedProfile,
+        cachedId: cachedProfile?.id,
+        currentId: currentUser.id,
+        cachedAddresses: cachedProfile?.addresses
+      })
+
       if (cachedProfile && cachedProfile.id === currentUser.id) {
         logger.debug('⚡ 캐시에서 프로필+주소 로드 (DB 쿼리 생략)')
 
         const normalizedProfile = UserProfileManager.normalizeProfile(cachedProfile)
         const addresses = cachedProfile.addresses || []
+
+        console.log('✅ [loadUserProfileAndAddresses] 캐시에서 반환:', { addresses })
 
         return { profile: normalizedProfile, addresses }
       }
@@ -248,7 +257,14 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
       logger.debug('🔍 DB에서 프로필+주소 조회 (1번만!)')
       const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id)
 
+      console.log('🔍 [loadUserProfileAndAddresses] DB에서 조회:', {
+        dbProfile,
+        hasAddresses: !!dbProfile?.addresses,
+        addressesLength: dbProfile?.addresses?.length
+      })
+
       if (!dbProfile) {
+        console.warn('⚠️ [loadUserProfileAndAddresses] DB 프로필 없음')
         return {
           profile: UserProfileManager.normalizeProfile(currentUser),
           addresses: []
@@ -256,6 +272,8 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
       }
 
       let addresses = dbProfile.addresses || []
+
+      console.log('📦 [loadUserProfileAndAddresses] addresses 추출:', { addresses, length: addresses.length })
 
       // 3️⃣ 주소 마이그레이션 (한 번만 실행)
       if (!addresses.length && dbProfile.address) {
