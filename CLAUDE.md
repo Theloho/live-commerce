@@ -1238,6 +1238,18 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-24: 🐛 주문 카드 옵션 표시 + 배송비 제외 (Rule #0-A 완료) ⭐⭐
+
+**문제**: 주문 카드 옵션 미표시 + 배송비 포함 금액
+**원인**: CreateOrderUseCase - selected_options 저장 안 함, OrderCard - baseShippingFee: 4000
+**해결**: selected_options 저장 추가 + baseShippingFee: 0
+**영향**: 신규 주문 옵션 표시 + 상품금액만 표시
+**커밋**: `318a59a`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-24.md#15](docs/work-logs/WORK_LOG_2025-10-24.md#-15-주문-카드-옵션-표시--배송비-제외-rule-0-a-8-stage-완료-)
+
+---
+
 ### 2025-10-24: 🔧 RPC 제거 - OrderRepository 직접 INSERT 방식으로 변경 ⭐⭐⭐
 
 **문제**: 새 주문 생성 시 product_number, thumbnail_url NULL (UUID 표시)
@@ -1458,13 +1470,33 @@ npm run test:bugs:ui        # UI 모드
 
 **상세 내역**: `docs/archive/CLAUDE_UPDATES_ARCHIVE_2025-10-08.md`
 
-**문서 상태**: 100% 최신 (2025-10-22 완전 동기화)
+**문서 상태**: 100% 최신 (2025-10-24 완전 동기화)
 **작업 철학**: 체계적 접근으로 근본 원인 해결
-**다음 세션**: Phase 9 작업 또는 추가 Integration 테스트 확장
+**다음 세션**: 재고 차감 실제 테스트 (본서버 확인)
 
 ---
 
-**마지막 업데이트**: 2025-10-22
+### 2025-10-24: 🚨 재고 관리 시스템 완전 정상화 (차감 + 복원) ⭐⭐⭐
+
+**문제 1**: 주문 생성 시 재고가 전혀 차감되지 않음 (재고 초과 판매 위험)
+**원인**: Queue Worker 제거 시 (27c89c2) 재고 차감 로직을 CreateOrderUseCase로 이동하지 않음
+**해결**: CreateOrderUseCase에 _deductInventory() 메서드 추가
+**커밋**: `558009c`
+
+**문제 2**: 주문 취소 시 Variant 재고가 복원되지 않음
+**원인**: CancelOrderUseCase._restoreInventory()가 variant_id 미지원 (패턴 불일치)
+**해결**: CancelOrderUseCase에 Variant 지원 추가 (CreateOrderUseCase와 패턴 일치)
+**커밋**: `ecf3530`
+
+**결과**: 재고 초과 판매 방지 + Variant 재고 정확히 복원 + Clean Architecture 준수
+
+**📝 상세 로그**:
+- [WORK_LOG_2025-10-24.md#13 (재고 차감)](docs/work-logs/WORK_LOG_2025-10-24.md#-13-재고-차감-로직-복원-queue-worker-제거-시-누락-)
+- [WORK_LOG_2025-10-24.md#14 (재고 복원)](docs/work-logs/WORK_LOG_2025-10-24.md#-14-cancelorderusecase-variant-재고-복원-지원-추가-)
+
+---
+
+**마지막 업데이트**: 2025-10-24
 - 🧪 **Phase 8 완료 - Repository 테스트 100% 통과** (2025-10-22 ⭐⭐⭐)
   - **Repository 테스트**: 26/55 (47%) → 52/52 (100%) = **+53% 향상** 🚀
   - **크리티컬 버그 수정**: Template literal 버그 10곳 (kakaoId 쿼리 실패 원인)
