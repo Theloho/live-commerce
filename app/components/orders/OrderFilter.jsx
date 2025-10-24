@@ -58,6 +58,9 @@ export default function OrderFilter({
       return sum + order.items.reduce((itemSum, item) => itemSum + (item.quantity || 1), 0)
     }, 0)
 
+    // ✅ 무료배송 조건 확인 (pending/verifying 주문이 있으면 무료배송)
+    const hasFreeShipping = pendingOrders.some(order => order.is_free_shipping === true)
+
     // ✅ 배송비 제거: 체크아웃 페이지에서 계산
     // finalTotal = 상품금액만 (배송비는 "전체 결제하기" 후 계산)
     const finalTotal = totalProductPrice
@@ -65,7 +68,8 @@ export default function OrderFilter({
     return {
       totalProductPrice,
       totalItemCount,
-      finalTotal
+      finalTotal,
+      hasFreeShipping
     }
   }
 
@@ -106,7 +110,14 @@ export default function OrderFilter({
       {summary && (
         <div className="px-4 py-4 bg-white border-b border-gray-200">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">결제 정보</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">결제 정보</h3>
+              {summary.hasFreeShipping && (
+                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                  🎁 무료배송 혜택 적용!
+                </span>
+              )}
+            </div>
 
             <div className="space-y-2">
               {/* 상품금액 */}
