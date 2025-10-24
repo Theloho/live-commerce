@@ -1238,6 +1238,22 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-24: 🔧 RPC 제거 - OrderRepository 직접 INSERT 방식으로 변경 ⭐⭐⭐
+
+**문제**: 새 주문 생성 시 product_number, thumbnail_url NULL (UUID 표시)
+**원인**: RPC 함수가 새 컬럼을 INSERT에 포함하지 않음
+**근본 원인 분석**: RPC 도입 이유 재확인 → Queue Worker 타임아웃이 진짜 원인 (이미 제거됨)
+**해결**: RPC 제거 + Repository에서 4개 테이블 직접 INSERT
+**성능**: 1초 (RPC) → 1.5초 예상 (+0.5초, 허용 범위)
+**유지보수**: 컬럼 추가 시 자동 반영 (spread operator)
+**커밋**: `ec4c109`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-24.md#11](docs/work-logs/WORK_LOG_2025-10-24.md#-11-rpc-제거---orderrepository-직접-insert-방식으로-변경-)
+
+**핵심**: RPC는 유지보수 비용 > 성능 이득, 직접 INSERT가 Clean Architecture 더 적합! 🎯
+
+---
+
 ### 2025-10-24: ⚡ BuyBottomSheet 로딩 UI 개선 (품절 flash 제거) ⭐⭐
 
 **문제**: 바텀시트 열릴 때 "품절" 표시 flash 후 데이터 로드
