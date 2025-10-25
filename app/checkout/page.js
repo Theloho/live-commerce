@@ -70,7 +70,9 @@ export default function CheckoutPage() {
   const calculateOrder = () => {
     if (!orderItem) return null
 
-    const postalCode = selectedAddress?.postal_code || userProfile.postal_code
+    // ✅ addresses 배열에서 직접 읽기 (Race Condition 방지!)
+    const defaultAddr = userProfile.addresses?.find(a => a.is_default) || userProfile.addresses?.[0]
+    const postalCode = selectedAddress?.postal_code || defaultAddr?.postal_code || userProfile.postal_code
 
     // 🚨 디버그: postalCode 확인
     console.log('📍 [Checkout] 주소 정보:', {
