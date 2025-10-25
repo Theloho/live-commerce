@@ -128,6 +128,16 @@ export default function DepositNameModal({
                 depositOption === 'name' ? userProfile.name :
                 depositOption === 'nickname' ? userProfile.nickname :
                 customDepositName
+
+              // 🔍 디버깅: 실제 전달되는 값 확인
+              console.log('🔍 [DepositNameModal] Button clicked:', {
+                depositOption,
+                userProfile_name: userProfile.name,
+                userProfile_nickname: userProfile.nickname,
+                customDepositName,
+                finalDepositName
+              })
+
               onConfirm(finalDepositName)
             }}
             disabled={!depositName || processing}
