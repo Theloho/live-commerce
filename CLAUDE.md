@@ -1272,15 +1272,17 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
-### 2025-10-24: 🔧 Bug #9-4: payment_group_id = null 문제 해결 (합배 원칙 완성) ⭐⭐
+### 2025-10-26: 🎉 Bug #9-6: 합배 원칙 완전 해결 (3차 수정) ⭐⭐⭐
 
-**문제**: 1건 → 2건 일괄결제 시 두 주문 모두 payment_group_id = null
-**원인**: UpdateOrderStatusUseCase - excludeIds로 현재 주문 제외하여 기존 verifying 주문 못찾음
-**해결**: excludeIds 제거 → 현재 주문도 검색 대상에 포함
-**결과**: 어떤 순서로 일괄결제를 눌러도 그룹핑 가능
-**커밋**: `dd70683`
+**문제**: 1건 주문에 불필요한 GROUP-ID 생성 (자기 자신을 "기존 주문"으로 찾음)
+**원인**: findPendingOrdersWithGroup()가 pending + verifying 둘 다 검색 → 체크아웃 중인 주문을 "기존 주문"으로 인식
+**해결**: verifying만 검색 (pending 제외) - 체크아웃 완료된 주문만 "기존 주문"
+**결과**: 1건 = null, 2건 이상 = 같은 GROUP-ID로 그룹핑! **"너무 잘되!!"** ✅
+**커밋**: `dd70683`, `25d685c`, `789196f` (3차 수정)
 
-**📝 상세 로그**: [WORK_LOG_2025-10-24.md#18](docs/work-logs/WORK_LOG_2025-10-24.md#-18-bug-9-4-payment_group_id--null-문제-해결-합배-원칙-완성)
+**📝 상세 로그**: [WORK_LOG_2025-10-25.md#bug-9-6](docs/work-logs/WORK_LOG_2025-10-25.md#-bug-9-6-합배-원칙-완전-해결-3차-수정-)
+
+**⚠️ 교훈**: pending ≠ verifying! 상태(status)의 의미를 정확히 이해해야 한다. 작은 조건 하나가 전체 로직을 바꿀 수 있다!
 
 ---
 
