@@ -80,6 +80,13 @@ export default function CheckoutPage() {
       postalCode
     })
 
+    // ✅ postal_code 필수 검증 (빈 문자열 포함)
+    if (!postalCode || (typeof postalCode === 'string' && postalCode.trim() === '')) {
+      console.warn('⚠️ [Checkout] postal_code 없음 - 배송지를 다시 선택해주세요')
+      // ⚠️ 사용자에게 알림은 일단 생략 (기본 배송비로 계산)
+      // toast.error('배송지에 우편번호가 없습니다. 배송지를 다시 선택해주세요.')
+    }
+
     const baseShippingFee = hasPendingOrders ? 0 : 4000
     const orderItems = orderItem.isBulkPayment
       ? [{ price: orderItem.totalPrice, quantity: 1, title: orderItem.title }]
