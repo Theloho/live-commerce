@@ -81,6 +81,14 @@ export default function CheckoutPage() {
     const shippingInfo = formatShippingInfo(baseShippingFee, postalCode)
     const calculatedShippingFee = shippingInfo.totalShipping
 
+    console.log('🚚 [Checkout] 배송비 계산:', {
+      postalCode,
+      baseShippingFee,
+      hasPendingOrders,
+      shippingInfo,
+      calculatedShippingFee
+    })
+
     return OrderCalculations.calculateFinalOrderAmount(orderItems, {
       region: 'normal',  // ✅ 재계산 방지: 항상 'normal'
       coupon: selectedCoupon ? {
