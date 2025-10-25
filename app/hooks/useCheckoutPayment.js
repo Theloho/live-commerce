@@ -176,13 +176,29 @@ export function useCheckoutPayment({
           postal_code: finalAddress.postal_code
         }
 
-        // 쿠폰 할인 금액 + 계산된 배송비를 orderItem에 포함
+        // ✅ 주문 생성 직전에 배송비 다시 계산 (클로저 문제 방지!)
+        const postalCode = finalAddress.postal_code || userProfile.postal_code
+        console.log('🔍 [주문생성] postal_code 확인:', { postalCode, finalAddress, userProfile })
+
+        const { formatShippingInfo } = require('@/lib/shippingUtils')
+        const baseShippingFee = hasPendingOrders ? 0 : 4000
+        const shippingInfo = formatShippingInfo(baseShippingFee, postalCode)
+        const finalShippingFee = shippingInfo.totalShipping
+
+        console.log('🚚 [주문생성] 최종 배송비 계산:', {
+          postalCode,
+          baseShippingFee,
+          shippingInfo,
+          finalShippingFee
+        })
+
+        // 쿠폰 할인 금액 + 재계산된 배송비를 orderItem에 포함
         const orderItemWithCoupon = {
           ...orderItem,
           couponDiscount: orderCalc.couponDiscount || 0,
           couponCode: selectedCoupon?.coupon?.code || null,
           isFreeShipping: hasPendingOrders,
-          shippingFee: orderCalc.shippingFee  // ✅ 체크아웃에서 계산된 배송비 전달 (재계산 방지!)
+          shippingFee: finalShippingFee  // ✅ 주문생성 직전 재계산한 배송비 (클로저 문제 해결!)
         }
 
         // API Route 호출 (Clean Architecture)
