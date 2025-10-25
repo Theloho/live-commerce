@@ -208,8 +208,8 @@ export default function OrderCard({
         </div>
       )}
 
-      {/* ⭐ 배송비 정보 (일괄결제 + 단건) */}
-      {(bulkPaymentInfo?.isBulkPayment || calculatedShippingFee > 0) && (
+      {/* ⭐ 배송비 정보 (일괄결제 + 단건) - pending 상태는 제외 (배송지 미설정) */}
+      {order.status !== 'pending' && (bulkPaymentInfo?.isBulkPayment || calculatedShippingFee > 0) && (
         <div className="mb-2 pb-2 border-b border-gray-100">
           <div className="flex items-center justify-between text-sm">
             {bulkPaymentInfo?.isBulkPayment ? (
