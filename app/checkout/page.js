@@ -16,7 +16,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
@@ -66,20 +66,23 @@ export default function CheckoutPage() {
   const [customDepositName, setCustomDepositName] = useState('')
   const [selectedCoupon, setSelectedCoupon] = useState(null)
 
-  // 주문 금액 계산 (OrderCalculations 사용)
-  const calculateOrder = () => {
+  // ⚡ 주문 금액 계산 (useMemo로 Race Condition 완전 해결!)
+  const orderCalc = useMemo(() => {
     if (!orderItem) return null
 
     // ✅ addresses 배열에서 직접 읽기 (Race Condition 방지!)
     const defaultAddr = userProfile.addresses?.find(a => a.is_default) || userProfile.addresses?.[0]
     const postalCode = selectedAddress?.postal_code || defaultAddr?.postal_code || userProfile.postal_code
 
-    // 🚨 디버그: postalCode 확인
-    console.log('📍 [Checkout] 주소 정보:', {
-      selectedAddress,
+    // 🚨 디버그: postalCode 확인 (상세 로그)
+    console.log('📍 [Checkout] 주소 정보 (useMemo):', {
+      'userProfile.addresses': userProfile.addresses,
+      'defaultAddr': defaultAddr,
+      'selectedAddress': selectedAddress,
       'selectedAddress?.postal_code': selectedAddress?.postal_code,
+      'defaultAddr?.postal_code': defaultAddr?.postal_code,
       'userProfile.postal_code': userProfile.postal_code,
-      postalCode
+      'Final postalCode': postalCode
     })
 
     // ✅ postal_code 필수 검증 (빈 문자열 포함)
@@ -99,7 +102,7 @@ export default function CheckoutPage() {
     const shippingInfo = formatShippingInfo(baseShippingFee, postalCode)
     const calculatedShippingFee = shippingInfo.totalShipping
 
-    console.log('🚚 [Checkout] 배송비 계산:', {
+    console.log('🚚 [Checkout] 배송비 계산 (useMemo):', {
       postalCode,
       baseShippingFee,
       hasPendingOrders,
@@ -118,9 +121,7 @@ export default function CheckoutPage() {
       paymentMethod: 'transfer',
       baseShippingFee: calculatedShippingFee  // ✅ 계산된 배송비 사용 (제주 ₩7,000, 울릉 ₩9,000)
     })
-  }
-
-  const orderCalc = calculateOrder()
+  }, [selectedAddress, userProfile.addresses, orderItem, hasPendingOrders, selectedCoupon])
 
   // ⚡ 결제 Hook - 모든 결제 로직을 Custom Hook으로 추출
   const {
