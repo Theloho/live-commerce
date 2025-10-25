@@ -211,28 +211,35 @@ export default function OrderCard({
       {bulkPaymentInfo?.isBulkPayment && (
         <div className="mb-2 pb-2 border-b border-gray-100">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">배송비</span>
             {bulkPaymentInfo.isRepresentativeOrder ? (
-              // 대표 주문: 재계산된 배송비 표시
-              <span className="text-gray-900 font-medium flex items-center gap-1">
-                ₩{calculatedShippingFee.toLocaleString()}
-                {shippingInfo.isRemote && (
-                  <span className="text-xs text-orange-600">
-                    (+{shippingInfo.region})
+              // 대표 주문: 좌측에 배송비+지역+합배, 우측에 금액
+              <>
+                <span className="text-gray-600">
+                  배송비
+                  {shippingInfo.isRemote && (
+                    <span className="text-xs text-orange-600">
+                      {' '}(+{shippingInfo.region})
+                    </span>
+                  )}
+                  <span className="text-xs text-blue-600 font-semibold">
+                    {' '}({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                   </span>
-                )}
-                <span className="text-xs text-blue-600 font-semibold">
-                  ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                 </span>
-              </span>
+                <span className="text-gray-900 font-medium">
+                  ₩{calculatedShippingFee.toLocaleString()}
+                </span>
+              </>
             ) : (
-              // 다른 주문: "배송비: ₩0 (주문번호에 포함)"
-              <span className="text-gray-500 text-xs flex items-center gap-1">
-                ₩0
-                <span className="text-blue-600">
-                  ({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+              // 다른 주문: 좌측에 배송비+포함정보, 우측에 ₩0
+              <>
+                <span className="text-gray-600">
+                  배송비
+                  <span className="text-xs text-blue-600">
+                    {' '}({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                  </span>
                 </span>
-              </span>
+                <span className="text-gray-500 font-medium">₩0</span>
+              </>
             )}
           </div>
         </div>
