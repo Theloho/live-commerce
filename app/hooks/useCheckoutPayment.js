@@ -244,11 +244,18 @@ export function useCheckoutPayment({
         const response = await fetch('/api/orders/update-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId, status: 'verifying' })
+          body: JSON.stringify({
+            orderIds: [orderId],  // ✅ 배열로 변경
+            status: 'verifying',
+            paymentData: {  // ✅ depositorName 포함
+              method: 'bank_transfer',
+              depositorName: depositorName
+            }
+          })
         })
 
         if (response.ok) {
-          logger.debug('주문 상태 변경: pending → verifying', { orderId })
+          logger.debug('주문 상태 변경: pending → verifying', { orderId, depositorName })
         } else {
           throw new Error('Status update failed')
         }
