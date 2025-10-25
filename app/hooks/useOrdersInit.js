@@ -83,7 +83,9 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         }
 
         // ⚡ 3단계: 주문 데이터 병렬 로드
-        await loadOrdersDataFast(authResult.currentUser)
+        // ✅ 수정: URL 파라미터를 직접 전달 (setState 비동기성 회피)
+        const currentStatus = urlData.tab || 'pending'
+        await loadOrdersDataFast(authResult.currentUser, currentStatus)
 
         logger.info('✅ 주문내역 고속 초기화 완료')
       } catch (error) {
@@ -148,9 +150,9 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
     }
 
     // ⚡ 주문 데이터 고속 로드
-    const loadOrdersDataFast = async (currentUser) => {
+    const loadOrdersDataFast = async (currentUser, status) => {
       try {
-        console.log('🔍 [DEBUG] 주문 로딩 시작:', { userId: currentUser.id, page: currentPage, status: filterStatus })
+        console.log('🔍 [DEBUG] 주문 로딩 시작:', { userId: currentUser.id, page: currentPage, status })
         const startTime = Date.now()
 
         // 🚀 Clean Architecture API Route 사용
@@ -161,7 +163,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
             user: currentUser,
             page: currentPage,
             pageSize: 10,
-            status: filterStatus
+            status
           })
         })
 
