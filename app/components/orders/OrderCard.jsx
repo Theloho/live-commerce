@@ -100,7 +100,8 @@ export default function OrderCard({
     paymentMethod: order.payment?.method || 'transfer',
     baseShippingFee: calculatedShippingFee  // ✅ postal_code 기반 배송비
   })
-  const finalAmount = orderCalc.finalAmount
+  // ⭐ 배송비를 따로 표시하므로 상품금액만 표시 (배송비 제외)
+  const productAmountOnly = orderCalc.finalAmount - orderCalc.shippingFee
 
   return (
     <motion.div
@@ -272,7 +273,7 @@ export default function OrderCard({
           })}
         </div>
         <div className="font-semibold text-gray-900">
-          ₩{finalAmount.toLocaleString()}
+          ₩{productAmountOnly.toLocaleString()}
         </div>
       </div>
 
