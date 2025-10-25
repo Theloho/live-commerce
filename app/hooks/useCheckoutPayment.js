@@ -57,8 +57,12 @@ export function useCheckoutPayment({
    * 무통장입금 처리
    * - 일반 주문: createOrder → applyCouponUsage → updateOrderStatus → 페이지 이동
    * - 일괄결제: updateMultipleOrderStatus → applyCouponUsage → 페이지 이동
+   * @param {string} finalDepositName - 최종 입금자명 (모달에서 직접 전달, React setState 비동기 문제 회피)
    */
-  const confirmBankTransfer = async () => {
+  const confirmBankTransfer = async (finalDepositName) => {
+    // ✅ React setState 비동기 문제 해결: 파라미터로 전달된 값 우선 사용
+    const depositorName = finalDepositName || depositName
+
     // 모바일 중복 실행 방지
     if (processing) {
       return
@@ -71,7 +75,7 @@ export function useCheckoutPayment({
       return
     }
 
-    if (!depositName) {
+    if (!depositorName) {
       toast.error('입금자명을 선택해주세요')
       return
     }
@@ -120,7 +124,7 @@ export function useCheckoutPayment({
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
         const paymentUpdateData = {
           method: 'bank_transfer',
-          depositorName: depositName,
+          depositorName: depositorName,
           discountAmount: orderCalc.couponDiscount || 0,
           shippingData: {
             shipping_name: userProfile.name,
@@ -187,7 +191,7 @@ export function useCheckoutPayment({
           body: JSON.stringify({
             orderData: orderItemWithCoupon,
             userProfile: orderProfile,
-            depositName,
+            depositName: depositorName,
             user
           })
         })

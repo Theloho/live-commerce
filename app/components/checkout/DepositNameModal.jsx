@@ -124,7 +124,14 @@ export default function DepositNameModal({
             취소
           </button>
           <button
-            onClick={onConfirm}
+            onClick={() => {
+              // ✅ React setState 비동기 문제 해결: 최종 값을 직접 계산하여 전달
+              const finalDepositName =
+                depositOption === 'name' ? userProfile.name :
+                depositOption === 'nickname' ? userProfile.nickname :
+                customDepositName
+              onConfirm(finalDepositName)
+            }}
             disabled={!depositName || processing}
             className="flex-1 px-4 py-3 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
