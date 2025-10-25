@@ -84,16 +84,21 @@ export default function OrderCard({
 
   const groupedItems = groupOrderItems(order.items || [])
 
-  // 🧮 상품금액만 계산 (배송비 제외) - 2025-10-24 수정
-  // ✅ 배송비는 체크아웃 페이지에서 계산 (OrderFilter와 동일)
+  // 🧮 배송비 계산 (postal_code 기반) - 2025-10-26 수정
+  // ✅ DB 저장된 shipping_fee 대신 postal_code로 재계산
+  const { formatShippingInfo } = require('@/lib/shippingUtils')
+  const baseShippingFee = order.is_free_shipping ? 0 : 4000
+  const shippingInfo = formatShippingInfo(baseShippingFee, order.shipping?.postal_code)
+  const calculatedShippingFee = shippingInfo.totalShipping
+
   const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
-    region: 'normal', // 배송비 0원 계산용
+    region: 'normal',
     coupon: order.discount_amount > 0 ? {
       type: 'fixed_amount',
       value: order.discount_amount
     } : null,
     paymentMethod: order.payment?.method || 'transfer',
-    baseShippingFee: 0  // ✅ 배송비 제외
+    baseShippingFee: calculatedShippingFee  // ✅ postal_code 기반 배송비
   })
   const finalAmount = orderCalc.finalAmount
 
@@ -208,9 +213,14 @@ export default function OrderCard({
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">배송비</span>
             {bulkPaymentInfo.isRepresentativeOrder ? (
-              // 대표 주문: "배송비: ₩4,000 (3건 합배)"
+              // 대표 주문: 재계산된 배송비 표시
               <span className="text-gray-900 font-medium flex items-center gap-1">
-                ₩{order.shipping_fee?.toLocaleString() || '0'}
+                ₩{calculatedShippingFee.toLocaleString()}
+                {shippingInfo.isRemote && (
+                  <span className="text-xs text-orange-600">
+                    (+{shippingInfo.region})
+                  </span>
+                )}
                 <span className="text-xs text-blue-600 font-semibold">
                   ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                 </span>
