@@ -462,40 +462,52 @@ export default function OrderCompletePage() {
                             </div>
                           )}
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">배송비</span>
                             {bulkPaymentInfo?.isBulkPayment ? (
                               bulkPaymentInfo.isRepresentativeOrder ? (
-                                // 대표 주문: 재계산된 배송비 + 지역 표시 + 합배 표시
-                                <span className="text-sm text-gray-900 flex items-center gap-1">
-                                  ₩{orderCalc.shippingFee.toLocaleString()}
-                                  {shippingInfo.isRemote && (
-                                    <span className="text-xs text-orange-600">
-                                      (+{shippingInfo.region})
+                                // 대표 주문: 좌측에 배송비+지역+합배, 우측에 금액
+                                <>
+                                  <span className="text-sm text-gray-600">
+                                    배송비
+                                    {shippingInfo.isRemote && (
+                                      <span className="text-xs text-orange-600">
+                                        {' '}(+{shippingInfo.region})
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-blue-600 font-semibold">
+                                      {' '}({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                                     </span>
-                                  )}
-                                  <span className="text-xs text-blue-600 font-semibold">
-                                    ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                                   </span>
-                                </span>
+                                  <span className="text-sm text-gray-900">
+                                    ₩{orderCalc.shippingFee.toLocaleString()}
+                                  </span>
+                                </>
                               ) : (
-                                // 다른 주문: ₩0 + 대표 주문번호
-                                <span className="text-sm text-gray-500 flex items-center gap-1">
-                                  ₩0
-                                  <span className="text-xs text-blue-600">
-                                    ({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                // 다른 주문: 좌측에 배송비+포함정보, 우측에 ₩0
+                                <>
+                                  <span className="text-sm text-gray-600">
+                                    배송비
+                                    <span className="text-xs text-blue-600">
+                                      {' '}({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                    </span>
                                   </span>
-                                </span>
+                                  <span className="text-sm text-gray-500">₩0</span>
+                                </>
                               )
                             ) : (
-                              // 단일 주문: 일반 표시
-                              <span className="text-sm text-gray-900 flex items-center gap-1">
-                                ₩{orderCalc.shippingFee.toLocaleString()}
-                                {shippingInfo.isRemote && (
-                                  <span className="text-xs text-orange-600">
-                                    (+{shippingInfo.region})
-                                  </span>
-                                )}
-                              </span>
+                              // 단일 주문: 좌측에 배송비+지역, 우측에 금액
+                              <>
+                                <span className="text-sm text-gray-600">
+                                  배송비
+                                  {shippingInfo.isRemote && (
+                                    <span className="text-xs text-orange-600">
+                                      {' '}(+{shippingInfo.region})
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-sm text-gray-900">
+                                  ₩{orderCalc.shippingFee.toLocaleString()}
+                                </span>
+                              </>
                             )}
                           </div>
                           <div className="flex items-center justify-between">
@@ -613,40 +625,52 @@ export default function OrderCompletePage() {
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">배송비</span>
                               {bulkPaymentInfo?.isBulkPayment ? (
                                 bulkPaymentInfo.isRepresentativeOrder ? (
-                                  // 대표 주문: 재계산된 배송비 + 지역 표시 + 합배 표시
-                                  <span className="text-gray-900 flex items-center gap-1">
-                                    ₩{orderCalc.shippingFee.toLocaleString()}
-                                    {shippingInfo.isRemote && (
-                                      <span className="text-xs text-orange-600">
-                                        (+{shippingInfo.region})
+                                  // 대표 주문: 좌측에 배송비+지역+합배, 우측에 금액
+                                  <>
+                                    <span className="text-gray-600">
+                                      배송비
+                                      {shippingInfo.isRemote && (
+                                        <span className="text-xs text-orange-600">
+                                          {' '}(+{shippingInfo.region})
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-blue-600 font-semibold">
+                                        {' '}({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                                       </span>
-                                    )}
-                                    <span className="text-xs text-blue-600 font-semibold">
-                                      ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                                     </span>
-                                  </span>
+                                    <span className="text-gray-900">
+                                      ₩{orderCalc.shippingFee.toLocaleString()}
+                                    </span>
+                                  </>
                                 ) : (
-                                  // 다른 주문: ₩0 + 대표 주문번호
-                                  <span className="text-gray-500 flex items-center gap-1">
-                                    ₩0
-                                    <span className="text-xs text-blue-600">
-                                      ({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                  // 다른 주문: 좌측에 배송비+포함정보, 우측에 ₩0
+                                  <>
+                                    <span className="text-gray-600">
+                                      배송비
+                                      <span className="text-xs text-blue-600">
+                                        {' '}({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                      </span>
                                     </span>
-                                  </span>
+                                    <span className="text-gray-500">₩0</span>
+                                  </>
                                 )
                               ) : (
-                                // 단일 주문: 일반 표시
-                                <span className="text-gray-900 flex items-center gap-1">
-                                  ₩{orderCalc.shippingFee.toLocaleString()}
-                                  {shippingInfo.isRemote && (
-                                    <span className="text-xs text-orange-600">
-                                      (+{shippingInfo.region})
-                                    </span>
-                                  )}
-                                </span>
+                                // 단일 주문: 좌측에 배송비+지역, 우측에 금액
+                                <>
+                                  <span className="text-gray-600">
+                                    배송비
+                                    {shippingInfo.isRemote && (
+                                      <span className="text-xs text-orange-600">
+                                        {' '}(+{shippingInfo.region})
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="text-gray-900">
+                                    ₩{orderCalc.shippingFee.toLocaleString()}
+                                  </span>
+                                </>
                               )}
                             </div>
                             {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
@@ -1007,40 +1031,52 @@ export default function OrderCompletePage() {
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">배송비</span>
                                 {bulkPaymentInfo?.isBulkPayment ? (
                                   bulkPaymentInfo.isRepresentativeOrder ? (
-                                    // 대표 주문: 재계산된 배송비 + 지역 표시 + 합배 표시
-                                    <span className="font-medium text-gray-900 flex items-center gap-1">
-                                      ₩{orderCalc.shippingFee.toLocaleString()}
-                                      {shippingInfo.isRemote && (
-                                        <span className="text-xs text-orange-600">
-                                          (+{shippingInfo.region})
+                                    // 대표 주문: 좌측에 배송비+지역+합배, 우측에 금액
+                                    <>
+                                      <span className="text-sm text-gray-600">
+                                        배송비
+                                        {shippingInfo.isRemote && (
+                                          <span className="text-xs text-orange-600">
+                                            {' '}(+{shippingInfo.region})
+                                          </span>
+                                        )}
+                                        <span className="text-xs text-blue-600 font-semibold">
+                                          {' '}({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                                         </span>
-                                      )}
-                                      <span className="text-xs text-blue-600 font-semibold">
-                                        ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
                                       </span>
-                                    </span>
+                                      <span className="font-medium text-gray-900">
+                                        ₩{orderCalc.shippingFee.toLocaleString()}
+                                      </span>
+                                    </>
                                   ) : (
-                                    // 다른 주문: ₩0 + 대표 주문번호
-                                    <span className="font-medium text-gray-500 flex items-center gap-1">
-                                      ₩0
-                                      <span className="text-xs text-blue-600">
-                                        ({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                    // 다른 주문: 좌측에 배송비+포함정보, 우측에 ₩0
+                                    <>
+                                      <span className="text-sm text-gray-600">
+                                        배송비
+                                        <span className="text-xs text-blue-600">
+                                          {' '}({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                        </span>
                                       </span>
-                                    </span>
+                                      <span className="font-medium text-gray-500">₩0</span>
+                                    </>
                                   )
                                 ) : (
-                                  // 단일 주문: 일반 표시
-                                  <span className="font-medium text-gray-900 flex items-center gap-1">
-                                    ₩{orderCalc.shippingFee.toLocaleString()}
-                                    {shippingInfo.isRemote && (
-                                      <span className="text-xs text-orange-600">
-                                        (+{shippingInfo.region})
-                                      </span>
-                                    )}
-                                  </span>
+                                  // 단일 주문: 좌측에 배송비+지역, 우측에 금액
+                                  <>
+                                    <span className="text-sm text-gray-600">
+                                      배송비
+                                      {shippingInfo.isRemote && (
+                                        <span className="text-xs text-orange-600">
+                                          {' '}(+{shippingInfo.region})
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="font-medium text-gray-900">
+                                      ₩{orderCalc.shippingFee.toLocaleString()}
+                                    </span>
+                                  </>
                                 )}
                               </div>
                               {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
