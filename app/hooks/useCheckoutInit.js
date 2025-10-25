@@ -38,6 +38,7 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
   const [orderItem, setOrderItem] = useState(null)
   const [userProfile, setUserProfile] = useState({
     name: '',
+    nickname: '',
     phone: '',
     address: '',
     detail_address: '',
