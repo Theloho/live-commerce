@@ -1272,6 +1272,18 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-24: 🔧 Bug #9-4: payment_group_id = null 문제 해결 (합배 원칙 완성) ⭐⭐
+
+**문제**: 1건 → 2건 일괄결제 시 두 주문 모두 payment_group_id = null
+**원인**: UpdateOrderStatusUseCase - excludeIds로 현재 주문 제외하여 기존 verifying 주문 못찾음
+**해결**: excludeIds 제거 → 현재 주문도 검색 대상에 포함
+**결과**: 어떤 순서로 일괄결제를 눌러도 그룹핑 가능
+**커밋**: `dd70683`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-24.md#18](docs/work-logs/WORK_LOG_2025-10-24.md#-18-bug-9-4-payment_group_id--null-문제-해결-합배-원칙-완성)
+
+---
+
 ### 2025-10-24: 💰 입금 확인 페이지 일괄결제 그룹핑 UI 구현 ⭐⭐⭐
 
 **문제**: 관리자가 일괄결제 주문 3건을 구분 못함
