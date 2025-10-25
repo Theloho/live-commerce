@@ -76,8 +76,13 @@ export default function CheckoutPage() {
       ? [{ price: orderItem.totalPrice, quantity: 1, title: orderItem.title }]
       : [{ price: orderItem.price, quantity: orderItem.quantity, title: orderItem.title }]
 
+    // ✅ 배송비 계산 (우편번호 기반)
+    const { formatShippingInfo } = require('@/lib/shippingUtils')
+    const shippingInfo = formatShippingInfo(baseShippingFee, postalCode)
+    const calculatedShippingFee = shippingInfo.totalShipping
+
     return OrderCalculations.calculateFinalOrderAmount(orderItems, {
-      region: postalCode || 'normal',
+      region: 'normal',  // ✅ 재계산 방지: 항상 'normal'
       coupon: selectedCoupon ? {
         type: selectedCoupon.coupon.discount_type,
         value: selectedCoupon.coupon.discount_value,
@@ -85,7 +90,7 @@ export default function CheckoutPage() {
         code: selectedCoupon.coupon.code
       } : null,
       paymentMethod: 'transfer',
-      baseShippingFee: baseShippingFee
+      baseShippingFee: calculatedShippingFee  // ✅ 계산된 배송비 사용 (제주 ₩7,000, 울릉 ₩9,000)
     })
   }
 
