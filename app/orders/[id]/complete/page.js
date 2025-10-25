@@ -18,7 +18,7 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
-import { formatShippingInfo } from '@/lib/shippingUtils'
+import { calculateShippingSurcharge } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
 import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import toast from 'react-hot-toast'
@@ -386,6 +386,9 @@ export default function OrderCompletePage() {
                       // ✅ DB에 저장된 배송비를 그대로 사용 (재계산 금지!)
                       const shippingFee = orderData.shipping?.shipping_fee || 0
 
+                      // 도서산간 정보 확인 (표시용, 배송비 계산 X)
+                      const shippingInfo = calculateShippingSurcharge(orderData.shipping?.postal_code)
+
                       // 🧮 중앙화된 계산 모듈 사용
                       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
                         region: orderData.shipping?.postal_code || 'normal',
@@ -485,6 +488,9 @@ export default function OrderCompletePage() {
                     {(() => {
                       // ✅ DB에 저장된 배송비를 그대로 사용 (재계산 금지!)
                       const shippingFee = orderData.shipping?.shipping_fee || 0
+
+                      // 도서산간 정보 확인 (표시용, 배송비 계산 X)
+                      const shippingInfo = calculateShippingSurcharge(orderData.shipping?.postal_code)
 
                       // 🧮 중앙화된 계산 모듈 사용
                       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
@@ -845,6 +851,9 @@ export default function OrderCompletePage() {
                         {(() => {
                           // ✅ DB에 저장된 배송비를 그대로 사용 (재계산 금지!)
                           const shippingFee = orderData.shipping?.shipping_fee || 0
+
+                          // 도서산간 정보 확인 (표시용, 배송비 계산 X)
+                          const shippingInfo = calculateShippingSurcharge(orderData.shipping?.postal_code)
 
                           // 🧮 중앙화된 계산 모듈 사용 (정확한 금액 계산)
                           const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
