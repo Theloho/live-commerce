@@ -18,7 +18,7 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline'
 import useAuth from '@/hooks/useAuth'
-import { calculateShippingSurcharge } from '@/lib/shippingUtils'
+import { calculateShippingSurcharge, formatShippingInfo } from '@/lib/shippingUtils'
 import { OrderCalculations } from '@/lib/orderCalculations'
 import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import toast from 'react-hot-toast'
@@ -105,9 +105,13 @@ export default function OrderCompletePage() {
       try {
         let order = null
 
-        // ⚡ Clean Architecture: API Route를 통한 주문 조회
+        // ⚡ Clean Architecture: API Route를 통한 주문 조회 (POST로 변경, user 정보 포함)
         try {
-          const response = await fetch(`/api/orders/${params.id}`)
+          const response = await fetch(`/api/orders/${params.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user: currentUser })
+          })
 
           if (!response.ok) {
             const errorData = await response.json()
@@ -116,7 +120,11 @@ export default function OrderCompletePage() {
 
           const result = await response.json()
           order = result.order
-          console.log('📋 Clean Architecture: 주문 상세 데이터 조회 완료:', order)
+          console.log('📋 Clean Architecture: 주문 상세 데이터 조회 완료 (bulkPaymentInfo 포함):', {
+            orderId: order.id,
+            hasBulkPaymentInfo: !!order.bulkPaymentInfo,
+            bulkPaymentInfo: order.bulkPaymentInfo
+          })
         } catch (error) {
           console.error('📋 API Route 주문 조회 실패:', error)
         }
@@ -149,8 +157,24 @@ export default function OrderCompletePage() {
   // Google Analytics: 구매 완료 이벤트 추적
   useEffect(() => {
     if (orderData && !loading) {
-      // ✅ DB에 저장된 배송비를 그대로 사용 (재계산 금지!)
-      const shippingFee = orderData.shipping?.shipping_fee || 0
+      // ⭐ postal_code 기반 배송비 재계산 (OrderCard.jsx와 동일)
+      const bulkPaymentInfo = orderData.bulkPaymentInfo
+      let calculatedShippingFee = 0
+
+      if (bulkPaymentInfo?.isBulkPayment) {
+        // 일괄결제: 대표 주문만 배송비 부담
+        if (bulkPaymentInfo.isRepresentativeOrder) {
+          const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+          const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+          calculatedShippingFee = shippingInfo.totalShipping
+        }
+        // 다른 주문은 ₩0
+      } else {
+        // 단일 주문: postal_code 기반 재계산
+        const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+        const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+        calculatedShippingFee = shippingInfo.totalShipping
+      }
 
       // 🧮 중앙화된 계산 모듈로 정확한 금액 계산
       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
@@ -160,7 +184,7 @@ export default function OrderCompletePage() {
           value: orderData.discount_amount
         } : null,
         paymentMethod: orderData.payment?.method || 'transfer',
-        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용 (재계산 X)
+        baseShippingFee: calculatedShippingFee  // ⭐ postal_code 기반 재계산된 배송비
       })
 
       // GA4 구매 완료 이벤트 전송
@@ -383,11 +407,25 @@ export default function OrderCompletePage() {
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     {/* 결제 금액 상세 (중앙화된 계산 모듈 사용) */}
                     {(() => {
-                      // ✅ DB에 저장된 배송비를 그대로 사용 (재계산 금지!)
-                      const shippingFee = orderData.shipping?.shipping_fee || 0
+                      // ⭐ postal_code 기반 배송비 재계산 + 일괄결제 처리
+                      const bulkPaymentInfo = orderData.bulkPaymentInfo
+                      let calculatedShippingFee = 0
+                      let shippingInfo = { isRemote: false, region: null }
 
-                      // 도서산간 정보 확인 (표시용, 배송비 계산 X)
-                      const shippingInfo = calculateShippingSurcharge(orderData.shipping?.postal_code)
+                      if (bulkPaymentInfo?.isBulkPayment) {
+                        // 일괄결제: 대표 주문만 배송비 부담
+                        if (bulkPaymentInfo.isRepresentativeOrder) {
+                          const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                          shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+                          calculatedShippingFee = shippingInfo.totalShipping
+                        }
+                        // 다른 주문은 ₩0
+                      } else {
+                        // 단일 주문: postal_code 기반 재계산
+                        const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                        shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+                        calculatedShippingFee = shippingInfo.totalShipping
+                      }
 
                       // 🧮 중앙화된 계산 모듈 사용
                       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
@@ -397,7 +435,7 @@ export default function OrderCompletePage() {
                           value: orderData.discount_amount
                         } : null,
                         paymentMethod: 'card',
-                        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용 (재계산 X)
+                        baseShippingFee: calculatedShippingFee  // ⭐ postal_code 기반 재계산된 배송비
                       })
 
                       console.log('💳 카드결제 금액 계산 (중앙화 모듈):', orderCalc.breakdown)
@@ -424,13 +462,41 @@ export default function OrderCompletePage() {
                             </div>
                           )}
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">
-                              배송비
-                              {shippingInfo.isRemote && <span className="text-orange-600"> (+{shippingInfo.region})</span>}
-                            </span>
-                            <span className="text-sm text-gray-900">
-                              ₩{orderCalc.shippingFee.toLocaleString()}
-                            </span>
+                            <span className="text-sm text-gray-600">배송비</span>
+                            {bulkPaymentInfo?.isBulkPayment ? (
+                              bulkPaymentInfo.isRepresentativeOrder ? (
+                                // 대표 주문: 재계산된 배송비 + 지역 표시 + 합배 표시
+                                <span className="text-sm text-gray-900 flex items-center gap-1">
+                                  ₩{orderCalc.shippingFee.toLocaleString()}
+                                  {shippingInfo.isRemote && (
+                                    <span className="text-xs text-orange-600">
+                                      (+{shippingInfo.region})
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-blue-600 font-semibold">
+                                    ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
+                                  </span>
+                                </span>
+                              ) : (
+                                // 다른 주문: ₩0 + 대표 주문번호
+                                <span className="text-sm text-gray-500 flex items-center gap-1">
+                                  ₩0
+                                  <span className="text-xs text-blue-600">
+                                    ({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                  </span>
+                                </span>
+                              )
+                            ) : (
+                              // 단일 주문: 일반 표시
+                              <span className="text-sm text-gray-900 flex items-center gap-1">
+                                ₩{orderCalc.shippingFee.toLocaleString()}
+                                {shippingInfo.isRemote && (
+                                  <span className="text-xs text-orange-600">
+                                    (+{shippingInfo.region})
+                                  </span>
+                                )}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">부가세 (10%)</span>
@@ -486,11 +552,25 @@ export default function OrderCompletePage() {
                   {/* 입금 정보 (중앙화된 계산 모듈 사용) */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     {(() => {
-                      // ✅ DB에 저장된 배송비를 그대로 사용 (재계산 금지!)
-                      const shippingFee = orderData.shipping?.shipping_fee || 0
+                      // ⭐ postal_code 기반 배송비 재계산 + 일괄결제 처리
+                      const bulkPaymentInfo = orderData.bulkPaymentInfo
+                      let calculatedShippingFee = 0
+                      let shippingInfo = { isRemote: false, region: null }
 
-                      // 도서산간 정보 확인 (표시용, 배송비 계산 X)
-                      const shippingInfo = calculateShippingSurcharge(orderData.shipping?.postal_code)
+                      if (bulkPaymentInfo?.isBulkPayment) {
+                        // 일괄결제: 대표 주문만 배송비 부담
+                        if (bulkPaymentInfo.isRepresentativeOrder) {
+                          const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                          shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+                          calculatedShippingFee = shippingInfo.totalShipping
+                        }
+                        // 다른 주문은 ₩0
+                      } else {
+                        // 단일 주문: postal_code 기반 재계산
+                        const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                        shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+                        calculatedShippingFee = shippingInfo.totalShipping
+                      }
 
                       // 🧮 중앙화된 계산 모듈 사용
                       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
@@ -500,7 +580,7 @@ export default function OrderCompletePage() {
                           value: orderData.discount_amount
                         } : null,
                         paymentMethod: 'transfer',
-                        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용 (재계산 X)
+                        baseShippingFee: calculatedShippingFee  // ⭐ postal_code 기반 재계산된 배송비
                       })
 
                       // 입금자명 우선순위 (DB 저장된 순서대로)
@@ -533,13 +613,41 @@ export default function OrderCompletePage() {
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">
-                                배송비
-                                {shippingInfo.isRemote && <span className="text-orange-600"> (+{shippingInfo.region})</span>}
-                              </span>
-                              <span className="text-gray-900">
-                                ₩{orderCalc.shippingFee.toLocaleString()}
-                              </span>
+                              <span className="text-gray-600">배송비</span>
+                              {bulkPaymentInfo?.isBulkPayment ? (
+                                bulkPaymentInfo.isRepresentativeOrder ? (
+                                  // 대표 주문: 재계산된 배송비 + 지역 표시 + 합배 표시
+                                  <span className="text-gray-900 flex items-center gap-1">
+                                    ₩{orderCalc.shippingFee.toLocaleString()}
+                                    {shippingInfo.isRemote && (
+                                      <span className="text-xs text-orange-600">
+                                        (+{shippingInfo.region})
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-blue-600 font-semibold">
+                                      ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
+                                    </span>
+                                  </span>
+                                ) : (
+                                  // 다른 주문: ₩0 + 대표 주문번호
+                                  <span className="text-gray-500 flex items-center gap-1">
+                                    ₩0
+                                    <span className="text-xs text-blue-600">
+                                      ({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                    </span>
+                                  </span>
+                                )
+                              ) : (
+                                // 단일 주문: 일반 표시
+                                <span className="text-gray-900 flex items-center gap-1">
+                                  ₩{orderCalc.shippingFee.toLocaleString()}
+                                  {shippingInfo.isRemote && (
+                                    <span className="text-xs text-orange-600">
+                                      (+{shippingInfo.region})
+                                    </span>
+                                  )}
+                                </span>
+                              )}
                             </div>
                             {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                               <div className="flex items-center justify-between text-sm">
@@ -849,11 +957,25 @@ export default function OrderCompletePage() {
                     <div className="border-t pt-3 mt-3">
                       <div className="space-y-2">
                         {(() => {
-                          // ✅ DB에 저장된 배송비를 그대로 사용 (재계산 금지!)
-                          const shippingFee = orderData.shipping?.shipping_fee || 0
+                          // ⭐ postal_code 기반 배송비 재계산 + 일괄결제 처리
+                          const bulkPaymentInfo = orderData.bulkPaymentInfo
+                          let calculatedShippingFee = 0
+                          let shippingInfo = { isRemote: false, region: null }
 
-                          // 도서산간 정보 확인 (표시용, 배송비 계산 X)
-                          const shippingInfo = calculateShippingSurcharge(orderData.shipping?.postal_code)
+                          if (bulkPaymentInfo?.isBulkPayment) {
+                            // 일괄결제: 대표 주문만 배송비 부담
+                            if (bulkPaymentInfo.isRepresentativeOrder) {
+                              const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                              shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+                              calculatedShippingFee = shippingInfo.totalShipping
+                            }
+                            // 다른 주문은 ₩0
+                          } else {
+                            // 단일 주문: postal_code 기반 재계산
+                            const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
+                            shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
+                            calculatedShippingFee = shippingInfo.totalShipping
+                          }
 
                           // 🧮 중앙화된 계산 모듈 사용 (정확한 금액 계산)
                           const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
@@ -863,7 +985,7 @@ export default function OrderCompletePage() {
                               value: orderData.discount_amount
                             } : null,
                             paymentMethod: orderData.payment?.method || 'transfer',
-                            baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용 (재계산 X)
+                            baseShippingFee: calculatedShippingFee  // ⭐ postal_code 기반 재계산된 배송비
                           })
 
                           console.log('💰 주문 상세 금액 계산 (OrderCalculations):', {
@@ -885,13 +1007,41 @@ export default function OrderCompletePage() {
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">
-                                  배송비
-                                  {shippingInfo.isRemote && <span className="text-orange-600"> (+{shippingInfo.region})</span>}
-                                </span>
-                                <span className="font-medium text-gray-900">
-                                  ₩{orderCalc.shippingFee.toLocaleString()}
-                                </span>
+                                <span className="text-sm text-gray-600">배송비</span>
+                                {bulkPaymentInfo?.isBulkPayment ? (
+                                  bulkPaymentInfo.isRepresentativeOrder ? (
+                                    // 대표 주문: 재계산된 배송비 + 지역 표시 + 합배 표시
+                                    <span className="font-medium text-gray-900 flex items-center gap-1">
+                                      ₩{orderCalc.shippingFee.toLocaleString()}
+                                      {shippingInfo.isRemote && (
+                                        <span className="text-xs text-orange-600">
+                                          (+{shippingInfo.region})
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-blue-600 font-semibold">
+                                        ({bulkPaymentInfo.groupOrderCount}건 합배) ✨
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    // 다른 주문: ₩0 + 대표 주문번호
+                                    <span className="font-medium text-gray-500 flex items-center gap-1">
+                                      ₩0
+                                      <span className="text-xs text-blue-600">
+                                        ({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                                      </span>
+                                    </span>
+                                  )
+                                ) : (
+                                  // 단일 주문: 일반 표시
+                                  <span className="font-medium text-gray-900 flex items-center gap-1">
+                                    ₩{orderCalc.shippingFee.toLocaleString()}
+                                    {shippingInfo.isRemote && (
+                                      <span className="text-xs text-orange-600">
+                                        (+{shippingInfo.region})
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
                               </div>
                               {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                                 <div className="flex justify-between items-center">
