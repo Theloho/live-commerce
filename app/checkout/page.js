@@ -71,6 +71,15 @@ export default function CheckoutPage() {
     if (!orderItem) return null
 
     const postalCode = selectedAddress?.postal_code || userProfile.postal_code
+
+    // 🚨 디버그: postalCode 확인
+    console.log('📍 [Checkout] 주소 정보:', {
+      selectedAddress,
+      'selectedAddress?.postal_code': selectedAddress?.postal_code,
+      'userProfile.postal_code': userProfile.postal_code,
+      postalCode
+    })
+
     const baseShippingFee = hasPendingOrders ? 0 : 4000
     const orderItems = orderItem.isBulkPayment
       ? [{ price: orderItem.totalPrice, quantity: 1, title: orderItem.title }]
