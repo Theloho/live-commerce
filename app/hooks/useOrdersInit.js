@@ -73,7 +73,11 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         const authResult = validateAuthenticationFast(sessionData)
 
         if (!authResult.success) {
-          hasInitialized.current = true
+          // ✅ 수정: 로그인 페이지로 리다이렉트 시에만 초기화 완료로 설정
+          if (authResult.shouldBlock) {
+            hasInitialized.current = true
+          }
+          // 아직 로딩 중이면 hasInitialized를 설정하지 않음 (재시도 허용)
           setPageLoading(false)
           return
         }
@@ -136,10 +140,11 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
       if (!authLoading) {
         toast.error('로그인이 필요합니다')
         router.push('/login')
-        return { success: false }
+        return { success: false, shouldBlock: true }
       }
 
-      return { success: false }
+      // ✅ 수정: 아직 로딩 중이면 재시도 허용 (hasInitialized를 true로 설정하지 않음)
+      return { success: false, shouldBlock: false }
     }
 
     // ⚡ 주문 데이터 고속 로드
