@@ -56,29 +56,27 @@ export default function DepositNameModal({
             </div>
           </label>
 
-          {/* 닉네임으로 입금 */}
-          {userProfile.nickname && (
-            <label
-              className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-              style={{ borderColor: depositOption === 'nickname' ? '#ef4444' : '#e5e7eb' }}
-            >
-              <input
-                type="radio"
-                name="depositOption"
-                value="nickname"
-                checked={depositOption === 'nickname'}
-                onChange={() => {
-                  setDepositOption('nickname')
-                  setDepositName(userProfile.nickname)
-                }}
-                className="w-4 h-4 text-red-500 mr-3"
-              />
-              <div>
-                <p className="font-medium text-gray-900">{userProfile.nickname}</p>
-                <p className="text-sm text-gray-500">닉네임으로 입금</p>
-              </div>
-            </label>
-          )}
+          {/* 닉네임으로 입금 - nickname이 없으면 name 사용 (항상 표시) */}
+          <label
+            className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+            style={{ borderColor: depositOption === 'nickname' ? '#ef4444' : '#e5e7eb' }}
+          >
+            <input
+              type="radio"
+              name="depositOption"
+              value="nickname"
+              checked={depositOption === 'nickname'}
+              onChange={() => {
+                setDepositOption('nickname')
+                setDepositName(userProfile.nickname || userProfile.name)
+              }}
+              className="w-4 h-4 text-red-500 mr-3"
+            />
+            <div>
+              <p className="font-medium text-gray-900">{userProfile.nickname || userProfile.name}</p>
+              <p className="text-sm text-gray-500">닉네임으로 입금</p>
+            </div>
+          </label>
 
           {/* 직접 입력 */}
           <label
