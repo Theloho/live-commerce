@@ -154,13 +154,13 @@ export default function OrderCompletePage() {
 
       // 🧮 중앙화된 계산 모듈로 정확한 금액 계산
       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
-        region: orderData.shipping?.postal_code || 'normal',
+        region: 'normal',  // ✅ 재계산 방지: 항상 'normal' (배송비는 baseShippingFee만 사용)
         coupon: orderData.discount_amount > 0 ? {
           type: 'fixed_amount',
           value: orderData.discount_amount
         } : null,
         paymentMethod: orderData.payment?.method || 'transfer',
-        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용
+        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용 (재계산 X)
       })
 
       // GA4 구매 완료 이벤트 전송
@@ -391,13 +391,13 @@ export default function OrderCompletePage() {
 
                       // 🧮 중앙화된 계산 모듈 사용
                       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
-                        region: orderData.shipping?.postal_code || 'normal',
+                        region: 'normal',  // ✅ 재계산 방지: 항상 'normal' (배송비는 baseShippingFee만 사용)
                         coupon: orderData.discount_amount > 0 ? {
                           type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
                           value: orderData.discount_amount
                         } : null,
                         paymentMethod: 'card',
-                        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용
+                        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용 (재계산 X)
                       })
 
                       console.log('💳 카드결제 금액 계산 (중앙화 모듈):', orderCalc.breakdown)
@@ -494,13 +494,13 @@ export default function OrderCompletePage() {
 
                       // 🧮 중앙화된 계산 모듈 사용
                       const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
-                        region: orderData.shipping?.postal_code || 'normal',
+                        region: 'normal',  // ✅ 재계산 방지: 항상 'normal' (배송비는 baseShippingFee만 사용)
                         coupon: orderData.discount_amount > 0 ? {
                           type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
                           value: orderData.discount_amount
                         } : null,
                         paymentMethod: 'transfer',
-                        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용
+                        baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용 (재계산 X)
                       })
 
                       // 입금자명 우선순위 (DB 저장된 순서대로)
@@ -857,13 +857,13 @@ export default function OrderCompletePage() {
 
                           // 🧮 중앙화된 계산 모듈 사용 (정확한 금액 계산)
                           const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
-                            region: orderData.shipping?.postal_code || 'normal',
+                            region: 'normal',  // ✅ 재계산 방지: 항상 'normal' (배송비는 baseShippingFee만 사용)
                             coupon: orderData.discount_amount > 0 ? {
                               type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
                               value: orderData.discount_amount
                             } : null,
                             paymentMethod: orderData.payment?.method || 'transfer',
-                            baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용
+                            baseShippingFee: shippingFee  // ✅ DB 저장된 배송비 사용 (재계산 X)
                           })
 
                           console.log('💰 주문 상세 금액 계산 (OrderCalculations):', {

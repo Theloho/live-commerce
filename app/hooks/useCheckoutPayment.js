@@ -176,12 +176,13 @@ export function useCheckoutPayment({
           postal_code: finalAddress.postal_code
         }
 
-        // 쿠폰 할인 금액을 orderItem에 포함
+        // 쿠폰 할인 금액 + 계산된 배송비를 orderItem에 포함
         const orderItemWithCoupon = {
           ...orderItem,
           couponDiscount: orderCalc.couponDiscount || 0,
           couponCode: selectedCoupon?.coupon?.code || null,
-          isFreeShipping: hasPendingOrders
+          isFreeShipping: hasPendingOrders,
+          shippingFee: orderCalc.shippingFee  // ✅ 체크아웃에서 계산된 배송비 전달 (재계산 방지!)
         }
 
         // API Route 호출 (Clean Architecture)
