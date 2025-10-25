@@ -63,15 +63,6 @@ export function useCheckoutPayment({
     // ✅ React setState 비동기 문제 해결: 파라미터로 전달된 값 우선 사용
     const depositorName = finalDepositName || depositName
 
-    // 🔍 디버깅: 입금자명 값 추적
-    console.log('🔍 [confirmBankTransfer] 입금자명 계산:', {
-      finalDepositName,
-      depositName_state: depositName,
-      calculated_depositorName: depositorName,
-      isBulkPayment: orderItem?.isBulkPayment,
-      orderCount: orderItem?.originalOrderIds?.length
-    })
-
     // 모바일 중복 실행 방지
     if (processing) {
       return
@@ -143,13 +134,6 @@ export function useCheckoutPayment({
             shipping_postal_code: finalAddress.postal_code || ''
           }
         }
-
-        // 🔍 디버깅: API 전송 데이터 확인
-        console.log('🔍 [confirmBankTransfer] API 전송 데이터:', {
-          orderIds: orderItem.originalOrderIds,
-          depositorName: paymentUpdateData.depositorName,
-          shipping_name: paymentUpdateData.shippingData.shipping_name
-        })
 
         // API Route 호출 (Clean Architecture)
         const response = await fetch('/api/orders/update-status', {
