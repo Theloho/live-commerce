@@ -207,12 +207,44 @@ export default function OrderCard({
         </div>
       )}
 
-      {/* ⭐ 배송비 정보 (일괄결제) */}
-      {bulkPaymentInfo?.isBulkPayment && (
+      {/* ⭐ 배송비 정보 (일괄결제 + 단건) */}
+      {(bulkPaymentInfo?.isBulkPayment || calculatedShippingFee > 0) && (
         <div className="mb-2 pb-2 border-b border-gray-100">
           <div className="flex items-center justify-between text-sm">
-            {bulkPaymentInfo.isRepresentativeOrder ? (
-              // 대표 주문: 좌측에 배송비+지역+합배, 우측에 금액
+            {bulkPaymentInfo?.isBulkPayment ? (
+              // 일괄결제 케이스
+              bulkPaymentInfo.isRepresentativeOrder ? (
+                // 대표 주문: 좌측에 배송비+지역+합배, 우측에 금액
+                <>
+                  <span className="text-gray-600">
+                    배송비
+                    {shippingInfo.isRemote && (
+                      <span className="text-xs text-orange-600">
+                        {' '}(+{shippingInfo.region})
+                      </span>
+                    )}
+                    <span className="text-xs text-blue-600 font-semibold">
+                      {' '}({bulkPaymentInfo.groupOrderCount}건 합배) ✨
+                    </span>
+                  </span>
+                  <span className="text-gray-900 font-medium">
+                    ₩{calculatedShippingFee.toLocaleString()}
+                  </span>
+                </>
+              ) : (
+                // 다른 주문: 좌측에 배송비+포함정보, 우측에 ₩0
+                <>
+                  <span className="text-gray-600">
+                    배송비
+                    <span className="text-xs text-blue-600">
+                      {' '}({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
+                    </span>
+                  </span>
+                  <span className="text-gray-500 font-medium">₩0</span>
+                </>
+              )
+            ) : (
+              // 단건 주문: 좌측에 배송비+지역, 우측에 금액
               <>
                 <span className="text-gray-600">
                   배송비
@@ -221,24 +253,10 @@ export default function OrderCard({
                       {' '}(+{shippingInfo.region})
                     </span>
                   )}
-                  <span className="text-xs text-blue-600 font-semibold">
-                    {' '}({bulkPaymentInfo.groupOrderCount}건 합배) ✨
-                  </span>
                 </span>
                 <span className="text-gray-900 font-medium">
                   ₩{calculatedShippingFee.toLocaleString()}
                 </span>
-              </>
-            ) : (
-              // 다른 주문: 좌측에 배송비+포함정보, 우측에 ₩0
-              <>
-                <span className="text-gray-600">
-                  배송비
-                  <span className="text-xs text-blue-600">
-                    {' '}({bulkPaymentInfo.representativeOrderNumber}에 포함) ✨
-                  </span>
-                </span>
-                <span className="text-gray-500 font-medium">₩0</span>
               </>
             )}
           </div>
