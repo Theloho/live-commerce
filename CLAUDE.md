@@ -1252,6 +1252,20 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-25: 💳 입금자명 선택 완전 해결 (닉네임 + API 500) ⭐⭐⭐
+
+**문제**: 닉네임 옵션 누락 + API 500 에러 + 입금자명 저장 안 됨 + 처리 시간 10초+
+**원인**: normalizeProfile nickname 제거 + API Contract 불일치 (orderId vs orderIds) + paymentData 누락
+**해결**: nickname 필드 추가 (모든 경로) + orderIds 배열 전달 + paymentData.depositorName 추가
+**결과**: 닉네임 정확히 표시 + API 200 성공 + 선택한 입금자명 저장 + 처리 시간 1초 이내
+**커밋**: `93812d1`, `a764508`, `f146fa4`, `c137fe8`, `a45a3af`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-25.md#bug-5-7](docs/work-logs/WORK_LOG_2025-10-25.md#-5-입금자명-선택-버그--rule-0-a-완벽-준수--닉네임-옵션-추가)
+
+**⚠️ 핵심 교훈**: 데이터 흐름 전체 추적 필수 (DB → normalizeProfile → Component) + API Contract 정확히 맞추기!
+
+---
+
 ### 2025-10-24: 💰 입금 확인 페이지 일괄결제 그룹핑 UI 구현 ⭐⭐⭐
 
 **문제**: 관리자가 일괄결제 주문 3건을 구분 못함
