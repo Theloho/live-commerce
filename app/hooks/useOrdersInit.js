@@ -191,8 +191,10 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
     // ✅ window focus 이벤트 제거 - 불필요한 재호출 방지
     initOrdersPageFast()
 
-    // cleanup 함수 제거 (더 이상 이벤트 리스너 없음)
-    return () => {}
+    // ✅ cleanup: isLoadingRef 리셋 (React Strict Mode 대응)
+    return () => {
+      isLoadingRef.current = false
+    }
   }, [isAuthenticated, user?.id, authLoading, router, searchParams])
 
   // ⚡ 주문 새로고침 함수
