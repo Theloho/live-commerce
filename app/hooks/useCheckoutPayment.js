@@ -203,6 +203,32 @@ export function useCheckoutPayment({
 
         const { order: newOrder } = await response.json()
         orderId = newOrder.id
+
+        // 단일 주문: 주문 상태를 'verifying'으로 변경 (입금 확인중)
+        try {
+          // API Route 호출 (Clean Architecture)
+          const response = await fetch('/api/orders/update-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderIds: [orderId],  // ✅ 배열로 변경
+              status: 'verifying',
+              paymentData: {  // ✅ depositorName 포함
+                method: 'bank_transfer',
+                depositorName: depositorName
+              }
+            })
+          })
+
+          if (response.ok) {
+            logger.debug('주문 상태 변경: pending → verifying', { orderId, depositorName })
+          } else {
+            throw new Error('Status update failed')
+          }
+        } catch (error) {
+          logger.error('주문 상태 변경 실패:', error)
+          // 상태 변경 실패해도 주문은 진행
+        }
       }
 
       // 쿠폰 사용 처리 (Clean Architecture API Route)
@@ -236,32 +262,6 @@ export function useCheckoutPayment({
           logger.error('쿠폰 사용 처리 중 오류:', error)
           // 쿠폰 사용 실패해도 주문은 진행
         }
-      }
-
-      // 주문 상태를 'verifying'으로 변경 (입금 확인중)
-      try {
-        // API Route 호출 (Clean Architecture)
-        const response = await fetch('/api/orders/update-status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderIds: [orderId],  // ✅ 배열로 변경
-            status: 'verifying',
-            paymentData: {  // ✅ depositorName 포함
-              method: 'bank_transfer',
-              depositorName: depositorName
-            }
-          })
-        })
-
-        if (response.ok) {
-          logger.debug('주문 상태 변경: pending → verifying', { orderId, depositorName })
-        } else {
-          throw new Error('Status update failed')
-        }
-      } catch (error) {
-        logger.error('주문 상태 변경 실패:', error)
-        // 상태 변경 실패해도 주문은 진행
       }
 
       // 계좌번호 복사 시도
