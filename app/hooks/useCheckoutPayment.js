@@ -123,6 +123,7 @@ export function useCheckoutPayment({
         }
 
         // 원본 주문들을 'verifying' 상태로 업데이트 (계좌이체)
+        // ✅ camelCase와 snake_case 둘 다 지원 (2025-10-27)
         const paymentUpdateData = {
           method: 'bank_transfer',
           depositorName: depositorName,
@@ -131,8 +132,8 @@ export function useCheckoutPayment({
             shipping_name: userProfile.name,
             shipping_phone: userProfile.phone,
             shipping_address: finalAddress.address,
-            shipping_detail_address: finalAddress.detail_address || '',
-            shipping_postal_code: finalAddress.postal_code || ''
+            shipping_detail_address: finalAddress.detail_address || finalAddress.detailAddress || '',
+            shipping_postal_code: finalAddress.postal_code || finalAddress.postalCode || ''
           }
         }
 
@@ -170,15 +171,17 @@ export function useCheckoutPayment({
           postal_code: userProfile.postal_code
         }
 
+        // ✅ camelCase와 snake_case 둘 다 지원 (2025-10-27)
         const orderProfile = {
           ...userProfile,
           address: finalAddress.address,
-          detail_address: finalAddress.detail_address,
-          postal_code: finalAddress.postal_code
+          detail_address: finalAddress.detail_address || finalAddress.detailAddress,
+          postal_code: finalAddress.postal_code || finalAddress.postalCode
         }
 
         // ✅ 주문 생성 직전에 배송비 다시 계산 (클로저 문제 방지!)
-        const postalCode = finalAddress.postal_code || userProfile.postal_code
+        // ✅ camelCase와 snake_case 둘 다 지원 (2025-10-27)
+        const postalCode = finalAddress.postal_code || finalAddress.postalCode || userProfile.postal_code
         console.log('🔍 [주문생성] postal_code 확인:', { postalCode, finalAddress, userProfile })
 
         const { formatShippingInfo } = require('@/lib/shippingUtils')
