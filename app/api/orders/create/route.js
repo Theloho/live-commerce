@@ -47,6 +47,7 @@ export async function POST(request) {
         name: userProfile.name,
         phone: userProfile.phone,
         address: userProfile.address,
+        detailAddress: userProfile.detail_address, // ✅ 상세주소 추가 (2025-10-27)
         postalCode: userProfile.postal_code,
       },
       payment: {
