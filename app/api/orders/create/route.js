@@ -40,7 +40,8 @@ export async function POST(request) {
       orderData: {
         items: [orderData], // 단일 상품을 배열로 변환
         orderType: orderData.orderType || 'direct',
-        shippingFee: orderData.shippingFee, // ✅ 체크아웃에서 계산된 배송비 전달 (근본 원인!)
+        shippingFee: orderData.shippingFee, // ✅ 체크아웃에서 계산된 배송비 전달
+        isFreeShipping: orderData.isFreeShipping, // ✅ 체크아웃에서 계산된 무료배송 여부 전달 (2025-10-27)
       },
       shipping: {
         name: userProfile.name,
