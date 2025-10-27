@@ -1238,6 +1238,20 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-27: 🚚 합배 원칙 개선 - 배송지 비교 로직 추가 ⭐⭐⭐
+
+**문제**: 같은 사용자의 verifying 주문이 있으면 배송지가 달라도 무조건 합배 (잘못된 배송비 부과)
+**원인**: findPendingOrdersWithGroup()가 배송지 정보 미포함 + 배송지 비교 로직 없음
+**해결**: postal_code + detail_address 비교 (완전 일치 시만 합배)
+**성능**: JOIN 1개 추가 (< 0.1초, 무시 가능)
+**커밋**: [예정]
+
+**📝 상세 로그**: [WORK_LOG_2025-10-27.md](docs/work-logs/WORK_LOG_2025-10-27.md)
+
+**⚠️ 핵심**: postal_code만 비교 ❌ (같은 건물 다른 호수 잘못 합배), postal_code + detail_address ✅ (정확한 매칭)
+
+---
+
 ### 2025-10-26: 🐛 Bug #9-7: pending 주문 배송비 섹션 숨김 처리 ⭐⭐
 
 **문제**: 결제대기(장바구니) 페이지에서 배송비 표시됨
