@@ -363,6 +363,74 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
     }
   }
 
+  /**
+   * 배송지 변경 시 합배 여부 재확인 (배송지 비교 포함)
+   * @param {Object} address - 배송지 정보 { postal_code, detail_address }
+   * @returns {Promise<boolean>} hasPendingOrders
+   * @author Claude
+   * @since 2025-10-27
+   */
+  const recheckPendingOrders = async (address) => {
+    try {
+      if (!address?.postal_code || !address?.detail_address) {
+        console.warn('⚠️ [recheckPendingOrders] 배송지 정보 없음:', address)
+        setHasPendingOrders(false)
+        return false
+      }
+
+      const currentUser = userSession || user
+      if (!currentUser?.id) {
+        setHasPendingOrders(false)
+        return false
+      }
+
+      // 제외할 주문 ID 목록 (일괄결제 시)
+      const excludeIds = orderItem?.isBulkPayment && orderItem?.originalOrderIds?.length > 0
+        ? orderItem.originalOrderIds
+        : []
+
+      console.log('🔍 [recheckPendingOrders] 합배 여부 재확인:', {
+        postal_code: address.postal_code,
+        detail_address: address.detail_address,
+        userId: currentUser.id,
+        excludeIds
+      })
+
+      // ✅ 새 API: 배송지 비교 포함
+      const response = await fetch('/api/orders/check-pending-with-address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.provider === 'kakao' ? null : currentUser.id,
+          kakaoId: currentUser.provider === 'kakao' ? currentUser.kakao_id : null,
+          postal_code: address.postal_code,
+          detail_address: address.detail_address,
+          excludeIds
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('배송지 기반 주문 확인 실패')
+      }
+
+      const data = await response.json()
+      const newHasPendingOrders = data.hasPendingOrders
+
+      console.log('✅ [recheckPendingOrders] 합배 여부 재확인 완료:', {
+        hasPendingOrders: newHasPendingOrders,
+        message: data.message
+      })
+
+      // 상태 업데이트
+      setHasPendingOrders(newHasPendingOrders)
+      return newHasPendingOrders
+    } catch (error) {
+      logger.warn('배송지 기반 주문 확인 중 오류:', error)
+      setHasPendingOrders(false)
+      return false
+    }
+  }
+
   return {
     pageLoading,
     orderItem,
@@ -374,6 +442,7 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
     userSession,
     setUserProfile,
     setSelectedAddress,
-    setAvailableCoupons
+    setAvailableCoupons,
+    recheckPendingOrders  // ✅ 새로 추가된 함수
   }
 }

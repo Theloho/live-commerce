@@ -55,7 +55,8 @@ export default function CheckoutPage() {
     userSession,
     setUserProfile,
     setSelectedAddress,
-    setAvailableCoupons
+    setAvailableCoupons,
+    recheckPendingOrders  // ✅ 배송지 변경 시 합배 여부 재확인
   } = useCheckoutInit({ user, isAuthenticated, authLoading, router })
 
   // 로컬 상태 (모달 제어, 입금자명)
@@ -154,6 +155,23 @@ export default function CheckoutPage() {
     setShowDepositModal(true)
   }
 
+  // 배송지 변경 핸들러 (합배 여부 재확인)
+  const handleAddressChange = async (newAddress) => {
+    console.log('🔄 [Checkout] 배송지 변경 시작:', newAddress)
+
+    // 1. 배송지 상태 업데이트
+    setSelectedAddress(newAddress)
+
+    // 2. 합배 여부 재확인 (배송지 비교)
+    if (newAddress?.postal_code && newAddress?.detail_address) {
+      await recheckPendingOrders(newAddress)
+      // ✅ hasPendingOrders 상태가 업데이트되면 orderCalc useMemo가 자동 재계산됨
+      console.log('✅ [Checkout] 배송지 변경 완료 + 합배 여부 재확인 완료')
+    } else {
+      console.warn('⚠️ [Checkout] 배송지 정보 불완전 (postal_code 또는 detail_address 없음)')
+    }
+  }
+
   // Google Analytics: 결제 시작 이벤트
   useEffect(() => {
     if (orderItem && !pageLoading && orderCalc) {
@@ -201,7 +219,7 @@ export default function CheckoutPage() {
           <ShippingForm
             userProfile={userProfile}
             selectedAddress={selectedAddress}
-            onAddressSelect={setSelectedAddress}
+            onAddressSelect={handleAddressChange}
             onAddressesUpdate={(newAddresses) => {
               setUserProfile(prev => ({ ...prev, addresses: newAddresses }))
             }}
