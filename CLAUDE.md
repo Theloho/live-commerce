@@ -1244,7 +1244,7 @@ npm run test:bugs:ui        # UI 모드
 **원인**: hasPendingOrders 상태가 초기 로드 시 한 번만 설정됨 + 배송지 변경 시 재계산 로직 없음
 **해결**: recheckPendingOrders() 함수 추가 + 배송지 변경 시 합배 여부 재확인 (배송지 비교)
 **결과**: 배송지 변경 시 orderCalc useMemo 자동 재계산 → 배송비 즉시 업데이트
-**커밋**: [예정]
+**커밋**: `9d0548f`
 
 **📝 상세 로그**: [WORK_LOG_2025-10-27.md#2](docs/work-logs/WORK_LOG_2025-10-27.md#-2-체크아웃-배송지-변경-시-배송비-즉시-재계산-)
 
