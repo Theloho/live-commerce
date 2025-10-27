@@ -155,6 +155,11 @@ export default function CheckoutPage() {
     setShowDepositModal(true)
   }
 
+  // ✅ React Hook 클로저 문제 해결: 현재 selectedAddress를 명시적으로 전달 (2025-10-27)
+  const wrappedConfirmBankTransfer = (depositorName) => {
+    return confirmBankTransfer(depositorName, selectedAddress)
+  }
+
   // 배송지 변경 핸들러 (합배 여부 재확인)
   const handleAddressChange = async (newAddress) => {
     console.log('🔄 [Checkout] 배송지 변경 시작:', newAddress)
@@ -264,7 +269,7 @@ export default function CheckoutPage() {
         setDepositName={setDepositName}
         customDepositName={customDepositName}
         setCustomDepositName={setCustomDepositName}
-        onConfirm={confirmBankTransfer}
+        onConfirm={wrappedConfirmBankTransfer}
         onCancel={() => setShowDepositModal(false)}
         processing={processing}
       />

@@ -58,8 +58,9 @@ export function useCheckoutPayment({
    * - 일반 주문: createOrder → applyCouponUsage → updateOrderStatus → 페이지 이동
    * - 일괄결제: updateMultipleOrderStatus → applyCouponUsage → 페이지 이동
    * @param {string} finalDepositName - 최종 입금자명 (모달에서 직접 전달, React setState 비동기 문제 회피)
+   * @param {Object} currentSelectedAddress - 현재 선택된 배송지 (React Hook 클로저 문제 회피, 2025-10-27)
    */
-  const confirmBankTransfer = async (finalDepositName) => {
+  const confirmBankTransfer = async (finalDepositName, currentSelectedAddress = null) => {
     // ✅ React setState 비동기 문제 해결: 파라미터로 전달된 값 우선 사용
     const depositorName = finalDepositName || depositName
 
@@ -114,8 +115,8 @@ export function useCheckoutPayment({
       if (orderItem.isBulkPayment && orderItem.originalOrderIds && orderItem.originalOrderIds.length > 0) {
         logger.debug('일괄결제 처리 시작', { count: orderItem.originalOrderIds.length })
 
-        // selectedAddress 직접 사용 (React setState 비동기 문제 해결)
-        const finalAddress = selectedAddress || {
+        // ✅ React Hook 클로저 문제 해결: 현재 선택된 주소 우선 사용 (2025-10-27)
+        const finalAddress = currentSelectedAddress || selectedAddress || {
           address: userProfile.address,
           detail_address: userProfile.detail_address,
           postal_code: userProfile.postal_code
@@ -162,8 +163,8 @@ export function useCheckoutPayment({
         }))
       } else {
         // 단일 주문 생성
-        // selectedAddress 직접 사용 (React setState 비동기 문제 해결)
-        const finalAddress = selectedAddress || {
+        // ✅ React Hook 클로저 문제 해결: 현재 선택된 주소 우선 사용 (2025-10-27)
+        const finalAddress = currentSelectedAddress || selectedAddress || {
           address: userProfile.address,
           detail_address: userProfile.detail_address,
           postal_code: userProfile.postal_code
