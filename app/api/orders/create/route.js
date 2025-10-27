@@ -54,7 +54,11 @@ export async function POST(request) {
         paymentMethod: 'bank_transfer', // 현재는 무통장입금만
         depositorName: depositName,
       },
-      coupon: null, // 추후 쿠폰 시스템 통합 시 추가
+      coupon: orderData.couponDiscount > 0 ? {
+        type: 'fixed_amount',  // 체크아웃에서 이미 계산된 할인 금액
+        value: orderData.couponDiscount,
+        code: orderData.couponCode || 'UNKNOWN'
+      } : null,
       user,
     }
 
