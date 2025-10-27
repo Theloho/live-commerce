@@ -1238,17 +1238,19 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
-### 2025-10-28: 🎟️ 주문 완료 페이지 쿠폰 할인 표시 수정 ⭐⭐⭐
+### 2025-10-28: 🎟️ 주문 완료 페이지 쿠폰 할인 표시 수정 (2단계 디버깅) ⭐⭐⭐
 
 **문제**: 체크아웃에서 쿠폰 적용 OK, 주문 완료 페이지에서 쿠폰 미표시
-**원인**: API Route가 항상 `coupon: null` 전달 (Line 57 하드코딩)
-**해결**: `orderData.couponDiscount > 0`이면 coupon 객체 생성하여 CreateOrderUseCase 전달
-**결과**: DB에 `discount_amount` 정확히 저장 → 주문 완료 페이지 쿠폰 표시 ✅
-**커밋**: `6787c42`
+**1차 원인**: API Route가 `coupon: null` 하드코딩 (Line 57)
+**1차 해결**: coupon 객체 생성 → DB 저장 ✅ (커밋 `6787c42`)
+**2차 원인**: GetOrdersUseCase가 `coupon_discount`만 반환, `discount_amount` 누락
+**2차 해결**: `discount_amount` 필드 추가 (하위 호환성) → 표시 ✅ (커밋 `fcc1438`)
+**SQL 검증**: discount_amount = 1000 DB 저장 확인
+**총 소요**: 2시간 15분 (1차 15분 + 2차 2시간)
 
 **📝 상세 로그**: [WORK_LOG_2025-10-28.md](docs/work-logs/WORK_LOG_2025-10-28.md)
 
-**⚠️ 핵심**: Rule #0-A 8-Stage 100% 준수로 15분만에 근본 원인 파악 + 최소 변경 (1파일 5줄) + 첫 시도 성공
+**⚠️ 핵심**: API Contract 확인 필수! (응답 필드명 ≠ 프론트엔드 필드명) + SQL로 DB 검증
 
 ---
 
