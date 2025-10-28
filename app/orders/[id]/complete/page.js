@@ -130,6 +130,41 @@ export default function OrderCompletePage() {
         }
 
         if (order) {
+          // ⭐ payment_group_id가 있으면 같은 그룹의 모든 주문 조회
+          if (order.payment_group_id) {
+            console.log('🔍 [주문 상세] 일괄결제 그룹 발견:', order.payment_group_id)
+
+            try {
+              // 같은 그룹의 모든 주문 조회
+              const groupResponse = await fetch('/api/orders/list', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user: currentUser,
+                  page: 1,
+                  pageSize: 100,
+                  status: 'all'  // 모든 상태의 주문 조회
+                })
+              })
+
+              if (groupResponse.ok) {
+                const groupResult = await groupResponse.json()
+                // 같은 payment_group_id를 가진 주문들만 필터링
+                const groupOrders = groupResult.orders.filter(
+                  o => o.payment_group_id === order.payment_group_id
+                )
+
+                console.log(`✅ [주문 상세] 그룹 주문 ${groupOrders.length}건 조회 완료`)
+
+                // 메인 주문 데이터에 그룹 주문 정보 추가
+                order.groupedOrders = groupOrders
+              }
+            } catch (error) {
+              console.error('❌ [주문 상세] 그룹 주문 조회 실패:', error)
+              // 실패해도 계속 진행 (단일 주문만 표시)
+            }
+          }
+
           setOrderData(order)
           setShippingForm({
             name: order.shipping?.name || '',
@@ -931,8 +966,101 @@ export default function OrderCompletePage() {
             className="bg-white rounded-lg border border-gray-200 p-4"
           >
             {(() => {
-              // 일괄결제인 경우 allItems 사용, 아니면 기본 items 사용
-              const displayItems = orderData.items[0]?.allItems || orderData.items
+              // ⭐ 일괄결제 그룹인 경우 모든 주문의 상품을 표시
+              if (orderData.groupedOrders && orderData.groupedOrders.length > 1) {
+                // 그룹 전체 상품 개수 계산
+                const totalItemCount = orderData.groupedOrders.reduce((sum, order) => {
+                  return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0)
+                }, 0)
+
+                const totalProductCount = orderData.groupedOrders.reduce((sum, order) => {
+                  return sum + order.items.length
+                }, 0)
+
+                return (
+                  <div>
+                    <h2 className="font-semibold text-gray-900 mb-3">
+                      주문 상품 ({orderData.groupedOrders.length}개 주문, 총 {totalProductCount}개)
+                    </h2>
+                    <div className="space-y-4">
+                      {orderData.groupedOrders.map((groupOrder, orderIndex) => {
+                        const orderItemCount = groupOrder.items.reduce((sum, item) => sum + item.quantity, 0)
+
+                        return (
+                          <div key={groupOrder.id} className="border-l-4 border-blue-400 pl-3">
+                            {/* 주문 헤더 */}
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="text-sm font-semibold text-gray-700">
+                                주문 #{orderIndex + 1}
+                              </h3>
+                              <span className="text-xs text-gray-500">
+                                {groupOrder.customer_order_number}
+                              </span>
+                            </div>
+
+                            {/* 주문 내 상품들 */}
+                            <div className="space-y-3">
+                              {groupOrder.items.map((item, itemIndex) => (
+                                <div key={itemIndex} className="border border-gray-200 rounded-lg p-3">
+                                  <div className="flex gap-3">
+                                    <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                                      <Image
+                                        src={item.thumbnail_url || '/placeholder.png'}
+                                        alt={item.title}
+                                        fill
+                                        sizes="64px"
+                                        className="object-cover"
+                                      />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      {/* 제품번호 + 상품명 (한 줄) */}
+                                      <h3 className="mb-1 line-clamp-1 text-sm">
+                                        <span className="font-bold text-gray-900">{item.product_number || item.product_id}</span>
+                                        {item.title && item.title !== (item.product_number || item.product_id) && (
+                                          <span className="text-xs text-gray-500"> {item.title}</span>
+                                        )}
+                                      </h3>
+
+                                      {/* 선택된 옵션 표시 */}
+                                      {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                                        <div className="mb-1">
+                                          {Object.entries(item.selectedOptions).map(([optionId, value]) => (
+                                            <span
+                                              key={optionId}
+                                              className="inline-flex items-center px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded mr-1 mb-1"
+                                            >
+                                              {value}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-xs text-gray-500">
+                                          수량: {item.quantity}개
+                                        </p>
+                                        <p className="font-semibold text-gray-900 text-sm">
+                                          ₩{item.totalPrice.toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        단가: ₩{item.price.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }
+
+              // 단일 주문인 경우 기존 방식 유지
+              const displayItems = orderData.items
               const totalItemCount = displayItems.reduce((sum, item) => sum + item.quantity, 0)
 
               return (
