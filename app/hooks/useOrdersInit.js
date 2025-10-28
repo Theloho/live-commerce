@@ -28,6 +28,15 @@ import logger from '@/lib/logger'
  * @returns {Array} - 그룹핑된 주문 배열 (isGroup, originalOrders 포함)
  */
 const groupOrdersByPaymentGroupId = (orders) => {
+  console.log('🔍 [그룹핑] 시작:', {
+    orderCount: orders.length,
+    sampleOrder: orders[0] ? {
+      id: orders[0].id,
+      payment_group_id: orders[0].payment_group_id,
+      bulkPaymentInfo: orders[0].bulkPaymentInfo
+    } : null
+  })
+
   const groups = {}
   const result = []
 
@@ -38,14 +47,24 @@ const groupOrdersByPaymentGroupId = (orders) => {
         groups[order.payment_group_id] = []
       }
       groups[order.payment_group_id].push(order)
+      console.log('✅ [그룹핑] 그룹 추가:', { orderId: order.id, groupId: order.payment_group_id })
     } else {
       // 일괄결제 아닌 개별 주문
       result.push(order)
+      console.log('➖ [그룹핑] 개별 주문:', { orderId: order.id })
     }
   })
 
   // 2. 그룹을 대표 주문으로 변환
+  console.log('🔍 [그룹핑] 발견된 그룹 수:', Object.keys(groups).length)
+
   Object.entries(groups).forEach(([groupId, groupOrders]) => {
+    console.log('📦 [그룹핑] 그룹 처리:', {
+      groupId,
+      orderCount: groupOrders.length,
+      orderIds: groupOrders.map(o => o.id)
+    })
+
     // 대표 주문: 가장 먼저 생성된 주문 (bulkPaymentInfo.isRepresentativeOrder)
     const representativeOrder = groupOrders.find(o =>
       o.bulkPaymentInfo?.isRepresentativeOrder
@@ -56,13 +75,29 @@ const groupOrdersByPaymentGroupId = (orders) => {
       groupOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
 
     // 그룹 카드 생성
-    result.push({
+    const groupCard = {
       ...representativeOrder,
       isGroup: true, // ⭐ OrderCard에서 그룹 모드 활성화
       originalOrders: groupOrders, // ⭐ 그룹 내 원본 주문들
       groupOrderCount: groupOrders.length,
       totalAmount: totalAmount
+    }
+
+    console.log('✅ [그룹핑] 그룹 카드 생성:', {
+      groupId,
+      isGroup: groupCard.isGroup,
+      groupOrderCount: groupCard.groupOrderCount,
+      totalAmount: groupCard.totalAmount
     })
+
+    result.push(groupCard)
+  })
+
+  console.log('🎉 [그룹핑] 완료:', {
+    입력: orders.length,
+    출력: result.length,
+    그룹수: Object.keys(groups).length,
+    개별수: result.length - Object.keys(groups).length
   })
 
   return result
