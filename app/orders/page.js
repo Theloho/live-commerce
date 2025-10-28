@@ -132,14 +132,16 @@ function OrdersContent() {
               ))}
             </div>
 
-            {/* 페이지네이션 */}
-            <Pagination
-              currentPage={currentPage}
-              totalPages={pagination.totalPages}
-              totalCount={pagination.totalCount}
-              onPageChange={handlePageChange}
-              hasOrders={orders.length > 0}
-            />
+            {/* 페이지네이션 - 그룹핑 후 카드가 10개 초과일 때만 표시 */}
+            {orders.length > 10 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={pagination.totalPages}
+                totalCount={pagination.totalCount}
+                onPageChange={handlePageChange}
+                hasOrders={orders.length > 0}
+              />
+            )}
           </div>
         )}
       </div>
