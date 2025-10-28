@@ -111,11 +111,41 @@ export default function AdminOrderDetailPage() {
   const updateOrderStatus = async (newStatus) => {
     try {
       const { updateOrderStatus: updateStatus } = await import('@/lib/supabaseApi')
-      await updateStatus(order.id, newStatus)
-      setOrder({ ...order, status: newStatus })
-      toast.success('주문 상태가 변경되었습니다')
+
+      // ⭐ payment_group_id 확인 - 일괄결제 그룹 전체 업데이트
+      if (order.payment_group_id) {
+        console.log('🔍 [관리자 상세] 일괄결제 그룹 발견:', order.payment_group_id)
+
+        // 1. 같은 그룹의 모든 주문 조회
+        const response = await fetch(
+          `/api/admin/orders?adminEmail=${adminUser.email}&paymentGroupId=${order.payment_group_id}`
+        )
+
+        if (!response.ok) {
+          throw new Error('그룹 주문 조회 실패')
+        }
+
+        const { orders: groupOrders } = await response.json()
+        console.log(`✅ [관리자 상세] 그룹 주문 ${groupOrders.length}건 조회 완료`)
+
+        // 2. 그룹 내 모든 주문 상태 변경
+        await Promise.all(
+          groupOrders.map(o => updateStatus(o.id, newStatus))
+        )
+
+        toast.success(`그룹 주문 ${groupOrders.length}건의 상태가 변경되었습니다`)
+        console.log(`✅ [관리자 상세] 그룹 주문 ${groupOrders.length}건 → ${newStatus} 상태 변경 완료`)
+      } else {
+        // 단일 주문 (payment_group_id 없음)
+        await updateStatus(order.id, newStatus)
+        toast.success('주문 상태가 변경되었습니다')
+        console.log(`✅ [관리자 상세] 단일 주문 → ${newStatus} 상태 변경 완료`)
+      }
+
+      // 3. 데이터 다시 로드 (최신 상태 반영)
+      loadOrderDetail()
     } catch (error) {
-      console.error('주문 상태 변경 오류:', error)
+      console.error('❌ [관리자 상세] 주문 상태 변경 오류:', error)
       toast.error('상태 변경에 실패했습니다')
       // 실패 시 데이터 다시 로드
       loadOrderDetail()

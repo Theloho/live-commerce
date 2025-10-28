@@ -23,6 +23,52 @@ import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
 
 /**
+ * ⭐ 그룹핑 함수: payment_group_id로 주문 그룹핑
+ * @param {Array} orders - 원본 주문 배열
+ * @returns {Array} - 그룹핑된 주문 배열 (isGroup, originalOrders 포함)
+ */
+const groupOrdersByPaymentGroupId = (orders) => {
+  const groups = {}
+  const result = []
+
+  // 1. payment_group_id로 그룹 분류
+  orders.forEach(order => {
+    if (order.payment_group_id) {
+      if (!groups[order.payment_group_id]) {
+        groups[order.payment_group_id] = []
+      }
+      groups[order.payment_group_id].push(order)
+    } else {
+      // 일괄결제 아닌 개별 주문
+      result.push(order)
+    }
+  })
+
+  // 2. 그룹을 대표 주문으로 변환
+  Object.entries(groups).forEach(([groupId, groupOrders]) => {
+    // 대표 주문: 가장 먼저 생성된 주문 (bulkPaymentInfo.isRepresentativeOrder)
+    const representativeOrder = groupOrders.find(o =>
+      o.bulkPaymentInfo?.isRepresentativeOrder
+    ) || groupOrders[0]
+
+    // 그룹 총액 계산 (bulkPaymentInfo.groupTotalAmount 사용)
+    const totalAmount = representativeOrder.bulkPaymentInfo?.groupTotalAmount ||
+      groupOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+
+    // 그룹 카드 생성
+    result.push({
+      ...representativeOrder,
+      isGroup: true, // ⭐ OrderCard에서 그룹 모드 활성화
+      originalOrders: groupOrders, // ⭐ 그룹 내 원본 주문들
+      groupOrderCount: groupOrders.length,
+      totalAmount: totalAmount
+    })
+  })
+
+  return result
+}
+
+/**
  * useOrdersInit Hook
  * @param {Object} params
  * @param {Object} params.user - useAuth().user
@@ -177,10 +223,14 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         const elapsed = Date.now() - startTime
         console.log('✅ [DEBUG] 주문 로딩 완료:', { count: result.orders?.length, elapsed: `${elapsed}ms` })
 
-        setOrders(result.orders || [])
+        // ⭐ 그룹핑 적용
+        const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
+        console.log('✅ [DEBUG] 그룹핑 완료:', { original: result.orders?.length, grouped: groupedOrders.length })
+
+        setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
         setStatusCounts(result.statusCounts || {})
-        return result.orders
+        return groupedOrders
       } catch (error) {
         logger.error('주문 데이터 로드 오류:', error)
         setOrders([])
@@ -226,7 +276,10 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
 
           const result = await response.json()
 
-          setOrders(result.orders || [])
+          // ⭐ 그룹핑 적용
+          const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
+
+          setOrders(groupedOrders)
           setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
           setStatusCounts(result.statusCounts || {})
           setPageLoading(false)
@@ -282,7 +335,10 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
 
         const result = await response.json()
 
-        setOrders(result.orders || [])
+        // ⭐ 그룹핑 적용
+        const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
+
+        setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
         setStatusCounts(result.statusCounts || {})
       } catch (error) {
@@ -336,7 +392,10 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
 
         const result = await response.json()
 
-        setOrders(result.orders || [])
+        // ⭐ 그룹핑 적용
+        const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
+
+        setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: newPage, totalPages: 0, totalCount: 0, pageSize: 10 })
         setStatusCounts(result.statusCounts || {})
       } catch (error) {

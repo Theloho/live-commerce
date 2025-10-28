@@ -36,6 +36,9 @@ import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
  * @param {boolean} props.bulkPaymentInfo.isRepresentativeOrder - 대표 주문 여부
  * @param {number} props.bulkPaymentInfo.groupOrderCount - 그룹 내 총 주문 수
  * @param {string} props.bulkPaymentInfo.representativeOrderNumber - 대표 주문 번호
+ * @param {number} props.bulkPaymentInfo.groupTotalAmount - 그룹 총 입금금액
+ * @param {boolean} props.isGroup - 그룹 모드 (그룹핑 표시)
+ * @param {Array} props.originalOrders - 그룹 내 원본 주문들 (isGroup=true일 때)
  */
 export default function OrderCard({
   order,
@@ -43,7 +46,9 @@ export default function OrderCard({
   onOrderClick,
   onCancelOrder,
   getStatusInfo,
-  bulkPaymentInfo = null
+  bulkPaymentInfo = null,
+  isGroup = false,
+  originalOrders = []
 }) {
   // 결제 방법 및 상태 정보
   const paymentMethod = order.payment?.method || null
@@ -83,6 +88,87 @@ export default function OrderCard({
   }
 
   const groupedItems = groupOrderItems(order.items || [])
+
+  // ⭐ 그룹 모드: 여러 주문을 1개 카드로 표시 (리팩토링 전 방식)
+  if (isGroup && bulkPaymentInfo) {
+    // 그룹 총 할인 금액 계산
+    const totalDiscount = originalOrders.reduce((sum, o) => sum + (o.discount_amount || 0), 0)
+
+    return (
+      <motion.div
+        key={order.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.1 }}
+        onClick={(e) => onOrderClick(e, order)}
+        className="bg-white rounded-lg border-2 border-blue-200 p-4 cursor-pointer hover:shadow-lg transition-all hover:border-blue-400"
+      >
+        {/* 그룹 헤더 */}
+        <div className="flex items-center justify-between mb-3 pb-3 border-b border-blue-100">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-800">
+              ✨ 일괄결제 {bulkPaymentInfo.groupOrderCount}건
+            </span>
+            {order.status !== 'pending' && order.status !== 'verifying' && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
+                <StatusIcon className="h-4 w-4" />
+                <span className="text-xs font-medium">{statusInfo.label}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 그룹 금액 정보 */}
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">총 입금금액</span>
+            <span className="text-xl font-bold text-gray-900">
+              ₩{bulkPaymentInfo.groupTotalAmount?.toLocaleString()}
+            </span>
+          </div>
+          {totalDiscount > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-blue-600">쿠폰 할인</span>
+              <span className="text-base font-semibold text-blue-600">
+                -₩{totalDiscount.toLocaleString()}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* 상태별 정보 */}
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          {order.status === 'pending' ? (
+            <div className="flex items-center justify-between">
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
+                <StatusIcon className="h-4 w-4" />
+                <span className="text-xs font-medium">{statusInfo.label}</span>
+              </div>
+              <span className="text-sm text-gray-500">클릭하여 결제하기 →</span>
+            </div>
+          ) : order.status === 'verifying' ? (
+            <div className="flex items-center justify-between">
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>
+                <StatusIcon className="h-4 w-4" />
+                <span className="text-xs font-medium">{statusInfo.label}</span>
+              </div>
+              <span className="text-xs text-gray-400">처리 대기중</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">
+                {formatDistanceToNow(new Date(order.created_at), {
+                  addSuffix: true,
+                  locale: ko
+                })}
+              </span>
+              <span className="text-blue-600 font-medium">상세목록 보기 →</span>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    )
+  }
 
   // 🧮 배송비 계산 (postal_code 기반) - 2025-10-26 수정
   // ✅ DB 저장된 shipping_fee 대신 postal_code로 재계산

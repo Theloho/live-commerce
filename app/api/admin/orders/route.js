@@ -13,6 +13,7 @@ export async function GET(request) {
     const statusFilter = searchParams.get('status') // 예: "pending,verifying"
     const paymentMethodFilter = searchParams.get('paymentMethod') // 예: "bank_transfer"
     const orderId = searchParams.get('orderId') // ✅ 단일 주문 조회용
+    const paymentGroupId = searchParams.get('paymentGroupId') // ✅ 일괄결제 그룹 조회용
 
     console.log('🔍 [관리자 주문 API] 전체 주문 조회 시작:', {
       adminEmail,
@@ -20,7 +21,8 @@ export async function GET(request) {
       offset,
       statusFilter,
       paymentMethodFilter,
-      orderId: orderId || 'ALL'
+      orderId: orderId || 'ALL',
+      paymentGroupId: paymentGroupId || 'NONE'
     })
 
     // 1. 관리자 인증 확인
@@ -97,6 +99,10 @@ export async function GET(request) {
         query = query.eq('customer_order_number', orderId)
         console.log('🔍 단일 주문 조회 (주문번호):', orderId)
       }
+    } else if (paymentGroupId) {
+      // ✅ 일괄결제 그룹 조회 (paymentGroupId로 조회)
+      query = query.eq('payment_group_id', paymentGroupId)
+      console.log('🔍 일괄결제 그룹 조회:', paymentGroupId)
     } else {
       // 전체 조회 시에만 cancelled 제외
       query = query.neq('status', 'cancelled')
