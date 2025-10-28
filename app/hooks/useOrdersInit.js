@@ -23,6 +23,26 @@ import toast from 'react-hot-toast'
 import logger from '@/lib/logger'
 
 /**
+ * ⭐ statusCounts 재계산: 그룹핑 후 카드 개수 기반
+ * @param {Array} groupedOrders - 그룹핑된 주문 배열
+ * @param {Object} originalStatusCounts - 서버에서 받은 원본 개수
+ * @returns {Object} - { grouped: {...}, original: {...} }
+ */
+const recalculateStatusCounts = (groupedOrders, originalStatusCounts) => {
+  const groupedCounts = {
+    pending: groupedOrders.filter(o => o.status === 'pending').length,
+    verifying: groupedOrders.filter(o => o.status === 'verifying').length,
+    paid: groupedOrders.filter(o => o.status === 'paid').length,
+    delivered: groupedOrders.filter(o => o.status === 'delivered').length
+  }
+
+  return {
+    grouped: groupedCounts, // 그룹핑 후 카드 개수
+    original: originalStatusCounts // 원본 주문 개수
+  }
+}
+
+/**
  * ⭐ 그룹핑 함수: payment_group_id로 주문 그룹핑
  * @param {Array} orders - 원본 주문 배열
  * @returns {Array} - 그룹핑된 주문 배열 (isGroup, originalOrders 포함)
@@ -262,9 +282,13 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
         console.log('✅ [DEBUG] 그룹핑 완료:', { original: result.orders?.length, grouped: groupedOrders.length })
 
+        // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
+        const recalculatedCounts = recalculateStatusCounts(groupedOrders, result.statusCounts || {})
+        console.log('✅ [DEBUG] statusCounts 재계산:', recalculatedCounts)
+
         setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
-        setStatusCounts(result.statusCounts || {})
+        setStatusCounts(recalculatedCounts)
         return groupedOrders
       } catch (error) {
         logger.error('주문 데이터 로드 오류:', error)
@@ -314,9 +338,12 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
           // ⭐ 그룹핑 적용
           const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
 
+          // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
+          const recalculatedCounts = recalculateStatusCounts(groupedOrders, result.statusCounts || {})
+
           setOrders(groupedOrders)
           setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
-          setStatusCounts(result.statusCounts || {})
+          setStatusCounts(recalculatedCounts)
           setPageLoading(false)
         }
       }
@@ -373,9 +400,12 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         // ⭐ 그룹핑 적용
         const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
 
+        // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
+        const recalculatedCounts = recalculateStatusCounts(groupedOrders, result.statusCounts || {})
+
         setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
-        setStatusCounts(result.statusCounts || {})
+        setStatusCounts(recalculatedCounts)
       } catch (error) {
         logger.warn('주문 로드 실패:', error)
         toast.error('주문 내역을 불러오는데 실패했습니다')
@@ -430,9 +460,12 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         // ⭐ 그룹핑 적용
         const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
 
+        // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
+        const recalculatedCounts = recalculateStatusCounts(groupedOrders, result.statusCounts || {})
+
         setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: newPage, totalPages: 0, totalCount: 0, pageSize: 10 })
-        setStatusCounts(result.statusCounts || {})
+        setStatusCounts(recalculatedCounts)
       } catch (error) {
         logger.warn('주문 로드 실패:', error)
         toast.error('주문 내역을 불러오는데 실패했습니다')

@@ -81,7 +81,10 @@ export default function OrderFilter({
       <div className="px-4 py-4 bg-white border-b border-gray-200">
         <div className="flex items-center gap-2 overflow-x-auto">
           {filters.map(filter => {
-            const count = statusCounts[filter.key] || 0
+            // ⭐ 그룹핑 후 카드 개수 vs 원본 주문 개수
+            const groupedCount = statusCounts?.grouped?.[filter.key] || 0
+            const originalCount = statusCounts?.original?.[filter.key] || 0
+
             return (
               <button
                 key={filter.key}
@@ -95,9 +98,12 @@ export default function OrderFilter({
                 `}
               >
                 {filter.label}
-                {count > 0 && (
+                {groupedCount > 0 && (
                   <span className="ml-1 text-xs">
-                    ({count})
+                    {groupedCount === originalCount
+                      ? `(${originalCount})` // 그룹핑 없음: "결제 확인중 (13)"
+                      : `${groupedCount}개 (총 ${originalCount}건)` // 그룹핑 있음: "결제 확인중 2개 (총 13건)"
+                    }
                   </span>
                 )}
               </button>
