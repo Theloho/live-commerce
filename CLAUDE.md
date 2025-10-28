@@ -1238,6 +1238,21 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-28: 💰 주문 완료 페이지 일괄결제 총 입금금액 표시 ⭐⭐⭐
+
+**문제**: 체크아웃에서 총 ₩150,000 표시 OK, 주문 완료 페이지에서 총 입금금액 확인 불가 (개별만 표시)
+**원인**: bulkPaymentInfo에 groupTotalAmount 필드 없음
+**해결**: GetOrdersUseCase - groupTotalAmount 계산 추가 + complete/page - 상단 배너 UI 추가
+**결과**: 일괄결제 3건 시 "💰 총 입금금액: ₩150,000 (3건 일괄결제)" 즉시 표시 ✅
+**소요 시간**: 22분 (Rule #0-A 8-Stage 100% 준수, 재작업 0분)
+**테스트**: 3/3 통과 (단위 테스트 작성)
+
+**📝 상세 로그**: [WORK_LOG_2025-10-28.md#일괄결제-총-입금금액](docs/work-logs/WORK_LOG_2025-10-28.md#-주문-완료-페이지-일괄결제-총-입금금액-표시-rule-0-a-완벽-준수)
+
+**⚠️ 핵심**: UX 최우선 (상단 배너 sticky top-16) + 안정성 (backward compatible, API 호출 0)
+
+---
+
 ### 2025-10-28: 🎟️ 주문 완료 페이지 쿠폰 할인 표시 수정 (2단계 디버깅) ⭐⭐⭐
 
 **문제**: 체크아웃에서 쿠폰 적용 OK, 주문 완료 페이지에서 쿠폰 미표시
@@ -1251,6 +1266,32 @@ npm run test:bugs:ui        # UI 모드
 **📝 상세 로그**: [WORK_LOG_2025-10-28.md](docs/work-logs/WORK_LOG_2025-10-28.md)
 
 **⚠️ 핵심**: API Contract 확인 필수! (응답 필드명 ≠ 프론트엔드 필드명) + SQL로 DB 검증
+
+---
+
+### 2025-10-28: 🔍 시스템 성능 및 안정성 분석 (속도/재고/동시성) ⭐⭐⭐
+
+**분석 항목**:
+1. 속도 최적화 - 구체적 측정 필요 (페이지별 병목 구간 확인)
+2. 실시간 재고 업데이트 - ❌ **문제 발견**: HomeClient 정적 props만 사용, 클라이언트 업데이트 메커니즘 없음
+3. 동시성 제어 - 🚨 **Critical 문제**: Race Condition 가능 (일반 상품 재고 Lock 없음)
+
+**핵심 발견**:
+- ✅ Variant 상품: RPC `update_variant_inventory_with_lock` 사용 (DB Lock ✅)
+- ❌ 일반 상품: SELECT → UPDATE 사이 Race Condition 가능 (500명 동시 구매 시 초과 판매 위험)
+
+**해결 방안**:
+1. RPC 함수 추가: `update_inventory_with_lock` (FOR UPDATE NOWAIT)
+2. Polling 구현: HomeClient에서 15초마다 재고 업데이트
+3. 속도 측정: 사용자와 함께 느린 구간 프로파일링
+
+**내일 할 일**:
+- 🚨 1순위: 동시성 제어 RPC 추가 (15분)
+- 🟡 2순위: 실시간 재고 Polling (30분)
+- 🟡 3순위: 쿠폰 적용 로직 (% 할인/금액 할인 다양한 상품 구매 시 카드 적용)
+- 🟢 4순위: 속도 최적화 (측정 후 결정)
+
+**📝 상세 로그**: [WORK_LOG_2025-10-28.md#시스템-성능-및-안정성-분석](docs/work-logs/WORK_LOG_2025-10-28.md#-시스템-성능-및-안정성-분석-속도재고동시성)
 
 ---
 
