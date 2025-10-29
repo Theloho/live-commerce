@@ -197,18 +197,11 @@ export default function OrderCompletePage() {
       let calculatedShippingFee = 0
 
       if (bulkPaymentInfo?.isBulkPayment) {
-        // 일괄결제: 대표 주문만 배송비 부담
-        if (bulkPaymentInfo.isRepresentativeOrder) {
-          const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
-          const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
-          calculatedShippingFee = shippingInfo.totalShipping
-        }
-        // 다른 주문은 ₩0
+        // 일괄결제: DB에 저장된 배송비 그대로 사용 (합배 여부는 서버에서 이미 계산됨)
+        calculatedShippingFee = orderData.shipping?.shipping_fee || 0
       } else {
-        // 단일 주문: postal_code 기반 재계산
-        const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
-        const shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
-        calculatedShippingFee = shippingInfo.totalShipping
+        // 단일 주문: DB에 저장된 배송비 그대로 사용 (합배 여부는 서버에서 이미 계산됨)
+        calculatedShippingFee = orderData.shipping?.shipping_fee || 0
       }
 
       // 🧮 중앙화된 계산 모듈로 정확한 금액 계산
