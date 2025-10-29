@@ -27,19 +27,14 @@ import OrderCard from '@/app/components/orders/OrderCard'
 import OrderFilter from '@/app/components/orders/OrderFilter'
 import Pagination from '@/app/components/orders/Pagination'
 
-// ⚡ Dynamic Import: 모달은 열릴 때만 로드 (번들 크기 20-30KB 감소)
-const GroupOrderModal = dynamic(() => import('@/app/components/orders/GroupOrderModal'), {
-  loading: () => null,
-  ssr: false
-})
+// ⚡ Dynamic Import 제거: 그룹 주문도 상세 페이지로 이동 (모달 불필요)
 
 function OrdersContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
 
-  // 그룹 주문 모달 상태
-  const [selectedGroupOrder, setSelectedGroupOrder] = useState(null)
+  // 그룹 주문 모달 제거 (항상 페이지로 이동)
 
   // ⚡ 초기화 Hook - 모든 초기화 로직을 Custom Hook으로 추출
   const {
@@ -69,7 +64,7 @@ function OrdersContent() {
     orders,
     router,
     refreshOrders,
-    setSelectedGroupOrder
+    setSelectedGroupOrder: null // 모달 제거로 불필요
   })
 
   // 로딩 상태
@@ -146,11 +141,7 @@ function OrdersContent() {
         )}
       </div>
 
-      {/* ⚡ 일괄결제 주문 상세 모달 - Dynamic Import */}
-      <GroupOrderModal
-        selectedGroupOrder={selectedGroupOrder}
-        setSelectedGroupOrder={setSelectedGroupOrder}
-      />
+      {/* 모달 제거: 그룹 주문도 상세 페이지로 이동 */}
     </div>
   )
 }

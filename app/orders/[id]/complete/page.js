@@ -966,8 +966,8 @@ export default function OrderCompletePage() {
             className="bg-white rounded-lg border border-gray-200 p-4"
           >
             {(() => {
-              // ⭐ 일괄결제 그룹인 경우 모든 주문의 상품을 표시
-              if (orderData.groupedOrders && orderData.groupedOrders.length > 1) {
+              // ⭐ 일괄결제 그룹인 경우 모든 주문의 상품을 표시 (1건이라도 표시)
+              if (orderData.groupedOrders && orderData.groupedOrders.length > 0) {
                 // 그룹 전체 상품 개수 계산
                 const totalItemCount = orderData.groupedOrders.reduce((sum, order) => {
                   return sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0)

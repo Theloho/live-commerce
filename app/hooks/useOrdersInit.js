@@ -25,20 +25,14 @@ import logger from '@/lib/logger'
 /**
  * ⭐ statusCounts 재계산: 그룹핑 후 카드 개수 기반
  * @param {Array} groupedOrders - 그룹핑된 주문 배열
- * @param {Object} originalStatusCounts - 서버에서 받은 원본 개수
- * @returns {Object} - { grouped: {...}, original: {...} }
+ * @returns {Object} - { pending: 5, verifying: 2, ... }
  */
-const recalculateStatusCounts = (groupedOrders, originalStatusCounts) => {
-  const groupedCounts = {
+const recalculateStatusCounts = (groupedOrders) => {
+  return {
     pending: groupedOrders.filter(o => o.status === 'pending').length,
     verifying: groupedOrders.filter(o => o.status === 'verifying').length,
     paid: groupedOrders.filter(o => o.status === 'paid').length,
     delivered: groupedOrders.filter(o => o.status === 'delivered').length
-  }
-
-  return {
-    grouped: groupedCounts, // 그룹핑 후 카드 개수
-    original: originalStatusCounts // 원본 주문 개수
   }
 }
 
@@ -283,7 +277,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         console.log('✅ [DEBUG] 그룹핑 완료:', { original: result.orders?.length, grouped: groupedOrders.length })
 
         // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
-        const recalculatedCounts = recalculateStatusCounts(groupedOrders, result.statusCounts || {})
+        const recalculatedCounts = recalculateStatusCounts(groupedOrders)
         console.log('✅ [DEBUG] statusCounts 재계산:', recalculatedCounts)
 
         setOrders(groupedOrders)
@@ -339,7 +333,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
           const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
 
           // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
-          const recalculatedCounts = recalculateStatusCounts(groupedOrders, result.statusCounts || {})
+          const recalculatedCounts = recalculateStatusCounts(groupedOrders)
 
           setOrders(groupedOrders)
           setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
@@ -401,7 +395,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
 
         // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
-        const recalculatedCounts = recalculateStatusCounts(groupedOrders, result.statusCounts || {})
+        const recalculatedCounts = recalculateStatusCounts(groupedOrders)
 
         setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
@@ -461,7 +455,7 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
 
         // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
-        const recalculatedCounts = recalculateStatusCounts(groupedOrders, result.statusCounts || {})
+        const recalculatedCounts = recalculateStatusCounts(groupedOrders)
 
         setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: newPage, totalPages: 0, totalCount: 0, pageSize: 10 })

@@ -107,7 +107,7 @@ export default function OrderCard({
         <div className="flex items-center justify-between mb-3 pb-3 border-b border-blue-100">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-800">
-              ✨ 일괄결제 {bulkPaymentInfo.groupOrderCount}건
+              대표 {bulkPaymentInfo.representativeOrderNumber} 외 {bulkPaymentInfo.groupOrderCount - 1}건 합배
             </span>
             {order.status !== 'pending' && order.status !== 'verifying' && (
               <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${statusInfo.color}`}>

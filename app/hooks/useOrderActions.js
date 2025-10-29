@@ -59,18 +59,15 @@ export function useOrderActions({
 
   /**
    * 주문 클릭 핸들러
-   * - 그룹 주문: 모달 표시
-   * - 개별 주문: 상세 페이지 이동
+   * - 모든 주문: 상세 페이지 이동 (/orders/[id]/complete)
+   * - 그룹 주문도 페이지로 이동 (모달 제거)
    */
   const handleOrderClick = (e, order) => {
     e.preventDefault()
     e.stopPropagation()
 
-    if (order.isGroup) {
-      setSelectedGroupOrder(order)
-    } else {
-      router.push(`/orders/${order.id}/complete`)
-    }
+    // ⭐ 그룹 주문도 항상 상세 페이지로 이동
+    router.push(`/orders/${order.id}/complete`)
   }
 
   /**
