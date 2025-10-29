@@ -212,7 +212,12 @@ export default function OrderCompletePage() {
       }
 
       // 🧮 중앙화된 계산 모듈로 정확한 금액 계산
-      const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
+      // ⭐ 일괄결제: 모든 주문의 items 합치기
+      const allItems = orderData.groupedOrders && orderData.groupedOrders.length > 0
+        ? orderData.groupedOrders.flatMap(order => order.items)
+        : orderData.items
+
+      const orderCalc = OrderCalculations.calculateFinalOrderAmount(allItems, {
         region: 'normal',  // ✅ 재계산 방지: 항상 'normal' (배송비는 baseShippingFee만 사용)
         coupon: orderData.discount_amount > 0 ? {
           type: 'fixed_amount',
@@ -478,7 +483,12 @@ export default function OrderCompletePage() {
                       }
 
                       // 🧮 중앙화된 계산 모듈 사용
-                      const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
+                      // ⭐ 일괄결제: 모든 주문의 items 합치기
+                      const allItems = orderData.groupedOrders && orderData.groupedOrders.length > 0
+                        ? orderData.groupedOrders.flatMap(order => order.items)
+                        : orderData.items
+
+                      const orderCalc = OrderCalculations.calculateFinalOrderAmount(allItems, {
                         region: 'normal',  // ✅ 재계산 방지: 항상 'normal' (배송비는 baseShippingFee만 사용)
                         coupon: orderData.discount_amount > 0 ? {
                           type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
@@ -635,7 +645,12 @@ export default function OrderCompletePage() {
                       }
 
                       // 🧮 중앙화된 계산 모듈 사용
-                      const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
+                      // ⭐ 일괄결제: 모든 주문의 items 합치기
+                      const allItems = orderData.groupedOrders && orderData.groupedOrders.length > 0
+                        ? orderData.groupedOrders.flatMap(order => order.items)
+                        : orderData.items
+
+                      const orderCalc = OrderCalculations.calculateFinalOrderAmount(allItems, {
                         region: 'normal',  // ✅ 재계산 방지: 항상 'normal' (배송비는 baseShippingFee만 사용)
                         coupon: orderData.discount_amount > 0 ? {
                           type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
@@ -1145,7 +1160,12 @@ export default function OrderCompletePage() {
                           }
 
                           // 🧮 중앙화된 계산 모듈 사용 (정확한 금액 계산)
-                          const orderCalc = OrderCalculations.calculateFinalOrderAmount(orderData.items, {
+                          // ⭐ 일괄결제: 모든 주문의 items 합치기
+                          const allItems = orderData.groupedOrders && orderData.groupedOrders.length > 0
+                            ? orderData.groupedOrders.flatMap(order => order.items)
+                            : orderData.items
+
+                          const orderCalc = OrderCalculations.calculateFinalOrderAmount(allItems, {
                             region: 'normal',  // ✅ 재계산 방지: 항상 'normal' (배송비는 baseShippingFee만 사용)
                             coupon: orderData.discount_amount > 0 ? {
                               type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
