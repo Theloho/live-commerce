@@ -91,8 +91,8 @@ export default function OrderCard({
 
   // ⭐ 그룹 모드: 여러 주문을 1개 카드로 표시 (리팩토링 전 방식)
   if (isGroup && bulkPaymentInfo) {
-    // 그룹 총 할인 금액 계산
-    const totalDiscount = originalOrders.reduce((sum, o) => sum + (o.discount_amount || 0), 0)
+    // 그룹 총 할인 금액 (대표 주문의 discount_amount만 사용)
+    const totalDiscount = bulkPaymentInfo.groupTotalDiscount || 0
 
     return (
       <motion.div
