@@ -442,23 +442,13 @@ export default function OrderCompletePage() {
                     {(() => {
                       // ⭐ postal_code 기반 배송비 재계산 + 일괄결제 처리
                       const bulkPaymentInfo = orderData.bulkPaymentInfo
-                      let calculatedShippingFee = 0
-                      let shippingInfo = { isRemote: false, region: null }
+                      // ⭐ DB에 저장된 배송비 그대로 사용 (합배 여부는 서버에서 이미 계산됨)
+                      const calculatedShippingFee = orderData.shipping?.shipping_fee || 0
 
-                      if (bulkPaymentInfo?.isBulkPayment) {
-                        // 일괄결제: 대표 주문만 배송비 부담
-                        if (bulkPaymentInfo.isRepresentativeOrder) {
-                          const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
-                          shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
-                          calculatedShippingFee = shippingInfo.totalShipping
-                        }
-                        // 다른 주문은 ₩0
-                      } else {
-                        // 단일 주문: postal_code 기반 재계산
-                        const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
-                        shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
-                        calculatedShippingFee = shippingInfo.totalShipping
-                      }
+                      // shippingInfo는 지역 표시용으로만 사용 (금액 계산X)
+                      const shippingInfo = orderData.shipping?.postal_code
+                        ? formatShippingInfo(0, orderData.shipping.postal_code)  // baseShippingFee=0 전달 (표시용만)
+                        : { isRemote: false, region: null }
 
                       // 🧮 중앙화된 계산 모듈 사용
                       // ⭐ 일괄결제: 모든 주문의 items 합치기
@@ -604,23 +594,13 @@ export default function OrderCompletePage() {
                     {(() => {
                       // ⭐ postal_code 기반 배송비 재계산 + 일괄결제 처리
                       const bulkPaymentInfo = orderData.bulkPaymentInfo
-                      let calculatedShippingFee = 0
-                      let shippingInfo = { isRemote: false, region: null }
+                      // ⭐ DB에 저장된 배송비 그대로 사용 (합배 여부는 서버에서 이미 계산됨)
+                      const calculatedShippingFee = orderData.shipping?.shipping_fee || 0
 
-                      if (bulkPaymentInfo?.isBulkPayment) {
-                        // 일괄결제: 대표 주문만 배송비 부담
-                        if (bulkPaymentInfo.isRepresentativeOrder) {
-                          const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
-                          shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
-                          calculatedShippingFee = shippingInfo.totalShipping
-                        }
-                        // 다른 주문은 ₩0
-                      } else {
-                        // 단일 주문: postal_code 기반 재계산
-                        const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
-                        shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
-                        calculatedShippingFee = shippingInfo.totalShipping
-                      }
+                      // shippingInfo는 지역 표시용으로만 사용 (금액 계산X)
+                      const shippingInfo = orderData.shipping?.postal_code
+                        ? formatShippingInfo(0, orderData.shipping.postal_code)  // baseShippingFee=0 전달 (표시용만)
+                        : { isRemote: false, region: null }
 
                       // 🧮 중앙화된 계산 모듈 사용
                       // ⭐ 일괄결제: 모든 주문의 items 합치기
@@ -1107,23 +1087,13 @@ export default function OrderCompletePage() {
                         {(() => {
                           // ⭐ postal_code 기반 배송비 재계산 + 일괄결제 처리
                           const bulkPaymentInfo = orderData.bulkPaymentInfo
-                          let calculatedShippingFee = 0
-                          let shippingInfo = { isRemote: false, region: null }
+                          // ⭐ DB에 저장된 배송비 그대로 사용 (합배 여부는 서버에서 이미 계산됨)
+                          const calculatedShippingFee = orderData.shipping?.shipping_fee || 0
 
-                          if (bulkPaymentInfo?.isBulkPayment) {
-                            // 일괄결제: 대표 주문만 배송비 부담
-                            if (bulkPaymentInfo.isRepresentativeOrder) {
-                              const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
-                              shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
-                              calculatedShippingFee = shippingInfo.totalShipping
-                            }
-                            // 다른 주문은 ₩0
-                          } else {
-                            // 단일 주문: postal_code 기반 재계산
-                            const baseShippingFee = orderData.is_free_shipping ? 0 : 4000
-                            shippingInfo = formatShippingInfo(baseShippingFee, orderData.shipping?.postal_code)
-                            calculatedShippingFee = shippingInfo.totalShipping
-                          }
+                          // shippingInfo는 지역 표시용으로만 사용 (금액 계산X)
+                          const shippingInfo = orderData.shipping?.postal_code
+                            ? formatShippingInfo(0, orderData.shipping.postal_code)  // baseShippingFee=0 전달 (표시용만)
+                            : { isRemote: false, region: null }
 
                           // 🧮 중앙화된 계산 모듈 사용 (정확한 금액 계산)
                           // ⭐ 일괄결제: 모든 주문의 items 합치기
