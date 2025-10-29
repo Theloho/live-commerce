@@ -119,21 +119,50 @@ export default function OrderCard({
         </div>
 
         {/* 그룹 금액 정보 */}
-        <div className="space-y-2 mb-3">
+        <div className="space-y-1.5 mb-3">
+          {/* 상품 금액 */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">총 입금금액</span>
-            <span className="text-xl font-bold text-gray-900">
-              ₩{bulkPaymentInfo.groupTotalAmount?.toLocaleString()}
+            <span className="text-sm text-gray-600">상품 금액</span>
+            <span className="text-sm text-gray-900">
+              ₩{bulkPaymentInfo.groupItemsTotal?.toLocaleString()}
             </span>
           </div>
+
+          {/* 배송비 */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">
+              배송비
+              {bulkPaymentInfo.groupShippingFee > 4000 && (
+                <span className="text-xs text-orange-600"> (+도서산간)</span>
+              )}
+              <span className="text-xs text-blue-600 font-semibold">
+                {' '}({bulkPaymentInfo.groupOrderCount}건 합배) ✨
+              </span>
+            </span>
+            <span className="text-sm text-gray-900">
+              ₩{bulkPaymentInfo.groupShippingFee?.toLocaleString()}
+            </span>
+          </div>
+
+          {/* 쿠폰 할인 */}
           {totalDiscount > 0 && (
             <div className="flex items-center justify-between">
               <span className="text-sm text-blue-600">쿠폰 할인</span>
-              <span className="text-base font-semibold text-blue-600">
+              <span className="text-sm font-semibold text-blue-600">
                 -₩{totalDiscount.toLocaleString()}
               </span>
             </div>
           )}
+
+          {/* 총 입금금액 (구분선 + 강조) */}
+          <div className="border-t border-gray-200 pt-2 mt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-900">총 입금금액</span>
+              <span className="text-xl font-bold text-gray-900">
+                ₩{bulkPaymentInfo.groupTotalAmount?.toLocaleString()}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* 상태별 정보 */}
