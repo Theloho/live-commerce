@@ -234,9 +234,17 @@ export function useCheckoutPayment({
             body: JSON.stringify({
               orderIds: [orderId],  // ✅ 배열로 변경
               status: 'verifying',
-              paymentData: {  // ✅ depositorName 포함
+              paymentData: {  // ✅ depositorName + shippingData 포함
                 method: 'bank_transfer',
-                depositorName: depositorName
+                depositorName: depositorName,
+                discountAmount: orderCalc.couponDiscount || 0,
+                shippingData: {
+                  shipping_name: userProfile.name,
+                  shipping_phone: userProfile.phone,
+                  shipping_address: selectedAddress.address,
+                  shipping_detail_address: selectedAddress.detail_address || selectedAddress.detailAddress || '',
+                  shipping_postal_code: selectedAddress.postal_code || selectedAddress.postalCode || ''
+                }
               }
             })
           })
