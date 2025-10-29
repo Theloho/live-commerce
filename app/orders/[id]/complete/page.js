@@ -333,21 +333,6 @@ export default function OrderCompletePage() {
           </div>
         </div>
 
-        {/* 일괄결제 총 입금금액 배너 */}
-        {orderData.bulkPaymentInfo?.isBulkPayment && (
-          <div className="sticky top-16 z-20 bg-blue-50 border-b border-blue-200 px-4 py-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-blue-900">💰 총 입금금액</span>
-              <span className="text-lg font-bold text-blue-900">
-                ₩{orderData.bulkPaymentInfo.groupTotalAmount?.toLocaleString()}
-              </span>
-            </div>
-            <p className="text-xs text-blue-700 mt-1">
-              {orderData.bulkPaymentInfo.groupOrderCount}건 일괄결제
-            </p>
-          </div>
-        )}
-
         {/* Success Animation */}
         <div className="text-center py-8 px-4">
           <motion.div
@@ -797,18 +782,6 @@ export default function OrderCompletePage() {
           >
             <h2 className="font-semibold text-gray-900 mb-3">주문 정보</h2>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">주문번호</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-gray-900">{orderData.customer_order_number || orderData.id}</span>
-                  <button
-                    onClick={() => copyToClipboard(orderData.customer_order_number || orderData.id)}
-                    className="p-1 hover:bg-gray-100 rounded"
-                  >
-                    <ClipboardDocumentIcon className="w-4 h-4 text-gray-400" />
-                  </button>
-                </div>
-              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">주문일시</span>
                 <span className="text-gray-900">
