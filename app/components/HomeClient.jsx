@@ -8,6 +8,7 @@ import ProductGrid from './product/ProductGrid'
 import MobileNav from './layout/MobileNav'
 
 export default function HomeClient({ initialProducts }) {
+  const [products, setProducts] = useState(initialProducts)
   const [userSession, setUserSession] = useState(null)
   const [sessionLoading, setSessionLoading] = useState(true)
   const { isAuthenticated } = useAuth()
@@ -15,6 +16,34 @@ export default function HomeClient({ initialProducts }) {
 
   useEffect(() => {
     checkUserSession()
+  }, [])
+
+  // ⚡ 실시간 재고 업데이트: 15초마다 라이브 상품 Polling
+  useEffect(() => {
+    let interval
+
+    const updateLiveProducts = async () => {
+      // Page Visibility API: 다른 탭 보면 생략
+      if (document.hidden) return
+
+      try {
+        const res = await fetch('/api/products/live')
+        const data = await res.json()
+
+        if (data.success && data.products) {
+          setProducts(data.products)
+        }
+      } catch (error) {
+        console.error('❌ 라이브 상품 업데이트 실패:', error)
+        // 에러 발생해도 기존 데이터 유지 (안정성)
+      }
+    }
+
+    // 15초마다 업데이트 (페이지 보고 있을 때만 실행)
+    interval = setInterval(updateLiveProducts, 15000)
+
+    // cleanup
+    return () => clearInterval(interval)
   }, [])
 
   // 직접 세션 확인 (모바일 최적화)
@@ -124,10 +153,10 @@ export default function HomeClient({ initialProducts }) {
           </div>
         )}
 
-        {/* 상품 그리드 - 서버에서 받은 데이터 즉시 표시 */}
+        {/* 상품 그리드 - 15초마다 자동 업데이트 */}
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-3">🛍️ 인기 상품</h2>
-          <ProductGrid products={initialProducts} />
+          <ProductGrid products={products} />
         </div>
       </main>
 

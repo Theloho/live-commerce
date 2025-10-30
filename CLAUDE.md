@@ -1238,6 +1238,34 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-10-30: 🔄 실시간 재고 업데이트 완료 (15초 Polling) ⭐⭐⭐
+
+**문제**: 라이브 상품 노출 ON/OFF, 재고 변경이 사용자 홈에 즉시 반영 안 됨
+**원인**: HomeClient가 initialProducts만 사용, Polling 없음
+**해결**: 15초 Polling + Page Visibility API (다른 탭 보면 중단)
+**API**: `/api/products/live` (50KB, GetProductsUseCase 재사용)
+**성능**: 96GB/월 (38% 사용, 방송 2시간×8회 기준) ✅
+**결과**: 관리자 노출 ON/OFF → 15초 내 자동 반영, 재고 변경 즉시 동기화
+**커밋**: `[예정]`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-30.md#세션-5](docs/work-logs/WORK_LOG_2025-10-30.md#-세션-5-실시간-재고-업데이트-구현-15초-polling-)
+
+---
+
+### 2025-10-30: 🔒 동시성 제어 완료 (Race Condition 방지) ⭐⭐⭐
+
+**문제**: 500명 동시 구매 시 재고 초과 판매 위험
+**원인**: SELECT → UPDATE 사이에 Race Condition 발생
+**해결**: PostgreSQL Row-Level Lock (FOR UPDATE NOWAIT)
+**테스트**: 10명 동시 요청 → 2명 성공, 8명 실패 (재고 2개) ✅
+**UX**: 마케팅 메시지 ("⏳ 많은 고객이 주문 중" → "🔥 주문 폭주로 완판!")
+**성능**: 0.5초 → 0.5-0.7초 (+0.2초, 무시 가능)
+**커밋**: `34bcee5`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-30.md#세션-4](docs/work-logs/WORK_LOG_2025-10-30.md#-세션-4-동시성-제어-구현-race-condition-방지-)
+
+---
+
 ### 2025-10-30: 🔧 Bug #10 + #11 + #12 완전 해결 (배송비 + 쿠폰) ⭐⭐⭐
 
 **Bug #10: 컴플릿 페이지 배송비 재계산 제거**
