@@ -1238,7 +1238,7 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
-### 2025-10-30: 🔧 Bug #10 + #11 완전 해결 (컴플릿 페이지 + 합배 로직) ⭐⭐⭐
+### 2025-10-30: 🔧 Bug #10 + #11 + #12 완전 해결 (배송비 + 쿠폰) ⭐⭐⭐
 
 **Bug #10: 컴플릿 페이지 배송비 재계산 제거**
 - **문제**: DB에 shipping_fee = 0.00인데 화면에 ₩9,000 표시
@@ -1253,11 +1253,22 @@ npm run test:bugs:ui        # UI 모드
 - **해결**: useCheckoutPayment.js에 shippingData 추가
 - **커밋**: `3a28568`
 
+**Bug #12: 쿠폰 사용해도 개수가 줄지 않는 문제 (완전 해결)** ⭐⭐⭐
+- **문제**: 쿠폰 사용 후 total_used_count 증가 안 됨, 사용 히스토리 기록 안 됨
+- **근본 원인 #1**: BaseRepository가 global `supabase` 사용 (DI 무시) → RLS 차단
+- **근본 원인 #2**: `orderCalc.totalPrice` undefined → API 400 에러
+- **해결**:
+  - BaseRepository: `supabase` → `this.client` (5개 메서드)
+  - CouponRepository: RPC 제거, Service Role 직접 UPDATE
+  - useCheckoutPayment: `totalPrice` → `itemsTotal` (3곳)
+- **커밋**: `923e70d`, `bc66349`
+
 **결과**:
 - ✅ 컴플릿 페이지 모든 섹션 ₩0 표시 (DB와 일치)
 - ✅ 합배 로직 정상 작동 (같은 배송지 → ₩0, 다른 배송지 → 정상 배송비)
 - ✅ 제주도 단일 주문 → ₩7,000 ✅
 - ✅ 울릉도 합배 주문 → ₩0 ✅
+- ✅ 쿠폰 사용: user_coupons.is_used = true, total_used_count 증가 (50% + 1000원 할인 둘 다)
 
 **핵심 교훈**:
 1. Partial fix → Complete fix (한 곳만 수정 ❌, 모든 곳 수정 ✅)
