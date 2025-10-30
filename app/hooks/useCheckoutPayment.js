@@ -107,6 +107,11 @@ export function useCheckoutPayment({
     // 🔒 처리 시작
     setProcessing(true)
 
+    // ⏳ 로딩 메시지 (마케팅)
+    toast.loading('⏳ 많은 고객이 주문 중입니다\n순차적으로 구매 처리중이에요', {
+      id: 'order-processing'
+    })
+
     try {
       const bankInfo = '카카오뱅크 79421940478 하상윤'
       let orderId
@@ -306,13 +311,36 @@ export function useCheckoutPayment({
       setShowDepositModal(false)
 
       // 모바일 호환성: 즉시 리다이렉트 (setTimeout 제거)
-      toast.success('주문이 접수되었습니다', { duration: 2000 })
+      // ✅ 성공 메시지 (마케팅)
+      toast.success('🎉 축하드립니다! 구매 완료!\n주문이 접수되었습니다', {
+        id: 'order-processing',
+        duration: 2000
+      })
 
       // 즉시 페이지 이동 (모바일 환경에서 안정적)
       router.replace(`/orders/${orderId}/complete`)
     } catch (error) {
       logger.error('계좌이체 처리 중 오류:', error)
-      toast.error('주문 처리 중 오류가 발생했습니다')
+
+      // ⚠️ 에러 타입별 메시지 (마케팅)
+      const errorMessage = error.message || error.toString()
+
+      if (errorMessage.includes('재고 부족') || errorMessage.includes('Insufficient inventory')) {
+        toast.error('🔥 주문 폭주로 완판되었습니다!', {
+          id: 'order-processing',
+          duration: 3000
+        })
+      } else if (errorMessage.includes('동시 구매 중') || errorMessage.includes('concurrent_update')) {
+        toast.error('🔥 주문 폭주로 완판되었습니다!', {
+          id: 'order-processing',
+          duration: 3000
+        })
+      } else {
+        toast.error('주문 처리 중 오류가 발생했습니다', {
+          id: 'order-processing'
+        })
+      }
+
       // 에러 시 processing 상태 해제
       setProcessing(false)
       setShowDepositModal(false)
