@@ -272,7 +272,7 @@ export function useCheckoutPayment({
               couponCode: selectedCoupon.coupon.code,
               userId: currentUserId,
               orderId: orderId,
-              orderAmount: orderCalc.totalPrice // 배송비 포함 총액
+              orderAmount: orderCalc.itemsTotal // ✅ 상품 금액 (배송비 제외)
             })
           })
 
@@ -351,7 +351,7 @@ export function useCheckoutPayment({
         body: JSON.stringify({
           couponCode: coupon.code,
           userId: user?.id,
-          orderAmount: orderItem.totalPrice
+          orderAmount: orderCalc?.itemsTotal || orderItem.totalPrice // ✅ orderCalc 우선, fallback orderItem
         })
       })
 
@@ -378,7 +378,7 @@ export function useCheckoutPayment({
         code: coupon.code,
         type: coupon.discount_type,
         discountAmount: result.discount,
-        productAmount: orderItem.totalPrice
+        productAmount: orderCalc?.itemsTotal || orderItem.totalPrice
       })
     } catch (error) {
       console.error('쿠폰 적용 실패:', error)
