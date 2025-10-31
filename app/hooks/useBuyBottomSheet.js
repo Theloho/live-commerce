@@ -449,6 +449,11 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         }]
       }
 
+      // ⏳ 로딩 메시지 (동시성 제어 - 마케팅)
+      toast.loading('⏳ 많은 고객이 주문 중입니다\n순차적으로 구매 처리중이에요', {
+        id: 'inventory-lock'
+      })
+
       // ✅ 주문 생성 (Lock으로 재고 확인+차감 동시에 - 중복 재고 확인 제거)
       const results = await Promise.all(
         cartItems.map(async (item) => {
@@ -494,7 +499,9 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         window.dispatchEvent(new Event('cartUpdated'))
       }
 
-      toast.success(`장바구니에 ${cartItems.length}개 상품이 추가되었습니다`)
+      toast.success('🎉 축하드립니다! 구매 완료!\n주문이 접수되었습니다', {
+        id: 'inventory-lock'
+      })
 
       // 상태 초기화
       setQuantity(1)
@@ -509,7 +516,18 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
       return true
     } catch (error) {
       logger.error('BuyBottomSheet: 장바구니 추가 실패', error)
-      toast.error(error.message || '장바구니 추가 중 오류가 발생했습니다')
+
+      // 🔥 동시성 제어 에러 (재고 부족 or Lock 타임아웃)
+      if (error.message?.includes('재고') || error.message?.includes('동시') || error.message?.includes('insufficient')) {
+        toast.error('🔥 주문 폭주로 완판되었습니다!', {
+          id: 'inventory-lock'
+        })
+      } else {
+        toast.error(error.message || '장바구니 추가 중 오류가 발생했습니다', {
+          id: 'inventory-lock'
+        })
+      }
+
       setIsLoading(false)
       return false
     }

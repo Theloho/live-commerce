@@ -107,8 +107,8 @@ export function useCheckoutPayment({
     // 🔒 처리 시작
     setProcessing(true)
 
-    // ⏳ 로딩 메시지 (마케팅)
-    toast.loading('⏳ 많은 고객이 주문 중입니다\n순차적으로 구매 처리중이에요', {
+    // ⏳ 로딩 메시지 (입금 정보 확인)
+    toast.loading('💳 입금 정보를 확인하고 있습니다...', {
       id: 'order-processing'
     })
 
