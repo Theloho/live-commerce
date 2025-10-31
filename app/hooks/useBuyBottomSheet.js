@@ -439,11 +439,11 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         cartItems = [{
           product_id: product.id,
           product_number: product.product_number,
+          thumbnail_url: product.thumbnail_url,  // ✅ URL만 전달 (base64 아님)
           title: product.title,
           price: price,
           quantity: quantity,
           totalPrice: price * quantity,
-          // thumbnail_url: image,  // ← 제거 (3.6MB base64 이미지)
           selectedOptions: {},
           variant_id: null
         }]
@@ -466,7 +466,7 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
             orderType: 'direct'
           }
 
-          // ✅ Clean Architecture API Route 사용
+          // ✅ Clean Architecture API Route 사용 (⚡ 빠른 구매 모드)
           const response = await fetch('/api/orders/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -474,7 +474,8 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
               orderData,
               userProfile: profile,
               depositName: profile.name,
-              user: userSession || user
+              user: userSession || user,
+              isQuickPurchase: true  // ⚡ BuyBottomSheet 빠른 구매 플래그
             })
           })
 

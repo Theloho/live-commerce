@@ -16,12 +16,13 @@ export async function POST(request) {
   console.log('🔵 [API /orders/create] 시작:', new Date().toISOString())
 
   try {
-    const { orderData, userProfile, depositName, user } = await request.json()
+    const { orderData, userProfile, depositName, user, isQuickPurchase = false } = await request.json()
 
     console.log('🔵 [API /orders/create] 파라미터 수신:', {
       orderId: orderData?.id,
       userId: user?.id,
-      hasUserProfile: !!userProfile
+      hasUserProfile: !!userProfile,
+      isQuickPurchase  // ⚡ 빠른 구매 모드 플래그
     })
 
     // 🐛 DEBUG: orderData에 product_number가 있는지 확인
@@ -60,6 +61,7 @@ export async function POST(request) {
         code: orderData.couponCode || 'UNKNOWN'
       } : null,
       user,
+      isQuickPurchase,  // ⚡ BuyBottomSheet 빠른 구매 플래그 전달
     }
 
     console.log('🔵 [API /orders/create] Use Case 실행 시작')
