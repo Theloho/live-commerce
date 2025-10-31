@@ -98,8 +98,8 @@ export default function ProductDetailPage() {
 
       if (error) throw error
 
+      await loadData() // 데이터 새로고침 (await 추가)
       toast.success('재고가 업데이트되었습니다')
-      loadData() // 데이터 새로고침
     } catch (error) {
       console.error('재고 업데이트 오류:', error)
       toast.error('재고 업데이트에 실패했습니다: ' + error.message)
