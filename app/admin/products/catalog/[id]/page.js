@@ -8,6 +8,7 @@ import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import {
   getProductVariants,
   updateVariantInventory,
+  updateProductInventory,
   getSuppliers,
   getCategories
 } from '@/lib/supabaseApi'
@@ -18,7 +19,7 @@ export default function ProductDetailPage() {
   const router = useRouter()
   const params = useParams()
   const productId = params.id
-  const { isAdminAuthenticated, loading: authLoading, adminUser } = useAdminAuth()
+  const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
 
   const [loading, setLoading] = useState(true)
   const [product, setProduct] = useState(null)
@@ -86,29 +87,12 @@ export default function ProductDetailPage() {
     }
   }
 
-  // 옵션 없는 상품 재고 변경
+  // 옵션 없는 상품 재고 변경 (Variant와 동일한 패턴)
   const handleProductInventoryChange = async (change) => {
     try {
-      const newInventory = Math.max(0, product.inventory + change)
-
-      // Service Role API 사용 (RLS 우회, Variant와 동일한 패턴)
-      const response = await fetch('/api/admin/products/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId: productId,
-          adminEmail: adminUser?.email,
-          inventory: newInventory
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '재고 업데이트 실패')
-      }
-
-      await loadData() // 데이터 새로고침 (await 추가)
+      await updateProductInventory(productId, change)
       toast.success('재고가 업데이트되었습니다')
+      loadData() // 데이터 새로고침
     } catch (error) {
       console.error('재고 업데이트 오류:', error)
       toast.error('재고 업데이트에 실패했습니다: ' + error.message)
