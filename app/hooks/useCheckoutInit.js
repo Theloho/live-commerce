@@ -76,66 +76,62 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
         return
       }
 
-      // ⚡ 3단계: 비동기 데이터 병렬 로드 (프로필+주소 통합으로 DB 쿼리 50% 감소!)
-      await Promise.allSettled([
-        loadUserProfileAndAddresses(validationResult.currentUser),
-        loadUserCouponsOptimized(validationResult.currentUser),
-        checkPendingOrders(validationResult.currentUser, validationResult.orderItem)
-      ]).then(([profileAndAddressResult, couponResult, pendingOrdersResult]) => {
-        // 프로필+주소 처리 (1개 결과에서 모두 추출)
-        if (profileAndAddressResult.status === 'fulfilled') {
-          const { profile, addresses } = profileAndAddressResult.value
+      // ⚡ 3단계: 프로필+주소 로드 (먼저 실행 - 배송지 정보 필요)
+      const profileAndAddressResult = await loadUserProfileAndAddresses(validationResult.currentUser)
+      const { profile, addresses } = profileAndAddressResult
 
-          console.log('🔍 [체크아웃] 프로필+주소 로드 성공:', { profile, addresses })
+      console.log('🔍 [체크아웃] 프로필+주소 로드 성공:', { profile, addresses })
 
-          // ⚡ addresses 배열이 비어있지만 기본 주소가 있는 경우 자동 변환 (마이페이지와 동일)
-          let finalAddresses = addresses
-          if ((!addresses || addresses.length === 0) && profile.address) {
-            console.log('🔄 [체크아웃] Legacy 주소 → addresses 배열 자동 변환')
-            finalAddresses = [{
-              id: Date.now(),
-              label: '기본 배송지',
-              address: profile.address,
-              detail_address: profile.detail_address || '',
-              postal_code: profile.postal_code || '',
-              is_default: true
-            }]
-          }
+      // ⚡ addresses 배열이 비어있지만 기본 주소가 있는 경우 자동 변환 (마이페이지와 동일)
+      let finalAddresses = addresses
+      if ((!addresses || addresses.length === 0) && profile.address) {
+        console.log('🔄 [체크아웃] Legacy 주소 → addresses 배열 자동 변환')
+        finalAddresses = [{
+          id: Date.now(),
+          label: '기본 배송지',
+          address: profile.address,
+          detail_address: profile.detail_address || '',
+          postal_code: profile.postal_code || '',
+          is_default: true
+        }]
+      }
 
-          // 주소가 있으면 기본 주소 선택
-          if (finalAddresses && finalAddresses.length > 0) {
-            const defaultAddress = finalAddresses.find(addr => addr.is_default) || finalAddresses[0]
+      // 주소가 있으면 기본 주소 선택
+      let defaultAddress = null
+      if (finalAddresses && finalAddresses.length > 0) {
+        defaultAddress = finalAddresses.find(addr => addr.is_default) || finalAddresses[0]
 
-            console.log('✅ [체크아웃] 기본 주소 선택:', defaultAddress)
+        console.log('✅ [체크아웃] 기본 주소 선택:', defaultAddress)
 
-            if (defaultAddress) {
-              // ⚡ 한 번에 모든 상태 설정 (Race Condition 방지)
-              setSelectedAddress(defaultAddress)
-              setUserProfile({
-                ...profile,
-                address: defaultAddress.address,
-                detail_address: defaultAddress.detail_address,
-                postal_code: defaultAddress.postal_code,
-                addresses: finalAddresses
-              })
-            } else {
-              setUserProfile({ ...profile, addresses: finalAddresses })
-            }
-          } else {
-            console.warn('⚠️ [체크아웃] 주소 없음 (legacy 주소도 없음):', { addresses })
-            setUserProfile({ ...profile, addresses: [] })
-          }
+        if (defaultAddress) {
+          // ⚡ 한 번에 모든 상태 설정 (Race Condition 방지)
+          setSelectedAddress(defaultAddress)
+          setUserProfile({
+            ...profile,
+            address: defaultAddress.address,
+            detail_address: defaultAddress.detail_address,
+            postal_code: defaultAddress.postal_code,
+            addresses: finalAddresses
+          })
         } else {
-          console.error('❌ [체크아웃] 프로필+주소 로드 실패:', profileAndAddressResult.reason)
-          setUserProfile(UserProfileManager.normalizeProfile(validationResult.currentUser))
+          setUserProfile({ ...profile, addresses: finalAddresses })
         }
+      } else {
+        console.warn('⚠️ [체크아웃] 주소 없음 (legacy 주소도 없음):', { addresses })
+        setUserProfile({ ...profile, addresses: [] })
+      }
 
+      // ⚡ 4단계: 쿠폰+합배 확인 병렬 로드 (배송지 정보 사용!)
+      await Promise.allSettled([
+        loadUserCouponsOptimized(validationResult.currentUser),
+        checkPendingOrders(validationResult.currentUser, validationResult.orderItem, defaultAddress)
+      ]).then(([couponResult, pendingOrdersResult]) => {
         // 쿠폰 처리
         if (couponResult.status === 'fulfilled') {
           setAvailableCoupons(couponResult.value)
         }
 
-        // 무료배송 조건 처리
+        // 무료배송 조건 처리 (✅ 배송지 비교 포함!)
         if (pendingOrdersResult.status === 'fulfilled') {
           setHasPendingOrders(pendingOrdersResult.value)
         }
@@ -330,8 +326,13 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
    * ✅ Rule #2 준수: API Route를 통한 Repository 접근 (Layer 경계)
    * 사용자의 pending/verifying 주문 확인 (무료배송 조건)
    * - 일괄결제인 경우: originalOrderIds에 포함된 주문 제외
+   * - ✅ 배송지 비교 포함 (postal_code + detail_address)
+   * @param {Object} currentUser - 현재 사용자
+   * @param {Object} orderItem - 주문 아이템
+   * @param {Object} address - 배송지 정보 { postal_code, detail_address }
+   * @since 2025-10-31 (Bug #14 수정)
    */
-  const checkPendingOrders = async (currentUser, orderItem) => {
+  const checkPendingOrders = async (currentUser, orderItem, address) => {
     try {
       if (!currentUser?.id) return false
 
@@ -340,22 +341,58 @@ export function useCheckoutInit({ user, isAuthenticated, authLoading, router }) 
         ? orderItem.originalOrderIds
         : []
 
-      // ✅ API Route를 통한 Repository 접근 (Presentation → API → Infrastructure)
-      const response = await fetch('/api/orders/check-pending', {
+      // ✅ 배송지 정보 확인 (없으면 기존 API 사용, 있으면 배송지 비교 API 사용)
+      if (!address?.postal_code || !address?.detail_address) {
+        console.warn('⚠️ [checkPendingOrders] 배송지 정보 없음 - 기존 API 사용')
+
+        // ⚠️ Fallback: 배송지 비교 없이 주문 존재 여부만 확인
+        const response = await fetch('/api/orders/check-pending', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.provider === 'kakao' ? null : currentUser.id,
+            kakaoId: currentUser.provider === 'kakao' ? currentUser.kakao_id : null,
+            excludeIds
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error('pending 주문 확인 실패')
+        }
+
+        const data = await response.json()
+        return data.hasPendingOrders
+      }
+
+      // ✅ 배송지 비교 포함 API 사용 (정확한 합배 판단)
+      console.log('🔍 [checkPendingOrders] 배송지 비교 포함 API 호출:', {
+        postal_code: address.postal_code,
+        detail_address: address.detail_address
+      })
+
+      const response = await fetch('/api/orders/check-pending-with-address', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: currentUser.provider === 'kakao' ? null : currentUser.id,
           kakaoId: currentUser.provider === 'kakao' ? currentUser.kakao_id : null,
+          postal_code: address.postal_code,
+          detail_address: address.detail_address,
           excludeIds
         })
       })
 
       if (!response.ok) {
-        throw new Error('pending 주문 확인 실패')
+        throw new Error('배송지 기반 주문 확인 실패')
       }
 
       const data = await response.json()
+
+      console.log('✅ [checkPendingOrders] 배송지 비교 결과:', {
+        hasPendingOrders: data.hasPendingOrders,
+        message: data.message
+      })
+
       return data.hasPendingOrders
     } catch (error) {
       logger.warn('주문 확인 중 오류:', error)
