@@ -19,6 +19,51 @@ import { OrderCalculations } from '@/lib/orderCalculations'
 import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
+/**
+ * ⭐ 그룹핑 함수: payment_group_id로 주문 그룹핑
+ * @param {Array} orders - 원본 주문 배열
+ * @returns {Array} - 그룹핑된 주문 배열 (isGroup, originalOrders 포함)
+ */
+const groupOrdersByPaymentGroupId = (orders) => {
+  const groups = {}
+  const result = []
+
+  // 1. payment_group_id로 그룹 분류
+  orders.forEach(order => {
+    if (order.payment_group_id) {
+      if (!groups[order.payment_group_id]) {
+        groups[order.payment_group_id] = []
+      }
+      groups[order.payment_group_id].push(order)
+    } else {
+      // 일괄결제 아닌 개별 주문
+      result.push(order)
+    }
+  })
+
+  // 2. 그룹을 대표 주문으로 변환
+  Object.entries(groups).forEach(([groupId, groupOrders]) => {
+    // 대표 주문: 가장 먼저 생성된 주문
+    const representativeOrder = groupOrders[0]
+
+    // 그룹 총액 계산
+    const totalAmount = groupOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0)
+
+    // 그룹 카드 생성
+    const groupCard = {
+      ...representativeOrder,
+      isGroup: true, // ⭐ 그룹 모드 활성화
+      originalOrders: groupOrders, // ⭐ 그룹 내 원본 주문들
+      groupOrderCount: groupOrders.length,
+      totalPrice: totalAmount
+    }
+
+    result.push(groupCard)
+  })
+
+  return result
+}
+
 export default function AdminOrdersPage() {
   const router = useRouter()
   const { adminUser, loading: authLoading } = useAdminAuth()
@@ -117,6 +162,7 @@ export default function AdminOrdersPage() {
           shipped_at: order.shipped_at,
           delivered_at: order.delivered_at,
           order_type: order.order_type,
+          payment_group_id: order.payment_group_id || null,  // ⭐ 일괄결제 그룹 ID
           discount_amount: order.discount_amount || 0,
           is_free_shipping: order.is_free_shipping || false,  // ✅ 무료배송 플래그
           items: order.order_items || [],
@@ -140,7 +186,11 @@ export default function AdminOrdersPage() {
 
       console.log('API에서 가져온 주문 데이터:', allOrders.length, '개')
 
-      setOrders(allOrders)
+      // ⭐ 그룹핑 적용
+      const groupedOrders = groupOrdersByPaymentGroupId(allOrders)
+      console.log('✅ 그룹핑 완료:', { original: allOrders.length, grouped: groupedOrders.length })
+
+      setOrders(groupedOrders)
       setLoading(false)
     } catch (error) {
       console.error('주문 로딩 오류:', error)
