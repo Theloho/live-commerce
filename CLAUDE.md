@@ -313,6 +313,15 @@ npm run test:bugs:ui        # UI 모드
 
 **최신 5개 (요약)**:
 
+### 2025-10-31: 🔧 Bug #16 완전 해결 - RPC 함수로 Variant와 동일한 패턴 구현 ⭐⭐⭐
+
+**문제**: 옵션 없는 상품 재고 업데이트 실패 (RLS 차단)
+**해결**: updateProductInventory RPC 함수 사용 (SECURITY DEFINER)
+**결과**: Variant와 완전히 동일한 패턴, adminEmail 불필요, Race Condition 방지
+**커밋**: `ea2bae4` (1차), `d044636` (2차 - 완전 해결)
+
+**📝 상세**: [WORK_LOG_2025-10-31.md#bug-16](docs/work-logs/WORK_LOG_2025-10-31.md)
+
 ### 2025-10-31: 📝 CLAUDE.md 파일 분산 완료 (1704줄 → 428줄, 75%↓) ⭐⭐⭐
 - 파일 크기 75% 감소, 성능 개선, 유지보수성 향상
 - 5개 문서로 분산 (BUG_FIX_WORKFLOW, AUTO_WORKFLOW, DOCUMENT_MANAGEMENT, QUICK_CHECKLISTS, RECENT_UPDATES)

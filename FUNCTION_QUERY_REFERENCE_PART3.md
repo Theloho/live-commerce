@@ -218,11 +218,16 @@
 |--------|-----------|------|------|
 | `update_product_inventory_with_lock` | FOR UPDATE NOWAIT | ✅ 완료 | RPC 함수 (Phase 1.7) |
 | `update_variant_inventory_with_lock` | FOR UPDATE NOWAIT | ✅ 완료 | RPC 함수 (Phase 1.7) |
-| `updateProductInventory` (레거시) | SELECT → UPDATE | ⚠️ Deprecated | Phase 3.x에서 제거 예정 |
+| `updateProductInventory` | RPC (Lock) | ✅ 마이그레이션 완료 | 2025-10-31 Bug #16 수정 |
 | `updateVariantInventory` (레거시) | RPC (락 없음) | ⚠️ Deprecated | Phase 3.x에서 제거 예정 |
 
 **마이그레이션**: ✅ Phase 1.7 완료 (2025-10-21)
 **마이그레이션 파일**: `supabase/migrations/20251021223007_inventory_lock.sql`
+
+**updateProductInventory 마이그레이션**: ✅ 완료 (2025-10-31)
+- Before: Direct Supabase call (SELECT → UPDATE, RLS 차단)
+- After: RPC 함수 (`update_product_inventory_with_lock`) 사용
+- 사용처: `/app/admin/products/catalog/[id]/page.js` (handleProductInventoryChange)
 
 #### update_product_inventory_with_lock
 
@@ -234,7 +239,7 @@
 | **Lock 방식** | FOR UPDATE NOWAIT (락 획득 실패 시 즉시 에러) |
 | **검증 로직** | 재고 부족 시 `insufficient_inventory` 에러 반환 |
 | **에러 타입** | `lock_not_available`, `insufficient_inventory`, `product_not_found` |
-| **사용처** | ProductRepository.updateInventory (Phase 3.x에서 마이그레이션) |
+| **사용처** | `lib/supabaseApi.js` - `updateProductInventory()` (✅ 2025-10-31 마이그레이션 완료) |
 | **권한** | Service Role 전용 (SECURITY DEFINER) |
 
 #### update_variant_inventory_with_lock

@@ -839,11 +839,15 @@
 - **트리거**: 관리자 라이브 상태 토글
 - **업데이트 컬럼**: `is_live_active = true | false`
 
-#### 3. `/lib/supabaseApi.js` - updateProductInventory() (line 285)
-- **방식**: 클라이언트 직접 Supabase 호출 (Variant 없는 상품만)
-- **트리거**: 주문 생성 또는 주문 취소
+#### 3. `/lib/supabaseApi.js` - updateProductInventory() (line 293) ✅ 마이그레이션 완료 (2025-10-31)
+- **방식**: RPC 함수 (`update_product_inventory_with_lock`) 호출
+- **트리거**: 관리자 재고 수정 (`/admin/products/catalog/[id]`)
 - **업데이트 컬럼**: `inventory += quantityChange`
-- **⚠️ 주의**: Variant 있는 상품은 `update_variant_inventory` RPC 사용
+- **Lock 방식**: FOR UPDATE NOWAIT (Race Condition 방지)
+- **권한**: SECURITY DEFINER (RLS 우회)
+- **에러 처리**: `insufficient_inventory`, `lock_not_available`, `product_not_found`
+- **⚠️ 주의**: Variant 있는 상품은 `update_variant_inventory_with_lock` RPC 사용
+- **마이그레이션**: Bug #16 (2025-10-31) - Direct Supabase call → RPC 함수
 
 #### 4. **트리거 자동 업데이트**: `update_product_inventory_after_variant_change`
 - **방식**: DB 트리거 (Variant 재고 변경 시 자동 실행)

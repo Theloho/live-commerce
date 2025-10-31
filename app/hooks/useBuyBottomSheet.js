@@ -449,40 +449,7 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         }]
       }
 
-      // ✅ 성능 최적화: 재고 확인 병렬 처리
-      const inventoryChecks = await Promise.all(
-        cartItems.map(async (item) => {
-          const response = await fetch('/api/inventory/check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              productId: product.id,
-              selectedOptions: item.selectedOptions
-            })
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || '재고 확인 실패')
-          }
-
-          const inventoryCheck = await response.json()
-
-          // ✅ API는 { available, inventory, variantId? } 반환
-          if (!inventoryCheck.available) {
-            throw new Error('선택하신 옵션의 재고가 없습니다')
-          }
-
-          // ✅ 수량 검증 추가
-          if (inventoryCheck.inventory < item.quantity) {
-            throw new Error(`재고가 부족합니다 (재고: ${inventoryCheck.inventory}개, 요청: ${item.quantity}개)`)
-          }
-
-          return inventoryCheck
-        })
-      )
-
-      // ✅ 성능 최적화: 주문 생성 병렬 처리
+      // ✅ 주문 생성 (Lock으로 재고 확인+차감 동시에 - 중복 재고 확인 제거)
       const results = await Promise.all(
         cartItems.map(async (item) => {
           // ✅ CreateOrderUseCase는 orderData가 직접 상품 정보를 가져야 함
