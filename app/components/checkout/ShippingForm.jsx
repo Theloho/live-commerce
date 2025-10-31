@@ -143,6 +143,7 @@ export default function ShippingForm({
               <AddressManager
                 addresses={userProfile.addresses || []}
                 selectMode={true}
+                currentSelectedId={selectedAddress?.id}
                 onAddressesChange={handleAddressesChange}
                 onSelect={(addr) => {
                   setTempSelectedAddress(addr)

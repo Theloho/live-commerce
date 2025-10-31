@@ -14,7 +14,7 @@ import {
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid'
 import toast from 'react-hot-toast'
 
-export default function AddressManager({ addresses = [], onAddressesChange, onSelect, selectMode = false }) {
+export default function AddressManager({ addresses = [], currentSelectedId = null, onAddressesChange, onSelect, selectMode = false }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [selectedAddressId, setSelectedAddressId] = useState(null)
@@ -26,15 +26,28 @@ export default function AddressManager({ addresses = [], onAddressesChange, onSe
   })
   const [showAddressSearch, setShowAddressSearch] = useState(false)
 
-  // 기본 주소 자동 선택 (초기화 시)
+  // 주소 자동 선택 (초기화 시)
+  // 우선순위: currentSelectedId > 기본 주소
   useEffect(() => {
     if (addresses.length > 0) {
+      // 1순위: 현재 선택된 주소가 있으면 그것을 사용
+      if (currentSelectedId) {
+        const currentAddr = addresses.find(a => a.id === currentSelectedId)
+        if (currentAddr) {
+          console.log('🎯 [AddressManager] 현재 선택된 주소로 초기화:', currentAddr.label)
+          setSelectedAddressId(currentSelectedId)
+          return
+        }
+      }
+
+      // 2순위: 기본 주소 자동 선택
       const defaultAddr = addresses.find(a => a.is_default)
       if (defaultAddr && !selectedAddressId) {
+        console.log('📍 [AddressManager] 기본 주소로 초기화:', defaultAddr.label)
         setSelectedAddressId(defaultAddr.id)
       }
     }
-  }, [addresses])
+  }, [addresses, currentSelectedId])
 
   // 아이콘 선택 함수
   const getIcon = (label) => {
