@@ -6,6 +6,19 @@
 
 ---
 
+## 2025-10-31: 🐛 Bug #15 - 배송지 변경 모달 선택 상태 개선 ⭐⭐
+
+**문제**: 체크아웃에서 1번 주소 선택 후 배송지 변경 모달 열면 2번(기본) 주소가 선택되어 있음 (UX 문제)
+**원인**: AddressManager가 currentSelectedId prop 받지 않음 + useEffect가 항상 기본 주소로 초기화
+**해결**: ShippingForm에서 currentSelectedId prop 전달 + AddressManager useEffect 우선순위 로직 추가 (currentSelectedId > 기본 주소)
+**영향**: ShippingForm.jsx (+1줄), AddressManager.jsx (+14줄, useEffect 개선)
+**테스트**: 1번 선택 → 모달 열기 → 1번 유지 ✅, 즉시 선택 가능 ✅
+**커밋**: `3fe8aae`
+
+**📝 상세 로그**: [WORK_LOG_2025-10-31.md#bug-15](work-logs/WORK_LOG_2025-10-31.md#-세션-6-bug-15---배송지-변경-모달-선택-상태-개선-)
+
+---
+
 ## 2025-10-31: 🐛 Bug #14 - 체크아웃 초기 로드 시 배송지 비교 누락 수정 ⭐⭐⭐
 
 **문제**: 체크아웃 초기 로드 시 합배 배송비가 잘못 적용됨 (울릉군 verifying 주문 있을 때 다른 주소로 주문 시 무료배송 적용)

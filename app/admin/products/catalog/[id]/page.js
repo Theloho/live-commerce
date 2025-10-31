@@ -86,6 +86,26 @@ export default function ProductDetailPage() {
     }
   }
 
+  // 옵션 없는 상품 재고 변경
+  const handleProductInventoryChange = async (change) => {
+    try {
+      const newInventory = Math.max(0, product.inventory + change)
+
+      const { error } = await supabase
+        .from('products')
+        .update({ inventory: newInventory })
+        .eq('id', productId)
+
+      if (error) throw error
+
+      toast.success('재고가 업데이트되었습니다')
+      loadData() // 데이터 새로고침
+    } catch (error) {
+      console.error('재고 업데이트 오류:', error)
+      toast.error('재고 업데이트에 실패했습니다: ' + error.message)
+    }
+  }
+
 
   if (authLoading || loading) {
     return (
@@ -130,7 +150,7 @@ export default function ProductDetailPage() {
               <h1 className="text-xl font-bold">{product.title}</h1>
               <p className="text-sm text-gray-600">
                 {product.model_number && `모델: ${product.model_number} | `}
-                SKU: {variants.length}개
+                {variants.length > 0 ? `SKU: ${variants.length}개` : `상품번호: ${product.product_number || '-'}`}
               </p>
             </div>
           </div>
@@ -303,7 +323,9 @@ export default function ProductDetailPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-blue-600">
-                    {variants.reduce((sum, v) => sum + v.inventory, 0)}개
+                    {variants.length > 0
+                      ? variants.reduce((sum, v) => sum + v.inventory, 0)
+                      : product.inventory}개
                   </div>
                   <div className="text-xs text-gray-500">총 재고</div>
                 </div>
@@ -374,12 +396,63 @@ export default function ProductDetailPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <div className="text-gray-400 text-4xl mb-4">📦</div>
-                  <p className="text-gray-600 mb-4">등록된 Variant가 없습니다</p>
-                  <p className="text-sm text-gray-500">
-                    상세 상품 등록 페이지에서 Variant를 생성할 수 있습니다
-                  </p>
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {product.title}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        상품번호: {product.product_number || '-'}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2">
+                        옵션이 없는 단일 상품입니다
+                      </p>
+                    </div>
+
+                    {/* 재고 조절 버튼 */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleProductInventoryChange(-1)}
+                        disabled={product.inventory <= 0}
+                        className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <MinusIcon className="w-4 h-4" />
+                      </button>
+
+                      <div className="text-center min-w-[60px]">
+                        <div className={`text-2xl font-bold ${
+                          product.inventory === 0 ? 'text-red-600' :
+                          product.inventory <= 5 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {product.inventory}
+                        </div>
+                        <div className="text-xs text-gray-500">재고</div>
+                      </div>
+
+                      <button
+                        onClick={() => handleProductInventoryChange(1)}
+                        className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 재고 상태 바 */}
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        product.inventory === 0 ? 'bg-red-500' :
+                        product.inventory <= 5 ? 'bg-yellow-500' :
+                        'bg-green-500'
+                      }`}
+                      style={{
+                        width: `${Math.min((product.inventory / 20) * 100, 100)}%`
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
