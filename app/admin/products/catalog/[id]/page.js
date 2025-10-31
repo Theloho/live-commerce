@@ -18,7 +18,7 @@ export default function ProductDetailPage() {
   const router = useRouter()
   const params = useParams()
   const productId = params.id
-  const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
+  const { isAdminAuthenticated, loading: authLoading, adminUser } = useAdminAuth()
 
   const [loading, setLoading] = useState(true)
   const [product, setProduct] = useState(null)
@@ -91,12 +91,21 @@ export default function ProductDetailPage() {
     try {
       const newInventory = Math.max(0, product.inventory + change)
 
-      const { error } = await supabase
-        .from('products')
-        .update({ inventory: newInventory })
-        .eq('id', productId)
+      // Service Role API 사용 (RLS 우회, Variant와 동일한 패턴)
+      const response = await fetch('/api/admin/products/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: productId,
+          adminEmail: adminUser?.email,
+          inventory: newInventory
+        })
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '재고 업데이트 실패')
+      }
 
       await loadData() // 데이터 새로고침 (await 추가)
       toast.success('재고가 업데이트되었습니다')
