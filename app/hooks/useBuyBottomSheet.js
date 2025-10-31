@@ -408,11 +408,11 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
         cartItems = selectedCombinations.map(combo => ({
           product_id: product.id,
           product_number: product.product_number,
+          thumbnail_url: product.thumbnail_url,  // ✅ URL만 전달 (base64 아님)
           title: product.title,
           price: combo.price,
           quantity: combo.quantity,
           totalPrice: combo.price * combo.quantity,
-          // thumbnail_url: image,  // ← 제거 (3.6MB base64 이미지)
           selectedOptions: combo.options,
           variant_id: combo.variantId
         }))
