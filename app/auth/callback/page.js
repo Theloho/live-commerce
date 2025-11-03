@@ -253,11 +253,25 @@ export default function AuthCallback() {
           .select('*')  // ⭐ 명시적으로 모든 필드 조회
           .single()
 
+        // ⚠️ INSERT 실패 시 (409 Conflict) → 기존 사용자로 간주하고 조회
         if (profileError) {
-          throw new Error('카카오 프로필 생성 실패')
-        }
+          console.warn('⚠️ profiles INSERT 실패 (기존 사용자로 판단):', profileError.message)
 
-        userProfile = newProfile
+          // 기존 프로필 조회
+          const { data: existingProfile, error: fetchError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('kakao_id', kakaoUserId)
+            .single()
+
+          if (fetchError || !existingProfile) {
+            throw new Error('프로필 조회 실패 - 관리자에게 문의하세요')
+          }
+
+          userProfile = existingProfile
+        } else {
+          userProfile = newProfile
+        }
       } else {
         // 기존 사용자 업데이트 (통합 시스템)
 
