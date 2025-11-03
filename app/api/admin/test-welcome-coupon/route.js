@@ -15,12 +15,7 @@ export async function GET(request) {
 
     if (couponError) throw couponError
 
-    // 2. 트리거 존재 여부 확인
-    const { data: triggers, error: triggerError } = await supabaseAdmin
-      .rpc('pg_get_triggerdef', { oid: 'trigger_new_user_signup'::regclass })
-      .single()
-
-    // 3. 최근 가입한 사용자 10명의 쿠폰 발급 현황
+    // 2. 최근 가입한 사용자 10명의 쿠폰 발급 현황
     const { data: recentUsers, error: usersError } = await supabaseAdmin
       .from('profiles')
       .select(`
