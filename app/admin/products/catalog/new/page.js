@@ -175,9 +175,9 @@ export default function DetailedProductNewPage() {
           const canvas = document.createElement('canvas')
           const ctx = canvas.getContext('2d')
 
-          // 최대 크기 설정 (800x800, 체크아웃에서 충분)
-          const MAX_WIDTH = 800
-          const MAX_HEIGHT = 800
+          // 최대 크기 설정 (600x600, 모바일 최적화)
+          const MAX_WIDTH = 600
+          const MAX_HEIGHT = 600
           let width = img.width
           let height = img.height
 
@@ -200,8 +200,8 @@ export default function DetailedProductNewPage() {
           // 이미지 그리기
           ctx.drawImage(img, 0, 0, width, height)
 
-          // JPEG로 압축 (품질 0.8 = 80%)
-          const resizedBase64 = canvas.toDataURL('image/jpeg', 0.8)
+          // JPEG로 압축 (품질 0.7 = 70%, 용량 최소화)
+          const resizedBase64 = canvas.toDataURL('image/jpeg', 0.7)
           setImagePreview(resizedBase64)
 
           console.log('📷 [상세등록] 이미지 리사이징 완료:', {
