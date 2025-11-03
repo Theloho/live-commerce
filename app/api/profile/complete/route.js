@@ -33,11 +33,11 @@ export async function POST(request) {
 
     console.log('📱 [API] 업데이트 데이터:', updateData)
 
+    // ⚡ upsert 대신 update 사용 (스키마 캐시 이슈 회피)
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .upsert(updateData, {
-        onConflict: 'id'
-      })
+      .update(updateData)
+      .eq('id', userId)
       .select()
       .single()
 
