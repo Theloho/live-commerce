@@ -252,7 +252,7 @@ export default function AuthCallback() {
           }, {
             onConflict: 'id' // id가 이미 존재하면 업데이트
           })
-          .select()
+          .select('*')  // ⭐ 명시적으로 모든 필드 조회
           .single()
 
         if (profileError) {
@@ -322,7 +322,7 @@ export default function AuthCallback() {
           throw new Error('세션 생성 실패 - 다시 로그인해주세요')
         }
 
-        // ✅ 2. profiles 테이블 업데이트
+        // ✅ 2. profiles 테이블 업데이트 (기존 사용자 로그인 시)
         const { data: updatedProfile, error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -330,7 +330,7 @@ export default function AuthCallback() {
             updated_at: new Date().toISOString()
           })
           .eq('kakao_id', kakaoUserId)
-          .select()
+          .select('*')  // ⭐ 명시적으로 모든 필드 조회 (phone, address 포함)
           .single()
 
         if (updateError) {
