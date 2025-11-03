@@ -230,11 +230,11 @@ export default function AuthCallback() {
           throw new Error('세션 생성 실패 - 다시 로그인해주세요')
         }
 
-        // 2. profiles 테이블에 추가 정보 저장 (UPSERT - DB 초기화 대비)
+        // 2. profiles 테이블에 추가 정보 저장 (INSERT - 신규 가입만)
 
         const { data: newProfile, error: profileError } = await supabase
           .from('profiles')
-          .upsert({
+          .insert({
             id: authData.user.id, // auth.users의 ID 사용
             kakao_id: kakaoUserId,
             email: email,
@@ -249,8 +249,6 @@ export default function AuthCallback() {
             postal_code: '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id' // id가 이미 존재하면 업데이트
           })
           .select('*')  // ⭐ 명시적으로 모든 필드 조회
           .single()
