@@ -105,6 +105,10 @@ Stage 8: 문서 업데이트 필수 (3분) 📝 NEW!
 □ 콘솔 로그? (경고, 에러)
 □ Network 탭에서 API 실패? (상태 코드, 응답)
 □ 재현 가능? (항상 vs 가끔 vs 한 번만)
+□ **DB 스키마 확인 (DB 버그인 경우)**: ⭐ 2025-11-04 추가
+  - "column not found" 에러? → DB에 컬럼이 실제로 있는지 확인!
+  - /api/admin/check-db-schema 실행
+  - DB_REFERENCE_GUIDE.md와 실제 DB 비교
 
 → 버그 타입 분류 (위 6가지 중 하나)
 ```
@@ -132,12 +136,17 @@ Stage 8: 문서 업데이트 필수 (3분) 📝 NEW!
 □ 1순위 문서 읽기
 □ 해당 페이지/함수/DB/API 섹션 찾기
 □ "사용처", "의존성", "데이터 흐름" 파악
+□ **DB 버그인 경우 필수**: ⭐ 2025-11-04 추가
+  1. DB_REFERENCE_GUIDE.md에서 테이블 스키마 확인
+  2. /api/admin/check-db-schema로 실제 DB 확인
+  3. 문서 스키마 vs 실제 DB 비교
+  4. 컬럼이 없으면 마이그레이션 필요!
 □ 예상 원인 메모 (3곳 이하로 좁히기)
 
 예시:
 - UI 버그 → PAGE_FEATURE_MATRIX에서 페이지 찾기
 - 로직 버그 → FUNCTION_QUERY_REFERENCE에서 함수 찾기
-- DB 버그 → DB_REFERENCE_GUIDE에서 테이블 찾기
+- DB 버그 → DB_REFERENCE_GUIDE + 실제 DB 확인 (둘 다!)
 
 → 의심 지점 3곳 이하로 좁히기
 ```
