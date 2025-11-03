@@ -20,7 +20,7 @@ import {
   ListBulletIcon
 } from '@heroicons/react/24/outline'
 import { PlayIcon, StopIcon } from '@heroicons/react/24/solid'
-import { getAllProducts, getCategories, addToLive, removeFromLive, deleteProduct } from '@/lib/supabaseApi'
+import { getAllProducts, getCategories, addToLive, removeFromLive } from '@/lib/supabaseApi'
 import toast from 'react-hot-toast'
 
 export default function ProductCatalogPage() {
@@ -129,12 +129,28 @@ export default function ProductCatalogPage() {
     if (!confirmed) return
 
     try {
-      await deleteProduct(product.id)
+      // Service Role API 호출 (관리자 권한 검증 포함)
+      const response = await fetch('/api/admin/products/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          adminEmail: 'master@allok.world'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '상품 삭제 실패')
+      }
+
       toast.success(`${product.title}을(를) 삭제했습니다`)
       loadData() // 데이터 새로고침
     } catch (error) {
       console.error('상품 삭제 오류:', error)
-      toast.error('상품 삭제에 실패했습니다')
+      toast.error(`상품 삭제에 실패했습니다: ${error.message}`)
     }
   }
 
