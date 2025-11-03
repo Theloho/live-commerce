@@ -162,13 +162,57 @@ export default function DetailedProductNewPage() {
     }
   }
 
-  // 이미지 업로드
+  // ⭐ 이미지 업로드 + 리사이징 (2025-11-03: 체크아웃 성능 최적화)
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
+      // ⚡ Canvas를 이용한 이미지 리사이징 + 압축
       const reader = new FileReader()
       reader.onload = (e) => {
-        setImagePreview(e.target.result)
+        const img = new Image()
+        img.onload = () => {
+          // Canvas 생성
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+
+          // 최대 크기 설정 (800x800, 체크아웃에서 충분)
+          const MAX_WIDTH = 800
+          const MAX_HEIGHT = 800
+          let width = img.width
+          let height = img.height
+
+          // 비율 유지하며 리사이징
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = (height * MAX_WIDTH) / width
+              width = MAX_WIDTH
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = (width * MAX_HEIGHT) / height
+              height = MAX_HEIGHT
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+
+          // 이미지 그리기
+          ctx.drawImage(img, 0, 0, width, height)
+
+          // JPEG로 압축 (품질 0.8 = 80%)
+          const resizedBase64 = canvas.toDataURL('image/jpeg', 0.8)
+          setImagePreview(resizedBase64)
+
+          console.log('📷 [상세등록] 이미지 리사이징 완료:', {
+            원본: `${img.width}x${img.height}`,
+            리사이즈: `${width}x${height}`,
+            원본크기: `${(e.target.result.length / 1024).toFixed(0)}KB`,
+            압축크기: `${(resizedBase64.length / 1024).toFixed(0)}KB`,
+            압축률: `${((1 - resizedBase64.length / e.target.result.length) * 100).toFixed(1)}%`
+          })
+        }
+        img.src = e.target.result
       }
       reader.readAsDataURL(file)
     }
