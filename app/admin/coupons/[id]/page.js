@@ -532,11 +532,11 @@ export default function AdminCouponDetailPage() {
                   <tr key={holder.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
-                        사용자 ID: {holder.user_id?.substring(0, 8)}...
+                        {holder.user?.name || '이름 없음'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-500">-</div>
+                      <div className="text-sm text-gray-500">{holder.user?.email || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-500">
@@ -554,7 +554,7 @@ export default function AdminCouponDetailPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-blue-600 font-medium">
-                            {holder.order_id ? `주문 ID: ${holder.order_id.substring(0, 8)}...` : '-'}
+                            {holder.order?.customer_order_number || '-'}
                           </div>
                         </td>
                         <td className="px-6 py-4">
