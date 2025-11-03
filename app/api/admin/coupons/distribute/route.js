@@ -92,9 +92,15 @@ export async function POST(request) {
     })
 
     // 5. 결과 반환 (Presentation Layer)
+    // ✅ 2025-11-03 Bug #17-2: 프론트엔드 호환성을 위해 필드명 매핑
     return NextResponse.json({
       success: true,
-      ...result,
+      distributedCount: result.totalIssued,  // 프론트엔드가 기대하는 필드명
+      duplicates: result.totalSkipped,       // 프론트엔드가 기대하는 필드명
+      totalIssued: result.totalIssued,       // UseCase 원본 (호환성)
+      totalFailed: result.totalFailed,       // UseCase 원본
+      totalSkipped: result.totalSkipped,     // UseCase 원본
+      results: result.results,               // 상세 결과
       message: `쿠폰이 성공적으로 배포되었습니다 (${result.totalIssued}개 성공, ${result.totalSkipped}개 중복, ${result.totalFailed}개 실패)`,
     })
   } catch (error) {
