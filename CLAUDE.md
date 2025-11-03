@@ -358,6 +358,35 @@ npm run test:bugs:ui        # UI 모드
 
 ---
 
+### 2025-11-04: 🔧 Bug #22 완전 해결 - addresses JSONB 컬럼 재생성 ⭐⭐⭐
+
+**문제**: 마이페이지 주소 저장 실패 (4차 재발)
+**에러**: "Could not find the 'addresses' column of 'profiles' in the schema cache"
+**근본 원인**: `profiles.addresses` JSONB 컬럼이 DB에서 완전히 사라짐
+**해결**: Supabase SQL Editor에서 컬럼 재생성
+**소요 시간**: 약 2시간 (잘못된 시도 3번 포함)
+
+**실패한 시도**:
+1. ❌ supabaseAdmin import 변경 (cfc5b82)
+2. ❌ upsert → update 변경 (7ff9cbc)
+3. ❌ 어제 버전 복원 (13a700d)
+
+**성공한 해결**:
+```sql
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS addresses JSONB DEFAULT '[]'::jsonb;
+CREATE INDEX IF NOT EXISTS idx_profiles_addresses ON profiles USING GIN (addresses);
+```
+
+**Rule #0-A 개선**:
+- ✅ DB 스키마 확인 단계 추가 (Stage 1, Stage 2)
+- ✅ 새로운 원칙: **소스코드 + 문서 + DB 스키마** 모두 확인!
+
+**커밋**: 90c3139, 3c8c3d6, bac21d5
+**📝 상세**: [WORK_LOG_2025-11-04.md](docs/work-logs/WORK_LOG_2025-11-04.md)
+
+---
+
 **📌 과거 업데이트**: [docs/RECENT_UPDATES.md](docs/RECENT_UPDATES.md) | [docs/work-logs/](docs/work-logs/) | [docs/archive/CLAUDE_UPDATES_ARCHIVE_2025-10-23.md](docs/archive/CLAUDE_UPDATES_ARCHIVE_2025-10-23.md)
 
 ---
@@ -391,7 +420,7 @@ Phase 4: 최종 검증 및 문서 업데이트 (1분) ⭐⭐⭐ 필수!
 
 **🎯 모든 작업 전에 이 문서를 다시 읽으세요!**
 
-**마지막 업데이트**: 2025-10-31
+**마지막 업데이트**: 2025-11-04
 
 ---
 
