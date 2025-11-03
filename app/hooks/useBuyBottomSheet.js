@@ -86,13 +86,26 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
             })
           }
         } else {
-          // 세션 스토리지에서 카카오 사용자 확인
-          const kakaoUserStr = typeof window !== 'undefined'
-            ? sessionStorage.getItem('kakaoUser')
+          // ⚡ localStorage에서 통합 사용자 세션 확인 (로그인 직후 대응)
+          const unifiedUserStr = typeof window !== 'undefined'
+            ? localStorage.getItem('unified_user_session')
             : null
-          if (kakaoUserStr) {
-            const kakaoUser = JSON.parse(kakaoUserStr)
-            setUserSession(kakaoUser)
+          if (unifiedUserStr) {
+            const unifiedUser = JSON.parse(unifiedUserStr)
+            setUserSession(unifiedUser)
+            logger.debug('BuyBottomSheet: localStorage에서 세션 로드', {
+              id: unifiedUser.id,
+              name: unifiedUser.name
+            })
+          } else {
+            // 폴백: sessionStorage에서 카카오 사용자 확인
+            const kakaoUserStr = typeof window !== 'undefined'
+              ? sessionStorage.getItem('kakaoUser')
+              : null
+            if (kakaoUserStr) {
+              const kakaoUser = JSON.parse(kakaoUserStr)
+              setUserSession(kakaoUser)
+            }
           }
         }
       } catch (error) {
@@ -102,6 +115,25 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
     loadUserSession()
   }, [isOpen, user])
+
+  // ⚡ 카카오 로그인 이벤트 감지 (로그인 직후 즉시 userSession 업데이트)
+  useEffect(() => {
+    const handleKakaoLogin = (event) => {
+      const userProfile = event.detail
+      if (userProfile) {
+        setUserSession(userProfile)
+        logger.debug('BuyBottomSheet: kakaoLoginSuccess 이벤트로 세션 업데이트', {
+          id: userProfile.id,
+          name: userProfile.name
+        })
+      }
+    }
+
+    window.addEventListener('kakaoLoginSuccess', handleKakaoLogin)
+    return () => {
+      window.removeEventListener('kakaoLoginSuccess', handleKakaoLogin)
+    }
+  }, [])
 
   // ===== useEffect 2: Variant 로드 =====
   useEffect(() => {
