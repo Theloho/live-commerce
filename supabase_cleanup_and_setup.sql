@@ -24,11 +24,17 @@ DROP FUNCTION IF EXISTS public.log_inventory_change() CASCADE;
 -- 1. 사용자 테이블 (Supabase Auth 확장)
 CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  nickname TEXT,
+  kakao_id TEXT UNIQUE,
+  email TEXT UNIQUE,
   name TEXT,
+  nickname TEXT,
   phone TEXT,
   address TEXT,
   detail_address TEXT,
+  postal_code TEXT,
+  avatar_url TEXT,
+  provider TEXT DEFAULT 'email',
+  is_admin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -424,6 +430,29 @@ SELECT
 FROM public.products p
 WHERE p.title = '스마트 워치 프로';
 
+-- ===============================
+-- 관리자 계정 생성
+-- ===============================
+
+-- 관리자 계정 복구 (auth.users에 존재하는 경우)
+INSERT INTO public.profiles (id, email, name, nickname, phone, address, detail_address, postal_code, provider, is_admin, created_at, updated_at)
+SELECT
+  id,
+  email,
+  COALESCE(raw_user_meta_data->>'name', 'Admin'),
+  COALESCE(raw_user_meta_data->>'name', 'Admin'),
+  '010-0000-0000',
+  '',
+  '',
+  '',
+  'email',
+  TRUE,
+  created_at,
+  NOW()
+FROM auth.users
+WHERE email = 'master@allok.world'
+ON CONFLICT (id) DO NOTHING;
+
 -- 완료 메시지
 DO $$
 BEGIN
@@ -434,5 +463,6 @@ BEGIN
     RAISE NOTICE '- RLS 정책 설정: 완료';
     RAISE NOTICE '- 트리거 설정: 완료';
     RAISE NOTICE '- 초기 데이터 삽입: 완료';
+    RAISE NOTICE '- 관리자 계정 생성: 완료';
     RAISE NOTICE '=======================================';
 END $$;
