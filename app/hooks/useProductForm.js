@@ -36,6 +36,7 @@ export function useProductForm({ isAdminAuthenticated }) {
   const [productData, setProductData] = useState({
     title: '',
     price: '',
+    displayPrice: '', // ⚡ 입력 중간 상태 유지용
     inventory: 10,
     description: '',
     supplier_id: null,
@@ -138,31 +139,41 @@ export function useProductForm({ isAdminAuthenticated }) {
   // 가격 처리
   const handlePriceChange = (value) => {
     if (!value || value === '') {
-      setProductData(prev => ({ ...prev, price: '' }))
+      setProductData(prev => ({ ...prev, price: '', displayPrice: '' }))
       return
     }
 
     if (useThousandUnit) {
+      // 숫자와 소수점만 허용
       const filtered = value.replace(/[^\d.]/g, '')
+
+      // ⚡ 입력 중간 상태 유지 (소수점 입력 가능하도록)
+      setProductData(prev => ({ ...prev, displayPrice: filtered }))
+
+      // 숫자로 변환 가능한 경우에만 price 업데이트
       const numValue = parseFloat(filtered)
-      if (!isNaN(numValue)) {
+      if (!isNaN(numValue) && filtered !== '' && !filtered.endsWith('.')) {
         const actualPrice = Math.floor(numValue * 1000)
         setProductData(prev => ({ ...prev, price: actualPrice }))
-      } else {
-        setProductData(prev => ({ ...prev, price: '' }))
       }
     } else {
+      // 정수만 허용
       const filtered = value.replace(/[^\d]/g, '')
+      setProductData(prev => ({ ...prev, displayPrice: filtered }))
+
       const numValue = parseInt(filtered)
       if (!isNaN(numValue)) {
         setProductData(prev => ({ ...prev, price: numValue }))
-      } else {
-        setProductData(prev => ({ ...prev, price: '' }))
       }
     }
   }
 
   const getDisplayPrice = () => {
+    // displayPrice가 있으면 그대로 사용 (입력 중간 상태 유지)
+    if (productData.displayPrice !== undefined) {
+      return productData.displayPrice
+    }
+
     if (!productData.price) return ''
     if (useThousandUnit) {
       return (productData.price / 1000).toString()
