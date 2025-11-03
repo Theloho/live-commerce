@@ -1,37 +1,16 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Service Role 클라이언트 (RLS 우회)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(request) {
   try {
     const { userId, profileData } = await request.json()
 
     console.log('📱 [API] 프로필 완성 요청:', { userId, profileData })
-    console.log('📱 [API] Service Role Key 존재:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
 
     if (!userId || !profileData) {
       return NextResponse.json(
         { error: '필수 정보가 누락되었습니다' },
         { status: 400 }
-      )
-    }
-
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('📱 [API] SUPABASE_SERVICE_ROLE_KEY 환경변수 없음!')
-      return NextResponse.json(
-        { error: 'Server configuration error: SERVICE_ROLE_KEY missing' },
-        { status: 500 }
       )
     }
 
