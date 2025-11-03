@@ -380,8 +380,11 @@ export default function AuthCallback() {
         detail: userProfile
       }))
 
-      // 리다이렉트 결정
-      if (!userProfile.phone || !userProfile.address) {
+      // 리다이렉트 결정 (빈 문자열도 체크)
+      const hasPhone = userProfile.phone && userProfile.phone.trim().length > 0
+      const hasAddress = userProfile.address && userProfile.address.trim().length > 0
+
+      if (!hasPhone || !hasAddress) {
         toast.success('카카오 로그인 성공! 추가 정보를 입력해주세요.')
         // ✅ router.replace() 사용 (뒤로가기 시 callback 재실행 방지)
         router.replace('/auth/complete-profile')
