@@ -200,9 +200,12 @@ export default function AddressManager({ addresses = [], currentSelectedId = nul
           new window.daum.Postcode({
             oncomplete: function(data) {
               // 선택한 주소와 우편번호를 폼에 설정
+              // roadAddress: 전체 도로명 주소 (건물번호 포함, 예: "제주특별자치도 서귀포시 가마가흥로13")
+              // jibunAddress: 지번 주소
+              const fullAddress = data.roadAddress || data.jibunAddress
               setFormData(prev => ({
                 ...prev,
-                address: `${data.sido} ${data.sigungu} ${data.roadname || data.jibunAddress}`,
+                address: fullAddress,
                 postal_code: data.zonecode // 우편번호 저장
               }))
               setShowAddressSearch(false)
