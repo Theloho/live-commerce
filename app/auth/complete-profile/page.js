@@ -258,8 +258,8 @@ export default function CompleteProfilePage() {
       }
 
       toast.success('프로필이 완성되었습니다!')
-      // ✅ router.replace() 사용 (뒤로가기 시 프로필 입력 페이지로 안 돌아감)
-      router.replace('/')
+      // 🔄 강제 새로고침으로 localStorage 디스크 동기화 보장 (모바일 안정성)
+      window.location.href = '/'
 
     } catch (error) {
       // 모바일에서 에러를 명확히 보기 위해
