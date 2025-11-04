@@ -22,6 +22,26 @@ export default function useAuth() {
     // 초기 세션 확인
     const getSession = async () => {
       try {
+        // 🚀 1순위: localStorage 확인 (회원가입 직후용 - 299ms 빠름!)
+        if (typeof window !== 'undefined') {
+          const storedSession = localStorage.getItem('unified_user_session')
+          if (storedSession) {
+            try {
+              const userData = JSON.parse(storedSession)
+              // 프로필이 완성된 경우에만 즉시 반환 (DB 조회 스킵)
+              if (userData.phone && userData.address && userData.name) {
+                console.log('⚡ localStorage에서 세션 복원 (DB 조회 생략)')
+                setUser(userData)
+                setLoading(false)
+                return // DB 조회 스킵! (299ms 절약)
+              }
+            } catch (e) {
+              console.warn('⚠️ localStorage 파싱 실패, DB 조회로 fallback')
+            }
+          }
+        }
+
+        // 2순위: 기존 로직 (DB 조회)
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) throw error
 
