@@ -37,9 +37,9 @@ BEGIN
     IF welcome_coupon.total_usage_limit IS NULL OR
        welcome_coupon.total_issued_count < welcome_coupon.total_usage_limit THEN
 
-      -- 웰컴 쿠폰 발급
-      INSERT INTO user_coupons (user_id, coupon_id, issued_by)
-      VALUES (NEW.id, welcome_coupon.id, 'system')
+      -- 웰컴 쿠폰 발급 (issued_by는 NULL - 자동 발급)
+      INSERT INTO user_coupons (user_id, coupon_id)
+      VALUES (NEW.id, welcome_coupon.id)
       ON CONFLICT DO NOTHING; -- 중복 발급 방지
 
       -- coupons 테이블 발급 카운트 증가
