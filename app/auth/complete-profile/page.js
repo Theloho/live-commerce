@@ -166,16 +166,20 @@ export default function CompleteProfilePage() {
         // ✅ sessionStorage 먼저 저장 (즉시 완료)
         sessionStorage.setItem('user', JSON.stringify(updatedUser))
 
-        // ⚡ localStorage 쓰기 완료 대기 (모바일 디스크 I/O)
+        // ⚡ localStorage 쓰기 완료 대기 (모바일 디스크 I/O - 500ms로 증가)
         await new Promise(resolve => {
           localStorage.setItem('unified_user_session', JSON.stringify(updatedUser))
-          // requestIdleCallback 사용 가능하면 사용, 아니면 150ms 대기
-          if (typeof requestIdleCallback !== 'undefined') {
-            requestIdleCallback(resolve)
-          } else {
-            setTimeout(resolve, 150)
-          }
+          // 모바일 안정성: 무조건 500ms 대기 (디스크 쓰기 보장)
+          setTimeout(resolve, 500)
         })
+
+        // ⚡⚡ 추가 검증: localStorage 실제 저장 확인
+        const verifyStored = localStorage.getItem('unified_user_session')
+        if (!verifyStored) {
+          console.error('❌ localStorage 저장 실패, 재시도')
+          localStorage.setItem('unified_user_session', JSON.stringify(updatedUser))
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
 
         // ✅ 이벤트는 발생시키지 않음 (홈 페이지가 sessionStorage를 직접 읽음)
         // 모바일에서 이벤트 + 리다이렉트 동시 발생 시 무한루프 방지
@@ -221,15 +225,20 @@ export default function CompleteProfilePage() {
         // ✅ sessionStorage 먼저 저장
         sessionStorage.setItem('user', JSON.stringify(updatedUser))
 
-        // ⚡ localStorage 쓰기 완료 대기
+        // ⚡ localStorage 쓰기 완료 대기 (모바일 디스크 I/O - 500ms로 증가)
         await new Promise(resolve => {
           localStorage.setItem('unified_user_session', JSON.stringify(updatedUser))
-          if (typeof requestIdleCallback !== 'undefined') {
-            requestIdleCallback(resolve)
-          } else {
-            setTimeout(resolve, 150)
-          }
+          // 모바일 안정성: 무조건 500ms 대기 (디스크 쓰기 보장)
+          setTimeout(resolve, 500)
         })
+
+        // ⚡⚡ 추가 검증: localStorage 실제 저장 확인
+        const verifyStored = localStorage.getItem('unified_user_session')
+        if (!verifyStored) {
+          console.error('❌ localStorage 저장 실패, 재시도')
+          localStorage.setItem('unified_user_session', JSON.stringify(updatedUser))
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
       }
 
       toast.success('프로필이 완성되었습니다!')
