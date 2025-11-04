@@ -149,24 +149,37 @@ export default function AuthCallback() {
         let authData = null
         let authError = null
 
-        // ✅ DB 초기화 후 auth.users는 남아있는 경우 처리
-        const signUpResult = await supabase.auth.signUp({
+        // ⚡ 모바일 이중 실행 방지: 먼저 로그인 시도 (이미 가입된 경우)
+        const signInFirst = await supabase.auth.signInWithPassword({
           email: email,
-          password: tempPassword,
-          options: {
-            data: {
-              name: profileData.name,
-              nickname: profileData.nickname,
-              kakao_id: kakaoUserId,
-              provider: 'kakao'
-            }
-          }
+          password: tempPassword
         })
 
-        authData = signUpResult.data
-        authError = signUpResult.error
+        if (signInFirst.data?.user) {
+          // ✅ 이미 가입되어 있음 → 로그인 성공
+          console.log('⚡ 이미 가입된 사용자, 로그인으로 처리:', email)
+          authData = signInFirst.data
+          authError = null
+        } else {
+          // ❌ 로그인 실패 → 신규 가입 시도
+          const signUpResult = await supabase.auth.signUp({
+            email: email,
+            password: tempPassword,
+            options: {
+              data: {
+                name: profileData.name,
+                nickname: profileData.nickname,
+                kakao_id: kakaoUserId,
+                provider: 'kakao'
+              }
+            }
+          })
 
-        // ✅ "User already registered" 에러 처리 (DB 초기화 후 auth.users는 남아있는 경우)
+          authData = signUpResult.data
+          authError = signUpResult.error
+        }
+
+        // ✅ "User already registered" 에러 처리 (signUp 실패 시 로그인 재시도)
         if (authError && authError.message?.includes('already registered')) {
 
           const signInResult = await supabase.auth.signInWithPassword({
