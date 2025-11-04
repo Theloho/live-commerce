@@ -404,8 +404,50 @@ export function useBuyBottomSheet({ product, isOpen, onClose, user, isAuthentica
 
     try {
       // 사용자 프로필 준비 - ✅ Static 메서드 직접 호출 (Rule #0 준수)
-      const profile = await UserProfileManager.loadUserProfile(currentUser.id)
+      let profile = await UserProfileManager.loadUserProfile(currentUser.id)
 
+      // ⚡ Fallback 1: userSession 캐시 사용 (회원가입 직후 DB 동기화 지연 대응)
+      if (!profile && userSession) {
+        logger.debug('BuyBottomSheet: DB 조회 실패, userSession 캐시 사용', {
+          id: userSession.id,
+          name: userSession.name
+        })
+        profile = userSession
+      }
+
+      // ⚡ Fallback 2: sessionStorage 사용 (카카오 로그인 직후)
+      if (!profile && typeof window !== 'undefined') {
+        const storedUser = sessionStorage.getItem('user')
+        if (storedUser) {
+          try {
+            profile = JSON.parse(storedUser)
+            logger.debug('BuyBottomSheet: sessionStorage에서 프로필 복원', {
+              id: profile.id,
+              name: profile.name
+            })
+          } catch (e) {
+            logger.error('BuyBottomSheet: sessionStorage 파싱 실패', e)
+          }
+        }
+      }
+
+      // ⚡ Fallback 3: localStorage 사용 (통합 세션)
+      if (!profile && typeof window !== 'undefined') {
+        const unifiedUserStr = localStorage.getItem('unified_user_session')
+        if (unifiedUserStr) {
+          try {
+            profile = JSON.parse(unifiedUserStr)
+            logger.debug('BuyBottomSheet: localStorage에서 프로필 복원', {
+              id: profile.id,
+              name: profile.name
+            })
+          } catch (e) {
+            logger.error('BuyBottomSheet: localStorage 파싱 실패', e)
+          }
+        }
+      }
+
+      // 최종 검증
       if (!profile || !profile.name || !profile.phone) {
         toast.error('프로필 정보를 먼저 입력해주세요')
         setIsLoading(false)

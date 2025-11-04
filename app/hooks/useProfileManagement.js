@@ -41,7 +41,23 @@ export function useProfileManagement({ user, userSession, router }) {
       // 카카오 사용자인 경우
       if (currentUser.provider === 'kakao') {
         try {
-          const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id, true) // ⭐ 강제 갱신
+          let dbProfile = await UserProfileManager.loadUserProfile(currentUser.id, true) // ⭐ 강제 갱신
+
+          // ⚡ Fallback: DB 조회 실패 시 sessionStorage/localStorage 사용 (회원가입 직후)
+          if (!dbProfile && typeof window !== 'undefined') {
+            const storedUser = sessionStorage.getItem('user') || localStorage.getItem('unified_user_session')
+            if (storedUser) {
+              try {
+                dbProfile = JSON.parse(storedUser)
+                console.log('⚡ useProfileManagement: storage에서 프로필 복원', {
+                  id: dbProfile.id,
+                  name: dbProfile.name
+                })
+              } catch (e) {
+                console.warn('⚠️ useProfileManagement: storage 파싱 실패', e)
+              }
+            }
+          }
 
           if (dbProfile) {
             const profile = {
@@ -69,14 +85,25 @@ export function useProfileManagement({ user, userSession, router }) {
             setEditValues(profile)
           }
         } catch (error) {
+          // ⚡ 에러 시에도 storage fallback 시도
+          let fallbackProfile = null
+          if (typeof window !== 'undefined') {
+            const storedUser = sessionStorage.getItem('user') || localStorage.getItem('unified_user_session')
+            if (storedUser) {
+              try {
+                fallbackProfile = JSON.parse(storedUser)
+              } catch (e) {}
+            }
+          }
+
           const profile = {
-            name: currentUser.name || '',
-            phone: currentUser.phone || '',
-            nickname: currentUser.nickname || currentUser.name || '',
-            address: currentUser.address || '',
-            detail_address: currentUser.detail_address || '',
-            addresses: currentUser.addresses || [],
-            postal_code: currentUser.postal_code || ''
+            name: fallbackProfile?.name || currentUser.name || '',
+            phone: fallbackProfile?.phone || currentUser.phone || '',
+            nickname: fallbackProfile?.nickname || currentUser.nickname || currentUser.name || '',
+            address: fallbackProfile?.address || currentUser.address || '',
+            detail_address: fallbackProfile?.detail_address || currentUser.detail_address || '',
+            addresses: fallbackProfile?.addresses || currentUser.addresses || [],
+            postal_code: fallbackProfile?.postal_code || currentUser.postal_code || ''
           }
           setUserProfile(profile)
           setEditValues(profile)
@@ -97,7 +124,23 @@ export function useProfileManagement({ user, userSession, router }) {
       } else {
         // Supabase 사용자
         try {
-          const dbProfile = await UserProfileManager.loadUserProfile(currentUser.id, true) // ⭐ 강제 갱신
+          let dbProfile = await UserProfileManager.loadUserProfile(currentUser.id, true) // ⭐ 강제 갱신
+
+          // ⚡ Fallback: DB 조회 실패 시 sessionStorage/localStorage 사용 (회원가입 직후)
+          if (!dbProfile && typeof window !== 'undefined') {
+            const storedUser = sessionStorage.getItem('user') || localStorage.getItem('unified_user_session')
+            if (storedUser) {
+              try {
+                dbProfile = JSON.parse(storedUser)
+                console.log('⚡ useProfileManagement: storage에서 프로필 복원 (Supabase)', {
+                  id: dbProfile.id,
+                  name: dbProfile.name
+                })
+              } catch (e) {
+                console.warn('⚠️ useProfileManagement: storage 파싱 실패', e)
+              }
+            }
+          }
 
           if (dbProfile) {
             setUserProfile(dbProfile)
@@ -125,8 +168,24 @@ export function useProfileManagement({ user, userSession, router }) {
             setEditValues(defaultProfile)
           }
         } catch (error) {
-          toast.error('프로필 정보를 불러올 수 없습니다')
-          return
+          // ⚡ 에러 시에도 storage fallback 시도
+          let fallbackProfile = null
+          if (typeof window !== 'undefined') {
+            const storedUser = sessionStorage.getItem('user') || localStorage.getItem('unified_user_session')
+            if (storedUser) {
+              try {
+                fallbackProfile = JSON.parse(storedUser)
+              } catch (e) {}
+            }
+          }
+
+          if (fallbackProfile) {
+            setUserProfile(fallbackProfile)
+            setEditValues(fallbackProfile)
+          } else {
+            toast.error('프로필 정보를 불러올 수 없습니다')
+            return
+          }
         }
       }
     } catch (error) {
