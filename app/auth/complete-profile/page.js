@@ -166,20 +166,36 @@ export default function CompleteProfilePage() {
         // ✅ sessionStorage 먼저 저장 (즉시 완료)
         sessionStorage.setItem('user', JSON.stringify(updatedUser))
 
-        // ⚡ localStorage 쓰기 완료 대기 (모바일 디스크 I/O - 500ms로 증가)
-        await new Promise(resolve => {
-          localStorage.setItem('unified_user_session', JSON.stringify(updatedUser))
-          // 모바일 안정성: 무조건 500ms 대기 (디스크 쓰기 보장)
-          setTimeout(resolve, 500)
-        })
+        // 🔥 모바일 localStorage 디스크 I/O 보장 (최대 5초 검증)
+        await new Promise(async (resolve) => {
+          const dataToStore = JSON.stringify(updatedUser)
+          localStorage.setItem('unified_user_session', dataToStore)
 
-        // ⚡⚡ 추가 검증: localStorage 실제 저장 확인
-        const verifyStored = localStorage.getItem('unified_user_session')
-        if (!verifyStored) {
-          console.error('❌ localStorage 저장 실패, 재시도')
-          localStorage.setItem('unified_user_session', JSON.stringify(updatedUser))
-          await new Promise(resolve => setTimeout(resolve, 300))
-        }
+          // 최대 5초 동안 검증 루프 (300ms * 15회)
+          for (let i = 0; i < 15; i++) {
+            await new Promise(r => setTimeout(r, 300))
+
+            try {
+              const verified = localStorage.getItem('unified_user_session')
+              if (verified) {
+                const parsed = JSON.parse(verified)
+                // 실제 데이터 검증 (phone + address 확인)
+                if (parsed.phone === updatedUser.phone &&
+                    parsed.address === updatedUser.address) {
+                  console.log('✅ localStorage 저장 검증 완료:', (i + 1) * 300, 'ms')
+                  resolve()
+                  return
+                }
+              }
+            } catch (e) {
+              console.warn('⚠️ localStorage 검증 실패, 재시도:', i + 1)
+            }
+          }
+
+          // 5초 후에도 실패하면 강제 진행 (무한 대기 방지)
+          console.error('⚠️ localStorage 검증 타임아웃 (5초), 강제 진행')
+          resolve()
+        })
 
         // ✅ 이벤트는 발생시키지 않음 (홈 페이지가 sessionStorage를 직접 읽음)
         // 모바일에서 이벤트 + 리다이렉트 동시 발생 시 무한루프 방지
