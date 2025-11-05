@@ -258,41 +258,7 @@ export default function AdminDashboard() {
         </div>
       </motion.div>
 
-      {/* Database Reset Button */}
-      <div className="text-center">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <button
-            onClick={async () => {
-              if (confirm('⚠️ 정말로 모든 주문/결제 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!')) {
-                try {
-                  const response = await fetch('/api/admin/reset-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ confirm: 'RESET_ALL_DATA' })
-                  })
-
-                  if (response.ok) {
-                    const result = await response.json()
-                    toast.success('✅ 데이터베이스가 초기화되었습니다')
-                    console.log('🎉 초기화 완료:', result)
-                    loadStats() // 통계 새로고침
-                  } else {
-                    const error = await response.json()
-                    toast.error(`❌ 초기화 실패: ${error.error}`)
-                  }
-                } catch (error) {
-                  toast.error('❌ 초기화 요청 실패')
-                  console.error('초기화 오류:', error)
-                }
-              }
-            }}
-            className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
-          >
-            🗑️ 데이터베이스 초기화
-          </button>
-          <p className="text-xs text-gray-500 mt-2">모든 주문/결제 데이터 삭제</p>
-        </div>
-      </div>
+      {/* Database Reset Button - 서비스 중이므로 제거됨 */}
     </div>
   )
 }// Deploy trigger for admin session fix Fri Sep 19 21:06:07 KST 2025
