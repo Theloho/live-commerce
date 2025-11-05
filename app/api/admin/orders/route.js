@@ -122,8 +122,8 @@ export async function GET(request) {
 
       // ✅ 검색어 필터 적용 (주문번호만 - 나머지는 프론트에서 필터링)
       if (searchTerm) {
-        // UUID는 텍스트 변환 후 검색 (id::text)
-        query = query.or(`customer_order_number.ilike.%${searchTerm}%,id::text.ilike.%${searchTerm}%`)
+        // 주문번호로만 검색 (대소문자 무시)
+        query = query.ilike('customer_order_number', `*${searchTerm}*`)
       }
 
       // 정렬
