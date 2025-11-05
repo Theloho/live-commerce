@@ -272,10 +272,10 @@ export default function AdminOrdersPage() {
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      pending: { label: '결제대기', color: 'bg-yellow-100 text-yellow-800' },
-      verifying: { label: '결제확인중', color: 'bg-purple-100 text-purple-800' },
-      paid: { label: '결제완료', color: 'bg-blue-100 text-blue-800' },
-      delivered: { label: '발송완료', color: 'bg-green-100 text-green-800' },
+      pending: { label: '장바구니', color: 'bg-yellow-100 text-yellow-800' },
+      verifying: { label: '주문내역', color: 'bg-purple-100 text-purple-800' },
+      paid: { label: '구매확정', color: 'bg-blue-100 text-blue-800' },
+      delivered: { label: '출고정보', color: 'bg-green-100 text-green-800' },
       cancelled: { label: '취소됨', color: 'bg-red-100 text-red-800' }
     }
     const statusInfo = statusMap[status] || statusMap.pending
@@ -334,7 +334,7 @@ export default function AdminOrdersPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">📦 주문 관리</h1>
           <p className="text-sm text-gray-600 mt-1">
-            총 {orders.length}건 | 결제대기 {orders.filter(o => o.status === 'pending').length}건 | 결제확인중 {orders.filter(o => o.status === 'verifying').length}건 | 결제완료 {orders.filter(o => o.status === 'paid').length}건 | 발송완료 {orders.filter(o => o.status === 'delivered').length}건
+            총 {orders.length}건 | 장바구니 {orders.filter(o => o.status === 'pending').length}건 | 주문내역 {orders.filter(o => o.status === 'verifying').length}건 | 구매확정 {orders.filter(o => o.status === 'paid').length}건 | 출고정보 {orders.filter(o => o.status === 'delivered').length}건
           </p>
         </div>
         <button
@@ -351,7 +351,7 @@ export default function AdminOrdersPage() {
           {[
             {
               id: 'all',
-              label: '결제대기',
+              label: '장바구니',
               count: orders.filter(o => o.status === 'pending').length
             },
             {
@@ -370,8 +370,8 @@ export default function AdminOrdersPage() {
                 o.status === 'verifying'
               ).length
             },
-            { id: 'paid', label: '결제완료', count: orders.filter(o => o.status === 'paid').length },
-            { id: 'delivered', label: '발송완료', count: orders.filter(o => o.status === 'delivered').length }
+            { id: 'paid', label: '구매확정', count: orders.filter(o => o.status === 'paid').length },
+            { id: 'delivered', label: '출고정보', count: orders.filter(o => o.status === 'delivered').length }
           ]
           // 카드결제 비활성화 시 카드결제 탭 제거
           .filter(tab => tab.id !== 'card' || enableCardPayment)
@@ -422,10 +422,10 @@ export default function AdminOrdersPage() {
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             >
               <option value="all">모든 상태</option>
-              <option value="pending">결제대기</option>
-              <option value="verifying">결제확인중</option>
-              <option value="paid">결제완료</option>
-              <option value="delivered">발송완료</option>
+              <option value="pending">장바구니</option>
+              <option value="verifying">주문내역</option>
+              <option value="paid">구매확정</option>
+              <option value="delivered">출고정보</option>
               <option value="cancelled">취소됨</option>
             </select>
           </div>
