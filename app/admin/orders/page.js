@@ -689,6 +689,33 @@ export default function AdminOrdersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
+                      {/* 취소 버튼 - 맨 왼쪽 (실수 방지) */}
+                      {(order.status === 'pending' || order.status === 'verifying' || order.status === 'paid') && (
+                        <button
+                          onClick={() => {
+                            const confirmMessage = order.isGroup
+                              ? `이 그룹 주문(${order.groupOrderCount}개)을 취소하시겠습니까?`
+                              : '이 주문을 취소하시겠습니까?'
+
+                            if (window.confirm(confirmMessage)) {
+                              if (order.isGroup) {
+                                // 그룹 주문인 경우 모든 원본 주문 취소
+                                const orderIds = order.originalOrders.map(o => o.id)
+                                Promise.all(orderIds.map(id => updateOrderStatus(id, 'cancelled')))
+                                  .then(() => loadOrders(true))
+                                  .catch(error => console.error('그룹 주문 취소 실패:', error))
+                              } else {
+                                updateOrderStatus(order.id, 'cancelled')
+                              }
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-900"
+                          title={order.isGroup ? "그룹 주문 취소" : "주문 취소"}
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      )}
+
                       <button
                         onClick={() => {
                           // 그룹 주문인 경우 첫 번째 원본 주문으로 이동
@@ -708,7 +735,7 @@ export default function AdminOrdersPage() {
                               // 그룹 주문인 경우 모든 원본 주문 상태 변경
                               const orderIds = order.originalOrders.map(o => o.id)
                               Promise.all(orderIds.map(id => updateOrderStatus(id, 'paid')))
-                                .then(() => loadOrders())
+                                .then(() => loadOrders(true))
                                 .catch(error => console.error('그룹 주문 상태 변경 실패:', error))
                             } else {
                               updateOrderStatus(order.id, 'paid')
@@ -728,7 +755,7 @@ export default function AdminOrdersPage() {
                               // 그룹 주문인 경우 모든 원본 주문 상태 변경
                               const orderIds = order.originalOrders.map(o => o.id)
                               Promise.all(orderIds.map(id => updateOrderStatus(id, 'delivered')))
-                                .then(() => loadOrders())
+                                .then(() => loadOrders(true))
                                 .catch(error => console.error('그룹 주문 발송 처리 실패:', error))
                             } else {
                               updateOrderStatus(order.id, 'delivered')
@@ -738,32 +765,6 @@ export default function AdminOrdersPage() {
                           title={order.isGroup ? "그룹 발송 처리" : "발송 처리"}
                         >
                           <CheckIcon className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      {(order.status === 'pending' || order.status === 'verifying') && (
-                        <button
-                          onClick={() => {
-                            const confirmMessage = order.isGroup
-                              ? `이 그룹 주문(${order.groupOrderCount}개)을 취소하시겠습니까?`
-                              : '이 주문을 취소하시겠습니까?'
-
-                            if (window.confirm(confirmMessage)) {
-                              if (order.isGroup) {
-                                // 그룹 주문인 경우 모든 원본 주문 취소
-                                const orderIds = order.originalOrders.map(o => o.id)
-                                Promise.all(orderIds.map(id => updateOrderStatus(id, 'cancelled')))
-                                  .then(() => loadOrders())
-                                  .catch(error => console.error('그룹 주문 취소 실패:', error))
-                              } else {
-                                updateOrderStatus(order.id, 'cancelled')
-                              }
-                            }
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                          title={order.isGroup ? "그룹 주문 취소" : "주문 취소"}
-                        >
-                          <XMarkIcon className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -863,7 +864,7 @@ export default function AdminOrdersPage() {
                 {/* 하단: 버튼들 (취소 버튼 최좌측 배치) */}
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                   {/* 취소 버튼 - 맨 왼쪽 (실수 클릭 방지) */}
-                  {(order.status === 'pending' || order.status === 'verifying') && (
+                  {(order.status === 'pending' || order.status === 'verifying' || order.status === 'paid') && (
                     <button
                       onClick={() => {
                         const confirmMessage = order.isGroup
@@ -874,7 +875,7 @@ export default function AdminOrdersPage() {
                           if (order.isGroup) {
                             const orderIds = order.originalOrders.map(o => o.id)
                             Promise.all(orderIds.map(id => updateOrderStatus(id, 'cancelled')))
-                              .then(() => loadOrders())
+                              .then(() => loadOrders(true))
                               .catch(error => console.error('그룹 주문 취소 실패:', error))
                           } else {
                             updateOrderStatus(order.id, 'cancelled')
@@ -907,7 +908,7 @@ export default function AdminOrdersPage() {
                         if (order.isGroup) {
                           const orderIds = order.originalOrders.map(o => o.id)
                           Promise.all(orderIds.map(id => updateOrderStatus(id, 'paid')))
-                            .then(() => loadOrders())
+                            .then(() => loadOrders(true))
                             .catch(error => console.error('그룹 주문 상태 변경 실패:', error))
                         } else {
                           updateOrderStatus(order.id, 'paid')
@@ -927,7 +928,7 @@ export default function AdminOrdersPage() {
                         if (order.isGroup) {
                           const orderIds = order.originalOrders.map(o => o.id)
                           Promise.all(orderIds.map(id => updateOrderStatus(id, 'delivered')))
-                            .then(() => loadOrders())
+                            .then(() => loadOrders(true))
                             .catch(error => console.error('그룹 주문 발송 처리 실패:', error))
                         } else {
                           updateOrderStatus(order.id, 'delivered')
