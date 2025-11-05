@@ -131,7 +131,7 @@ export default function AdminOrdersPage() {
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [searchTimeout, setSearchTimeout] = useState(null)
   const ITEMS_PER_PAGE = 100
-  const SEARCH_ITEMS_PER_PAGE = 500 // 검색 시 더 많이 로드
+  const SEARCH_ITEMS_PER_PAGE = 2000 // 검색 시 더 많이 로드 (입금자명, 고객명 등 프론트 필터링)
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -197,8 +197,10 @@ export default function AdminOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, paymentFilter])
 
-  // 스크롤 이벤트 핸들러
+  // 스크롤 이벤트 핸들러 (검색 모드에서는 비활성화)
   useEffect(() => {
+    if (isSearchMode) return // 검색 중에는 자동 스크롤 비활성화
+
     const handleScroll = () => {
       if (loading || loadingMore || !hasMore) return
 
@@ -208,14 +210,14 @@ export default function AdminOrdersPage() {
 
       // 페이지 하단에 도달 (200px 여유)
       if (scrollHeight - scrollTop - clientHeight < 200) {
-        loadOrders(false)
+        loadOrders(false, searchTerm)
       }
     }
 
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, loadingMore, hasMore, offset])
+  }, [loading, loadingMore, hasMore, offset, isSearchMode])
 
   const loadOrders = async (isInitial = false, search = '') => {
     try {
@@ -965,10 +967,11 @@ export default function AdminOrdersPage() {
       {!loading && !loadingMore && hasMore && filteredOrders.length > 0 && (
         <div className="flex justify-center py-6">
           <button
-            onClick={() => loadOrders(false)}
+            onClick={() => loadOrders(false, searchTerm)}
             className="px-6 py-3 bg-white border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
           >
             더 보기 ({orders.length}건 로드됨)
+            {isSearchMode && <span className="ml-2 text-xs">(검색 중)</span>}
           </button>
         </div>
       )}
