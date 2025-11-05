@@ -495,7 +495,7 @@ export default function AdminCouponDetailPage() {
                   고객 정보
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  이메일
+                  닉네임
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   발급일
@@ -532,11 +532,11 @@ export default function AdminCouponDetailPage() {
                   <tr key={holder.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {holder.user?.name || '이름 없음'}
+                        {holder.user?.nickname || holder.user?.name || '이름 없음'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-500">{holder.user?.email || '-'}</div>
+                      <div className="text-sm text-gray-500">{holder.user?.nickname || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-500">
