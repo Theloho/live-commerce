@@ -21,11 +21,12 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
+import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 export default function AdminCustomerDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { adminUser, loading: authLoading } = useAdminAuth()
   const [customer, setCustomer] = useState(null)
   const [customerOrders, setCustomerOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -33,35 +34,32 @@ export default function AdminCustomerDetailPage() {
   const [kakaoLink, setKakaoLink] = useState('')
 
   useEffect(() => {
-    loadCustomerDetail()
-  }, [params.id])
+    if (!authLoading && adminUser?.email) {
+      loadCustomerDetail()
+    }
+  }, [params.id, authLoading, adminUser])
 
   const loadCustomerDetail = async () => {
     try {
       setLoading(true)
 
-      // profiles 테이블에서 고객 정보 가져오기
-      // ⭐ UUID 형식이면 id로 조회, 아니면 kakao_id로 조회
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id)
-
-      let query = supabase
-        .from('profiles')
-        .select('*')
-
-      if (isUUID) {
-        query = query.eq('id', params.id)
-      } else {
-        query = query.eq('kakao_id', params.id)
-      }
-
-      const { data: profile, error: profileError } = await query.maybeSingle()
-
-      if (profileError) {
-        console.error('고객 조회 오류:', profileError)
-        toast.error('고객 조회에 실패했습니다')
-        setLoading(false)
+      if (!adminUser?.email) {
+        toast.error('관리자 권한이 필요합니다')
+        router.push('/admin/login')
         return
       }
+
+      // ⭐ Service Role API로 고객 정보 조회 (RLS 우회)
+      const response = await fetch(
+        `/api/admin/customers?adminEmail=${encodeURIComponent(adminUser.email)}`
+      )
+
+      if (!response.ok) {
+        throw new Error('고객 데이터 조회 실패')
+      }
+
+      const { customers } = await response.json()
+      const profile = customers.find(c => c.id === params.id)
 
       if (!profile) {
         console.error('고객을 찾을 수 없습니다:', params.id)
@@ -70,69 +68,53 @@ export default function AdminCustomerDetailPage() {
         return
       }
 
-      // 해당 고객의 주문 정보 가져오기 (고객명으로 매칭)
-      const { data: orders, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            *,
-            products (
-              title,
-              thumbnail_url
-            )
-          ),
-          order_shipping!inner (
-            name,
-            phone,
-            address,
-            detail_address
-          ),
-          order_payments (
-            amount,
-            method,
-            status
-          )
-        `)
-        .eq('order_shipping.name', profile.name)
-        .order('created_at', { ascending: false })
+      // ⭐ Service Role API로 주문 정보 조회 (RLS 우회)
+      const ordersResponse = await fetch(
+        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`
+      )
 
-      if (orderError) {
-        console.warn('주문 조회 오류:', orderError)
+      if (!ordersResponse.ok) {
+        throw new Error('주문 데이터 조회 실패')
       }
 
+      const { orders: allOrders } = await ordersResponse.json()
+
+      // 해당 고객의 주문 필터링 (user_id 또는 order_type으로 매칭)
+      const customerOrders = allOrders.filter(order => {
+        if (order.user_id === profile.id) return true
+        if (profile.kakao_id && order.order_type?.includes(`KAKAO:${profile.kakao_id}`)) return true
+        return false
+      })
+
       // 주문 통계 계산
-      const userOrders = orders || []
       let totalSpent = 0
       let lastOrderDate = null
 
       console.log('📊 주문 통계 계산 시작:', {
-        총주문수: userOrders.length,
-        주문목록: userOrders.map(order => ({
+        총주문수: customerOrders.length,
+        주문목록: customerOrders.map(order => ({
           id: order.id,
           status: order.status,
-          payments: order.order_payments?.length || 0,
           total_amount: order.total_amount
         }))
       })
 
-      userOrders.forEach(order => {
-        // 모든 상태의 주문에서 결제 금액 계산 (pending 제외)
+      customerOrders.forEach(order => {
+        // 모든 상태의 주문에서 결제 금액 계산 (pending, cancelled 제외)
         if (order.status !== 'pending' && order.status !== 'cancelled') {
-          const payment = order.order_payments?.[0]
-          const orderAmount = payment?.amount || order.total_amount || 0
+          const orderAmount = order.total_amount || 0
           totalSpent += orderAmount
           console.log(`💰 주문 ${order.id}: ${orderAmount}원 추가 (상태: ${order.status})`)
         }
       })
 
-      if (userOrders.length > 0) {
-        lastOrderDate = userOrders[0].created_at
+      if (customerOrders.length > 0) {
+        lastOrderDate = customerOrders[0].created_at
       }
 
       console.log('📊 주문 통계 완료:', {
         총구매금액: totalSpent,
-        주문수: userOrders.length,
+        주문수: customerOrders.length,
         최근주문일: lastOrderDate
       })
 
@@ -149,22 +131,22 @@ export default function AdminCustomerDetailPage() {
         youtubeId: profile.youtube_id || '',
         kakaoLink: profile.kakao_link || profile.kakao_id || '',
         created_at: profile.created_at,
-        orderCount: userOrders.length,
+        orderCount: customerOrders.length,
         totalSpent: totalSpent,
         lastOrderDate: lastOrderDate,
-        status: userOrders.length > 0 ? 'active' : 'inactive'
+        status: customerOrders.length > 0 ? 'active' : 'inactive'
       }
 
       console.log('✅ 고객 데이터 구성 완료:', {
         name: customerData.name,
         orderCount: customerData.orderCount,
         totalSpent: customerData.totalSpent,
-        ordersData: userOrders.length
+        ordersData: customerOrders.length
       })
 
       setCustomer(customerData)
       setKakaoLink(customerData.kakaoLink)
-      setCustomerOrders(userOrders)
+      setCustomerOrders(customerOrders)
       setLoading(false)
     } catch (error) {
       console.error('고객 상세 정보 로드 실패:', error)
