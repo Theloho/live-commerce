@@ -60,28 +60,41 @@ export default function FulfillmentPage() {
     try {
       setLoading(true)
 
-      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
+      // ⚡ 전체 주문 조회를 위해 여러 번 호출
+      let allOrders = []
+      let offset = 0
+      const limit = 1000
+      let hasMore = true
 
-      if (!response.ok) {
-        // ⭐ 에러 응답 body 읽기
-        const errorData = await response.json()
-        console.error('❌❌❌ API 에러 응답:', errorData)
-        console.error('❌❌❌ error.message:', errorData.error)
-        console.error('❌❌❌ error.errorDetails:', errorData.errorDetails)
-        console.error('❌❌❌ error.hint:', errorData.hint)
-        console.error('❌❌❌ error.details:', errorData.details)
-        console.error('❌❌❌ error.code:', errorData.code)
-        console.error('❌❌❌ error.stack:', errorData.stack)
-        throw new Error(errorData.error || '주문 조회 실패')
+      while (hasMore) {
+        const response = await fetch(
+          `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${limit}&offset=${offset}`
+        )
+
+        if (!response.ok) {
+          // ⭐ 에러 응답 body 읽기
+          const errorData = await response.json()
+          console.error('❌❌❌ API 에러 응답:', errorData)
+          throw new Error(errorData.error || '주문 조회 실패')
+        }
+
+        const { orders: batchOrders, hasMore: moreData } = await response.json()
+
+        if (batchOrders && batchOrders.length > 0) {
+          allOrders = [...allOrders, ...batchOrders]
+          offset += limit
+          hasMore = moreData
+          console.log(`📦 배치 로드: ${batchOrders.length}건, 누적: ${allOrders.length}건`)
+        } else {
+          hasMore = false
+        }
       }
-
-      const { orders: allOrders } = await response.json()
 
       // 입금확인 완료 주문만 (paid)
       const paidOrders = allOrders.filter(o => o.status === 'paid')
 
       setOrders(paidOrders)
-      console.log('✅ 입금확인 완료 주문:', paidOrders.length, '건')
+      console.log('✅ 입금확인 완료 주문:', paidOrders.length, '건 (전체:', allOrders.length, '건)')
 
     } catch (error) {
       console.error('주문 로딩 오류:', error)
