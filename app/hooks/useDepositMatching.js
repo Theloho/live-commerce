@@ -73,8 +73,9 @@ export function useDepositMatching({ adminUser }) {
       const offset = (page - 1) * ITEMS_PER_PAGE
 
       // ✅ Service Role API로 서버 사이드 필터링 + 페이지네이션
+      // ⚠️ pending(장바구니)는 제외! verifying(주문내역)만 입금 확인 대상
       const response = await fetch(
-        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${ITEMS_PER_PAGE}&offset=${offset}&status=pending,verifying&paymentMethod=bank_transfer`
+        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${ITEMS_PER_PAGE}&offset=${offset}&status=verifying&paymentMethod=bank_transfer`
       )
       const { orders, totalCount: apiTotalCount, hasMore: apiHasMore } = await response.json()
 
