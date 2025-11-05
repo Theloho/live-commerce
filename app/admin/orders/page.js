@@ -79,11 +79,23 @@ const groupOrdersByPaymentGroupId = (orders) => {
     // 대표 주문: 가장 먼저 생성된 주문
     const representativeOrder = groupOrders[0]
 
-    // 그룹 총액 계산
-    const totalAmount = groupOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0)
-
     // ⭐ 그룹 내 모든 주문의 아이템을 하나로 합치기
     const allItems = groupOrders.flatMap(order => order.items || [])
+
+    // ⭐ 그룹 총 상품 금액 (아이템 합계)
+    const groupItemsTotal = allItems.reduce((sum, item) => {
+      return sum + ((item.price || 0) * (item.quantity || 1))
+    }, 0)
+
+    // ⭐ 그룹 배송비 (대표 주문의 배송비만 사용)
+    const representativeShipping = representativeOrder.shipping
+    const groupShippingFee = representativeShipping?.shipping_fee || 0
+
+    // ⭐ 그룹 쿠폰 할인 (대표 주문의 할인만 사용)
+    const groupTotalDiscount = representativeOrder.discount_amount || 0
+
+    // ⭐ 그룹 총 입금금액 계산 (사용자 화면과 동일)
+    const groupTotalAmount = groupItemsTotal - groupTotalDiscount + groupShippingFee
 
     // 그룹 카드 생성
     const groupCard = {
@@ -92,7 +104,12 @@ const groupOrdersByPaymentGroupId = (orders) => {
       isGroup: true, // ⭐ 그룹 모드 활성화
       originalOrders: groupOrders, // ⭐ 그룹 내 원본 주문들
       groupOrderCount: groupOrders.length,
-      totalPrice: totalAmount
+      totalPrice: groupTotalAmount, // ⭐ 사용자 화면과 동일한 총 입금금액
+      // ⭐ 그룹 정보 추가 (금액 계산에 사용)
+      groupShippingFee,
+      groupTotalDiscount,
+      groupItemsTotal,
+      groupTotalAmount
     }
 
     result.push(groupCard)
@@ -529,8 +546,21 @@ export default function AdminOrdersPage() {
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         {(() => {
-                          // 🧮 중앙화된 계산 모듈 사용
-                          // ✅ DB 저장된 무료배송 조건 사용 (결제대기는 결제 전이므로 0원 표시)
+                          // ⭐ 그룹 주문인 경우: 미리 계산된 groupTotalAmount 사용
+                          if (order.isGroup && order.groupTotalAmount !== undefined) {
+                            return (
+                              <div>
+                                <div>₩{order.groupTotalAmount.toLocaleString()}</div>
+                                {order.groupTotalDiscount > 0 && (
+                                  <div className="text-xs text-blue-600 mt-0.5">
+                                    (쿠폰 -₩{order.groupTotalDiscount.toLocaleString()})
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          }
+
+                          // ⭐ 개별 주문: OrderCalculations 사용
                           const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
                           const shippingInfo = formatShippingInfo(
                             baseShippingFee,
@@ -544,10 +574,9 @@ export default function AdminOrdersPage() {
                               value: order.discount_amount
                             } : null,
                             paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
-                            baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
+                            baseShippingFee: baseShippingFee
                           })
 
-                          // ⭐ 총 입금금액 표시 (배송비 포함) - 입금 확인을 위해 필수
                           return (
                             <div>
                               <div>₩{orderCalc.finalAmount.toLocaleString()}</div>
@@ -681,28 +710,38 @@ export default function AdminOrdersPage() {
         {/* 모바일 카드 뷰 */}
         <div className="lg:hidden divide-y divide-gray-200">
           {filteredOrders.map((order, index) => {
-            // 🧮 중앙화된 계산 모듈 사용 (모바일 뷰)
-            // ✅ DB 저장된 무료배송 조건 사용 (결제대기는 결제 전이므로 0원 표시)
-            const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
-            const shippingInfo = formatShippingInfo(
-              baseShippingFee,
-              order.shipping?.postal_code
-            )
-
-            const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
-              region: shippingInfo.region,
-              coupon: order.discount_amount > 0 ? {
-                type: 'fixed_amount',
-                value: order.discount_amount
-              } : null,
-              paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
-              baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
-            })
-
             // ⭐ 그룹핑 후 수량 계산
             const groupedItems = groupOrderItems(order.items)
             const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
             const uniqueProducts = groupedItems.length
+
+            // ⭐ 금액 계산: 그룹 주문 vs 개별 주문
+            let finalAmount, couponDiscount
+            if (order.isGroup && order.groupTotalAmount !== undefined) {
+              // 그룹 주문: 미리 계산된 값 사용
+              finalAmount = order.groupTotalAmount
+              couponDiscount = order.groupTotalDiscount || 0
+            } else {
+              // 개별 주문: OrderCalculations 사용
+              const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
+              const shippingInfo = formatShippingInfo(
+                baseShippingFee,
+                order.shipping?.postal_code
+              )
+
+              const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
+                region: shippingInfo.region,
+                coupon: order.discount_amount > 0 ? {
+                  type: 'fixed_amount',
+                  value: order.discount_amount
+                } : null,
+                paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
+                baseShippingFee: baseShippingFee
+              })
+
+              finalAmount = orderCalc.finalAmount
+              couponDiscount = orderCalc.couponDiscount || 0
+            }
 
             return (
               <motion.div
@@ -738,11 +777,11 @@ export default function AdminOrdersPage() {
                     </span>
                     <div className="text-right">
                       <div className="text-sm font-bold text-gray-900">
-                        ₩{orderCalc.finalAmount.toLocaleString()}
+                        ₩{finalAmount.toLocaleString()}
                       </div>
-                      {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
+                      {couponDiscount > 0 && (
                         <div className="text-xs text-blue-600">
-                          (쿠폰 -₩{orderCalc.couponDiscount.toLocaleString()})
+                          (쿠폰 -₩{couponDiscount.toLocaleString()})
                         </div>
                       )}
                     </div>
