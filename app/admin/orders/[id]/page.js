@@ -17,8 +17,6 @@ import {
   BanknotesIcon,
   PhotoIcon
 } from '@heroicons/react/24/outline'
-import { formatShippingInfo } from '@/lib/shippingUtils'
-import { OrderCalculations } from '@/lib/orderCalculations'
 import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
@@ -48,6 +46,7 @@ export default function AdminOrderDetailPage() {
         adminEmail: adminUser?.email
       })
 
+      // 1️⃣ 먼저 단일 주문 조회하여 payment_group_id 확인
       const response = await fetch(
         `/api/admin/orders?adminEmail=${adminUser.email}&orderId=${params.id}`
       )
@@ -67,35 +66,75 @@ export default function AdminOrderDetailPage() {
       if (data.success && data.orders && data.orders.length > 0) {
         const foundOrder = data.orders[0]
 
-        // 데이터 포맷팅 (기존 getOrderById와 동일한 형식으로)
-        // ✅ order_shipping과 order_payments는 배열로 반환되므로 첫 번째 요소 추출
-        const shippingData = Array.isArray(foundOrder.order_shipping)
-          ? foundOrder.order_shipping[0]
-          : foundOrder.order_shipping
-        const paymentData = Array.isArray(foundOrder.order_payments)
-          ? foundOrder.order_payments[0]
-          : foundOrder.order_payments
+        // 2️⃣ payment_group_id가 있으면 그룹 전체 조회
+        let groupOrders = [foundOrder]
+        if (foundOrder.payment_group_id) {
+          console.log('🔍 [관리자 주문 상세] 일괄결제 그룹 발견:', foundOrder.payment_group_id)
 
-        const formattedOrder = {
-          ...foundOrder,
-          userName: foundOrder.userProfile?.name || shippingData?.name || '정보없음',
-          userNickname: foundOrder.userProfile?.nickname || '정보없음',
-          depositName: paymentData?.depositor_name || foundOrder.depositName,
-          discount_amount: foundOrder.discount_amount || 0,
-          is_free_shipping: foundOrder.is_free_shipping || false,  // ✅ 무료배송 플래그
-          items: (foundOrder.order_items || []).map(item => ({
+          const groupResponse = await fetch(
+            `/api/admin/orders?adminEmail=${adminUser.email}&paymentGroupId=${foundOrder.payment_group_id}`
+          )
+
+          if (groupResponse.ok) {
+            const groupData = await groupResponse.json()
+            if (groupData.success && groupData.orders) {
+              groupOrders = groupData.orders
+              console.log('✅ [관리자 주문 상세] 그룹 주문 조회 완료:', groupOrders.length + '건')
+            }
+          }
+        }
+
+        // 3️⃣ 대표 주문 (가장 먼저 생성된 주문)
+        const representativeOrder = groupOrders[0]
+
+        // 4️⃣ 그룹 내 모든 주문의 아이템을 하나로 합치기
+        const allItems = groupOrders.flatMap(order =>
+          (order.order_items || []).map(item => ({
             ...item,
             image: item.thumbnail_url || item.products?.thumbnail_url || '/placeholder.png',
             title: item.title || item.products?.title || '상품명 없음',
             price: item.price || item.unit_price || item.products?.price || 0,
             quantity: item.quantity || 1
-          })),
+          }))
+        )
+
+        // 5️⃣ 데이터 포맷팅
+        const shippingData = Array.isArray(representativeOrder.order_shipping)
+          ? representativeOrder.order_shipping[0]
+          : representativeOrder.order_shipping
+        const paymentData = Array.isArray(representativeOrder.order_payments)
+          ? representativeOrder.order_payments[0]
+          : representativeOrder.order_payments
+
+        // 6️⃣ 그룹 금액 계산 (주문 목록과 동일한 로직)
+        const totalAmountSum = groupOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+        const groupTotalDiscount = representativeOrder.discount_amount || 0
+        const groupShippingFee = shippingData?.shipping_fee || 0
+        const groupTotalAmount = totalAmountSum - groupTotalDiscount + groupShippingFee
+
+        const formattedOrder = {
+          ...representativeOrder,
+          userName: representativeOrder.userProfile?.name || shippingData?.name || '정보없음',
+          userNickname: representativeOrder.userProfile?.nickname || '정보없음',
+          depositName: paymentData?.depositor_name || representativeOrder.depositName,
+          discount_amount: representativeOrder.discount_amount || 0,
+          is_free_shipping: representativeOrder.is_free_shipping || false,
+          items: allItems, // ⭐ 그룹 내 모든 아이템
           shipping: shippingData,
-          payment: paymentData
+          payment: paymentData,
+          total_amount: groupTotalAmount, // ⭐ 그룹 전체 금액
+          isGroup: groupOrders.length > 1, // ⭐ 그룹 여부
+          groupOrderCount: groupOrders.length, // ⭐ 그룹 주문 개수
+          originalOrders: groupOrders // ⭐ 원본 주문들
         }
 
         setOrder(formattedOrder)
-        console.log('✅ [관리자 주문 상세] 주문 데이터 로드 완료:', formattedOrder.customer_order_number || formattedOrder.id)
+        console.log('✅ [관리자 주문 상세] 주문 데이터 로드 완료:', {
+          orderNumber: formattedOrder.customer_order_number || formattedOrder.id,
+          isGroup: formattedOrder.isGroup,
+          itemCount: allItems.length,
+          totalAmount: groupTotalAmount
+        })
       } else {
         toast.error('주문을 찾을 수 없습니다')
         router.push('/admin/orders')
@@ -238,6 +277,11 @@ export default function AdminOrderDetailPage() {
               주문 상세 (관리자)
             </h1>
             {getStatusBadge(order.status)}
+            {order.isGroup && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                일괄결제 그룹 ({order.groupOrderCount}건)
+              </span>
+            )}
           </div>
           <div className="mt-1 space-y-1">
             <p className="text-gray-600">
@@ -437,64 +481,51 @@ export default function AdminOrderDetailPage() {
                   )
                 })()}
               </div>
-              {/* 결제 금액 상세 (중앙화된 계산 모듈 사용) */}
+              {/* 결제 금액 상세 (DB 저장된 값 표시 - 재계산 X) */}
               {(() => {
-                // ✅ DB 저장된 무료배송 조건 사용 (결제대기는 결제 전이므로 0원 표시)
-                const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
-                const shippingInfo = formatShippingInfo(
-                  baseShippingFee,
-                  order.shipping?.postal_code
+                // ⭐ DB에 저장된 값만 사용 (재계산 불필요!)
+                const itemsTotal = order.items.reduce((sum, item) =>
+                  sum + (item.price || 0) * (item.quantity || 1), 0
                 )
+                const shippingFee = order.shipping?.shipping_fee || 0
+                const couponDiscount = order.discount_amount || 0
+                const finalAmount = order.total_amount || 0
 
-                // 🧮 중앙화된 계산 모듈 사용
-                const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
-                  region: shippingInfo.region,
-                  coupon: order.discount_amount > 0 ? {
-                    type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
-                    value: order.discount_amount
-                  } : null,
-                  paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
-                  baseShippingFee: baseShippingFee  // ✅ 무료배송 플래그 전달
-                })
-
-                console.log('💰 관리자 주문 상세 금액 계산 (중앙화 모듈):', {
-                  ...orderCalc.breakdown,
-                  postalCode: order.shipping?.postal_code,
-                  shippingInfo
+                console.log('💰 관리자 주문 상세 금액 (DB 값):', {
+                  itemsTotal,
+                  shippingFee,
+                  couponDiscount,
+                  finalAmount,
+                  isGroup: order.isGroup,
+                  groupOrderCount: order.groupOrderCount
                 })
 
                 return (
                   <div className="space-y-2">
+                    {order.isGroup && (
+                      <div className="bg-blue-50 border border-blue-200 rounded p-2 mb-3">
+                        <p className="text-xs text-blue-700 font-medium">
+                          일괄결제 그룹 ({order.groupOrderCount}건 주문)
+                        </p>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">상품 금액</span>
-                      <span className="font-medium">₩{orderCalc.itemsTotal.toLocaleString()}</span>
+                      <span className="text-gray-600">상품 금액 {order.isGroup && `(${order.groupOrderCount}건)`}</span>
+                      <span className="font-medium">₩{itemsTotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">배송비</span>
-                      <div className="text-right">
-                        <span className="font-medium">₩{orderCalc.shippingFee.toLocaleString()}</span>
-                        {shippingInfo.isRemote && (
-                          <p className="text-xs text-orange-600">
-                            ({shippingInfo.region} +₩{shippingInfo.surcharge.toLocaleString()})
-                          </p>
-                        )}
-                      </div>
+                      <span className="font-medium">₩{shippingFee.toLocaleString()}</span>
                     </div>
-                    {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
+                    {couponDiscount > 0 && (
                       <div className="flex justify-between items-center">
                         <span className="text-blue-600">쿠폰 할인</span>
-                        <span className="font-medium text-blue-600">-₩{orderCalc.couponDiscount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {order.payment?.method === 'card' && orderCalc.vat > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">부가세 (10%)</span>
-                        <span className="font-medium">₩{orderCalc.vat.toLocaleString()}</span>
+                        <span className="font-medium text-blue-600">-₩{couponDiscount.toLocaleString()}</span>
                       </div>
                     )}
                     <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
                       <span className="text-gray-900 font-semibold">최종 결제 금액</span>
-                      <span className="font-bold text-lg text-red-600">₩{orderCalc.finalAmount.toLocaleString()}</span>
+                      <span className="font-bold text-lg text-red-600">₩{finalAmount.toLocaleString()}</span>
                     </div>
                   </div>
                 )
@@ -852,72 +883,36 @@ export default function AdminOrderDetailPage() {
         {/* Order Summary */}
         <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="space-y-2">
-            {/* 결제 금액 상세 (중앙화된 계산 모듈 사용) */}
+            {/* 결제 금액 상세 (DB 저장된 값 표시 - 재계산 X) */}
             {(() => {
-              // ✅ DB 저장된 무료배송 조건 사용 (결제대기는 결제 전이므로 0원 표시)
-              const baseShippingFee = order.status === 'pending' ? 0 : (order.is_free_shipping ? 0 : 4000)
-              const shippingInfo = formatShippingInfo(
-                baseShippingFee,
-                order.shipping?.postal_code
+              // ⭐ DB에 저장된 값만 사용 (재계산 불필요!)
+              const itemsTotal = order.items.reduce((sum, item) =>
+                sum + (item.price || 0) * (item.quantity || 1), 0
               )
-
-              // 🧮 중앙화된 계산 모듈 사용
-              const orderCalc = OrderCalculations.calculateFinalOrderAmount(order.items, {
-                region: shippingInfo.region,
-                coupon: order.discount_amount > 0 ? {
-                  type: 'fixed_amount',  // DB에서 discount_amount만 저장됨
-                  value: order.discount_amount
-                } : null,
-                paymentMethod: order.payment?.method === 'card' ? 'card' : 'transfer',
-                baseShippingFee: baseShippingFee  // ✅ 무료배송 플래그 전달
-              })
-
-              console.log('💰 관리자 주문 상세 하단 금액 계산 (중앙화 모듈):', {
-                ...orderCalc.breakdown,
-                'order.status': order.status,
-                'postalCode': order.shipping?.postal_code,
-                'shippingInfo': shippingInfo,
-                'order.payment?.amount (DB값)': order.payment?.amount
-              })
+              const shippingFee = order.shipping?.shipping_fee || 0
+              const couponDiscount = order.discount_amount || 0
+              const finalAmount = order.total_amount || 0
 
               return (
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">상품 금액</span>
-                    <span>₩{orderCalc.itemsTotal.toLocaleString()}</span>
+                    <span>₩{itemsTotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">
-                      배송비
-                      {shippingInfo.isRemote && (
-                        <span className="text-orange-600 text-xs ml-1">
-                          (+{shippingInfo.region})
-                        </span>
-                      )}
-                    </span>
-                    <span>{orderCalc.shippingFee > 0 ? `₩${orderCalc.shippingFee.toLocaleString()}` : '무료'}</span>
+                    <span className="text-gray-600">배송비</span>
+                    <span>{shippingFee > 0 ? `₩${shippingFee.toLocaleString()}` : '무료'}</span>
                   </div>
-                  {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
+                  {couponDiscount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-blue-600">쿠폰 할인</span>
-                      <span className="text-blue-600">-₩{orderCalc.couponDiscount.toLocaleString()}</span>
-                    </div>
-                  )}
-                  {order.payment?.method === 'card' && orderCalc.vat > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">부가세 (10%)</span>
-                      <span>₩{orderCalc.vat.toLocaleString()}</span>
+                      <span className="text-blue-600">-₩{couponDiscount.toLocaleString()}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
                     <span>총 결제 금액</span>
-                    <span className="text-red-600">₩{orderCalc.finalAmount.toLocaleString()}</span>
+                    <span className="text-red-600">₩{finalAmount.toLocaleString()}</span>
                   </div>
-                  {order.payment?.amount && Math.abs(order.payment.amount - orderCalc.finalAmount) > 1 && (
-                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                      ⚠️ DB 저장값(₩{order.payment?.amount?.toLocaleString()})과 계산값(₩{orderCalc.finalAmount.toLocaleString()})이 다릅니다
-                    </div>
-                  )}
                 </>
               )
             })()}
