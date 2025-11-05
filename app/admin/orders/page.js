@@ -85,11 +85,14 @@ const groupOrdersByPaymentGroupId = (orders) => {
     // ⭐ DB에 저장된 total_amount 합계 (재계산 불필요!)
     const totalAmountSum = groupOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0)
 
+    // ⭐ 대표 주문의 쿠폰 할인 (일괄결제는 쿠폰 1개만 적용)
+    const groupTotalDiscount = representativeOrder.discount_amount || 0
+
     // ⭐ 대표 주문의 배송비 추가 (사용자 화면과 동일한 로직)
     const groupShippingFee = representativeOrder.shipping?.shipping_fee || 0
 
-    // ⭐ 총 입금금액 = total_amount 합계 + 배송비 (GetOrdersUseCase.js:306과 동일)
-    const groupTotalAmount = totalAmountSum + groupShippingFee
+    // ⭐ 총 입금금액 = total_amount 합계 - 쿠폰할인 + 배송비 (GetOrdersUseCase.js:306과 동일)
+    const groupTotalAmount = totalAmountSum - groupTotalDiscount + groupShippingFee
 
     // 그룹 카드 생성
     const groupCard = {
