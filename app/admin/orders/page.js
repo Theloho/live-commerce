@@ -119,20 +119,100 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const ITEMS_PER_PAGE = 100
+
+  const filterOrders = () => {
+    let filtered = [...orders]
+
+    // 결제 방법 필터
+    if (paymentFilter === 'all') {
+      // '장바구니' 탭 - pending 상태만 표시
+      filtered = filtered.filter(order =>
+        order.status === 'pending'
+      )
+    } else if (paymentFilter === 'verifying') {
+      // '주문내역' 탭 - verifying 상태 모두 표시 (결제 방법 구분 없음)
+      filtered = filtered.filter(order => order.status === 'verifying')
+    } else if (paymentFilter === 'paid') {
+      filtered = filtered.filter(order => order.status === 'paid')
+    } else if (paymentFilter === 'delivered') {
+      filtered = filtered.filter(order => order.status === 'delivered')
+    }
+
+    // 상태 필터 (기존)
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(order => order.status === statusFilter)
+    }
+
+    // 검색어 필터
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
+        order.customer_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.shipping?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.userNickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.payment?.depositor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.items.some(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+    }
+
+    setFilteredOrders(filtered)
+  }
 
   useEffect(() => {
     if (adminUser?.email) {
-      loadOrders()
+      loadOrders(true) // 초기 로딩
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminUser])
 
   useEffect(() => {
     filterOrders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, searchTerm, statusFilter, paymentFilter])
 
-  const loadOrders = async () => {
+  // 필터 변경 시 초기화
+  useEffect(() => {
+    setOrders([])
+    setOffset(0)
+    setHasMore(true)
+    if (adminUser?.email) {
+      loadOrders(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, paymentFilter])
+
+  // 스크롤 이벤트 핸들러
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loading || loadingMore || !hasMore) return
+
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const scrollHeight = document.documentElement.scrollHeight
+      const clientHeight = document.documentElement.clientHeight
+
+      // 페이지 하단에 도달 (200px 여유)
+      if (scrollHeight - scrollTop - clientHeight < 200) {
+        loadOrders(false)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, loadingMore, hasMore, offset])
+
+  const loadOrders = async (isInitial = false) => {
     try {
-      setLoading(true)
+      if (isInitial) {
+        setLoading(true)
+        setOffset(0)
+      } else {
+        setLoadingMore(true)
+      }
 
       if (!adminUser?.email) {
         console.error('관리자 이메일이 없습니다')
@@ -140,15 +220,19 @@ export default function AdminOrdersPage() {
         return
       }
 
-      // Service Role API 호출 (limit 없이 전체 주문 조회)
-      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
+      const currentOffset = isInitial ? 0 : offset
+
+      // Service Role API 호출 (페이지네이션)
+      const response = await fetch(
+        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${ITEMS_PER_PAGE}&offset=${currentOffset}`
+      )
 
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || '주문 조회 실패')
       }
 
-      const { orders: rawOrders } = await response.json()
+      const { orders: rawOrders, hasMore: moreData } = await response.json()
 
       // 기존 포맷으로 변환
       const allOrders = rawOrders.map(order => {
@@ -200,51 +284,22 @@ export default function AdminOrdersPage() {
       const groupedOrders = groupOrdersByPaymentGroupId(allOrders)
       console.log('✅ 그룹핑 완료:', { original: allOrders.length, grouped: groupedOrders.length })
 
-      setOrders(groupedOrders)
+      if (isInitial) {
+        setOrders(groupedOrders)
+      } else {
+        setOrders(prev => [...prev, ...groupedOrders])
+      }
+
+      setHasMore(moreData)
+      setOffset(currentOffset + ITEMS_PER_PAGE)
       setLoading(false)
+      setLoadingMore(false)
     } catch (error) {
       console.error('주문 로딩 오류:', error)
       toast.error('주문 목록을 불러오는데 실패했습니다')
       setLoading(false)
+      setLoadingMore(false)
     }
-  }
-
-  const filterOrders = () => {
-    let filtered = [...orders]
-
-    // 결제 방법 필터
-    if (paymentFilter === 'all') {
-      // '장바구니' 탭 - pending 상태만 표시
-      filtered = filtered.filter(order =>
-        order.status === 'pending'
-      )
-    } else if (paymentFilter === 'verifying') {
-      // '주문내역' 탭 - verifying 상태 모두 표시 (결제 방법 구분 없음)
-      filtered = filtered.filter(order => order.status === 'verifying')
-    } else if (paymentFilter === 'paid') {
-      filtered = filtered.filter(order => order.status === 'paid')
-    } else if (paymentFilter === 'delivered') {
-      filtered = filtered.filter(order => order.status === 'delivered')
-    }
-
-    // 상태 필터 (기존)
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(order => order.status === statusFilter)
-    }
-
-    // 검색어 필터
-    if (searchTerm) {
-      filtered = filtered.filter(order =>
-        order.customer_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.shipping?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.userNickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.payment?.depositor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.items.some(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-    }
-
-    setFilteredOrders(filtered)
   }
 
   const updateOrderStatus = async (orderId, newStatus) => {
@@ -347,7 +402,12 @@ export default function AdminOrdersPage() {
           </p>
         </div>
         <button
-          onClick={loadOrders}
+          onClick={() => {
+            setOrders([])
+            setOffset(0)
+            setHasMore(true)
+            loadOrders(true)
+          }}
           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           새로고침
@@ -836,12 +896,39 @@ export default function AdminOrdersPage() {
           })}
         </div>
 
-        {filteredOrders.length === 0 && (
+        {filteredOrders.length === 0 && !loading && (
           <div className="text-center py-12">
             <p className="text-gray-500">조건에 맞는 주문이 없습니다.</p>
           </div>
         )}
       </div>
+
+      {/* 로딩 인디케이터 */}
+      {loadingMore && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+          <span className="ml-3 text-gray-600">추가 주문 불러오는 중...</span>
+        </div>
+      )}
+
+      {/* 더보기 버튼 (모바일 UX) */}
+      {!loading && !loadingMore && hasMore && filteredOrders.length > 0 && (
+        <div className="flex justify-center py-6">
+          <button
+            onClick={() => loadOrders(false)}
+            className="px-6 py-3 bg-white border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
+          >
+            더 보기 ({orders.length}건 로드됨)
+          </button>
+        </div>
+      )}
+
+      {/* 모든 데이터 로드 완료 */}
+      {!loading && !hasMore && filteredOrders.length > 0 && (
+        <div className="text-center py-6">
+          <p className="text-gray-500 text-sm">모든 주문을 불러왔습니다.</p>
+        </div>
+      )}
     </div>
   )
 }

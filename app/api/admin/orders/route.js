@@ -121,12 +121,10 @@ export async function GET(request) {
       // 정렬
       query = query.order('created_at', { ascending: false })
 
-      // ⚠️ 페이지네이션: limit이 명시적으로 전달된 경우에만 적용
-      // 주문관리 페이지에서는 전체 조회 (limit 없음)
-      // 입금확인 페이지에서는 페이지네이션 사용 (limit 있음)
-      if (searchParams.has('limit')) {
-        query = query.range(offset, offset + limit - 1)
-      }
+      // ⚠️ 페이지네이션: 항상 적용 (무한 스크롤 대응)
+      // 주문관리: limit=100 (무한 스크롤)
+      // 입금확인: limit=10 (페이지네이션)
+      query = query.range(offset, offset + limit - 1)
     }
 
     const { data, error, count } = await query
