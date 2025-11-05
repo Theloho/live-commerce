@@ -87,14 +87,16 @@ export default function AdminOrderDetailPage() {
         // 3️⃣ 대표 주문 (가장 먼저 생성된 주문)
         const representativeOrder = groupOrders[0]
 
-        // 4️⃣ 그룹 내 모든 주문의 아이템을 하나로 합치기
+        // 4️⃣ 그룹 내 모든 주문의 아이템을 주문별로 구분하여 추가
         const allItems = groupOrders.flatMap(order =>
           (order.order_items || []).map(item => ({
             ...item,
             image: item.thumbnail_url || item.products?.thumbnail_url || '/placeholder.png',
             title: item.title || item.products?.title || '상품명 없음',
             price: item.price || item.unit_price || item.products?.price || 0,
-            quantity: item.quantity || 1
+            quantity: item.quantity || 1,
+            orderNumber: order.customer_order_number || order.id, // ⭐ 개별 주문번호 추가
+            orderId: order.id // ⭐ 주문 ID 추가
           }))
         )
 
@@ -849,57 +851,138 @@ export default function AdminOrderDetailPage() {
         transition={{ delay: 0.4 }}
         className="bg-white rounded-lg border border-gray-200 p-6"
       >
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">주문 상품</h2>
-        <div className="space-y-4">
-          {order.items.map((item, index) => (
-            <div key={index} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-              {item.image ? (
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="w-16 h-16 object-cover rounded-lg"
-                />
-              ) : (
-                <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <PhotoIcon className="w-8 h-8 text-gray-400" />
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          주문 상품 {order.isGroup && `(${order.groupOrderCount}건 주문)`}
+        </h2>
+        <div className="space-y-6">
+          {/* 일괄결제 그룹인 경우 주문별로 구분 표시 */}
+          {order.isGroup && order.originalOrders ? (
+            order.originalOrders.map((subOrder, orderIndex) => (
+              <div key={subOrder.id} className="border border-blue-200 rounded-lg p-4 bg-blue-50/30">
+                {/* 주문 헤더 */}
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-blue-200">
+                  <h3 className="text-sm font-semibold text-blue-900">
+                    주문 #{orderIndex + 1}
+                  </h3>
+                  <span className="text-xs text-blue-600 font-mono">
+                    {subOrder.customer_order_number || subOrder.id}
+                  </span>
                 </div>
-              )}
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">{item.title}</h3>
 
-                {/* 상품번호 표시 */}
-                {item.product_number && (
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    상품번호: {item.product_number}
-                  </p>
-                )}
+                {/* 주문 내 아이템들 */}
+                <div className="space-y-3">
+                  {(subOrder.order_items || []).map((item, itemIndex) => (
+                    <div key={itemIndex} className="flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg">
+                      {(item.thumbnail_url || item.products?.thumbnail_url) ? (
+                        <img
+                          src={item.thumbnail_url || item.products?.thumbnail_url}
+                          alt={item.title || item.products?.title}
+                          className="w-16 h-16 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                          <PhotoIcon className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{item.title || item.products?.title || '상품명 없음'}</h4>
 
-                {/* 선택된 옵션 표시 */}
-                {item.selected_options && Object.keys(item.selected_options).length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {Object.entries(item.selected_options).map(([optionId, value]) => (
-                      <span
-                        key={optionId}
-                        className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
-                      >
-                        {value}
-                      </span>
-                    ))}
+                        {/* 상품번호 표시 */}
+                        {item.product_number && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            상품번호: {item.product_number}
+                          </p>
+                        )}
+
+                        {/* 선택된 옵션 표시 */}
+                        {item.selected_options && Object.keys(item.selected_options).length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {Object.entries(item.selected_options).map(([optionId, value]) => (
+                              <span
+                                key={optionId}
+                                className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+                              >
+                                {value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="text-sm text-gray-500 mt-1">수량: {item.quantity || 1}개</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">
+                          ₩{((item.price || item.unit_price || 0) * (item.quantity || 1)).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          ₩{(item.price || item.unit_price || 0).toLocaleString()} × {item.quantity || 1}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 주문별 소계 */}
+                <div className="mt-3 pt-2 border-t border-blue-200 flex justify-between text-sm">
+                  <span className="text-gray-600">주문 소계</span>
+                  <span className="font-semibold text-gray-900">
+                    ₩{(subOrder.total_amount || 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            // 단일 주문인 경우 기존 방식
+            order.items.map((item, index) => (
+              <div key={index} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
+                {item.image ? (
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-16 h-16 object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <PhotoIcon className="w-8 h-8 text-gray-400" />
                   </div>
                 )}
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900">{item.title}</h3>
 
-                <p className="text-sm text-gray-500 mt-1">수량: {item.quantity || 1}개</p>
+                  {/* 상품번호 표시 */}
+                  {item.product_number && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      상품번호: {item.product_number}
+                    </p>
+                  )}
+
+                  {/* 선택된 옵션 표시 */}
+                  {item.selected_options && Object.keys(item.selected_options).length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {Object.entries(item.selected_options).map(([optionId, value]) => (
+                        <span
+                          key={optionId}
+                          className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+                        >
+                          {value}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-sm text-gray-500 mt-1">수량: {item.quantity || 1}개</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-gray-900">
+                    ₩{((item.price || 0) * (item.quantity || 1)).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    ₩{(item.price || 0).toLocaleString()} × {item.quantity || 1}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-bold text-gray-900">
-                  ₩{((item.price || 0) * (item.quantity || 1)).toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-500">
-                  ₩{(item.price || 0).toLocaleString()} × {item.quantity || 1}
-                </p>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Order Summary */}
