@@ -334,7 +334,7 @@ export default function AdminCustomersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                        onClick={() => router.push(`/admin/customers/${customer.id || customer.kakao_id}`)}
                         className="text-indigo-600 hover:text-indigo-900"
                         title="상세보기"
                       >
@@ -418,7 +418,7 @@ export default function AdminCustomersPage() {
                 {/* 하단: 버튼들 */}
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                   <button
-                    onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                    onClick={() => router.push(`/admin/customers/${customer.id || customer.kakao_id}`)}
                     className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
                   >
                     <EyeIcon className="w-4 h-4" />

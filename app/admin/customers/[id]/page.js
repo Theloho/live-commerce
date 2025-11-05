@@ -41,14 +41,30 @@ export default function AdminCustomerDetailPage() {
       setLoading(true)
 
       // profiles 테이블에서 고객 정보 가져오기
-      const { data: profile, error: profileError } = await supabase
+      // ⭐ UUID 형식이면 id로 조회, 아니면 kakao_id로 조회
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id)
+
+      let query = supabase
         .from('profiles')
         .select('*')
-        .eq('id', params.id)
-        .single()
 
-      if (profileError || !profile) {
-        console.error('고객을 찾을 수 없습니다:', profileError)
+      if (isUUID) {
+        query = query.eq('id', params.id)
+      } else {
+        query = query.eq('kakao_id', params.id)
+      }
+
+      const { data: profile, error: profileError } = await query.maybeSingle()
+
+      if (profileError) {
+        console.error('고객 조회 오류:', profileError)
+        toast.error('고객 조회에 실패했습니다')
+        setLoading(false)
+        return
+      }
+
+      if (!profile) {
+        console.error('고객을 찾을 수 없습니다:', params.id)
         toast.error('고객을 찾을 수 없습니다')
         setLoading(false)
         return
