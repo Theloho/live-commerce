@@ -547,12 +547,10 @@ export default function AdminOrdersPage() {
                             baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
                           })
 
-                          // ⭐ 사용자 화면과 동일: 상품금액만 표시 (배송비 제외)
-                          const productAmountOnly = orderCalc.finalAmount - orderCalc.shippingFee
-
+                          // ⭐ 총 입금금액 표시 (배송비 포함) - 입금 확인을 위해 필수
                           return (
                             <div>
-                              <div>₩{productAmountOnly.toLocaleString()}</div>
+                              <div>₩{orderCalc.finalAmount.toLocaleString()}</div>
                               {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                                 <div className="text-xs text-blue-600 mt-0.5">
                                   (쿠폰 -₩{orderCalc.couponDiscount.toLocaleString()})
@@ -701,10 +699,7 @@ export default function AdminOrdersPage() {
               baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
             })
 
-            // ⭐ 사용자 화면과 동일: 상품금액만 표시 (배송비 제외)
-            const productAmountOnly = orderCalc.finalAmount - orderCalc.shippingFee
-
-            // ⭐ 사용자 화면과 동일: 그룹핑 후 수량 계산
+            // ⭐ 그룹핑 후 수량 계산
             const groupedItems = groupOrderItems(order.items)
             const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
             const uniqueProducts = groupedItems.length
@@ -743,7 +738,7 @@ export default function AdminOrdersPage() {
                     </span>
                     <div className="text-right">
                       <div className="text-sm font-bold text-gray-900">
-                        ₩{productAmountOnly.toLocaleString()}
+                        ₩{orderCalc.finalAmount.toLocaleString()}
                       </div>
                       {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                         <div className="text-xs text-blue-600">
