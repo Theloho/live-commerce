@@ -191,6 +191,8 @@ export default function AdminOrdersPage() {
         order.customer_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.shipping?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.userNickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.payment?.depositor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.items.some(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
@@ -352,7 +354,7 @@ export default function AdminOrdersPage() {
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="주문번호, 고객명, 상품명으로 검색..."
+              placeholder="주문번호, 고객명, 닉네임, 입금자명, 상품명으로 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
