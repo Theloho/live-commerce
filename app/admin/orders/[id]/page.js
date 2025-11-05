@@ -866,7 +866,29 @@ export default function AdminOrderDetailPage() {
               )}
               <div className="flex-1">
                 <h3 className="font-medium text-gray-900">{item.title}</h3>
-                <p className="text-sm text-gray-500">수량: {item.quantity || 1}개</p>
+
+                {/* 상품번호 표시 */}
+                {item.product_number && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    상품번호: {item.product_number}
+                  </p>
+                )}
+
+                {/* 선택된 옵션 표시 */}
+                {item.selected_options && Object.keys(item.selected_options).length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {Object.entries(item.selected_options).map(([optionId, value]) => (
+                      <span
+                        key={optionId}
+                        className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+                      >
+                        {value}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-sm text-gray-500 mt-1">수량: {item.quantity || 1}개</p>
               </div>
               <div className="text-right">
                 <p className="font-bold text-gray-900">
