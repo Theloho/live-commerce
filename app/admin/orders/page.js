@@ -20,6 +20,39 @@ import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 /**
+ * ⭐ 상품 그룹핑 함수: 제품번호 + 옵션 조합으로 그룹화
+ * - 사용자 화면(OrderCard.jsx)과 동일한 로직
+ * @param {Array} items - 주문 아이템 배열
+ * @returns {Array} - 그룹핑된 아이템 배열
+ */
+const groupOrderItems = (items) => {
+  const groups = {}
+
+  items.forEach((item, originalIndex) => {
+    // 키 생성: product_number + 옵션 조합
+    const optionsKey = JSON.stringify(item.selectedOptions || {})
+    const groupKey = `${item.product_number || item.product_id || item.title}_${optionsKey}`
+
+    if (!groups[groupKey]) {
+      groups[groupKey] = {
+        ...item,
+        quantity: 0,
+        totalPrice: 0,
+        originalIndices: [],
+        originalItems: []
+      }
+    }
+
+    groups[groupKey].quantity += item.quantity || 1
+    groups[groupKey].totalPrice += ((item.price || 0) * (item.quantity || 1))
+    groups[groupKey].originalIndices.push(originalIndex)
+    groups[groupKey].originalItems.push(item)
+  })
+
+  return Object.values(groups)
+}
+
+/**
  * ⭐ 그룹핑 함수: payment_group_id로 주문 그룹핑
  * @param {Array} orders - 원본 주문 배열
  * @returns {Array} - 그룹핑된 주문 배열 (isGroup, originalOrders 포함)
@@ -445,8 +478,10 @@ export default function AdminOrdersPage() {
                       </div>
                       <div className="text-sm text-gray-500">
                         {(() => {
-                          const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
-                          const uniqueProducts = order.items.length
+                          // ⭐ 사용자 화면과 동일: 그룹핑 후 수량 계산
+                          const groupedItems = groupOrderItems(order.items)
+                          const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
+                          const uniqueProducts = groupedItems.length
 
                           if (order.isGroup) {
                             return `${order.groupOrderCount}개 주문 일괄결제 (총 ${uniqueProducts}종 ${totalQuantity}개)`
@@ -508,9 +543,12 @@ export default function AdminOrdersPage() {
                             baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
                           })
 
+                          // ⭐ 사용자 화면과 동일: 상품금액만 표시 (배송비 제외)
+                          const productAmountOnly = orderCalc.finalAmount - orderCalc.shippingFee
+
                           return (
                             <div>
-                              <div>₩{orderCalc.finalAmount.toLocaleString()}</div>
+                              <div>₩{productAmountOnly.toLocaleString()}</div>
                               {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                                 <div className="text-xs text-blue-600 mt-0.5">
                                   (쿠폰 -₩{orderCalc.couponDiscount.toLocaleString()})
@@ -659,8 +697,13 @@ export default function AdminOrdersPage() {
               baseShippingFee: baseShippingFee  // ✅ 무료배송 조건 전달
             })
 
-            const totalQuantity = order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
-            const uniqueProducts = order.items.length
+            // ⭐ 사용자 화면과 동일: 상품금액만 표시 (배송비 제외)
+            const productAmountOnly = orderCalc.finalAmount - orderCalc.shippingFee
+
+            // ⭐ 사용자 화면과 동일: 그룹핑 후 수량 계산
+            const groupedItems = groupOrderItems(order.items)
+            const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
+            const uniqueProducts = groupedItems.length
 
             return (
               <motion.div
@@ -696,7 +739,7 @@ export default function AdminOrdersPage() {
                     </span>
                     <div className="text-right">
                       <div className="text-sm font-bold text-gray-900">
-                        ₩{orderCalc.finalAmount.toLocaleString()}
+                        ₩{productAmountOnly.toLocaleString()}
                       </div>
                       {orderCalc.couponApplied && orderCalc.couponDiscount > 0 && (
                         <div className="text-xs text-blue-600">
