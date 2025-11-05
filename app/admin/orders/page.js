@@ -73,49 +73,12 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [loading, setLoading] = useState(true)
-  const [enableCardPayment, setEnableCardPayment] = useState(false) // 카드결제 활성화 여부
 
   useEffect(() => {
     if (adminUser?.email) {
       loadOrders()
     }
   }, [adminUser])
-
-  // 관리자 설정 로드
-  useEffect(() => {
-    const loadSettings = () => {
-      try {
-        const savedSettings = localStorage.getItem('admin_site_settings')
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings)
-          setEnableCardPayment(settings.enable_card_payment || false)
-          console.log('주문관리 설정 로드:', { enable_card_payment: settings.enable_card_payment })
-        }
-      } catch (error) {
-        console.error('설정 로드 오류:', error)
-      }
-    }
-
-    loadSettings()
-
-    // 설정 변경 감지 (다른 탭에서 변경된 경우)
-    const handleStorageChange = (e) => {
-      if (e.key === 'admin_site_settings') {
-        loadSettings()
-      }
-    }
-
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
-
-  // 카드결제 비활성화 시 필터 자동 변경
-  useEffect(() => {
-    if (!enableCardPayment && paymentFilter === 'card') {
-      setPaymentFilter('all')
-      console.log('카드결제 비활성화로 인해 필터를 전체로 변경')
-    }
-  }, [enableCardPayment, paymentFilter])
 
   useEffect(() => {
     filterOrders()
@@ -204,20 +167,17 @@ export default function AdminOrdersPage() {
 
     // 결제 방법 필터
     if (paymentFilter === 'all') {
-      // '결제대기' 탭 - pending 상태만 표시
+      // '장바구니' 탭 - pending 상태만 표시
       filtered = filtered.filter(order =>
         order.status === 'pending'
       )
+    } else if (paymentFilter === 'verifying') {
+      // '주문내역' 탭 - verifying 상태 모두 표시 (결제 방법 구분 없음)
+      filtered = filtered.filter(order => order.status === 'verifying')
     } else if (paymentFilter === 'paid') {
       filtered = filtered.filter(order => order.status === 'paid')
     } else if (paymentFilter === 'delivered') {
       filtered = filtered.filter(order => order.status === 'delivered')
-    } else {
-      // 계좌이체/카드결제 탭은 결제확인중 상태만 표시
-      filtered = filtered.filter(order =>
-        order.payment?.method === paymentFilter &&
-        order.status === 'verifying'
-      )
     }
 
     // 상태 필터 (기존)
@@ -355,27 +315,13 @@ export default function AdminOrdersPage() {
               count: orders.filter(o => o.status === 'pending').length
             },
             {
-              id: 'bank_transfer',
-              label: '계좌이체',
-              count: orders.filter(o =>
-                o.payment?.method === 'bank_transfer' &&
-                o.status === 'verifying'
-              ).length
-            },
-            {
-              id: 'card',
-              label: '카드결제',
-              count: orders.filter(o =>
-                o.payment?.method === 'card' &&
-                o.status === 'verifying'
-              ).length
+              id: 'verifying',
+              label: '주문내역',
+              count: orders.filter(o => o.status === 'verifying').length
             },
             { id: 'paid', label: '구매확정', count: orders.filter(o => o.status === 'paid').length },
             { id: 'delivered', label: '출고정보', count: orders.filter(o => o.status === 'delivered').length }
-          ]
-          // 카드결제 비활성화 시 카드결제 탭 제거
-          .filter(tab => tab.id !== 'card' || enableCardPayment)
-          .map((tab) => (
+          ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setPaymentFilter(tab.id)}
