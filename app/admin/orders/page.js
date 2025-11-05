@@ -128,7 +128,10 @@ export default function AdminOrdersPage() {
     paid: 0,
     delivered: 0
   })
+  const [isSearchMode, setIsSearchMode] = useState(false)
+  const [searchTimeout, setSearchTimeout] = useState(null)
   const ITEMS_PER_PAGE = 100
+  const SEARCH_ITEMS_PER_PAGE = 500 // 검색 시 더 많이 로드
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -153,15 +156,18 @@ export default function AdminOrdersPage() {
       filtered = filtered.filter(order => order.status === statusFilter)
     }
 
-    // 검색어 필터
+    // 검색어 필터 (서버에서 주문번호 검색, 프론트에서 나머지 필터링)
     if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
       filtered = filtered.filter(order =>
-        order.customer_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.shipping?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.userNickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.payment?.depositor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.items.some(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
+        // 주문번호 (서버에서 이미 필터링됨)
+        order.customer_order_number?.toLowerCase().includes(searchLower) ||
+        order.id.toLowerCase().includes(searchLower) ||
+        // 고객명, 닉네임, 입금자명, 상품명 (프론트에서 추가 필터링)
+        order.shipping?.name?.toLowerCase().includes(searchLower) ||
+        order.userNickname?.toLowerCase().includes(searchLower) ||
+        order.payment?.depositor_name?.toLowerCase().includes(searchLower) ||
+        order.items.some(item => item.title?.toLowerCase().includes(searchLower))
       )
     }
 
@@ -211,7 +217,7 @@ export default function AdminOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, loadingMore, hasMore, offset])
 
-  const loadOrders = async (isInitial = false) => {
+  const loadOrders = async (isInitial = false, search = '') => {
     try {
       if (isInitial) {
         setLoading(true)
@@ -227,11 +233,15 @@ export default function AdminOrdersPage() {
       }
 
       const currentOffset = isInitial ? 0 : offset
+      const currentLimit = search ? SEARCH_ITEMS_PER_PAGE : ITEMS_PER_PAGE
 
-      // Service Role API 호출 (페이지네이션)
-      const response = await fetch(
-        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${ITEMS_PER_PAGE}&offset=${currentOffset}`
-      )
+      // Service Role API 호출 (페이지네이션 + 검색)
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${currentLimit}&offset=${currentOffset}`
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`
+      }
+
+      const response = await fetch(url)
 
       if (!response.ok) {
         const error = await response.json()
@@ -474,7 +484,35 @@ export default function AdminOrdersPage() {
               type="text"
               placeholder="주문번호, 고객명, 닉네임, 입금자명, 상품명으로 검색..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value
+                setSearchTerm(value)
+
+                // 이전 타이머 취소
+                if (searchTimeout) {
+                  clearTimeout(searchTimeout)
+                }
+
+                // 500ms 후에 검색 실행 (debounce)
+                const timeout = setTimeout(() => {
+                  // 검색어가 있으면 검색 모드, 없으면 일반 모드
+                  if (value.trim()) {
+                    setIsSearchMode(true)
+                    setOrders([])
+                    setOffset(0)
+                    setHasMore(true)
+                    loadOrders(true, value)
+                  } else {
+                    setIsSearchMode(false)
+                    setOrders([])
+                    setOffset(0)
+                    setHasMore(true)
+                    loadOrders(true, '')
+                  }
+                }, 500)
+
+                setSearchTimeout(timeout)
+              }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
           </div>

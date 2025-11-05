@@ -14,6 +14,7 @@ export async function GET(request) {
     const paymentMethodFilter = searchParams.get('paymentMethod') // 예: "bank_transfer"
     const orderId = searchParams.get('orderId') // ✅ 단일 주문 조회용
     const paymentGroupId = searchParams.get('paymentGroupId') // ✅ 일괄결제 그룹 조회용
+    const searchTerm = searchParams.get('search') // ✅ 검색어
 
     console.log('🔍 [관리자 주문 API] 전체 주문 조회 시작:', {
       adminEmail,
@@ -22,7 +23,8 @@ export async function GET(request) {
       statusFilter,
       paymentMethodFilter,
       orderId: orderId || 'ALL',
-      paymentGroupId: paymentGroupId || 'NONE'
+      paymentGroupId: paymentGroupId || 'NONE',
+      searchTerm: searchTerm || 'NONE'
     })
 
     // 1. 관리자 인증 확인
@@ -116,6 +118,11 @@ export async function GET(request) {
       // ✅ 결제 방법 필터 적용 (!inner 사용으로 order_payments 테이블 필터링)
       if (paymentMethodFilter) {
         query = query.eq('order_payments.method', paymentMethodFilter)
+      }
+
+      // ✅ 검색어 필터 적용 (주문번호만 - 나머지는 프론트에서 필터링)
+      if (searchTerm) {
+        query = query.or(`customer_order_number.ilike.%${searchTerm}%,id.ilike.%${searchTerm}%`)
       }
 
       // 정렬
