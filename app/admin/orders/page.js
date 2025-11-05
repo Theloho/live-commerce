@@ -82,9 +82,13 @@ const groupOrdersByPaymentGroupId = (orders) => {
     // 그룹 총액 계산
     const totalAmount = groupOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0)
 
+    // ⭐ 그룹 내 모든 주문의 아이템을 하나로 합치기
+    const allItems = groupOrders.flatMap(order => order.items || [])
+
     // 그룹 카드 생성
     const groupCard = {
       ...representativeOrder,
+      items: allItems, // ⭐ 모든 주문의 아이템 통합
       isGroup: true, // ⭐ 그룹 모드 활성화
       originalOrders: groupOrders, // ⭐ 그룹 내 원본 주문들
       groupOrderCount: groupOrders.length,
