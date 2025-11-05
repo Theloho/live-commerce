@@ -140,8 +140,8 @@ export default function AdminOrdersPage() {
         return
       }
 
-      // Service Role API 호출 (limit=1000으로 모든 주문 조회)
-      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=1000`)
+      // Service Role API 호출 (limit 없이 전체 주문 조회)
+      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
 
       if (!response.ok) {
         const error = await response.json()
