@@ -146,6 +146,30 @@ export async function GET(request) {
 
     console.log(`✅ 조회된 주문 수: ${data?.length || 0} / 전체: ${count || 0} (필터: status=${statusFilter}, method=${paymentMethodFilter})`)
 
+    // ✅ 상태별 전체 카운트 조회 (배지 표시용)
+    let statusCounts = {}
+
+    // 단일 주문이나 일괄결제 그룹 조회가 아닌 경우에만 카운트
+    if (!orderId && !paymentGroupId) {
+      const statusList = ['pending', 'verifying', 'paid', 'delivered']
+      const countPromises = statusList.map(async (status) => {
+        const { count: statusCount } = await supabaseAdmin
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', status)
+          .neq('status', 'cancelled')
+
+        return { status, count: statusCount || 0 }
+      })
+
+      const counts = await Promise.all(countPromises)
+      counts.forEach(({ status, count }) => {
+        statusCounts[status] = count
+      })
+
+      console.log('✅ 상태별 전체 카운트:', statusCounts)
+    }
+
     // 3. ⚡ 성능 최적화: N+1 쿼리 제거 - 프로필 일괄 조회
     // 3-1. 모든 user_id와 kakao_id 수집
     const userIds = [...new Set(data.filter(o => o.user_id).map(o => o.user_id))]
@@ -223,7 +247,8 @@ export async function GET(request) {
       orders: ordersWithUserInfo,
       count: ordersWithUserInfo.length,
       totalCount: count || 0,
-      hasMore: (offset + limit) < (count || 0)
+      hasMore: (offset + limit) < (count || 0),
+      statusCounts // ✅ 상태별 전체 카운트 추가
     })
   } catch (error) {
     console.error('❌ [관리자 주문 API] 에러:', error)

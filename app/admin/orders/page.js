@@ -122,6 +122,12 @@ export default function AdminOrdersPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
+  const [statusCounts, setStatusCounts] = useState({
+    pending: 0,
+    verifying: 0,
+    paid: 0,
+    delivered: 0
+  })
   const ITEMS_PER_PAGE = 100
 
   const filterOrders = () => {
@@ -232,7 +238,12 @@ export default function AdminOrdersPage() {
         throw new Error(error.error || '주문 조회 실패')
       }
 
-      const { orders: rawOrders, hasMore: moreData } = await response.json()
+      const { orders: rawOrders, hasMore: moreData, statusCounts: counts } = await response.json()
+
+      // ✅ 상태별 전체 카운트 저장 (처음 로딩 시에만)
+      if (isInitial && counts) {
+        setStatusCounts(counts)
+      }
 
       // 기존 포맷으로 변환
       const allOrders = rawOrders.map(order => {
@@ -398,7 +409,7 @@ export default function AdminOrdersPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">📦 주문 관리</h1>
           <p className="text-sm text-gray-600 mt-1">
-            총 {orders.length}건 | 장바구니 {orders.filter(o => o.status === 'pending').length}건 | 주문내역 {orders.filter(o => o.status === 'verifying').length}건 | 구매확정 {orders.filter(o => o.status === 'paid').length}건 | 출고정보 {orders.filter(o => o.status === 'delivered').length}건
+            총 {statusCounts.pending + statusCounts.verifying + statusCounts.paid + statusCounts.delivered}건 | 장바구니 {statusCounts.pending}건 | 주문내역 {statusCounts.verifying}건 | 구매확정 {statusCounts.paid}건 | 출고정보 {statusCounts.delivered}건
           </p>
         </div>
         <button
@@ -421,15 +432,15 @@ export default function AdminOrdersPage() {
             {
               id: 'all',
               label: '장바구니',
-              count: orders.filter(o => o.status === 'pending').length
+              count: statusCounts.pending
             },
             {
               id: 'verifying',
               label: '주문내역',
-              count: orders.filter(o => o.status === 'verifying').length
+              count: statusCounts.verifying
             },
-            { id: 'paid', label: '구매확정', count: orders.filter(o => o.status === 'paid').length },
-            { id: 'delivered', label: '출고정보', count: orders.filter(o => o.status === 'delivered').length }
+            { id: 'paid', label: '구매확정', count: statusCounts.paid },
+            { id: 'delivered', label: '출고정보', count: statusCounts.delivered }
           ].map((tab) => (
             <button
               key={tab.id}
