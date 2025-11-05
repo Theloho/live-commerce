@@ -79,13 +79,21 @@ export function useDepositMatching({ adminUser }) {
       )
       const { orders, totalCount: apiTotalCount, hasMore: apiHasMore } = await response.json()
 
-      const ordersWithUsers = (orders || []).map(order => ({
-        ...order,
-        user: order.userProfile || null,
-        payment: order.order_payments?.[0] || order.payment,
-        shipping: order.order_shipping?.[0] || order.shipping,
-        depositName: order.deposit_name || order.depositor_name || order.order_payments?.[0]?.depositor_name
-      }))
+      const ordersWithUsers = (orders || []).map(order => {
+        const shipping = order.order_shipping?.[0] || order.shipping || {}
+        const payment = order.order_payments?.[0] || order.payment || {}
+
+        return {
+          ...order,
+          user: order.userProfile || null,
+          payment: payment,
+          shipping: shipping,
+          depositName: order.deposit_name || order.depositor_name || payment.depositor_name,
+          // ⭐ 주문관리와 동일한 totalPrice 계산
+          totalPrice: order.total_amount || 0,
+          total_amount: order.total_amount || 0
+        }
+      })
 
       // ⚡ 일괄결제 그룹핑 처리
       const groupedOrders = groupOrdersByPaymentGroupId(ordersWithUsers)
@@ -129,26 +137,36 @@ export function useDepositMatching({ adminUser }) {
       }
     })
 
-    // 그룹 주문 변환
+    // 그룹 주문 변환 (주문관리와 동일한 로직)
     Object.entries(groups).forEach(([groupId, groupOrders]) => {
-      // 대표 주문 찾기 (배송비 포함한 주문)
-      const representativeOrder = groupOrders.find(o => {
-        const shipping = o.order_shipping?.[0] || o.shipping
-        return (shipping?.shipping_fee || 0) > 0
-      }) || groupOrders[0]
+      // 대표 주문: 가장 먼저 생성된 주문
+      const representativeOrder = groupOrders[0]
 
-      // 총 금액 계산
-      const totalAmount = groupOrders.reduce((sum, o) => sum + (o.payment?.amount || 0), 0)
+      // ⭐ DB에 저장된 total_amount 합계 (재계산 불필요!)
+      const totalAmountSum = groupOrders.reduce((sum, o) => {
+        return sum + (o.total_amount || o.totalPrice || o.payment?.amount || 0)
+      }, 0)
+
+      // ⭐ 대표 주문의 쿠폰 할인 (일괄결제는 쿠폰 1개만 적용)
+      const groupTotalDiscount = representativeOrder.discount_amount || 0
+
+      // ⭐ 대표 주문의 배송비 추가
+      const groupShippingFee = representativeOrder.shipping?.shipping_fee ||
+                              representativeOrder.order_shipping?.[0]?.shipping_fee || 0
+
+      // ⭐ 총 입금금액 = total_amount 합계 - 쿠폰할인 + 배송비
+      const groupTotalAmount = totalAmountSum - groupTotalDiscount + groupShippingFee
 
       result.push({
         ...representativeOrder,
         isGroup: true,
         groupOrderCount: groupOrders.length,
         originalOrders: groupOrders,
-        totalAmount: totalAmount,
+        totalAmount: groupTotalAmount, // ⭐ 올바른 계산
+        totalPrice: groupTotalAmount,  // ⭐ totalPrice도 동일하게
         payment: {
           ...representativeOrder.payment,
-          amount: totalAmount // ⭐ 그룹 총액으로 덮어쓰기
+          amount: groupTotalAmount // ⭐ 그룹 총액으로 덮어쓰기
         }
       })
     })
