@@ -38,10 +38,10 @@ export default function OrderFilter({
 }) {
   // 필터 탭 정의
   const filters = [
-    { key: 'pending', label: '결제대기' },
-    { key: 'verifying', label: '결제 확인중' },
-    { key: 'paid', label: '결제완료' },
-    { key: 'delivered', label: '출고완료' }
+    { key: 'pending', label: '장바구니' },
+    { key: 'verifying', label: '주문내역' },
+    { key: 'paid', label: '구매확정' },
+    { key: 'delivered', label: '출고정보' }
   ]
 
   // 결제대기 주문 요약 계산 (배송비는 체크아웃에서 계산)
