@@ -24,17 +24,25 @@ export default function SalesSummaryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminUser])
 
+  // 장바구니 포함 여부가 변경될 때마다 데이터 재계산
   useEffect(() => {
-    if (adminUser?.email) {
-      if (includeCart) {
+    if (adminUser?.email && Object.keys(orderSalesData).length > 0) {
+      if (includeCart && cartItems.length > 0) {
+        // 장바구니 포함 모드: 병합
+        const mergedData = mergeCartData(orderSalesData, cartItems)
+        console.log('🛒 [useEffect 병합]', { mergedDataKeys: Object.keys(mergedData) })
+        setSalesByDate(mergedData)
+      } else if (includeCart && cartItems.length === 0) {
+        // 장바구니 포함 모드지만 장바구니 데이터가 없으면 로드
         loadCartData()
       } else {
-        // 체크 해제 시 장바구니 데이터 제거
-        loadSalesData()
+        // 장바구니 미포함 모드: 주문 데이터만
+        console.log('📋 [주문 데이터만 표시]')
+        setSalesByDate(orderSalesData)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeCart])
+  }, [includeCart, cartItems, orderSalesData])
 
   const loadSalesData = async () => {
     try {
@@ -160,6 +168,8 @@ export default function SalesSummaryPage() {
     try {
       if (!adminUser?.email) return
 
+      console.log('🛒 [장바구니 로드 시작]')
+
       const response = await fetch(
         `/api/admin/cart?adminEmail=${encodeURIComponent(adminUser.email)}`
       )
@@ -170,15 +180,13 @@ export default function SalesSummaryPage() {
       }
 
       const { cartItems: items } = await response.json()
+      console.log('🛒 장바구니 아이템:', items?.length || 0, items)
+
+      // 장바구니 데이터 저장 (병합은 useEffect에서 자동 처리)
       setCartItems(items || [])
 
-      console.log('🛒 장바구니 아이템:', items?.length || 0)
-
-      // 장바구니 데이터를 받으면 즉시 주문 데이터와 합치기
-      if (items && items.length > 0) {
-        // orderSalesData를 복사하여 장바구니 데이터 추가
-        const mergedData = mergeCartData(orderSalesData, items)
-        setSalesByDate(mergedData)
+      if (!items || items.length === 0) {
+        toast.info('장바구니에 담긴 상품이 없습니다')
       }
     } catch (error) {
       console.error('장바구니 로딩 오류:', error)
