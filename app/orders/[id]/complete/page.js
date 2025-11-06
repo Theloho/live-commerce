@@ -220,21 +220,39 @@ export default function OrderCompletePage() {
         baseShippingFee: calculatedShippingFee  // ⭐ postal_code 기반 재계산된 배송비
       })
 
-      // GA4 구매 완료 이벤트 전송
-      trackPurchase({
-        id: orderData.id,
-        total_amount: orderCalc.finalAmount,
-        shipping_fee: orderCalc.shippingFee,
-        items: orderData.items
-      })
+      // ⭐ 현재 사용자 정보 (userSession 또는 user)
+      const currentUser = userSession || user
 
-      console.log('📊 GA - 구매 완료 이벤트 전송:', {
+      // GA4 구매 완료 이벤트 전송 (✨ 사용자 정보 포함)
+      trackPurchase(
+        {
+          id: orderData.id,
+          customer_order_number: orderData.customer_order_number,
+          total_amount: orderCalc.finalAmount,
+          shipping_fee: orderCalc.shippingFee,
+          discount_amount: orderData.discount_amount || 0,
+          coupon_code: orderData.coupon_code || '',
+          shipping_name: orderData.shipping?.name,
+          shipping_phone: orderData.shipping?.phone,
+          shipping_address: orderData.shipping?.address,
+          shipping_postal_code: orderData.shipping?.postal_code,
+          payment: orderData.payment,
+          items: allItems,
+          user_id: orderData.user_id
+        },
+        currentUser  // ✨ 사용자 정보 전달
+      )
+
+      console.log('📊 GA - 구매 완료 이벤트 전송 (✨ 고객정보 포함):', {
         orderId: orderData.id,
+        customerOrderNumber: orderData.customer_order_number,
+        customerName: orderData.shipping?.name,
+        customerEmail: currentUser?.email,
         totalAmount: orderCalc.finalAmount,
-        itemCount: orderData.items.length
+        itemCount: allItems.length
       })
     }
-  }, [orderData, loading])
+  }, [orderData, loading, userSession, user])
 
   if (loading) {
     console.log('주문 상세 페이지 로딩 중...')
