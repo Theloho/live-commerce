@@ -15,7 +15,7 @@ export default function ProductEditPage() {
   const router = useRouter()
   const params = useParams()
   const productId = params.id
-  const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
+  const { adminUser, isAdminAuthenticated, loading: authLoading } = useAdminAuth()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -403,6 +403,7 @@ export default function ProductEditPage() {
         },
         body: JSON.stringify({
           productId,
+          adminEmail: adminUser?.email,
           updateData: {
             ...formData,
             thumbnail_url: thumbnailUrl

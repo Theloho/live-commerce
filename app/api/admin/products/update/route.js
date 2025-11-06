@@ -13,7 +13,8 @@ import { verifyAdminAuth } from '@/lib/supabaseAdmin'
 import { UpdateProductUseCase } from '@/lib/use-cases/product/UpdateProductUseCase'
 import ProductRepository from '@/lib/repositories/ProductRepository'
 
-export async function POST(request) {
+// 공통 핸들러 함수
+async function handleUpdate(request) {
   try {
     const params = await request.json()
     const { productId, adminEmail } = params
@@ -67,4 +68,14 @@ export async function POST(request) {
       { status: 500 }
     )
   }
+}
+
+// POST 핸들러 (기존 호환성)
+export async function POST(request) {
+  return handleUpdate(request)
+}
+
+// PATCH 핸들러 (RESTful 표준)
+export async function PATCH(request) {
+  return handleUpdate(request)
 }
