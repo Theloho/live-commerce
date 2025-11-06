@@ -12,7 +12,7 @@ export async function PATCH(request, { params }) {
       postal_code,
       address,
       detail_address,
-      delivery_memo
+      memo
     } = body
 
     console.log('🔍 [배송지 수정 API] 요청:', { orderId: id, adminEmail })
@@ -45,7 +45,7 @@ export async function PATCH(request, { params }) {
         postal_code,
         address,
         detail_address,
-        delivery_memo,
+        memo,
         updated_at: new Date().toISOString()
       })
       .eq('order_id', id)

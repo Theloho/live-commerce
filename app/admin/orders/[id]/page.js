@@ -37,7 +37,7 @@ export default function AdminOrderDetailPage() {
     postal_code: '',
     address: '',
     detail_address: '',
-    delivery_memo: ''
+    memo: ''
   })
 
   useEffect(() => {
@@ -213,7 +213,7 @@ export default function AdminOrderDetailPage() {
       postal_code: order.shipping?.postal_code || order.shipping?.zipcode || '',
       address: order.shipping?.address || '',
       detail_address: order.shipping?.detail_address || '',
-      delivery_memo: order.shipping?.delivery_memo || ''
+      memo: order.shipping?.memo || ''
     })
     setIsEditingShipping(true)
   }
@@ -490,11 +490,11 @@ export default function AdminOrderDetailPage() {
                   <p className="text-gray-700 mt-1">{order.shipping.detail_address}</p>
                 )}
               </div>
-              {order.shipping?.delivery_memo && (
+              {order.shipping?.memo && (
                 <div>
                   <p className="text-sm text-gray-500 mb-1">배송 메모</p>
                   <p className="text-gray-900 bg-gray-50 p-2 rounded text-sm">
-                    {order.shipping.delivery_memo}
+                    {order.shipping.memo}
                   </p>
                 </div>
               )}
@@ -1185,8 +1185,8 @@ export default function AdminOrderDetailPage() {
                     배송 메모
                   </label>
                   <textarea
-                    value={editedShipping.delivery_memo}
-                    onChange={(e) => setEditedShipping({...editedShipping, delivery_memo: e.target.value})}
+                    value={editedShipping.memo}
+                    onChange={(e) => setEditedShipping({...editedShipping, memo: e.target.value})}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="배송 시 요청사항"
