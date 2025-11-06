@@ -149,7 +149,7 @@ export default function OptionSelector({
                                 : 'text-gray-500'
                             }`}
                           >
-                            {isLoading ? '...' : isSoldOut ? '품절' : `${inventory}개`}
+                            {isLoading ? '' : isSoldOut ? '품절' : ''}
                           </span>
                         )}
                       </div>

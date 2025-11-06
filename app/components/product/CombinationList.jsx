@@ -82,11 +82,8 @@ export default function CombinationList({
                 </button>
               </div>
 
-              {/* 재고 + 제거 버튼 */}
+              {/* 제거 버튼 */}
               <div className="flex flex-col items-end">
-                <span className="text-xs text-gray-500">
-                  재고: {maxInventory}개
-                </span>
                 <button
                   onClick={() => onRemove(index)}
                   className="text-red-500 hover:text-red-700 text-sm"
