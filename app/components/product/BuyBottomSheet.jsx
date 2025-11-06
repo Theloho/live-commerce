@@ -152,9 +152,7 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
                     </button>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">
-                      재고: {stock === null ? '...' : `${stock}개`}
-                    </p>
+                    {/* 재고 숫자 표시 제거 (품절 판단 로직은 유지) */}
                     <p className="text-lg font-bold text-gray-900">
                       ₩{totalPrice.toLocaleString()}
                     </p>
@@ -183,7 +181,7 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
             {stock !== null && stock < 10 && stock > 0 && (options.length === 0 || Object.keys(selectedOptions).length === options.length) && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
                 <p className="text-yellow-700 text-sm font-medium">
-                  ⚠️ 품절 임박! 남은 수량: {stock}개
+                  ⚠️ 품절 임박!
                 </p>
               </div>
             )}
