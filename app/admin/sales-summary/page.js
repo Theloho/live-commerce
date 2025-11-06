@@ -14,8 +14,6 @@ export default function SalesSummaryPage() {
   const [orders, setOrders] = useState([])
   const [salesByDate, setSalesByDate] = useState({})
   const [includeCart, setIncludeCart] = useState(false)
-  const [cartItems, setCartItems] = useState([])
-  const [orderSalesData, setOrderSalesData] = useState({}) // 주문 데이터만 저장
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -24,25 +22,13 @@ export default function SalesSummaryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminUser])
 
-  // 장바구니 포함 여부가 변경될 때마다 데이터 재계산
+  // 체크박스 변경 시 데이터 다시 로드
   useEffect(() => {
-    if (adminUser?.email && Object.keys(orderSalesData).length > 0) {
-      if (includeCart && cartItems.length > 0) {
-        // 장바구니 포함 모드: 병합
-        const mergedData = mergeCartData(orderSalesData, cartItems)
-        console.log('🛒 [useEffect 병합]', { mergedDataKeys: Object.keys(mergedData) })
-        setSalesByDate(mergedData)
-      } else if (includeCart && cartItems.length === 0) {
-        // 장바구니 포함 모드지만 장바구니 데이터가 없으면 로드
-        loadCartData()
-      } else {
-        // 장바구니 미포함 모드: 주문 데이터만
-        console.log('📋 [주문 데이터만 표시]')
-        setSalesByDate(orderSalesData)
-      }
+    if (adminUser?.email) {
+      loadSalesData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeCart, cartItems, orderSalesData])
+  }, [includeCart])
 
   const loadSalesData = async () => {
     try {
@@ -65,10 +51,13 @@ export default function SalesSummaryPage() {
 
       const { orders: rawOrders } = await response.json()
 
-      // verifying + paid 상태 필터링
-      const verifyingOrders = rawOrders.filter(order =>
-        order.status === 'verifying' || order.status === 'paid'
-      )
+      // verifying + paid 상태 필터링 (includeCart 체크 시 pending도 포함)
+      const verifyingOrders = rawOrders.filter(order => {
+        if (includeCart) {
+          return order.status === 'pending' || order.status === 'verifying' || order.status === 'paid'
+        }
+        return order.status === 'verifying' || order.status === 'paid'
+      })
 
       // 날짜별로 그룹화
       const grouped = {}
@@ -154,7 +143,6 @@ export default function SalesSummaryPage() {
       })
 
       setOrders(verifyingOrders)
-      setOrderSalesData(aggregated) // 주문 데이터만 저장
       setSalesByDate(aggregated)
       setLoading(false)
     } catch (error) {
@@ -164,89 +152,6 @@ export default function SalesSummaryPage() {
     }
   }
 
-  const loadCartData = async () => {
-    try {
-      if (!adminUser?.email) return
-
-      console.log('🛒 [장바구니 로드 시작]')
-
-      const response = await fetch(
-        `/api/admin/cart?adminEmail=${encodeURIComponent(adminUser.email)}`
-      )
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || '장바구니 조회 실패')
-      }
-
-      const { cartItems: items } = await response.json()
-      console.log('🛒 장바구니 아이템:', items?.length || 0, items)
-
-      // 장바구니 데이터 저장 (병합은 useEffect에서 자동 처리)
-      setCartItems(items || [])
-
-      if (!items || items.length === 0) {
-        console.warn('⚠️ 장바구니에 담긴 상품이 없습니다')
-      }
-    } catch (error) {
-      console.error('장바구니 로딩 오류:', error)
-      toast.error('장바구니 데이터를 불러오는데 실패했습니다')
-    }
-  }
-
-  // 장바구니 데이터를 판매 데이터와 합치는 함수
-  const mergeCartData = (salesData, cartData) => {
-    const merged = { ...salesData }
-
-    // 장바구니 아이템을 "장바구니" 날짜로 그룹화
-    const cartDate = '장바구니'
-
-    if (!merged[cartDate]) {
-      merged[cartDate] = []
-    }
-
-    const cartSummary = {}
-
-    cartData.forEach(item => {
-      const product = item.products
-
-      // 옵션 키 생성
-      let optionKey = '-'
-      if (item.selected_options && Object.keys(item.selected_options).length > 0) {
-        optionKey = Object.values(item.selected_options).join(' / ')
-      }
-
-      const key = `${product?.product_number || item.product_id}_${optionKey}`
-
-      if (!cartSummary[key]) {
-        cartSummary[key] = {
-          product_number: product?.product_number || item.product_id,
-          title: product?.title || '상품명 없음',
-          thumbnail_url: product?.thumbnail_url,
-          option: optionKey,
-          quantity: 0,
-          orderCount: 0,
-          totalAmount: 0,
-          orders: [],
-          isCart: true // 장바구니 표시용
-        }
-      }
-
-      cartSummary[key].quantity += item.quantity
-      cartSummary[key].orderCount += 1
-      cartSummary[key].totalAmount += (product?.price || 0) * item.quantity
-      cartSummary[key].orders.push({
-        created_at: item.created_at,
-        customer_order_number: '장바구니',
-        shipping_name: item.profiles?.name || item.profiles?.nickname || '정보없음',
-        quantity: item.quantity
-      })
-    })
-
-    merged[cartDate] = Object.values(cartSummary).sort((a, b) => b.quantity - a.quantity)
-
-    return merged
-  }
 
   if (authLoading || loading) {
     return (
@@ -286,8 +191,10 @@ export default function SalesSummaryPage() {
               품목별 판매 현황
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              주문내역(verifying) + 입금완료(paid) 상태 · 총 {orders.length}건
-              {includeCart && cartItems.length > 0 && ` + 장바구니 ${cartItems.length}건`}
+              {includeCart
+                ? `장바구니(pending) + 주문내역(verifying) + 입금완료(paid) · 총 ${orders.length}건`
+                : `주문내역(verifying) + 입금완료(paid) · 총 ${orders.length}건`
+              }
             </p>
           </div>
         </div>
@@ -301,7 +208,7 @@ export default function SalesSummaryPage() {
               className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
             />
             <span className="text-sm font-medium text-gray-700">
-              장바구니까지 취합해서 보기
+              장바구니(pending)까지 취합해서 보기
             </span>
           </label>
           <button
@@ -325,37 +232,20 @@ export default function SalesSummaryPage() {
             const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
             const totalAmount = items.reduce((sum, item) => sum + item.totalAmount, 0)
 
-            const isCartSection = date === '장바구니'
-
             return (
-              <div key={date} className={`bg-white rounded-lg border overflow-hidden ${
-                isCartSection ? 'border-blue-300 shadow-md' : 'border-gray-200'
-              }`}>
+              <div key={date} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 {/* 날짜 헤더 */}
-                <div className={`border-b px-6 py-4 ${
-                  isCartSection
-                    ? 'bg-blue-50 border-blue-200'
-                    : 'bg-red-50 border-red-200'
-                }`}>
+                <div className="bg-red-50 border-b border-red-200 px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <CalendarIcon className={`h-5 w-5 ${
-                        isCartSection ? 'text-blue-600' : 'text-red-600'
-                      }`} />
+                      <CalendarIcon className="h-5 w-5 text-red-600" />
                       <h2 className="text-lg font-bold text-gray-900">{date}</h2>
-                      {isCartSection && (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                          장바구니
-                        </span>
-                      )}
                     </div>
                     <div className="text-right">
                       <div className="text-sm text-gray-600">
                         {items.length}개 품목 · {totalQuantity}개 주문
                       </div>
-                      <div className={`text-lg font-bold ${
-                        isCartSection ? 'text-blue-600' : 'text-red-600'
-                      }`}>
+                      <div className="text-lg font-bold text-red-600">
                         ₩{totalAmount.toLocaleString()}
                       </div>
                     </div>
