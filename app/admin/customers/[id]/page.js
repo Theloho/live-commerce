@@ -68,23 +68,16 @@ export default function AdminCustomerDetailPage() {
         return
       }
 
-      // ⭐ Service Role API로 주문 정보 조회 (RLS 우회)
+      // ⭐ 해당 고객의 모든 주문 조회 (limit 없이 전체 조회)
       const ordersResponse = await fetch(
-        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`
+        `/api/admin/customers/${params.id}/orders?adminEmail=${encodeURIComponent(adminUser.email)}`
       )
 
       if (!ordersResponse.ok) {
         throw new Error('주문 데이터 조회 실패')
       }
 
-      const { orders: allOrders } = await ordersResponse.json()
-
-      // 해당 고객의 주문 필터링 (user_id 또는 order_type으로 매칭)
-      const customerOrders = allOrders.filter(order => {
-        if (order.user_id === profile.id) return true
-        if (profile.kakao_id && order.order_type?.includes(`KAKAO:${profile.kakao_id}`)) return true
-        return false
-      })
+      const { orders: customerOrders } = await ordersResponse.json()
 
       // 주문 통계 계산
       let totalSpent = 0
