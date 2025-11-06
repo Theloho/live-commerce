@@ -69,8 +69,9 @@ export default function SupplierPurchaseOrderDetailPage() {
         batch.order_ids?.forEach(id => completedOrderIds.add(id))
       })
 
-      // 4. 해당 업체의 order_items만 필터링
-      const items = []
+      // 4. 해당 업체의 order_items 집계 (제품+옵션별 그룹핑)
+      const itemMap = new Map()
+
       orders?.forEach(order => {
         // 완료된 주문 제외
         if (completedOrderIds.has(order.id)) return
@@ -86,26 +87,54 @@ export default function SupplierPurchaseOrderDetailPage() {
               }))
             }
 
-            items.push({
-              id: item.id,
-              orderId: order.id,
-              orderNumber: order.customer_order_number,
-              orderDate: order.created_at,
-              productId: item.product_id,
-              productTitle: item.title || item.products?.title,
-              productImage: item.products?.thumbnail_url,
-              modelNumber: item.products?.model_number,
-              sku: item.product_variants?.sku,
-              variantOptions,
-              selectedOptions: item.selected_options,
-              quantity: item.quantity,
-              purchasePrice: item.products?.purchase_price || 0,
-              totalPrice: (item.products?.purchase_price || 0) * item.quantity
-            })
+            // 옵션 문자열 생성 (그룹핑 키용)
+            const optionDisplay = variantOptions.length > 0
+              ? variantOptions.map(opt => `${opt.name}:${opt.value}`).join(' / ')
+              : Object.entries(item.selected_options || {}).map(([k, v]) => `${k}:${v}`).join(' / ')
+
+            // 그룹핑 키: productId + optionDisplay
+            const groupKey = `${item.product_id}_${optionDisplay}`
+
+            if (!itemMap.has(groupKey)) {
+              // 첫 등장: 새 항목 생성
+              itemMap.set(groupKey, {
+                id: item.id, // 첫 번째 item ID 사용
+                productId: item.product_id,
+                productTitle: item.title || item.products?.title,
+                productImage: item.products?.thumbnail_url,
+                modelNumber: item.products?.model_number,
+                sku: item.product_variants?.sku,
+                supplierProductCode: item.products?.supplier_product_code || '', // ✅ 업체 상품 코드
+                variantOptions,
+                selectedOptions: item.selected_options,
+                quantity: item.quantity,
+                purchasePrice: item.products?.purchase_price || 0,
+                totalPrice: (item.products?.purchase_price || 0) * item.quantity,
+                // 참조용: 원본 주문 정보 배열
+                sourceOrders: [{
+                  orderId: order.id,
+                  orderNumber: order.customer_order_number,
+                  orderDate: order.created_at,
+                  quantity: item.quantity
+                }]
+              })
+            } else {
+              // 이미 존재: 수량 합산 + 주문 정보 추가
+              const existing = itemMap.get(groupKey)
+              existing.quantity += item.quantity
+              existing.totalPrice += (item.products?.purchase_price || 0) * item.quantity
+              existing.sourceOrders.push({
+                orderId: order.id,
+                orderNumber: order.customer_order_number,
+                orderDate: order.created_at,
+                quantity: item.quantity
+              })
+            }
           }
         })
       })
 
+      const items = Array.from(itemMap.values())
       setOrderItems(items)
       console.log('📋 발주 상세:', items.length, '개 아이템')
 
@@ -176,8 +205,7 @@ export default function SupplierPurchaseOrderDetailPage() {
 
         return {
           'No.': index + 1,
-          '주문번호': item.orderNumber,
-          '주문일': new Date(item.orderDate).toLocaleDateString('ko-KR'),
+          '업체 상품 코드': item.supplierProductCode || '-',
           '상품명': item.productTitle,
           '모델번호': item.modelNumber || '-',
           'SKU': item.sku || item.supplierSku || '-',
@@ -192,8 +220,7 @@ export default function SupplierPurchaseOrderDetailPage() {
       // 합계 행 추가
       excelData.push({
         'No.': '',
-        '주문번호': '',
-        '주문일': '',
+        '업체 상품 코드': '',
         '상품명': '',
         '모델번호': '',
         'SKU': '',
@@ -210,8 +237,7 @@ export default function SupplierPurchaseOrderDetailPage() {
       // 컬럼 너비 설정
       worksheet['!cols'] = [
         { wch: 5 },   // No.
-        { wch: 15 },  // 주문번호
-        { wch: 12 },  // 주문일
+        { wch: 20 },  // 업체 상품 코드
         { wch: 30 },  // 상품명
         { wch: 15 },  // 모델번호
         { wch: 20 },  // SKU
@@ -356,13 +382,13 @@ export default function SupplierPurchaseOrderDetailPage() {
           <thead>
             <tr>
               <th style="width: 5%">No.</th>
-              <th style="width: 12%">주문번호</th>
+              <th style="width: 15%">업체 상품 코드</th>
               <th style="width: 25%">상품명</th>
-              <th style="width: 20%">옵션</th>
+              <th style="width: 18%">옵션</th>
               <th style="width: 8%">원래</th>
               <th style="width: 8%">발주</th>
               <th style="width: 10%">매입가</th>
-              <th style="width: 12%">소계</th>
+              <th style="width: 11%">소계</th>
             </tr>
           </thead>
           <tbody>
@@ -374,7 +400,7 @@ export default function SupplierPurchaseOrderDetailPage() {
               return `
               <tr>
                 <td>${index + 1}</td>
-                <td>${item.orderNumber}</td>
+                <td style="font-family: monospace; background: #f0fdfa; color: #0f766e">${item.supplierProductCode || '-'}</td>
                 <td>${item.productTitle}</td>
                 <td>${options}</td>
                 <td style="text-align: center">${item.quantity}</td>
@@ -542,7 +568,7 @@ export default function SupplierPurchaseOrderDetailPage() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No.</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">제품</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문번호</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">업체 상품 코드</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">옵션</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">원래 수량</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">발주 수량</th>
@@ -597,7 +623,15 @@ export default function SupplierPurchaseOrderDetailPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-600">{item.orderNumber}</td>
+                      <td className="px-4 py-4">
+                        {item.supplierProductCode ? (
+                          <span className="text-xs font-mono text-teal-700 bg-teal-50 px-2 py-1 rounded border border-teal-200">
+                            {item.supplierProductCode}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-4 text-sm text-gray-600">{options}</td>
                       <td className="px-4 py-4 text-sm text-gray-500 text-center">{item.quantity}</td>
                       <td className="px-4 py-4 text-center">
