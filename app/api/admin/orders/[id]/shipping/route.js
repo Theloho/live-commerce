@@ -45,8 +45,7 @@ export async function PATCH(request, { params }) {
         postal_code,
         address,
         detail_address,
-        memo,
-        updated_at: new Date().toISOString()
+        memo
       })
       .eq('order_id', id)
       .select()
