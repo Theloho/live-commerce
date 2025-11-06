@@ -232,7 +232,21 @@ export default function LogisticsPage() {
                 {/* 제품 정보 */}
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-bold text-gray-900">{product.productName}</h3>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">{product.productName}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        {product.productNumber && (
+                          <span className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                            {product.productNumber}
+                          </span>
+                        )}
+                        {product.supplierProductCode && (
+                          <span className="text-xs font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                            업체코드: {product.supplierProductCode}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     {/* 업체 정보 - 우측 상단 */}
                     {product.variants[0]?.suppliers[0] && (
                       <Link
