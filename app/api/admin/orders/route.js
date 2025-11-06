@@ -120,12 +120,10 @@ export async function GET(request) {
         query = query.eq('order_payments.method', paymentMethodFilter)
       }
 
-      // ✅ 검색어 필터 적용 - 주문번호만 DB에서 검색
-      // (고객명, 입금자명, 상품명은 JOIN 후 프론트에서 필터링)
-      if (searchTerm) {
-        // 주문번호만 검색 (UUID는 문자열 변환 불가능하므로 제외)
-        query = query.ilike('customer_order_number', `%${searchTerm}%`)
-      }
+      // ✅ 검색어가 있을 때는 DB 필터링 제거 (프론트에서 전체 필터링)
+      // 주문번호, 고객명, 입금자명, 상품명 등 다양한 필드 검색을 위해
+      // 검색 시에는 더 많은 데이터를 가져와서 프론트에서 필터링
+      // (searchTerm 파라미터는 프론트 필터링 트리거로만 사용)
 
       // 정렬
       query = query.order('created_at', { ascending: false })
