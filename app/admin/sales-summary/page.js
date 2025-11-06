@@ -15,6 +15,7 @@ export default function SalesSummaryPage() {
   const [salesByDate, setSalesByDate] = useState({})
   const [includeCart, setIncludeCart] = useState(false)
   const [cartItems, setCartItems] = useState([])
+  const [orderSalesData, setOrderSalesData] = useState({}) // 주문 데이터만 저장
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -24,11 +25,16 @@ export default function SalesSummaryPage() {
   }, [adminUser])
 
   useEffect(() => {
-    if (adminUser?.email && includeCart) {
-      loadCartData()
+    if (adminUser?.email) {
+      if (includeCart) {
+        loadCartData()
+      } else {
+        // 체크 해제 시 장바구니 데이터 제거
+        loadSalesData()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeCart, adminUser])
+  }, [includeCart])
 
   const loadSalesData = async () => {
     try {
@@ -140,15 +146,8 @@ export default function SalesSummaryPage() {
       })
 
       setOrders(verifyingOrders)
-
-      // 장바구니 포함 모드일 때 장바구니 데이터와 합치기
-      if (includeCart && cartItems.length > 0) {
-        const mergedData = mergeCartData(aggregated, cartItems)
-        setSalesByDate(mergedData)
-      } else {
-        setSalesByDate(aggregated)
-      }
-
+      setOrderSalesData(aggregated) // 주문 데이터만 저장
+      setSalesByDate(aggregated)
       setLoading(false)
     } catch (error) {
       console.error('판매 현황 로딩 오류:', error)
@@ -175,11 +174,10 @@ export default function SalesSummaryPage() {
 
       console.log('🛒 장바구니 아이템:', items?.length || 0)
 
-      // 장바구니 데이터를 받으면 즉시 판매 데이터와 합치기
+      // 장바구니 데이터를 받으면 즉시 주문 데이터와 합치기
       if (items && items.length > 0) {
-        // 현재 salesByDate를 복사하여 장바구니 데이터 추가
-        const currentSales = { ...salesByDate }
-        const mergedData = mergeCartData(currentSales, items)
+        // orderSalesData를 복사하여 장바구니 데이터 추가
+        const mergedData = mergeCartData(orderSalesData, items)
         setSalesByDate(mergedData)
       }
     } catch (error) {
