@@ -79,7 +79,7 @@ export default function OrderFilter({
     <>
       {/* 필터 탭 */}
       <div className="px-4 py-4 bg-white border-b border-gray-200">
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto py-2">
           {filters.map(filter => {
             // ⭐ 그룹핑 후 카드 개수 (탭 숫자 = 실제 카드 개수)
             const count = statusCounts?.[filter.key] || 0
@@ -98,7 +98,9 @@ export default function OrderFilter({
               >
                 {filter.label}
                 {count > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  <span className={`absolute -top-1 -right-1 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 ${
+                    filterStatus === filter.key ? 'bg-white text-red-500' : 'bg-red-500'
+                  }`}>
                     {count > 99 ? '99+' : count}
                   </span>
                 )}
