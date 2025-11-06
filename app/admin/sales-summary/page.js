@@ -174,7 +174,7 @@ export default function SalesSummaryPage() {
 
   // CSV 생성 함수
   const generateCSV = (dateKeys) => {
-    const headers = ['사진', '제품번호', '업체상품코드', '옵션', '수량', '공급업체', '비고']
+    const headers = ['제품번호', '업체상품코드', '옵션', '수량', '공급업체', '비고']
     const rows = []
     rows.push(headers.join(','))
 
@@ -183,7 +183,6 @@ export default function SalesSummaryPage() {
 
       items.forEach(item => {
         const row = [
-          item.thumbnail_url || '',
           item.product_number || '',
           '',
           item.option === '-' ? '' : item.option,
