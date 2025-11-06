@@ -231,7 +231,19 @@ export default function LogisticsPage() {
 
                 {/* 제품 정보 */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">{product.productName}</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-bold text-gray-900">{product.productName}</h3>
+                    {/* 업체 정보 - 우측 상단 */}
+                    {product.variants[0]?.suppliers[0] && (
+                      <Link
+                        href={`/admin/purchase-orders/${product.variants[0].suppliers[0].supplierId}`}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 hover:text-teal-800 rounded-lg border border-teal-200 hover:border-teal-300 transition-colors"
+                      >
+                        <BuildingStorefrontIcon className="w-4 h-4" />
+                        <span className="text-sm font-medium">{product.variants[0].suppliers[0].supplierName}</span>
+                      </Link>
+                    )}
+                  </div>
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <span>총 수량: <strong className="text-teal-600">{product.totalQuantity}개</strong></span>
                     <span>옵션: <strong>{product.variantCount}개</strong></span>
@@ -243,45 +255,20 @@ export default function LogisticsPage() {
               <div className="space-y-3">
                 {product.variants.map((variant, vIdx) => (
                   <div key={vIdx} className="bg-gray-50 rounded-lg p-3">
-                    {/* Variant 헤더 */}
-                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-                      <div>
+                    {/* Variant 헤더 - 간소화 */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
                         <div className="text-sm font-medium text-gray-900">
                           {variant.optionDisplay}
                         </div>
                         {variant.sku && (
-                          <div className="text-xs text-gray-500 font-mono">SKU: {variant.sku}</div>
+                          <div className="text-xs text-gray-500 font-mono mt-0.5">SKU: {variant.sku}</div>
                         )}
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-bold text-teal-600">{variant.totalQuantity}개</div>
-                        <div className="text-xs text-gray-500">{variant.supplierCount}개 업체</div>
+                        <div className="text-lg font-bold text-teal-600">{variant.totalQuantity}개</div>
+                        <div className="text-xs text-gray-500">{variant.suppliers.reduce((sum, s) => sum + s.orders.length, 0)}건 주문</div>
                       </div>
-                    </div>
-
-                    {/* 업체별 필요 수량 */}
-                    <div className="space-y-2">
-                      {variant.suppliers.map((supplier, sIdx) => (
-                        <Link
-                          key={sIdx}
-                          href={`/admin/purchase-orders/${supplier.supplierId}`}
-                          className="flex items-center justify-between p-2 bg-white hover:bg-teal-50 rounded border border-gray-200 hover:border-teal-300 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <BuildingStorefrontIcon className="w-4 h-4 text-teal-600" />
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{supplier.supplierName}</div>
-                              {supplier.supplierCode && (
-                                <div className="text-xs text-gray-500">코드: {supplier.supplierCode}</div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-bold text-teal-600">{supplier.quantity}개</div>
-                            <div className="text-xs text-gray-500">{supplier.orders.length}건 주문</div>
-                          </div>
-                        </Link>
-                      ))}
                     </div>
                   </div>
                 ))}
