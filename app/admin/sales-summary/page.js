@@ -152,37 +152,46 @@ export default function SalesSummaryPage() {
     }
   }
 
+  // 전체 CSV 다운로드
   const handleDownloadCSV = () => {
     if (Object.keys(salesByDate).length === 0) {
       toast.error('다운로드할 데이터가 없습니다')
       return
     }
 
-    // CSV 헤더
-    const headers = ['사진', '제품번호', '업체상품코드', '옵션', '수량', '공급업체', '비고']
+    const dateKeys = Object.keys(salesByDate).sort((a, b) => new Date(b) - new Date(a))
+    const csv = generateCSV(dateKeys)
+    downloadCSVFile(csv, `품목별_판매현황_전체_${new Date().toISOString().split('T')[0]}.csv`)
+    toast.success('전체 CSV 파일 다운로드 완료')
+  }
 
-    // CSV 데이터 생성
+  // 날짜별 CSV 다운로드
+  const handleDownloadDateCSV = (date) => {
+    const csv = generateCSV([date])
+    downloadCSVFile(csv, `품목별_판매현황_${date}.csv`)
+    toast.success(`${date} CSV 파일 다운로드 완료`)
+  }
+
+  // CSV 생성 함수
+  const generateCSV = (dateKeys) => {
+    const headers = ['사진', '제품번호', '업체상품코드', '옵션', '수량', '공급업체', '비고']
     const rows = []
     rows.push(headers.join(','))
-
-    // 날짜별로 정렬된 데이터
-    const dateKeys = Object.keys(salesByDate).sort((a, b) => new Date(b) - new Date(a))
 
     dateKeys.forEach(date => {
       const items = salesByDate[date]
 
       items.forEach(item => {
         const row = [
-          item.thumbnail_url || '', // 사진 URL
-          item.product_number || '', // 제품번호
-          '', // 업체상품코드 (공란)
-          item.option === '-' ? '' : item.option, // 옵션
-          item.quantity || 0, // 수량
-          '', // 공급업체 (공란)
-          '' // 비고 (공란)
+          item.thumbnail_url || '',
+          item.product_number || '',
+          '',
+          item.option === '-' ? '' : item.option,
+          item.quantity || 0,
+          '',
+          ''
         ]
 
-        // CSV 포맷팅 (콤마나 따옴표가 있는 경우 처리)
         const formattedRow = row.map(field => {
           const stringField = String(field)
           if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
@@ -195,21 +204,22 @@ export default function SalesSummaryPage() {
       })
     })
 
-    // BOM 추가 (Excel에서 한글 깨짐 방지)
-    const csv = '\uFEFF' + rows.join('\n')
+    return '\uFEFF' + rows.join('\n')
+  }
+
+  // CSV 파일 다운로드 함수
+  const downloadCSVFile = (csv, filename) => {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
 
     link.setAttribute('href', url)
-    link.setAttribute('download', `품목별_판매현황_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('download', filename)
     link.style.visibility = 'hidden'
 
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-
-    toast.success('CSV 파일 다운로드 완료')
   }
 
   if (authLoading || loading) {
@@ -276,7 +286,7 @@ export default function SalesSummaryPage() {
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             <ArrowDownTrayIcon className="w-5 h-5" />
-            CSV 다운로드
+            전체 CSV 다운로드
           </button>
           <button
             onClick={() => loadSalesData()}
@@ -307,6 +317,15 @@ export default function SalesSummaryPage() {
                     <div className="flex items-center gap-3">
                       <CalendarIcon className="h-5 w-5 text-red-600" />
                       <h2 className="text-lg font-bold text-gray-900">{date}</h2>
+                      {/* 날짜별 CSV 다운로드 버튼 */}
+                      <button
+                        onClick={() => handleDownloadDateCSV(date)}
+                        className="flex items-center gap-1 px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                        title="이 날짜만 CSV 다운로드"
+                      >
+                        <ArrowDownTrayIcon className="w-3 h-3" />
+                        CSV
+                      </button>
                     </div>
                     <div className="text-right">
                       <div className="text-sm text-gray-600">
