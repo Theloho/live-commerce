@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { HomeIcon, ClipboardDocumentListIcon, UserIcon } from '@heroicons/react/24/outline'
-import { HomeIcon as HomeIconSolid, ClipboardDocumentListIcon as ClipboardDocumentListIconSolid, UserIcon as UserIconSolid } from '@heroicons/react/24/solid'
+import { HomeIcon, ShoppingCartIcon, UserIcon } from '@heroicons/react/24/outline'
+import { HomeIcon as HomeIconSolid, ShoppingCartIcon as ShoppingCartIconSolid, UserIcon as UserIconSolid } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import useAuth from '@/hooks/useAuth'
@@ -114,9 +114,9 @@ export default function MobileNav() {
     },
     {
       href: '/orders',
-      label: '주문내역',
-      icon: ClipboardDocumentListIcon,
-      iconSolid: ClipboardDocumentListIconSolid
+      label: '장바구니/주문내역',
+      icon: ShoppingCartIcon,
+      iconSolid: ShoppingCartIconSolid
     },
     {
       href: '/mypage',
