@@ -64,6 +64,7 @@ export async function GET(request, { params }) {
             title,
             model_number,
             supplier_id,
+            supplier_product_code,
             purchase_price,
             thumbnail_url,
             suppliers (
