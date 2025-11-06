@@ -14,6 +14,7 @@ export default function SalesSummaryPage() {
   const [orders, setOrders] = useState([])
   const [salesByDate, setSalesByDate] = useState({})
   const [includeCart, setIncludeCart] = useState(false)
+  const [sortBy, setSortBy] = useState({}) // 날짜별 정렬 옵션 { '2025-11-06': 'quantity', ... }
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -180,8 +181,9 @@ export default function SalesSummaryPage() {
 
     dateKeys.forEach(date => {
       const items = salesByDate[date]
+      const sortedItems = getSortedItems(date, items) // 정렬 적용
 
-      items.forEach(item => {
+      sortedItems.forEach(item => {
         const row = [
           item.product_number || '',
           '',
@@ -219,6 +221,36 @@ export default function SalesSummaryPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  // 날짜별 정렬 변경
+  const handleSortChange = (date, sortType) => {
+    setSortBy(prev => ({
+      ...prev,
+      [date]: sortType
+    }))
+  }
+
+  // 정렬된 아이템 가져오기
+  const getSortedItems = (date, items) => {
+    const sortType = sortBy[date] || 'quantity' // 기본값: 수량순
+
+    const sorted = [...items]
+
+    switch (sortType) {
+      case 'product_number':
+        return sorted.sort((a, b) => {
+          const numA = a.product_number || ''
+          const numB = b.product_number || ''
+          return numA.localeCompare(numB)
+        })
+      case 'quantity':
+        return sorted.sort((a, b) => b.quantity - a.quantity)
+      case 'amount':
+        return sorted.sort((a, b) => b.totalAmount - a.totalAmount)
+      default:
+        return sorted
+    }
   }
 
   if (authLoading || loading) {
@@ -308,11 +340,14 @@ export default function SalesSummaryPage() {
             const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
             const totalAmount = items.reduce((sum, item) => sum + item.totalAmount, 0)
 
+            const currentSort = sortBy[date] || 'quantity'
+            const sortedItems = getSortedItems(date, items)
+
             return (
               <div key={date} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 {/* 날짜 헤더 */}
                 <div className="bg-red-50 border-b border-red-200 px-6 py-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <CalendarIcon className="h-5 w-5 text-red-600" />
                       <h2 className="text-lg font-bold text-gray-900">{date}</h2>
@@ -335,11 +370,46 @@ export default function SalesSummaryPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* 정렬 옵션 */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-600">정렬:</span>
+                    <button
+                      onClick={() => handleSortChange(date, 'product_number')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        currentSort === 'product_number'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-red-100'
+                      }`}
+                    >
+                      제품번호순
+                    </button>
+                    <button
+                      onClick={() => handleSortChange(date, 'quantity')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        currentSort === 'quantity'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-red-100'
+                      }`}
+                    >
+                      수량순
+                    </button>
+                    <button
+                      onClick={() => handleSortChange(date, 'amount')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        currentSort === 'amount'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-red-100'
+                      }`}
+                    >
+                      금액순
+                    </button>
+                  </div>
                 </div>
 
                 {/* 품목 리스트 */}
                 <div className="divide-y divide-gray-200">
-                  {items.map((item, index) => (
+                  {sortedItems.map((item, index) => (
                     <div key={index} className="p-6 hover:bg-gray-50 transition-colors">
                       <div className="flex gap-4">
                         {/* 제품 사진 */}
