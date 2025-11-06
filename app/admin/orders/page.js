@@ -130,8 +130,8 @@ export default function AdminOrdersPage() {
   })
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [searchTimeout, setSearchTimeout] = useState(null)
-  const ITEMS_PER_PAGE = 100
-  const SEARCH_ITEMS_PER_PAGE = 2000 // 검색 시 더 많이 로드 (입금자명, 고객명 등 프론트 필터링)
+  const ITEMS_PER_PAGE = 200 // 100 → 200 (2배 증가)
+  const SEARCH_ITEMS_PER_PAGE = 5000 // 2000 → 5000 (검색 범위 확대)
 
   const filterOrders = () => {
     let filtered = [...orders]
