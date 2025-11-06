@@ -131,7 +131,7 @@ export default function AdminOrdersPage() {
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [searchTimeout, setSearchTimeout] = useState(null)
   const ITEMS_PER_PAGE = 200 // 100 → 200 (2배 증가)
-  const SEARCH_ITEMS_PER_PAGE = 5000 // 2000 → 5000 (검색 범위 확대)
+  const SEARCH_ITEMS_PER_PAGE = 10000 // 검색 시 전체 조회 (무제한에 가까운 큰 숫자)
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -156,19 +156,30 @@ export default function AdminOrdersPage() {
       filtered = filtered.filter(order => order.status === statusFilter)
     }
 
-    // 검색어 필터 (서버에서 주문번호 검색, 프론트에서 나머지 필터링)
+    // 검색어 필터 (서버: 주문번호/ID 검색, 프론트: 고객명/입금자명/상품명 필터링)
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(order =>
-        // 주문번호 (서버에서 이미 필터링됨)
-        order.customer_order_number?.toLowerCase().includes(searchLower) ||
-        order.id.toLowerCase().includes(searchLower) ||
-        // 고객명, 닉네임, 입금자명, 상품명 (프론트에서 추가 필터링)
-        order.shipping?.name?.toLowerCase().includes(searchLower) ||
-        order.userNickname?.toLowerCase().includes(searchLower) ||
-        order.payment?.depositor_name?.toLowerCase().includes(searchLower) ||
-        order.items.some(item => item.title?.toLowerCase().includes(searchLower))
-      )
+      filtered = filtered.filter(order => {
+        // 1. 주문번호/ID (서버에서 이미 검색됨)
+        if (order.customer_order_number?.toLowerCase().includes(searchLower)) return true
+        if (order.id?.toLowerCase().includes(searchLower)) return true
+
+        // 2. 고객 정보 (프론트 필터링)
+        if (order.shipping?.name?.toLowerCase().includes(searchLower)) return true
+        if (order.userName?.toLowerCase().includes(searchLower)) return true
+        if (order.userNickname?.toLowerCase().includes(searchLower)) return true
+
+        // 3. 결제 정보 (프론트 필터링)
+        if (order.payment?.depositor_name?.toLowerCase().includes(searchLower)) return true
+
+        // 4. 상품명 (프론트 필터링)
+        if (order.items?.some(item => item.title?.toLowerCase().includes(searchLower))) return true
+
+        // 5. 전화번호 (프론트 필터링)
+        if (order.shipping?.phone?.replace(/-/g, '').includes(searchLower.replace(/-/g, ''))) return true
+
+        return false
+      })
     }
 
     setFilteredOrders(filtered)
@@ -517,6 +528,19 @@ export default function AdminOrdersPage() {
               }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
+            {/* 검색 결과 표시 */}
+            {isSearchMode && searchTerm && (
+              <div className="absolute left-0 top-full mt-2 text-sm">
+                <span className="text-gray-600">
+                  검색 결과: <span className="font-semibold text-red-600">{filteredOrders.length}건</span>
+                  {orders.length > 0 && (
+                    <span className="text-gray-500 ml-2">
+                      (전체 {orders.length}건 중 필터링)
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Status Filter */}
