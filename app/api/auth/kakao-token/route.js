@@ -25,14 +25,47 @@ export async function POST(request) {
     params.append('redirect_uri', redirectUri)
     params.append('code', code)
 
-    // 카카오 토큰 요청
-    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    })
+    // 카카오 토큰 요청 (Retry 로직 포함)
+    let tokenResponse
+    let retryCount = 0
+    const maxRetries = 3
+
+    while (retryCount < maxRetries) {
+      try {
+        tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: params.toString(),
+          signal: AbortSignal.timeout(10000) // 10초 타임아웃
+        })
+
+        // 성공하면 루프 종료
+        if (tokenResponse.ok || tokenResponse.status < 500) {
+          break
+        }
+
+        // 5xx 에러면 재시도
+        console.warn(`Kakao API 응답 오류 (${tokenResponse.status}), 재시도 ${retryCount + 1}/${maxRetries}`)
+        retryCount++
+
+        if (retryCount < maxRetries) {
+          // 지수 백오프: 1초, 2초, 4초
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)))
+        }
+      } catch (fetchError) {
+        console.warn(`Kakao API 호출 실패 (${fetchError.message}), 재시도 ${retryCount + 1}/${maxRetries}`)
+        retryCount++
+
+        if (retryCount >= maxRetries) {
+          throw new Error(`카카오 API 호출 실패 (${maxRetries}회 시도): ${fetchError.message}`)
+        }
+
+        // 지수 백오프
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)))
+      }
+    }
 
     const tokenData = await tokenResponse.json()
 
