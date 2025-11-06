@@ -250,35 +250,51 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         console.log('🔍 [DEBUG] 주문 로딩 시작:', { userId: currentUser.id, page: currentPage, status })
         const startTime = Date.now()
 
-        // 🚀 Clean Architecture API Route 사용
-        const response = await fetch('/api/orders/list', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user: currentUser,
-            page: currentPage,
-            pageSize: 10,
-            status
+        // 🚀 병렬 요청: 1) 현재 탭 주문, 2) 전체 주문 카운트
+        const [currentTabResponse, allOrdersResponse] = await Promise.all([
+          // 1. 현재 탭의 주문 (페이지네이션 적용)
+          fetch('/api/orders/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: currentUser,
+              page: currentPage,
+              pageSize: 10,
+              status
+            })
+          }),
+          // 2. 전체 주문 (카운트용 - 페이지네이션 없음)
+          fetch('/api/orders/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: currentUser,
+              page: 1,
+              pageSize: 1000, // 충분히 큰 숫자 (전체 조회)
+              status: 'all'
+            })
           })
-        })
+        ])
 
-        if (!response.ok) {
-          const errorData = await response.json()
+        if (!currentTabResponse.ok) {
+          const errorData = await currentTabResponse.json()
           throw new Error(errorData.error || '주문 조회 실패')
         }
 
-        const result = await response.json()
+        const result = await currentTabResponse.json()
+        const allOrdersResult = allOrdersResponse.ok ? await allOrdersResponse.json() : { orders: [] }
 
         const elapsed = Date.now() - startTime
         console.log('✅ [DEBUG] 주문 로딩 완료:', { count: result.orders?.length, elapsed: `${elapsed}ms` })
 
-        // ⭐ 그룹핑 적용
+        // ⭐ 현재 탭 주문 그룹핑
         const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
         console.log('✅ [DEBUG] 그룹핑 완료:', { original: result.orders?.length, grouped: groupedOrders.length })
 
-        // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
-        const recalculatedCounts = recalculateStatusCounts(groupedOrders)
-        console.log('✅ [DEBUG] statusCounts 재계산:', recalculatedCounts)
+        // ⭐ 전체 주문으로 statusCounts 계산 (모든 탭의 개수 표시)
+        const allGroupedOrders = groupOrdersByPaymentGroupId(allOrdersResult.orders || [])
+        const recalculatedCounts = recalculateStatusCounts(allGroupedOrders)
+        console.log('✅ [DEBUG] statusCounts 재계산 (전체):', recalculatedCounts)
 
         setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
@@ -310,30 +326,44 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
         if (currentUser?.id) {
           setPageLoading(true)
 
-          // Clean Architecture API Route 사용
-          const response = await fetch('/api/orders/list', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user: currentUser,
-              page: currentPage,
-              pageSize: 10,
-              status: filterStatus
+          // 🚀 병렬 요청: 현재 탭 + 전체 주문
+          const [currentTabResponse, allOrdersResponse] = await Promise.all([
+            fetch('/api/orders/list', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user: currentUser,
+                page: currentPage,
+                pageSize: 10,
+                status: filterStatus
+              })
+            }),
+            fetch('/api/orders/list', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user: currentUser,
+                page: 1,
+                pageSize: 1000,
+                status: 'all'
+              })
             })
-          })
+          ])
 
-          if (!response.ok) {
-            const errorData = await response.json()
+          if (!currentTabResponse.ok) {
+            const errorData = await currentTabResponse.json()
             throw new Error(errorData.error || '주문 조회 실패')
           }
 
-          const result = await response.json()
+          const result = await currentTabResponse.json()
+          const allOrdersResult = allOrdersResponse.ok ? await allOrdersResponse.json() : { orders: [] }
 
           // ⭐ 그룹핑 적용
           const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
+          const allGroupedOrders = groupOrdersByPaymentGroupId(allOrdersResult.orders || [])
 
-          // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
-          const recalculatedCounts = recalculateStatusCounts(groupedOrders)
+          // ⭐ statusCounts 재계산 (전체 주문 기준)
+          const recalculatedCounts = recalculateStatusCounts(allGroupedOrders)
 
           setOrders(groupedOrders)
           setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
@@ -373,29 +403,44 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
           return
         }
 
-        const response = await fetch('/api/orders/list', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user: currentUser,
-            page: 1,
-            pageSize: 10,
-            status: newStatus
+        // 🚀 병렬 요청: 현재 탭 + 전체 주문
+        const [currentTabResponse, allOrdersResponse] = await Promise.all([
+          fetch('/api/orders/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: currentUser,
+              page: 1,
+              pageSize: 10,
+              status: newStatus
+            })
+          }),
+          fetch('/api/orders/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: currentUser,
+              page: 1,
+              pageSize: 1000,
+              status: 'all'
+            })
           })
-        })
+        ])
 
-        if (!response.ok) {
-          const errorData = await response.json()
+        if (!currentTabResponse.ok) {
+          const errorData = await currentTabResponse.json()
           throw new Error(errorData.error || '주문 조회 실패')
         }
 
-        const result = await response.json()
+        const result = await currentTabResponse.json()
+        const allOrdersResult = allOrdersResponse.ok ? await allOrdersResponse.json() : { orders: [] }
 
         // ⭐ 그룹핑 적용
         const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
+        const allGroupedOrders = groupOrdersByPaymentGroupId(allOrdersResult.orders || [])
 
-        // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
-        const recalculatedCounts = recalculateStatusCounts(groupedOrders)
+        // ⭐ statusCounts 재계산 (전체 주문 기준)
+        const recalculatedCounts = recalculateStatusCounts(allGroupedOrders)
 
         setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: 1, totalPages: 0, totalCount: 0, pageSize: 10 })
@@ -433,29 +478,44 @@ export function useOrdersInit({ user, isAuthenticated, authLoading, router, sear
           return
         }
 
-        const response = await fetch('/api/orders/list', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user: currentUser,
-            page: newPage,
-            pageSize: 10,
-            status: filterStatus
+        // 🚀 병렬 요청: 현재 탭 + 전체 주문
+        const [currentTabResponse, allOrdersResponse] = await Promise.all([
+          fetch('/api/orders/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: currentUser,
+              page: newPage,
+              pageSize: 10,
+              status: filterStatus
+            })
+          }),
+          fetch('/api/orders/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: currentUser,
+              page: 1,
+              pageSize: 1000,
+              status: 'all'
+            })
           })
-        })
+        ])
 
-        if (!response.ok) {
-          const errorData = await response.json()
+        if (!currentTabResponse.ok) {
+          const errorData = await currentTabResponse.json()
           throw new Error(errorData.error || '주문 조회 실패')
         }
 
-        const result = await response.json()
+        const result = await currentTabResponse.json()
+        const allOrdersResult = allOrdersResponse.ok ? await allOrdersResponse.json() : { orders: [] }
 
         // ⭐ 그룹핑 적용
         const groupedOrders = groupOrdersByPaymentGroupId(result.orders || [])
+        const allGroupedOrders = groupOrdersByPaymentGroupId(allOrdersResult.orders || [])
 
-        // ⭐ statusCounts 재계산 (그룹핑 후 카드 개수)
-        const recalculatedCounts = recalculateStatusCounts(groupedOrders)
+        // ⭐ statusCounts 재계산 (전체 주문 기준)
+        const recalculatedCounts = recalculateStatusCounts(allGroupedOrders)
 
         setOrders(groupedOrders)
         setPagination(result.pagination || { currentPage: newPage, totalPages: 0, totalCount: 0, pageSize: 10 })
