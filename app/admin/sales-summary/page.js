@@ -186,7 +186,7 @@ export default function SalesSummaryPage() {
       setCartItems(items || [])
 
       if (!items || items.length === 0) {
-        toast.info('장바구니에 담긴 상품이 없습니다')
+        console.warn('⚠️ 장바구니에 담긴 상품이 없습니다')
       }
     } catch (error) {
       console.error('장바구니 로딩 오류:', error)
