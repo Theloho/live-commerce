@@ -68,7 +68,10 @@ async function handleUpdate(request) {
     revalidatePath('/')
     console.log('🔄 홈페이지 캐시 무효화 완료')
 
-    return NextResponse.json(result)
+    return NextResponse.json({
+      success: true,
+      ...result
+    })
   } catch (error) {
     console.error('❌ [상품수정 API] 에러:', error)
     return NextResponse.json(
