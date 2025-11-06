@@ -14,7 +14,7 @@
  * - Presentation Layer Component (UI만 담당)
  */
 
-import { ClockIcon } from '@heroicons/react/24/outline'
+import { ClockIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
 
 /**
  * OrderFilter Component
@@ -153,12 +153,18 @@ export default function OrderFilter({
         <div className="px-4 py-4">
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <ClockIcon className="h-8 w-8 text-gray-400" />
+              {filterStatus === 'pending' ? (
+                <ShoppingCartIcon className="h-8 w-8 text-gray-400" />
+              ) : (
+                <ClockIcon className="h-8 w-8 text-gray-400" />
+              )}
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">주문 내역이 없습니다</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {filterStatus === 'pending' ? '장바구니가 비어있습니다' : '주문 내역이 없습니다'}
+            </h3>
             <p className="text-gray-500 text-sm mb-6">
               {filterStatus === 'pending'
-                ? '결제대기 중인 상품이 없습니다.'
+                ? '마음에 드는 상품을 장바구니에 담아보세요.'
                 : `${getStatusInfo(filterStatus).label} 상태의 주문이 없습니다.`
               }
             </p>
