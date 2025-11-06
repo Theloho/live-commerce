@@ -157,12 +157,26 @@ export default function AdminCustomerDetailPage() {
 
   const saveKakaoLink = async () => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ kakao_link: kakaoLink })
-        .eq('id', params.id)
+      if (!adminUser?.email) {
+        toast.error('관리자 권한이 필요합니다')
+        return
+      }
 
-      if (error) throw error
+      const response = await fetch(`/api/admin/customers/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          adminEmail: adminUser.email,
+          kakao_link: kakaoLink
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '저장 실패')
+      }
 
       // 현재 customer 상태 업데이트
       setCustomer(prev => ({ ...prev, kakaoLink }))
@@ -170,7 +184,7 @@ export default function AdminCustomerDetailPage() {
       toast.success('카카오톡 링크가 저장되었습니다')
     } catch (error) {
       console.error('카카오톡 링크 저장 실패:', error)
-      toast.error('저장에 실패했습니다')
+      toast.error(error.message || '저장에 실패했습니다')
     }
   }
 
