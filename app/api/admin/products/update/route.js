@@ -48,11 +48,19 @@ async function handleUpdate(request) {
       )
     }
 
-    // 3. Dependency Injection
+    // 3. updateData 추출 (편집 페이지에서 중첩 구조로 전송)
+    const updateData = params.updateData || params
+
+    // 4. Dependency Injection
     const updateProductUseCase = new UpdateProductUseCase(ProductRepository)
 
-    // 4. Use Case 실행 (Application Layer)
-    const result = await updateProductUseCase.execute(productId, params)
+    // 5. Use Case 실행 (Application Layer)
+    const result = await updateProductUseCase.execute(productId, {
+      ...updateData,
+      // 필수 파라미터 포함
+      adminEmail,
+      productId
+    })
 
     console.log('✅ [상품수정 API] 상품 수정 완료:', productId)
 
