@@ -64,6 +64,7 @@ export async function GET(request) {
             price,
             sku,
             supplier_id,
+            supplier_product_code,
             suppliers (
               id,
               name,
