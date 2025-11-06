@@ -42,8 +42,10 @@ export default function SalesSummaryPage() {
 
       const { orders: rawOrders } = await response.json()
 
-      // verifying 상태만 필터링
-      const verifyingOrders = rawOrders.filter(order => order.status === 'verifying')
+      // verifying + paid 상태 필터링
+      const verifyingOrders = rawOrders.filter(order =>
+        order.status === 'verifying' || order.status === 'paid'
+      )
 
       // 날짜별로 그룹화
       const grouped = {}
@@ -176,7 +178,7 @@ export default function SalesSummaryPage() {
               품목별 판매 현황
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              주문내역(verifying) 상태 · 총 {orders.length}건
+              주문내역(verifying) + 입금완료(paid) 상태 · 총 {orders.length}건
             </p>
           </div>
         </div>
@@ -191,7 +193,7 @@ export default function SalesSummaryPage() {
       {/* 날짜별 판매 현황 */}
       {dateKeys.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <p className="text-gray-500">주문내역 상태의 주문이 없습니다.</p>
+          <p className="text-gray-500">주문내역(verifying) + 입금완료(paid) 상태의 주문이 없습니다.</p>
         </div>
       ) : (
         <div className="space-y-6">
