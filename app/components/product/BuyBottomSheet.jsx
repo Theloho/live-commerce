@@ -212,7 +212,7 @@ export default function BuyBottomSheet({ product, isOpen, onClose }) {
               ? '처리 중...'
               : totalQuantity === 0
               ? '수량을 선택해주세요'
-              : '구매하기'}
+              : '장바구니 담기'}
           </Button>
         </div>
       </BottomSheet>
