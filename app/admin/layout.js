@@ -22,7 +22,8 @@ import {
   TagIcon,
   ShieldCheckIcon,
   ClipboardDocumentCheckIcon,
-  ArchiveBoxIcon
+  ArchiveBoxIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline'
 import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
@@ -62,6 +63,7 @@ function AdminLayoutContent({ children }) {
       items: [
         { href: '/admin', label: '대시보드', icon: HomeIcon },
         { href: '/admin/orders', label: '주문관리', icon: ClipboardDocumentListIcon },
+        { href: '/admin/sales-summary', label: '품목별 판매', icon: ChartBarIcon },
         { href: '/admin/deposits', label: '입금확인', icon: BanknotesIcon },
         { href: '/admin/fulfillment', label: '배송팀 취합', icon: ClipboardDocumentCheckIcon },
         { href: '/admin/logistics', label: '물류팀 집계', icon: ArchiveBoxIcon },
@@ -132,7 +134,8 @@ function AdminLayoutContent({ children }) {
                     (item.href === '/admin/categories' && pathname.startsWith('/admin/categories')) ||
                     (item.href === '/admin/admins' && pathname.startsWith('/admin/admins')) ||
                     (item.href === '/admin/fulfillment' && pathname.startsWith('/admin/fulfillment')) ||
-                    (item.href === '/admin/logistics' && pathname.startsWith('/admin/logistics'))
+                    (item.href === '/admin/logistics' && pathname.startsWith('/admin/logistics')) ||
+                    (item.href === '/admin/sales-summary' && pathname.startsWith('/admin/sales-summary'))
                   return (
                     <li key={item.href}>
                       <Link
