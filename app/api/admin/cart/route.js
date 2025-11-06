@@ -27,7 +27,7 @@ export async function GET(request) {
 
     console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
-    // 2. 모든 장바구니 아이템 조회 (상품 정보, 옵션 정보, 사용자 정보 포함)
+    // 2. 모든 장바구니 아이템 조회 (상품 정보만 포함)
     const { data: cartItems, error } = await supabaseAdmin
       .from('cart_items')
       .select(`
@@ -38,11 +38,6 @@ export async function GET(request) {
           product_number,
           thumbnail_url,
           price
-        ),
-        profiles!cart_items_user_id_fkey (
-          id,
-          name,
-          nickname
         )
       `)
       .order('created_at', { ascending: false })
@@ -55,12 +50,34 @@ export async function GET(request) {
       )
     }
 
-    console.log(`✅ 조회된 장바구니 아이템 수: ${cartItems?.length || 0}`)
+    // 3. 사용자 정보 별도 조회 (user_id로 profiles 조회)
+    const userIds = [...new Set(cartItems.map(item => item.user_id))]
+    const { data: profiles, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, nickname')
+      .in('id', userIds)
+
+    if (profileError) {
+      console.warn('⚠️ 사용자 정보 조회 오류:', profileError)
+    }
+
+    // 4. 장바구니 아이템에 사용자 정보 병합
+    const profileMap = (profiles || []).reduce((acc, profile) => {
+      acc[profile.id] = profile
+      return acc
+    }, {})
+
+    const enrichedCartItems = cartItems.map(item => ({
+      ...item,
+      profiles: profileMap[item.user_id] || null
+    }))
+
+    console.log(`✅ 조회된 장바구니 아이템 수: ${enrichedCartItems?.length || 0}`)
 
     return NextResponse.json({
       success: true,
-      cartItems: cartItems || [],
-      count: cartItems?.length || 0
+      cartItems: enrichedCartItems || [],
+      count: enrichedCartItems?.length || 0
     })
 
   } catch (error) {
