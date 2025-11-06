@@ -89,7 +89,7 @@ export default function OrderFilter({
                 key={filter.key}
                 onClick={() => onTabChange(filter.key)}
                 className={`
-                  px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
+                  relative px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
                   ${filterStatus === filter.key
                     ? 'bg-red-500 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -98,7 +98,9 @@ export default function OrderFilter({
               >
                 {filter.label}
                 {count > 0 && (
-                  <span className="ml-1 text-xs">({count})</span>
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {count > 99 ? '99+' : count}
+                  </span>
                 )}
               </button>
             )
