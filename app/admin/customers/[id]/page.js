@@ -409,13 +409,15 @@ export default function AdminCustomerDetailPage() {
                 ) : (
                   <div>
                     {customer.kakaoLink ? (
-                      <button
-                        onClick={() => window.open(customer.kakaoLink, '_blank')}
+                      <a
+                        href={customer.kakaoLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="w-full flex items-center gap-2 px-3 py-2 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors"
                       >
                         <ChatBubbleLeftRightIcon className="w-4 h-4" />
                         <span className="text-sm font-medium">채팅 열기</span>
-                      </button>
+                      </a>
                     ) : (
                       <p className="text-sm text-gray-400">링크가 등록되지 않았습니다</p>
                     )}
