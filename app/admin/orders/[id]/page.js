@@ -15,7 +15,8 @@ import {
   ClockIcon,
   TruckIcon,
   BanknotesIcon,
-  PhotoIcon
+  PhotoIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline'
 import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
@@ -27,6 +28,17 @@ export default function AdminOrderDetailPage() {
   const { adminUser, loading: authLoading } = useAdminAuth()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // 배송지 수정 관련 state
+  const [isEditingShipping, setIsEditingShipping] = useState(false)
+  const [editedShipping, setEditedShipping] = useState({
+    name: '',
+    phone: '',
+    postal_code: '',
+    address: '',
+    detail_address: '',
+    delivery_memo: ''
+  })
 
   useEffect(() => {
     if (!authLoading && adminUser) {
@@ -190,6 +202,52 @@ export default function AdminOrderDetailPage() {
       toast.error('상태 변경에 실패했습니다')
       // 실패 시 데이터 다시 로드
       loadOrderDetail()
+    }
+  }
+
+  // 배송지 수정 모달 열기
+  const handleEditShipping = () => {
+    setEditedShipping({
+      name: order.shipping?.name || '',
+      phone: order.shipping?.phone || '',
+      postal_code: order.shipping?.postal_code || order.shipping?.zipcode || '',
+      address: order.shipping?.address || '',
+      detail_address: order.shipping?.detail_address || '',
+      delivery_memo: order.shipping?.delivery_memo || ''
+    })
+    setIsEditingShipping(true)
+  }
+
+  // 배송지 수정 저장
+  const handleSaveShipping = async () => {
+    try {
+      if (!editedShipping.name || !editedShipping.phone || !editedShipping.address) {
+        toast.error('필수 항목을 입력해주세요')
+        return
+      }
+
+      const response = await fetch(`/api/admin/orders/${order.id}/shipping`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          adminEmail: adminUser.email,
+          ...editedShipping
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '배송지 수정 실패')
+      }
+
+      toast.success('배송지가 수정되었습니다')
+      setIsEditingShipping(false)
+      loadOrderDetail()
+    } catch (error) {
+      console.error('배송지 수정 실패:', error)
+      toast.error(error.message || '배송지 수정에 실패했습니다')
     }
   }
 
@@ -398,9 +456,21 @@ export default function AdminOrderDetailPage() {
             transition={{ delay: 0.1 }}
             className="bg-white rounded-lg border border-gray-200 p-6"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <MapPinIcon className="w-5 h-5 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">배송 정보</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <MapPinIcon className="w-5 h-5 text-gray-600" />
+                <h2 className="text-lg font-semibold text-gray-900">배송 정보</h2>
+              </div>
+              {/* 수정 버튼 - pending, verifying 상태에서만 가능 */}
+              {(order.status === 'pending' || order.status === 'verifying' || order.status === 'paid') && (
+                <button
+                  onClick={handleEditShipping}
+                  className="flex items-center gap-1 px-3 py-1.5 text-sm text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  수정
+                </button>
+              )}
             </div>
             <div className="space-y-3">
               <div>
@@ -1024,6 +1094,124 @@ export default function AdminOrderDetailPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* 배송지 수정 모달 */}
+      {isEditingShipping && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">배송지 수정</h2>
+                <button
+                  onClick={() => setIsEditingShipping(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    받는 분 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editedShipping.name}
+                    onChange={(e) => setEditedShipping({...editedShipping, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="받는 분 성함"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    연락처 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={editedShipping.phone}
+                    onChange={(e) => setEditedShipping({...editedShipping, phone: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="010-1234-5678"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    우편번호
+                  </label>
+                  <input
+                    type="text"
+                    value={editedShipping.postal_code}
+                    onChange={(e) => setEditedShipping({...editedShipping, postal_code: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="12345"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    주소 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editedShipping.address}
+                    onChange={(e) => setEditedShipping({...editedShipping, address: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="기본 주소"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    상세 주소
+                  </label>
+                  <input
+                    type="text"
+                    value={editedShipping.detail_address}
+                    onChange={(e) => setEditedShipping({...editedShipping, detail_address: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="상세 주소"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    배송 메모
+                  </label>
+                  <textarea
+                    value={editedShipping.delivery_memo}
+                    onChange={(e) => setEditedShipping({...editedShipping, delivery_memo: e.target.value})}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="배송 시 요청사항"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setIsEditingShipping(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveShipping}
+                  className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
