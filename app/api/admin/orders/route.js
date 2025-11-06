@@ -123,8 +123,8 @@ export async function GET(request) {
       // ✅ 검색어 필터 적용 - 주문번호만 DB에서 검색
       // (고객명, 입금자명, 상품명은 JOIN 후 프론트에서 필터링)
       if (searchTerm) {
-        // 주문번호로만 검색 (대소문자 무시)
-        query = query.or(`customer_order_number.ilike.*${searchTerm}*,id.ilike.*${searchTerm}*`)
+        // 주문번호만 검색 (UUID는 문자열 변환 불가능하므로 제외)
+        query = query.ilike('customer_order_number', `%${searchTerm}%`)
       }
 
       // 정렬
