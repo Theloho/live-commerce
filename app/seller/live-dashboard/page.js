@@ -170,7 +170,7 @@ export default function SellerLiveDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              🔴 LIVE 판매 대시보드
+              🔴 LIVE Seller
             </h1>
             <p className="text-sm text-gray-400 mt-1">
               마지막 업데이트: {lastUpdated.toLocaleTimeString('ko-KR')}
