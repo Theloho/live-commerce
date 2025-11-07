@@ -21,7 +21,7 @@ export default function SellerLiveDashboard() {
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalRevenue: 0,
-    avgOrderValue: 0
+    newUsers: 0
   })
   const [topProducts, setTopProducts] = useState([])
   const [lowStockProducts, setLowStockProducts] = useState([])
@@ -75,12 +75,17 @@ export default function SellerLiveDashboard() {
       // 통계 계산
       const totalOrders = orders.length
       const totalRevenue = orders.reduce((sum, order) => sum + (order.final_amount || order.total_amount || 0), 0)
-      const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0
+
+      // 신규 회원 조회 (오늘 가입한 회원)
+      const profilesResponse = await fetch(
+        `/api/admin/profiles?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=today`
+      )
+      const newUsers = profilesResponse.ok ? (await profilesResponse.json()).count || 0 : 0
 
       setStats({
         totalOrders,
         totalRevenue,
-        avgOrderValue
+        newUsers
       })
 
       // 상품별 판매량 집계
@@ -224,13 +229,13 @@ export default function SellerLiveDashboard() {
             </div>
             <div className="text-center">
               <p className="text-gray-200 text-sm mb-1">총 매출</p>
-              <p className="text-3xl font-bold">₩{(stats.totalRevenue / 10000).toFixed(0)}만</p>
+              <p className="text-3xl font-bold">{(stats.totalRevenue / 10000).toFixed(0)}만</p>
               <p className="text-xs text-gray-300">₩{stats.totalRevenue.toLocaleString()}</p>
             </div>
             <div className="text-center">
-              <p className="text-gray-200 text-sm mb-1">평균 객단가</p>
-              <p className="text-3xl font-bold">₩{Math.round(stats.avgOrderValue / 1000)}K</p>
-              <p className="text-xs text-gray-300">₩{stats.avgOrderValue.toLocaleString()}</p>
+              <p className="text-gray-200 text-sm mb-1">신규 회원</p>
+              <p className="text-4xl font-bold">{stats.newUsers}</p>
+              <p className="text-xs text-gray-300">명</p>
             </div>
           </div>
         </div>
