@@ -123,15 +123,13 @@ export async function GET(request) {
 
       // ✅ 검색어 필터링 (서버 사이드)
       if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase()
-
         // ⚡ 성능 최적화: 여러 OR 조건을 한 번에 처리
         // 1. 주문번호 검색 (인덱스 활용)
         // 2. order_type 검색 (카카오 ID - 인덱스 활용)
+        // ⚠️ id는 UUID 타입이므로 ::text로 변환 후 검색
         query = query.or(
           `customer_order_number.ilike.%${searchTerm}%,` +
-          `order_type.ilike.%${searchTerm}%,` +
-          `id.ilike.%${searchTerm}%`
+          `order_type.ilike.%${searchTerm}%`
         )
       }
 
