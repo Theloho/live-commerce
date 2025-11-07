@@ -765,7 +765,7 @@ export default function AdminOrdersPage() {
                         {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || order.userId?.split('-').pop()?.substring(0, 8) || '익명')}
                       </div>
                       {order.payment?.depositor_name && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs font-semibold text-blue-600">
                           💳 {order.payment.depositor_name}
                         </div>
                       )}
@@ -961,7 +961,7 @@ export default function AdminOrdersPage() {
                   </div>
                   {/* 입금자명 표시 */}
                   {order.payment?.depositor_name && (
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs font-semibold text-blue-600">
                       💳 {order.payment.depositor_name}
                     </div>
                   )}
