@@ -216,18 +216,64 @@ export async function GET(request) {
 
     console.log(`✅ 조회된 주문 수: ${data?.length || 0} / 전체: ${count || 0} (필터: status=${statusFilter}, method=${paymentMethodFilter})`)
 
-    // ✅ 상태별 전체 카운트 조회 (배지 표시용)
+    // ✅ 상태별 기간별 카운트 조회 (배지 표시용) ⭐ 날짜 필터 적용
     let statusCounts = {}
 
     // 단일 주문이나 일괄결제 그룹 조회가 아닌 경우에만 카운트
     if (!orderId && !paymentGroupId) {
       const statusList = ['pending', 'verifying', 'paid', 'delivered']
       const countPromises = statusList.map(async (status) => {
-        const { count: statusCount } = await supabaseAdmin
+        let countQuery = supabaseAdmin
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('status', status)
           .neq('status', 'cancelled')
+
+        // ⭐ 날짜 필터 적용 (메인 쿼리와 동일한 로직)
+        if (dateRange && dateRange !== 'all') {
+          const now = new Date()
+          let startDateTime
+
+          switch (dateRange) {
+            case 'today':
+              startDateTime = new Date(now.setHours(0, 0, 0, 0)).toISOString()
+              break
+            case 'yesterday':
+              const yesterday = new Date(now)
+              yesterday.setDate(yesterday.getDate() - 1)
+              yesterday.setHours(0, 0, 0, 0)
+              startDateTime = yesterday.toISOString()
+
+              const yesterdayEnd = new Date(yesterday)
+              yesterdayEnd.setHours(23, 59, 59, 999)
+              countQuery = countQuery.lte('created_at', yesterdayEnd.toISOString())
+              break
+            case 'week':
+              startDateTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+              break
+            case 'month':
+              startDateTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+              break
+            case 'custom':
+              if (startDate) {
+                startDateTime = new Date(startDate).toISOString()
+              }
+              break
+          }
+
+          if (startDateTime) {
+            countQuery = countQuery.gte('created_at', startDateTime)
+          }
+
+          // custom 범위의 endDate 처리
+          if (dateRange === 'custom' && endDate) {
+            const endDateTime = new Date(endDate)
+            endDateTime.setHours(23, 59, 59, 999)
+            countQuery = countQuery.lte('created_at', endDateTime.toISOString())
+          }
+        }
+
+        const { count: statusCount } = await countQuery
 
         return { status, count: statusCount || 0 }
       })
@@ -237,7 +283,7 @@ export async function GET(request) {
         statusCounts[status] = count
       })
 
-      console.log('✅ 상태별 전체 카운트:', statusCounts)
+      console.log(`✅ 상태별 카운트 (${dateRange}):`, statusCounts)
     }
 
     // 3. ⚡ 성능 최적화: N+1 쿼리 제거 - 프로필 일괄 조회

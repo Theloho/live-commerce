@@ -438,6 +438,11 @@ export default function AdminOrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">📦 주문 관리</h1>
           <p className="text-sm text-gray-600 mt-1">
             총 {statusCounts.pending + statusCounts.verifying + statusCounts.paid + statusCounts.delivered}건 | 장바구니 {statusCounts.pending}건 | 주문내역 {statusCounts.verifying}건 | 구매확정 {statusCounts.paid}건 | 출고정보 {statusCounts.delivered}건
+            {dateRange !== 'all' && (
+              <span className="ml-2 text-xs text-blue-600">
+                💡 {dateRange === 'today' ? '오늘' : dateRange === 'yesterday' ? '어제' : dateRange === 'week' ? '1주일' : dateRange === 'month' ? '1개월' : '선택한 기간'}의 카운트
+              </span>
+            )}
           </p>
         </div>
         <button
