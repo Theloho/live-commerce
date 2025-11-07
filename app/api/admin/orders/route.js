@@ -78,6 +78,7 @@ export async function GET(request) {
             thumbnail_url,
             price,
             sku,
+            inventory,
             supplier_id,
             supplier_product_code,
             suppliers (

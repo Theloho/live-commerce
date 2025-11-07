@@ -17,6 +17,7 @@ export default function SellerLiveDashboard() {
   const { adminUser, isAdminAuthenticated, loading: authLoading } = useAdminAuth()
 
   const [loading, setLoading] = useState(true)
+  const [liveMode, setLiveMode] = useState(false)
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalRevenue: 0,
@@ -42,16 +43,16 @@ export default function SellerLiveDashboard() {
     }
   }, [isAdminAuthenticated, adminUser])
 
-  // 15초마다 자동 새로고침 (백그라운드)
+  // 15초마다 자동 새로고침 (LIVE 모드일 때만)
   useEffect(() => {
-    if (!isAdminAuthenticated) return
+    if (!isAdminAuthenticated || !liveMode) return
 
     const interval = setInterval(() => {
       loadDashboardData(true) // 백그라운드 새로고침
     }, 15000) // 15초
 
     return () => clearInterval(interval)
-  }, [isAdminAuthenticated, adminUser])
+  }, [isAdminAuthenticated, adminUser, liveMode])
 
   const loadDashboardData = async (isBackgroundRefresh = false) => {
     try {
@@ -175,12 +176,38 @@ export default function SellerLiveDashboard() {
               마지막 업데이트: {lastUpdated.toLocaleTimeString('ko-KR')}
             </p>
           </div>
-          <button
-            onClick={loadDashboardData}
-            className="p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <ArrowPathIcon className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* LIVE ON/OFF 토글 */}
+            <div className="flex items-center bg-gray-800 rounded-lg overflow-hidden border-2 border-gray-700">
+              <button
+                onClick={() => setLiveMode(false)}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  !liveMode
+                    ? 'bg-gray-700 text-white'
+                    : 'bg-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                ⚪ OFF
+              </button>
+              <button
+                onClick={() => setLiveMode(true)}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  liveMode
+                    ? 'bg-red-600 text-white'
+                    : 'bg-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                🔴 ON
+              </button>
+            </div>
+            {/* 새로고침 버튼 */}
+            <button
+              onClick={() => loadDashboardData()}
+              className="p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <ArrowPathIcon className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* 📊 오늘 판매 통계 */}
@@ -342,7 +369,11 @@ export default function SellerLiveDashboard() {
 
         {/* 자동 새로고침 안내 */}
         <div className="text-center text-gray-500 text-sm">
-          <p>🔄 15초마다 자동 업데이트됩니다</p>
+          {liveMode ? (
+            <p>🔴 LIVE 모드: 15초마다 자동 업데이트 중</p>
+          ) : (
+            <p>⚪ 수동 모드: 새로고침 버튼을 눌러 업데이트하세요</p>
+          )}
         </div>
       </div>
     </div>
