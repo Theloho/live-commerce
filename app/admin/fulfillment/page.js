@@ -69,7 +69,7 @@ export default function FulfillmentPage() {
 
       while (hasMore) {
         const response = await fetch(
-          `/api/admin/fulfillment-orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${limit}&offset=${offset}`
+          `/api/admin/fulfillment-orders?adminEmail=${encodeURIComponent(adminUser.email)}&status=paid&limit=${limit}&offset=${offset}`
         )
 
         if (!response.ok) {
@@ -91,11 +91,9 @@ export default function FulfillmentPage() {
         }
       }
 
-      // 입금확인 완료 주문만 (paid)
-      const paidOrders = allOrders.filter(o => o.status === 'paid')
-
-      setOrders(paidOrders)
-      console.log('✅ 입금확인 완료 주문:', paidOrders.length, '건 (전체:', allOrders.length, '건)')
+      // API에서 이미 paid만 필터링되어 옴
+      setOrders(allOrders)
+      console.log('✅ 입금확인 완료 주문:', allOrders.length, '건')
 
     } catch (error) {
       console.error('주문 로딩 오류:', error)

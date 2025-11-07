@@ -8,11 +8,13 @@ export async function GET(request) {
     const adminEmail = searchParams.get('adminEmail')
     const offset = parseInt(searchParams.get('offset') || '0')
     const limit = parseInt(searchParams.get('limit') || '1000')
+    const statusFilter = searchParams.get('status') // 예: "paid"
 
     console.log('🚚 [배송 취합 API] 전체 주문 조회 시작:', {
       adminEmail,
       limit,
-      offset
+      offset,
+      statusFilter
     })
 
     // 1. 관리자 인증 확인
@@ -75,6 +77,13 @@ export async function GET(request) {
         order_payments (*)
       `, { count: 'exact' })
       .neq('status', 'cancelled')
+
+    // status 필터 적용 (예: paid)
+    if (statusFilter) {
+      query = query.eq('status', statusFilter)
+    }
+
+    query = query
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

@@ -48,9 +48,9 @@ export default function LogisticsPage() {
 
       if (!adminUser?.email) return
 
-      // Service Role API로 입금확인 완료 주문 조회
+      // Service Role API로 입금확인 완료 주문 조회 (fulfillment API 사용)
       const response = await fetch(
-        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&status=paid`
+        `/api/admin/fulfillment-orders?adminEmail=${encodeURIComponent(adminUser.email)}&status=paid&limit=10000&offset=0`
       )
 
       if (!response.ok) {
