@@ -26,6 +26,9 @@ export default function LogisticsPage() {
     totalSuppliers: 0
   })
   const [supplierSummaries, setSupplierSummaries] = useState([])
+  const [dateRange, setDateRange] = useState('today') // 날짜 필터 (today, custom)
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
 
   // 권한 체크
   useEffect(() => {
@@ -35,12 +38,12 @@ export default function LogisticsPage() {
     }
   }, [authLoading, isAdminAuthenticated, router])
 
-  // 데이터 로드
+  // 데이터 로드 (날짜 필터 변경 시)
   useEffect(() => {
     if (isAdminAuthenticated) {
       loadLogisticsData()
     }
-  }, [isAdminAuthenticated])
+  }, [isAdminAuthenticated, dateRange, customStartDate, customEndDate])
 
   const loadLogisticsData = async () => {
     try {
@@ -48,10 +51,14 @@ export default function LogisticsPage() {
 
       if (!adminUser?.email) return
 
-      // Service Role API로 입금확인 완료 주문 조회
-      const response = await fetch(
-        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&status=paid`
-      )
+      // Service Role API로 입금확인 완료 주문 조회 (날짜 필터 추가)
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&status=paid&dateRange=${dateRange}`
+      if (dateRange === 'custom') {
+        if (customStartDate) url += `&startDate=${customStartDate}`
+        if (customEndDate) url += `&endDate=${customEndDate}`
+      }
+
+      const response = await fetch(url)
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -126,6 +133,68 @@ export default function LogisticsPage() {
           <ArrowDownTrayIcon className="w-5 h-5" />
           CSV 다운로드
         </button>
+      </div>
+
+      {/* 📅 날짜 필터 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">📅 조회 기간:</span>
+          <button
+            onClick={() => setDateRange('today')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              dateRange === 'today'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            오늘
+          </button>
+          <button
+            onClick={() => setDateRange('custom')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              dateRange === 'custom'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            📆 기간 선택
+          </button>
+          <span className="text-xs text-gray-500 ml-2">
+            {dateRange === 'today' && '💡 오늘 입금확인 완료 주문 (가장 빠름)'}
+            {dateRange === 'custom' && '📆 선택한 기간의 주문'}
+          </span>
+        </div>
+
+        {/* 📆 Custom Date Range Picker */}
+        {dateRange === 'custom' && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">시작일:</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">종료일:</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              {customStartDate && customEndDate && (
+                <span className="text-xs text-gray-500">
+                  {new Date(customStartDate).toLocaleDateString('ko-KR')} ~ {new Date(customEndDate).toLocaleDateString('ko-KR')}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 통계 */}
