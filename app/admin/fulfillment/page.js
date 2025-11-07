@@ -463,22 +463,9 @@ export default function FulfillmentPage() {
               <div class="label-body">
                 <!-- 수령인 정보 -->
                 <div class="section">
-                  <div class="section-title">👤 수령인 정보</div>
-                  <div class="info-row">
-                    <div class="info-label">이름</div>
-                    <div class="info-value">${group.shippingInfo.name}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">닉네임</div>
-                    <div class="info-value">${group.shippingInfo.nickname}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">연락처</div>
-                    <div class="info-value">${group.shippingInfo.phone}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">입금자명</div>
-                    <div class="info-value">${group.shippingInfo.depositorName}</div>
+                  <div class="section-title">👤 수령인</div>
+                  <div style="font-size: 14px; line-height: 1.6;">
+                    <strong>${group.shippingInfo.name}</strong> (${group.shippingInfo.nickname}) | 📞 ${group.shippingInfo.phone} | 💰 ${group.shippingInfo.depositorName}
                   </div>
                 </div>
 
