@@ -306,8 +306,8 @@ export default function FulfillmentPage() {
             padding: 24px;
           }
           .section {
-            margin-bottom: 20px;
-            padding-bottom: 16px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
             border-bottom: 2px dashed #e0e0e0;
           }
           .section:last-child {
@@ -315,18 +315,19 @@ export default function FulfillmentPage() {
             margin-bottom: 0;
           }
           .section-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             color: #667eea;
-            margin-bottom: 12px;
+            margin-bottom: 6px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
           }
           .info-row {
             display: flex;
-            padding: 8px 0;
+            padding: 4px 0;
             border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
           }
           .info-row:last-child {
             border-bottom: none;
@@ -334,7 +335,7 @@ export default function FulfillmentPage() {
           .info-label {
             font-weight: bold;
             color: #555;
-            min-width: 100px;
+            min-width: 80px;
             flex-shrink: 0;
           }
           .info-value {
@@ -344,25 +345,27 @@ export default function FulfillmentPage() {
           .address-box {
             background: #fff9e6;
             border: 2px solid #ffd700;
-            border-radius: 6px;
-            padding: 16px;
-            margin-top: 8px;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 4px;
           }
           .address-box .postal-code {
             display: inline-block;
             background: #ffd700;
             color: #333;
-            padding: 4px 12px;
-            border-radius: 4px;
+            padding: 2px 8px;
+            border-radius: 3px;
             font-weight: bold;
-            margin-bottom: 8px;
-            font-size: 16px;
+            margin-right: 6px;
+            margin-bottom: 0;
+            font-size: 13px;
           }
           .address-box .address-text {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: bold;
-            line-height: 1.6;
+            line-height: 1.4;
             color: #222;
+            display: inline;
           }
           .products-table {
             width: 100%;
@@ -483,11 +486,8 @@ export default function FulfillmentPage() {
                 <div class="section">
                   <div class="section-title">📍 배송지 주소</div>
                   <div class="address-box">
-                    <div class="postal-code">📮 ${group.shippingInfo.postalCode}</div>
-                    <div class="address-text">
-                      ${group.shippingInfo.address}
-                      ${group.shippingInfo.detailAddress ? '<br>' + group.shippingInfo.detailAddress : ''}
-                    </div>
+                    <span class="postal-code">📮 ${group.shippingInfo.postalCode}</span>
+                    <span class="address-text">${group.shippingInfo.address} ${group.shippingInfo.detailAddress}</span>
                   </div>
                 </div>
 
