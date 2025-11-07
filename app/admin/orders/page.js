@@ -129,7 +129,6 @@ export default function AdminOrdersPage() {
     delivered: 0
   })
   const [isSearchMode, setIsSearchMode] = useState(false)
-  const [searchTimeout, setSearchTimeout] = useState(null)
   const ITEMS_PER_PAGE = 200 // 100 → 200 (2배 증가)
   const SEARCH_ITEMS_PER_PAGE = 5000 // 검색 시 충분한 데이터 확보 (500 → 5000)
 
@@ -494,24 +493,45 @@ export default function AdminOrdersPage() {
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="주문번호, 고객명, 닉네임, 입금자명, 상품명으로 검색..."
-              value={searchTerm}
-              onChange={(e) => {
-                const value = e.target.value
-                setSearchTerm(value)
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="주문번호, 고객명, 닉네임, 입금자명, 상품명으로 검색..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const value = searchTerm.trim()
 
-                // 이전 타이머 취소
-                if (searchTimeout) {
-                  clearTimeout(searchTimeout)
-                }
+                      // 검색어가 있으면 검색 모드, 없으면 일반 모드
+                      if (value) {
+                        setIsSearchMode(true)
+                        setOrders([])
+                        setOffset(0)
+                        setHasMore(true)
+                        loadOrders(true, value)
+                      } else {
+                        setIsSearchMode(false)
+                        setOrders([])
+                        setOffset(0)
+                        setHasMore(true)
+                        loadOrders(true, '')
+                      }
+                    }
+                  }}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  const value = searchTerm.trim()
 
-                // 500ms 후에 검색 실행 (debounce)
-                const timeout = setTimeout(() => {
                   // 검색어가 있으면 검색 모드, 없으면 일반 모드
-                  if (value.trim()) {
+                  if (value) {
                     setIsSearchMode(true)
                     setOrders([])
                     setOffset(0)
@@ -524,12 +544,12 @@ export default function AdminOrdersPage() {
                     setHasMore(true)
                     loadOrders(true, '')
                   }
-                }, 500)
-
-                setSearchTimeout(timeout)
-              }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors whitespace-nowrap"
+              >
+                검색
+              </button>
+            </div>
             {/* 검색 결과 표시 */}
             {isSearchMode && searchTerm && (
               <div className="absolute left-0 top-full mt-2 text-sm">
