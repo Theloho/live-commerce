@@ -954,6 +954,12 @@ export default function AdminOrdersPage() {
                   <div className="text-sm text-gray-600">
                     {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || '익명')}
                   </div>
+                  {/* 입금자명 표시 */}
+                  {order.payment?.depositor_name && (
+                    <div className="text-xs text-gray-500">
+                      💳 입금자: {order.payment.depositor_name}
+                    </div>
+                  )}
                   <div className="text-xs text-gray-500">
                     {order.isGroup
                       ? `${order.groupOrderCount}개 주문 일괄결제 (총 ${uniqueProducts}종 ${totalQuantity}개)`
