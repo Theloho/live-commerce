@@ -9,7 +9,8 @@ import {
   ClockIcon,
   MagnifyingGlassIcon,
   DocumentArrowDownIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  PrinterIcon
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
@@ -225,6 +226,344 @@ export default function FulfillmentPage() {
     setShowBulkUpload(false)
   }
 
+  // 프린트 기능
+  const handlePrint = () => {
+    if (selectedOrderIds.size === 0) {
+      toast.error('프린트할 주문을 선택해주세요')
+      return
+    }
+
+    const allGroups = [...groupedData.merged, ...groupedData.singles]
+    const selectedGroups = allGroups.filter(group =>
+      group.orders.some(order => selectedOrderIds.has(order.id))
+    )
+
+    if (selectedGroups.length === 0) {
+      toast.error('선택된 그룹이 없습니다')
+      return
+    }
+
+    // 프린트 윈도우 생성
+    const printWindow = window.open('', '_blank')
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>배송 라벨 출력</title>
+        <style>
+          @media print {
+            @page {
+              size: A4;
+              margin: 1cm;
+            }
+            body { margin: 0; }
+            .page-break { page-break-after: always; }
+            .no-print { display: none; }
+          }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+          }
+          .label-container {
+            max-width: 19cm;
+            margin: 0 auto 20px;
+            background: white;
+            border: 3px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+          .label-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #333;
+          }
+          .label-header h1 {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
+          .label-header .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.3);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 0 8px;
+          }
+          .label-body {
+            padding: 24px;
+          }
+          .section {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px dashed #e0e0e0;
+          }
+          .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+          }
+          .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .info-row {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: bold;
+            color: #555;
+            min-width: 100px;
+            flex-shrink: 0;
+          }
+          .info-value {
+            color: #222;
+            flex: 1;
+          }
+          .address-box {
+            background: #fff9e6;
+            border: 2px solid #ffd700;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 8px;
+          }
+          .address-box .postal-code {
+            display: inline-block;
+            background: #ffd700;
+            color: #333;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 16px;
+          }
+          .address-box .address-text {
+            font-size: 18px;
+            font-weight: bold;
+            line-height: 1.6;
+            color: #222;
+          }
+          .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+          }
+          .products-table th {
+            background: #f8f9fa;
+            padding: 10px;
+            text-align: left;
+            font-size: 13px;
+            border-bottom: 2px solid #dee2e6;
+            color: #495057;
+          }
+          .products-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 13px;
+          }
+          .products-table tr:last-child td {
+            border-bottom: none;
+          }
+          .product-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+          }
+          .total-row {
+            background: #e8f5e9;
+            font-weight: bold;
+            color: #2e7d32;
+          }
+          .no-print {
+            text-align: center;
+            margin: 30px 0;
+          }
+          .print-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          }
+          .print-button:hover {
+            background: #45a049;
+          }
+          .close-button {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          }
+          .close-button:hover {
+            background: #555;
+          }
+          .order-numbers {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+          }
+        </style>
+      </head>
+      <body>
+        ${selectedGroups.map((group, index) => {
+          const selectedOrders = group.orders.filter(o => selectedOrderIds.has(o.id))
+          const selectedItems = group.allItems.filter(item => selectedOrderIds.has(item.orderId))
+          const totalQty = selectedItems.reduce((sum, item) => sum + item.quantity, 0)
+          const totalAmt = selectedItems.reduce((sum, item) => sum + item.totalPrice, 0)
+          const orderNumbers = selectedOrders.map(o => o.customer_order_number || o.id.slice(-8)).join(', ')
+
+          return `
+            <div class="label-container ${index < selectedGroups.length - 1 ? 'page-break' : ''}">
+              <!-- 헤더 -->
+              <div class="label-header">
+                <h1>📦 배송 라벨</h1>
+                <div>
+                  <span class="badge">${group.type === 'merged' ? '🔗 합배송' : '📦 단일배송'}</span>
+                  <span class="badge">${group.orderCount}개 주문</span>
+                  <span class="badge">${group.uniqueProducts}개 제품</span>
+                </div>
+              </div>
+
+              <!-- 본문 -->
+              <div class="label-body">
+                <!-- 수령인 정보 -->
+                <div class="section">
+                  <div class="section-title">👤 수령인 정보</div>
+                  <div class="info-row">
+                    <div class="info-label">이름</div>
+                    <div class="info-value">${group.shippingInfo.name}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">닉네임</div>
+                    <div class="info-value">${group.shippingInfo.nickname}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">연락처</div>
+                    <div class="info-value">${group.shippingInfo.phone}</div>
+                  </div>
+                  <div class="info-row">
+                    <div class="info-label">입금자명</div>
+                    <div class="info-value">${group.shippingInfo.depositorName}</div>
+                  </div>
+                </div>
+
+                <!-- 배송지 정보 -->
+                <div class="section">
+                  <div class="section-title">📍 배송지 주소</div>
+                  <div class="address-box">
+                    <div class="postal-code">📮 ${group.shippingInfo.postalCode}</div>
+                    <div class="address-text">
+                      ${group.shippingInfo.address}
+                      ${group.shippingInfo.detailAddress ? '<br>' + group.shippingInfo.detailAddress : ''}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 주문 정보 -->
+                <div class="section">
+                  <div class="section-title">📋 주문 정보</div>
+                  <div class="info-row">
+                    <div class="info-label">주문번호</div>
+                    <div class="info-value">${orderNumbers}</div>
+                  </div>
+                  ${group.trackingNumber ? `
+                  <div class="info-row">
+                    <div class="info-label">송장번호</div>
+                    <div class="info-value" style="font-family: monospace; font-weight: bold; color: #2196F3;">${group.trackingNumber}</div>
+                  </div>
+                  ` : ''}
+                </div>
+
+                <!-- 제품 목록 -->
+                <div class="section">
+                  <div class="section-title">📦 제품 목록</div>
+                  <table class="products-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 60px">이미지</th>
+                        <th>제품명</th>
+                        <th>옵션</th>
+                        <th style="width: 80px; text-align: center">수량</th>
+                        <th style="width: 100px; text-align: right">금액</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${selectedItems.map(item => `
+                        <tr>
+                          <td>
+                            ${item.productImage
+                              ? `<img src="${item.productImage}" class="product-image" alt="${item.productName}">`
+                              : `<div class="product-image" style="background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666;">NO IMAGE</div>`
+                            }
+                          </td>
+                          <td>
+                            <strong>${item.productDisplayName}</strong>
+                            ${item.sku ? `<br><span style="font-size: 11px; color: #666; font-family: monospace;">SKU: ${item.sku}</span>` : ''}
+                          </td>
+                          <td>${item.optionDisplay}</td>
+                          <td style="text-align: center; font-weight: bold;">${item.quantity}개</td>
+                          <td style="text-align: right;">₩${item.totalPrice.toLocaleString()}</td>
+                        </tr>
+                      `).join('')}
+                      <tr class="total-row">
+                        <td colspan="3" style="text-align: right; padding-right: 20px;">합계</td>
+                        <td style="text-align: center;">${totalQty}개</td>
+                        <td style="text-align: right; font-size: 16px;">₩${totalAmt.toLocaleString()}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          `
+        }).join('')}
+
+        <div class="no-print">
+          <button onclick="window.print()" class="print-button">🖨️ 인쇄하기</button>
+          <button onclick="window.close()" class="close-button">닫기</button>
+        </div>
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+
+    toast.success(`${selectedGroups.length}개 그룹을 프린트합니다`)
+  }
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -334,6 +673,14 @@ export default function FulfillmentPage() {
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
               송장입력
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={selectedOrderIds.size === 0}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex items-center gap-2"
+            >
+              <PrinterIcon className="w-4 h-4" />
+              프린트
             </button>
           </div>
         </div>
