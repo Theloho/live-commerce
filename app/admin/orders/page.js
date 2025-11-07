@@ -324,7 +324,7 @@ export default function AdminOrdersPage() {
       }
 
       setHasMore(moreData)
-      setOffset(currentOffset + ITEMS_PER_PAGE)
+      setOffset(currentOffset + groupedOrders.length) // ⭐ 실제 로드된 개수만큼 증가
       setLoading(false)
       setLoadingMore(false)
     } catch (error) {
