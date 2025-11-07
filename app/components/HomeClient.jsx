@@ -21,20 +21,42 @@ export default function HomeClient({ initialProducts }) {
   // ⚡ 실시간 재고 업데이트: 15초마다 라이브 상품 Polling
   useEffect(() => {
     let interval
+    let errorCount = 0
+    const MAX_ERRORS = 3
 
     const updateLiveProducts = async () => {
+      // 에러가 3회 이상 발생하면 폴링 중지
+      if (errorCount >= MAX_ERRORS) {
+        console.warn('⚠️ 라이브 상품 업데이트 폴링 중지 (연속 에러 3회)')
+        clearInterval(interval)
+        return
+      }
+
       // Page Visibility API: 다른 탭 보면 생략
       if (document.hidden) return
 
       try {
-        const res = await fetch('/api/products/live')
+        const res = await fetch('/api/products/live', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        })
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`)
+        }
+
         const data = await res.json()
 
         if (data.success && data.products) {
           setProducts(data.products)
+          errorCount = 0 // 성공 시 에러 카운터 리셋
         }
       } catch (error) {
-        console.error('❌ 라이브 상품 업데이트 실패:', error)
+        errorCount++
+        // 첫 번째 에러만 로그 출력 (콘솔 스팸 방지)
+        if (errorCount === 1) {
+          console.warn('⚠️ 라이브 상품 업데이트 실패 (기존 데이터 유지):', error.message)
+        }
         // 에러 발생해도 기존 데이터 유지 (안정성)
       }
     }
