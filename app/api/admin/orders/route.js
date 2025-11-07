@@ -121,17 +121,9 @@ export async function GET(request) {
         query = query.eq('order_payments.method', paymentMethodFilter)
       }
 
-      // ✅ 검색어 필터링 (서버 사이드)
-      if (searchTerm) {
-        // ⚡ 성능 최적화: 여러 OR 조건을 한 번에 처리
-        // 1. 주문번호 검색 (인덱스 활용)
-        // 2. order_type 검색 (카카오 ID - 인덱스 활용)
-        // ⚠️ id는 UUID 타입이므로 ::text로 변환 후 검색
-        query = query.or(
-          `customer_order_number.ilike.%${searchTerm}%,` +
-          `order_type.ilike.%${searchTerm}%`
-        )
-      }
+      // ✅ 검색어가 있을 때는 서버 필터링 안 함 (프론트에서 전체 필터링)
+      // 이유: 고객명, 입금자명, 상품명 등은 JOIN 필요, 프론트에서 처리하는 것이 더 효율적
+      // 검색 시에는 최근 5000건을 가져와서 프론트에서 필터링
 
       // 정렬
       query = query.order('created_at', { ascending: false })
