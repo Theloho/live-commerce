@@ -173,7 +173,7 @@ export default function MyPage() {
       icon: PhoneIcon,
       type: 'tel',
       required: true,
-      readonly: true
+      readonly: false  // ✅ 수정 가능하도록 변경
     },
     {
       key: 'nickname',
