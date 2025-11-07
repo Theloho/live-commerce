@@ -766,7 +766,7 @@ export default function AdminOrdersPage() {
                       </div>
                       {order.payment?.depositor_name && (
                         <div className="text-xs text-gray-500">
-                          💳 입금자: {order.payment.depositor_name}
+                          💳 {order.payment.depositor_name}
                         </div>
                       )}
                       <div className="text-sm text-gray-500">
@@ -962,7 +962,7 @@ export default function AdminOrdersPage() {
                   {/* 입금자명 표시 */}
                   {order.payment?.depositor_name && (
                     <div className="text-xs text-gray-500">
-                      💳 입금자: {order.payment.depositor_name}
+                      💳 {order.payment.depositor_name}
                     </div>
                   )}
                   <div className="text-xs text-gray-500">
