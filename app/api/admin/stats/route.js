@@ -11,9 +11,18 @@ export async function GET() {
   try {
     console.log('📊 관리자 대시보드 통계 API 호출')
 
-    const today = new Date()
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    // 서울 시간 기준: 오늘 00:00 ~ 23:59:59
+    const now = new Date()
+    const koreaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+    koreaTime.setHours(0, 0, 0, 0)
+
+    const endTime = new Date(koreaTime)
+    endTime.setHours(23, 59, 59, 999)
+
+    const todayStart = koreaTime
+    const todayEnd = endTime
     const todayStartISO = todayStart.toISOString()
+    const todayEndISO = todayEnd.toISOString()
 
     // 병렬로 모든 통계 데이터 가져오기
     const [
@@ -56,16 +65,17 @@ export async function GET() {
 
     const orders = ordersResult.data || []
 
-    // 오늘 주문 수
-    const todayOrders = orders.filter(order =>
-      new Date(order.created_at) >= todayStart
-    ).length
+    // 오늘 주문 수 (서울 시간 기준)
+    const todayOrders = orders.filter(order => {
+      const orderDate = new Date(order.created_at)
+      return orderDate >= todayStart && orderDate <= todayEnd
+    }).length
 
-    // 오늘 매출 (결제완료 주문만)
+    // 오늘 매출 (결제완료 주문만, 서울 시간 기준)
     const todaySales = orders
       .filter(order => {
         const orderDate = new Date(order.created_at)
-        return orderDate >= todayStart && order.status === 'paid'
+        return orderDate >= todayStart && orderDate <= todayEnd && order.status === 'paid'
       })
       .reduce((total, order) => {
         // 결제 정보에서 가장 적절한 금액 선택
