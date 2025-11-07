@@ -590,62 +590,42 @@ export default function AdminOrdersPage() {
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="주문번호, 고객명, 닉네임, 입금자명, 상품명으로 검색..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const value = searchTerm.trim()
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="주문번호, 고객명, 닉네임, 입금자명, 상품명으로 실시간 검색..."
+                value={searchTerm}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setSearchTerm(value)
 
-                      // 검색어가 있으면 검색 모드, 없으면 일반 모드
-                      if (value) {
-                        setIsSearchMode(true)
-                        setOrders([])
-                        setOffset(0)
-                        setHasMore(true)
-                        loadOrders(true, value)
-                      } else {
-                        setIsSearchMode(false)
-                        setOrders([])
-                        setOffset(0)
-                        setHasMore(true)
-                        loadOrders(true, '')
-                      }
+                  // ⚡ 실시간 검색 (300ms debounce)
+                  if (searchTimeout) clearTimeout(searchTimeout)
+
+                  const timeout = setTimeout(() => {
+                    const trimmedValue = value.trim()
+
+                    // 검색어가 있으면 검색 모드, 없으면 일반 모드
+                    if (trimmedValue) {
+                      setIsSearchMode(true)
+                      setOrders([])
+                      setOffset(0)
+                      setHasMore(true)
+                      loadOrders(true, trimmedValue)
+                    } else {
+                      setIsSearchMode(false)
+                      setOrders([])
+                      setOffset(0)
+                      setHasMore(true)
+                      loadOrders(true, '')
                     }
-                  }}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  const value = searchTerm.trim()
+                  }, 300)
 
-                  // 검색어가 있으면 검색 모드, 없으면 일반 모드
-                  if (value) {
-                    setIsSearchMode(true)
-                    setOrders([])
-                    setOffset(0)
-                    setHasMore(true)
-                    loadOrders(true, value)
-                  } else {
-                    setIsSearchMode(false)
-                    setOrders([])
-                    setOffset(0)
-                    setHasMore(true)
-                    loadOrders(true, '')
-                  }
+                  setSearchTimeout(timeout)
                 }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors whitespace-nowrap"
-              >
-                검색
-              </button>
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
             </div>
             {/* 검색 결과 표시 */}
             {isSearchMode && searchTerm && (
