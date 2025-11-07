@@ -69,7 +69,7 @@ export default function FulfillmentPage() {
 
       while (hasMore) {
         const response = await fetch(
-          `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=all&limit=${limit}&offset=${offset}`
+          `/api/admin/fulfillment-orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${limit}&offset=${offset}`
         )
 
         if (!response.ok) {
