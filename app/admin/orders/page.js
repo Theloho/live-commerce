@@ -131,7 +131,7 @@ export default function AdminOrdersPage() {
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [searchTimeout, setSearchTimeout] = useState(null)
   const ITEMS_PER_PAGE = 200 // 100 → 200 (2배 증가)
-  const SEARCH_ITEMS_PER_PAGE = 500 // 10000 → 500 (서버 검색으로 충분)
+  const SEARCH_ITEMS_PER_PAGE = 5000 // 검색 시 충분한 데이터 확보 (500 → 5000)
 
   const filterOrders = () => {
     let filtered = [...orders]
