@@ -41,20 +41,23 @@ export default function SellerLiveDashboard() {
     }
   }, [isAdminAuthenticated, adminUser])
 
-  // 15초마다 자동 새로고침
+  // 15초마다 자동 새로고침 (백그라운드)
   useEffect(() => {
     if (!isAdminAuthenticated) return
 
     const interval = setInterval(() => {
-      loadDashboardData()
+      loadDashboardData(true) // 백그라운드 새로고침
     }, 15000) // 15초
 
     return () => clearInterval(interval)
   }, [isAdminAuthenticated, adminUser])
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (isBackgroundRefresh = false) => {
     try {
-      setLoading(true)
+      // 백그라운드 새로고침이 아닐 때만 로딩 표시
+      if (!isBackgroundRefresh) {
+        setLoading(true)
+      }
 
       // 오늘 주문 조회
       const response = await fetch(
@@ -115,9 +118,14 @@ export default function SellerLiveDashboard() {
       setLastUpdated(new Date())
     } catch (error) {
       console.error('데이터 로딩 오류:', error)
-      toast.error('데이터를 불러오는데 실패했습니다')
+      // 백그라운드 새로고침 중 에러는 조용히 무시
+      if (!isBackgroundRefresh) {
+        toast.error('데이터를 불러오는데 실패했습니다')
+      }
     } finally {
-      setLoading(false)
+      if (!isBackgroundRefresh) {
+        setLoading(false)
+      }
     }
   }
 
