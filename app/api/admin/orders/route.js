@@ -133,8 +133,17 @@ export async function GET(request) {
 
         switch (dateRange) {
           case 'today':
-            // 오늘 00:00:00부터
-            startDateTime = new Date(now.setHours(0, 0, 0, 0)).toISOString()
+            // 서울 시간 기준: 오늘 00:00 ~ 다음날 04:00
+            const koreaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+            koreaTime.setHours(0, 0, 0, 0)
+
+            // 다음날 새벽 4시까지 포함
+            const endTime = new Date(koreaTime)
+            endTime.setDate(endTime.getDate() + 1)
+            endTime.setHours(4, 0, 0, 0)
+
+            startDateTime = koreaTime.toISOString()
+            query = query.lte('created_at', endTime.toISOString())
             break
           case 'yesterday':
             // 어제 00:00:00부터 23:59:59까지
@@ -237,7 +246,16 @@ export async function GET(request) {
 
           switch (dateRange) {
             case 'today':
-              startDateTime = new Date(now.setHours(0, 0, 0, 0)).toISOString()
+              // 서울 시간 기준: 오늘 00:00 ~ 다음날 04:00
+              const koreaTimeCount = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+              koreaTimeCount.setHours(0, 0, 0, 0)
+
+              const endTimeCount = new Date(koreaTimeCount)
+              endTimeCount.setDate(endTimeCount.getDate() + 1)
+              endTimeCount.setHours(4, 0, 0, 0)
+
+              startDateTime = koreaTimeCount.toISOString()
+              countQuery = countQuery.lte('created_at', endTimeCount.toISOString())
               break
             case 'yesterday':
               const yesterday = new Date(now)

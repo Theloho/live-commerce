@@ -27,9 +27,17 @@ export async function GET(request) {
     let query = supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true })
 
     if (dateRange === 'today') {
+      // 서울 시간 기준: 오늘 00:00 ~ 다음날 04:00
       const now = new Date()
-      const startDateTime = new Date(now.setHours(0, 0, 0, 0)).toISOString()
-      query = query.gte('created_at', startDateTime)
+      const koreaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+      koreaTime.setHours(0, 0, 0, 0)
+
+      const endTime = new Date(koreaTime)
+      endTime.setDate(endTime.getDate() + 1)
+      endTime.setHours(4, 0, 0, 0)
+
+      query = query.gte('created_at', koreaTime.toISOString())
+      query = query.lte('created_at', endTime.toISOString())
     }
 
     const { count, error } = await query
