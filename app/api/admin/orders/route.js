@@ -121,10 +121,19 @@ export async function GET(request) {
         query = query.eq('order_payments.method', paymentMethodFilter)
       }
 
-      // ✅ 검색어가 있을 때는 DB 필터링 제거 (프론트에서 전체 필터링)
-      // 주문번호, 고객명, 입금자명, 상품명 등 다양한 필드 검색을 위해
-      // 검색 시에는 더 많은 데이터를 가져와서 프론트에서 필터링
-      // (searchTerm 파라미터는 프론트 필터링 트리거로만 사용)
+      // ✅ 검색어 필터링 (서버 사이드)
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase()
+
+        // ⚡ 성능 최적화: 여러 OR 조건을 한 번에 처리
+        // 1. 주문번호 검색 (인덱스 활용)
+        // 2. order_type 검색 (카카오 ID - 인덱스 활용)
+        query = query.or(
+          `customer_order_number.ilike.%${searchTerm}%,` +
+          `order_type.ilike.%${searchTerm}%,` +
+          `id.ilike.%${searchTerm}%`
+        )
+      }
 
       // 정렬
       query = query.order('created_at', { ascending: false })

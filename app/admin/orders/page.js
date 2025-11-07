@@ -131,7 +131,7 @@ export default function AdminOrdersPage() {
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [searchTimeout, setSearchTimeout] = useState(null)
   const ITEMS_PER_PAGE = 200 // 100 → 200 (2배 증가)
-  const SEARCH_ITEMS_PER_PAGE = 10000 // 검색 시 전체 조회 (무제한에 가까운 큰 숫자)
+  const SEARCH_ITEMS_PER_PAGE = 500 // 10000 → 500 (서버 검색으로 충분)
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -156,29 +156,31 @@ export default function AdminOrdersPage() {
       filtered = filtered.filter(order => order.status === statusFilter)
     }
 
-    // 검색어 필터 (서버: 주문번호/ID 검색, 프론트: 고객명/입금자명/상품명 필터링)
+    // ⚡ 검색어 필터 (서버: 주문번호/ID/카카오ID, 프론트: 고객명/입금자명/상품명/전화번호)
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
+
+      // ✅ 성능 최적화: 서버에서 이미 주문번호/ID/카카오ID로 필터링됨
+      // 프론트에서는 추가 필드만 체크 (고객명, 입금자명, 상품명, 전화번호)
       filtered = filtered.filter(order => {
-        // 1. 주문번호/ID (서버에서 이미 검색됨)
-        if (order.customer_order_number?.toLowerCase().includes(searchLower)) return true
-        if (order.id?.toLowerCase().includes(searchLower)) return true
+        // 서버 검색 결과를 그대로 포함 (주문번호, ID, 카카오ID)
+        const serverSearchMatched =
+          order.customer_order_number?.toLowerCase().includes(searchLower) ||
+          order.id?.toLowerCase().includes(searchLower) ||
+          order.order_type?.toLowerCase().includes(searchLower)
 
-        // 2. 고객 정보 (프론트 필터링)
-        if (order.shipping?.name?.toLowerCase().includes(searchLower)) return true
-        if (order.userName?.toLowerCase().includes(searchLower)) return true
-        if (order.userNickname?.toLowerCase().includes(searchLower)) return true
+        if (serverSearchMatched) return true
 
-        // 3. 결제 정보 (프론트 필터링)
-        if (order.payment?.depositor_name?.toLowerCase().includes(searchLower)) return true
+        // 프론트 추가 검색 (고객명, 입금자명, 상품명, 전화번호)
+        const clientSearchMatched =
+          order.shipping?.name?.toLowerCase().includes(searchLower) ||
+          order.userName?.toLowerCase().includes(searchLower) ||
+          order.userNickname?.toLowerCase().includes(searchLower) ||
+          order.payment?.depositor_name?.toLowerCase().includes(searchLower) ||
+          order.items?.some(item => item.title?.toLowerCase().includes(searchLower)) ||
+          order.shipping?.phone?.replace(/-/g, '').includes(searchLower.replace(/-/g, ''))
 
-        // 4. 상품명 (프론트 필터링)
-        if (order.items?.some(item => item.title?.toLowerCase().includes(searchLower))) return true
-
-        // 5. 전화번호 (프론트 필터링)
-        if (order.shipping?.phone?.replace(/-/g, '').includes(searchLower.replace(/-/g, ''))) return true
-
-        return false
+        return clientSearchMatched
       })
     }
 
