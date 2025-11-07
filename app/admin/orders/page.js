@@ -199,7 +199,7 @@ export default function AdminOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, searchTerm, statusFilter, paymentFilter])
 
-  // 필터 변경 시 초기화 (날짜 필터 추가 ⭐)
+  // 날짜 필터 변경 시에만 데이터 재로드 ⭐ (탭 이동 시에는 클라이언트 필터링만)
   useEffect(() => {
     setOrders([])
     setOffset(0)
@@ -208,7 +208,7 @@ export default function AdminOrdersPage() {
       loadOrders(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, paymentFilter, dateRange])
+  }, [dateRange]) // ⚠️ paymentFilter 제거 - 탭 이동 시 재로드 방지
 
   // 스크롤 이벤트 핸들러 (검색 모드에서는 비활성화)
   useEffect(() => {
