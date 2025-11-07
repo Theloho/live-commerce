@@ -6,8 +6,22 @@ export async function GET(request) {
     // URL에서 파라미터 추출
     const { searchParams } = new URL(request.url)
     const adminEmail = searchParams.get('adminEmail')
-    const limit = parseInt(searchParams.get('limit') || '100') // ⚡ 성능: 기본값 100 (1000→100)
     const offset = parseInt(searchParams.get('offset') || '0')
+
+    // ✅ 날짜 필터 파라미터 추가 ⭐ NEW
+    const dateRange = searchParams.get('dateRange') || 'today' // today, week, month, all, custom
+    const startDate = searchParams.get('startDate') // custom용
+    const endDate = searchParams.get('endDate') // custom용
+
+    // ✅ 날짜 범위별 LIMIT 설정 (날짜로 제한하므로 LIMIT 크게 또는 없앰)
+    const LIMIT_BY_RANGE = {
+      today: 10000,      // 오늘: 하루 1만건까지 (충분)
+      week: 20000,       // 1주일: 2만건까지
+      month: 50000,      // 1개월: 5만건까지
+      custom: 100000,    // 직접 선택: 10만건까지
+      all: 10000         // 전체: 최근 1만건만 (날짜 필터 권장)
+    }
+    const limit = LIMIT_BY_RANGE[dateRange] || 10000
 
     // ✅ 필터 파라미터 추가
     const statusFilter = searchParams.get('status') // 예: "pending,verifying"
@@ -110,6 +124,45 @@ export async function GET(request) {
       // 전체 조회 시에만 cancelled 제외
       query = query.neq('status', 'cancelled')
 
+      // ✅ 날짜 필터 적용 ⭐ NEW
+      if (dateRange && dateRange !== 'all') {
+        const now = new Date()
+        let startDateTime
+
+        switch (dateRange) {
+          case 'today':
+            // 오늘 00:00:00부터
+            startDateTime = new Date(now.setHours(0, 0, 0, 0)).toISOString()
+            break
+          case 'week':
+            // 7일 전부터
+            startDateTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+            break
+          case 'month':
+            // 30일 전부터
+            startDateTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+            break
+          case 'custom':
+            // 직접 선택한 날짜 범위
+            if (startDate) {
+              startDateTime = new Date(startDate).toISOString()
+            }
+            break
+        }
+
+        if (startDateTime) {
+          query = query.gte('created_at', startDateTime)
+          console.log('📅 날짜 필터 적용:', dateRange, startDateTime)
+        }
+
+        // custom 범위의 endDate 처리
+        if (dateRange === 'custom' && endDate) {
+          const endDateTime = new Date(endDate)
+          endDateTime.setHours(23, 59, 59, 999) // 해당일 23:59:59까지
+          query = query.lte('created_at', endDateTime.toISOString())
+        }
+      }
+
       // ✅ 상태 필터 적용
       if (statusFilter) {
         const statuses = statusFilter.split(',').map(s => s.trim())
@@ -123,15 +176,12 @@ export async function GET(request) {
 
       // ✅ 검색어가 있을 때는 서버 필터링 안 함 (프론트에서 전체 필터링)
       // 이유: 고객명, 입금자명, 상품명 등은 JOIN 필요, 프론트에서 처리하는 것이 더 효율적
-      // 검색 시에는 최근 5000건을 가져와서 프론트에서 필터링
 
       // 정렬
       query = query.order('created_at', { ascending: false })
 
-      // ⚠️ 페이지네이션: 항상 적용 (무한 스크롤 대응)
-      // 주문관리: limit=100 (무한 스크롤)
-      // 입금확인: limit=10 (페이지네이션)
-      query = query.range(offset, offset + limit - 1)
+      // ⚠️ LIMIT 적용: 날짜 범위별로 다른 LIMIT (더 이상 고정 200건 아님!)
+      query = query.limit(limit)
     }
 
     const { data, error, count } = await query

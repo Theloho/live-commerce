@@ -129,8 +129,7 @@ export default function AdminOrdersPage() {
     delivered: 0
   })
   const [isSearchMode, setIsSearchMode] = useState(false)
-  const ITEMS_PER_PAGE = 200 // 100 → 200 (2배 증가)
-  const SEARCH_ITEMS_PER_PAGE = 5000 // 검색 시 충분한 데이터 확보 (500 → 5000)
+  const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터 (today, week, month, all)
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -198,7 +197,7 @@ export default function AdminOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, searchTerm, statusFilter, paymentFilter])
 
-  // 필터 변경 시 초기화
+  // 필터 변경 시 초기화 (날짜 필터 추가 ⭐)
   useEffect(() => {
     setOrders([])
     setOffset(0)
@@ -207,7 +206,7 @@ export default function AdminOrdersPage() {
       loadOrders(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, paymentFilter])
+  }, [statusFilter, paymentFilter, dateRange])
 
   // 스크롤 이벤트 핸들러 (검색 모드에서는 비활성화)
   useEffect(() => {
@@ -247,10 +246,9 @@ export default function AdminOrdersPage() {
       }
 
       const currentOffset = isInitial ? 0 : offset
-      const currentLimit = search ? SEARCH_ITEMS_PER_PAGE : ITEMS_PER_PAGE
 
-      // Service Role API 호출 (페이지네이션 + 검색)
-      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=${currentLimit}&offset=${currentOffset}`
+      // Service Role API 호출 (날짜 필터 + 검색)
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&offset=${currentOffset}`
       if (search) {
         url += `&search=${encodeURIComponent(search)}`
       }
@@ -447,6 +445,38 @@ export default function AdminOrdersPage() {
         >
           새로고침
         </button>
+      </div>
+
+      {/* 📅 Date Range Filter ⭐ NEW */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">📅 조회 기간:</span>
+          {[
+            { id: 'today', label: '오늘', desc: '가장 빠름' },
+            { id: 'week', label: '1주일', desc: '최근 7일' },
+            { id: 'month', label: '1개월', desc: '최근 30일' },
+            { id: 'all', label: '전체', desc: '최근 1만건' }
+          ].map((range) => (
+            <button
+              key={range.id}
+              onClick={() => setDateRange(range.id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                dateRange === range.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title={range.desc}
+            >
+              {range.label}
+            </button>
+          ))}
+          <span className="text-xs text-gray-500 ml-2">
+            {dateRange === 'today' && '💡 오늘 주문만 표시 (가장 빠름)'}
+            {dateRange === 'week' && '📊 최근 7일 주문 표시'}
+            {dateRange === 'month' && '📈 최근 30일 주문 표시'}
+            {dateRange === 'all' && '⚠️ 전체 주문 (최근 1만건)'}
+          </span>
+        </div>
       </div>
 
       {/* Payment Method Tabs */}
