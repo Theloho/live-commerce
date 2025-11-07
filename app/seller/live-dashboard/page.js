@@ -210,8 +210,8 @@ export default function SellerLiveDashboard() {
 
         {/* 🔴 실시간 활동 피드 */}
         {recentActivity.length > 0 && (
-          <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl p-6 shadow-xl">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <div className="bg-gray-800 rounded-xl p-6 shadow-xl border-2 border-gray-700">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
               ⚡ 실시간 활동 피드
             </h2>
             <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -222,7 +222,7 @@ export default function SellerLiveDashboard() {
                 return (
                   <div
                     key={activity.id}
-                    className="flex items-center gap-3 p-3 bg-purple-700 bg-opacity-50 rounded-lg"
+                    className="flex items-center gap-3 p-3 bg-gray-900 rounded-lg border border-gray-700"
                   >
                     <div className="text-2xl flex-shrink-0">
                       {activity.status === 'pending' ? '🛒' : '💰'}
@@ -230,17 +230,17 @@ export default function SellerLiveDashboard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold">{activity.customerName}</span>
-                          <span className="text-sm text-purple-200">
+                          <span className="font-bold text-white">{activity.customerName}</span>
+                          <span className="text-sm text-green-400 font-medium">
                             {activity.status === 'pending' ? '장바구니' : '결제완료'}
                           </span>
-                          <span className="text-xs text-purple-300">{timeDisplay}</span>
+                          <span className="text-xs text-gray-400">{timeDisplay}</span>
                         </div>
-                        <span className="text-sm font-bold text-yellow-300">
+                        <span className="text-base font-bold text-yellow-400">
                           ₩{activity.totalAmount.toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-200 truncate mt-1">
+                      <p className="text-sm text-gray-300 truncate mt-1">
                         {activity.productNames}
                       </p>
                     </div>
