@@ -15,6 +15,9 @@ export default function SalesSummaryPage() {
   const [salesByDate, setSalesByDate] = useState({})
   const [includeCart, setIncludeCart] = useState(false)
   const [sortBy, setSortBy] = useState({}) // 날짜별 정렬 옵션 { '2025-11-06': 'quantity', ... }
+  const [dateRange, setDateRange] = useState('today') // 날짜 필터 (today, custom)
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -23,13 +26,13 @@ export default function SalesSummaryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminUser])
 
-  // 체크박스 변경 시 데이터 다시 로드
+  // 체크박스 또는 날짜 필터 변경 시 데이터 다시 로드
   useEffect(() => {
     if (adminUser?.email) {
       loadSalesData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeCart])
+  }, [includeCart, dateRange, customStartDate, customEndDate])
 
   const loadSalesData = async () => {
     try {
@@ -40,10 +43,14 @@ export default function SalesSummaryPage() {
         return
       }
 
-      // verifying 상태의 모든 주문 조회
-      const response = await fetch(
-        `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&limit=10000&offset=0`
-      )
+      // verifying 상태의 주문 조회 (날짜 필터 추가)
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}`
+      if (dateRange === 'custom') {
+        if (customStartDate) url += `&startDate=${customStartDate}`
+        if (customEndDate) url += `&endDate=${customEndDate}`
+      }
+
+      const response = await fetch(url)
 
       if (!response.ok) {
         const error = await response.json()
@@ -298,7 +305,7 @@ export default function SalesSummaryPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* 장바구니 포함 체크박스 */}
           <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
             <input
@@ -326,6 +333,68 @@ export default function SalesSummaryPage() {
             새로고침
           </button>
         </div>
+      </div>
+
+      {/* 📅 날짜 필터 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">📅 조회 기간:</span>
+          <button
+            onClick={() => setDateRange('today')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              dateRange === 'today'
+                ? 'bg-red-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            오늘
+          </button>
+          <button
+            onClick={() => setDateRange('custom')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              dateRange === 'custom'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            📆 기간 선택
+          </button>
+          <span className="text-xs text-gray-500 ml-2">
+            {dateRange === 'today' && '💡 오늘 주문만 조회 (가장 빠름)'}
+            {dateRange === 'custom' && '📆 선택한 기간의 주문'}
+          </span>
+        </div>
+
+        {/* 📆 Custom Date Range Picker */}
+        {dateRange === 'custom' && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">시작일:</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">종료일:</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              {customStartDate && customEndDate && (
+                <span className="text-xs text-gray-500">
+                  {new Date(customStartDate).toLocaleDateString('ko-KR')} ~ {new Date(customEndDate).toLocaleDateString('ko-KR')}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 날짜별 판매 현황 */}
