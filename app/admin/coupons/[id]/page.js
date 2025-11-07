@@ -39,6 +39,7 @@ export default function AdminCouponDetailPage() {
   const [customers, setCustomers] = useState([])
   const [selectedCustomers, setSelectedCustomers] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [holderSearchTerm, setHolderSearchTerm] = useState('') // 보유 고객 검색용
   const [activeTab, setActiveTab] = useState('unused') // unused, used
   const [loading, setLoading] = useState(true)
   const [distributing, setDistributing] = useState(false)
@@ -182,6 +183,19 @@ export default function AdminCouponDetailPage() {
   // 탭별 필터링
   const unusedHolders = holders.filter(h => !h.is_used)
   const usedHolders = holders.filter(h => h.is_used)
+
+  // 보유 고객 검색 필터링
+  const filteredHolders = (activeTab === 'unused' ? unusedHolders : usedHolders).filter(holder => {
+    if (!holderSearchTerm) return true
+    const search = holderSearchTerm.toLowerCase()
+    return (
+      holder.user?.name?.toLowerCase().includes(search) ||
+      holder.user?.nickname?.toLowerCase().includes(search) ||
+      holder.user?.email?.toLowerCase().includes(search) ||
+      holder.user?.phone?.includes(search) ||
+      holder.order?.customer_order_number?.toLowerCase().includes(search)
+    )
+  })
 
   if (loading) {
     return (
@@ -457,7 +471,38 @@ export default function AdminCouponDetailPage() {
         className="bg-white rounded-lg shadow"
       >
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">보유 고객 현황</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">보유 고객 현황</h2>
+          </div>
+        </div>
+
+        {/* 검색창 */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="고객명, 이메일, 전화번호, 주문번호로 검색..."
+                value={holderSearchTerm}
+                onChange={(e) => setHolderSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            {holderSearchTerm && (
+              <button
+                onClick={() => setHolderSearchTerm('')}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                초기화
+              </button>
+            )}
+          </div>
+          {filteredHolders.length > 0 && holderSearchTerm && (
+            <p className="mt-2 text-sm text-gray-500">
+              검색 결과: {filteredHolders.length}명
+            </p>
+          )}
         </div>
 
         {/* 탭 */}
@@ -521,14 +566,17 @@ export default function AdminCouponDetailPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {(activeTab === 'unused' ? unusedHolders : usedHolders).length === 0 ? (
+              {filteredHolders.length === 0 ? (
                 <tr>
                   <td colSpan={activeTab === 'used' ? 6 : 4} className="px-6 py-12 text-center text-gray-500">
-                    {activeTab === 'unused' ? '미사용 쿠폰이 없습니다' : '사용 완료된 쿠폰이 없습니다'}
+                    {holderSearchTerm
+                      ? '검색 결과가 없습니다'
+                      : activeTab === 'unused' ? '미사용 쿠폰이 없습니다' : '사용 완료된 쿠폰이 없습니다'
+                    }
                   </td>
                 </tr>
               ) : (
-                (activeTab === 'unused' ? unusedHolders : usedHolders).map((holder) => (
+                filteredHolders.map((holder) => (
                   <tr key={holder.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
