@@ -123,14 +123,13 @@ export default function SellerLiveDashboard() {
         .slice(0, 10)
         .map(order => {
           const customerName = order.userProfile?.name || order.order_shipping?.[0]?.name || '고객'
-          const maskedName = customerName.charAt(0) + '**'
           const productNames = order.order_items?.map(item => item.products?.title || item.title).filter(Boolean).join(', ') || '상품'
           const totalAmount = order.final_amount || order.total_amount || 0
 
           return {
             id: order.id,
             status: order.status,
-            customerName: maskedName,
+            customerName: customerName,
             productNames,
             totalAmount,
             createdAt: new Date(order.created_at)
@@ -223,27 +222,27 @@ export default function SellerLiveDashboard() {
                 return (
                   <div
                     key={activity.id}
-                    className="flex items-start gap-3 p-3 bg-purple-700 bg-opacity-50 rounded-lg"
+                    className="flex items-center gap-3 p-3 bg-purple-700 bg-opacity-50 rounded-lg"
                   >
                     <div className="text-2xl flex-shrink-0">
                       {activity.status === 'pending' ? '🛒' : '💰'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold">{activity.customerName}님</span>
-                        <span className="text-xs text-purple-200">
-                          {activity.status === 'pending' ? '장바구니 담음' : '입금 대기 중'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-200 truncate">
-                        {activity.productNames}
-                      </p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs text-purple-300">{timeDisplay}</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">{activity.customerName}</span>
+                          <span className="text-sm text-purple-200">
+                            {activity.status === 'pending' ? '장바구니' : '결제완료'}
+                          </span>
+                          <span className="text-xs text-purple-300">{timeDisplay}</span>
+                        </div>
                         <span className="text-sm font-bold text-yellow-300">
                           ₩{activity.totalAmount.toLocaleString()}
                         </span>
                       </div>
+                      <p className="text-sm text-gray-200 truncate mt-1">
+                        {activity.productNames}
+                      </p>
                     </div>
                   </div>
                 )
