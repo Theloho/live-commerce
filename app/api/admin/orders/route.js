@@ -144,15 +144,15 @@ export async function GET(request) {
             query = query.lte('created_at', endTime.toISOString())
             break
           case 'yesterday':
-            // 어제 00:00:00부터 23:59:59까지
-            const yesterday = new Date(now)
-            yesterday.setDate(yesterday.getDate() - 1)
-            yesterday.setHours(0, 0, 0, 0)
-            startDateTime = yesterday.toISOString()
+            // 서울 시간 기준: 어제 00:00 ~ 23:59:59
+            const koreaTimeYesterday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+            koreaTimeYesterday.setDate(koreaTimeYesterday.getDate() - 1)
+            koreaTimeYesterday.setHours(0, 0, 0, 0)
 
-            // 어제 23:59:59까지
-            const yesterdayEnd = new Date(yesterday)
+            const yesterdayEnd = new Date(koreaTimeYesterday)
             yesterdayEnd.setHours(23, 59, 59, 999)
+
+            startDateTime = koreaTimeYesterday.toISOString()
             query = query.lte('created_at', yesterdayEnd.toISOString())
             break
           case 'week':
@@ -255,14 +255,16 @@ export async function GET(request) {
               countQuery = countQuery.lte('created_at', endTimeCount.toISOString())
               break
             case 'yesterday':
-              const yesterday = new Date(now)
-              yesterday.setDate(yesterday.getDate() - 1)
-              yesterday.setHours(0, 0, 0, 0)
-              startDateTime = yesterday.toISOString()
+              // 서울 시간 기준: 어제 00:00 ~ 23:59:59
+              const koreaTimeYesterdayCount = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+              koreaTimeYesterdayCount.setDate(koreaTimeYesterdayCount.getDate() - 1)
+              koreaTimeYesterdayCount.setHours(0, 0, 0, 0)
 
-              const yesterdayEnd = new Date(yesterday)
-              yesterdayEnd.setHours(23, 59, 59, 999)
-              countQuery = countQuery.lte('created_at', yesterdayEnd.toISOString())
+              const yesterdayEndCount = new Date(koreaTimeYesterdayCount)
+              yesterdayEndCount.setHours(23, 59, 59, 999)
+
+              startDateTime = koreaTimeYesterdayCount.toISOString()
+              countQuery = countQuery.lte('created_at', yesterdayEndCount.toISOString())
               break
             case 'week':
               startDateTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
