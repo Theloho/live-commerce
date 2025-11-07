@@ -764,6 +764,11 @@ export default function AdminOrdersPage() {
                         <AtSymbolIcon className="w-3 h-3" />
                         {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || order.userId?.split('-').pop()?.substring(0, 8) || '익명')}
                       </div>
+                      {order.payment?.depositor_name && (
+                        <div className="text-xs text-gray-500">
+                          💳 입금자: {order.payment.depositor_name}
+                        </div>
+                      )}
                       <div className="text-sm text-gray-500">
                         {order.shipping?.phone || ''}
                       </div>
