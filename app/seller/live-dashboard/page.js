@@ -24,6 +24,7 @@ export default function SellerLiveDashboard() {
   })
   const [topProducts, setTopProducts] = useState([])
   const [lowStockProducts, setLowStockProducts] = useState([])
+  const [recentActivity, setRecentActivity] = useState([])
   const [lastUpdated, setLastUpdated] = useState(new Date())
 
   // 권한 체크
@@ -115,6 +116,28 @@ export default function SellerLiveDashboard() {
         .sort((a, b) => a.inventory - b.inventory)
       setLowStockProducts(lowStock)
 
+      // 최근 활동 (pending, verifying만)
+      const activities = orders
+        .filter(order => order.status === 'pending' || order.status === 'verifying')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 10)
+        .map(order => {
+          const customerName = order.userProfile?.name || order.order_shipping?.[0]?.name || '고객'
+          const maskedName = customerName.charAt(0) + '**'
+          const productNames = order.order_items?.map(item => item.products?.title || item.title).filter(Boolean).join(', ') || '상품'
+          const totalAmount = order.final_amount || order.total_amount || 0
+
+          return {
+            id: order.id,
+            status: order.status,
+            customerName: maskedName,
+            productNames,
+            totalAmount,
+            createdAt: new Date(order.created_at)
+          }
+        })
+      setRecentActivity(activities)
+
       setLastUpdated(new Date())
     } catch (error) {
       console.error('데이터 로딩 오류:', error)
@@ -185,6 +208,49 @@ export default function SellerLiveDashboard() {
             </div>
           </div>
         </div>
+
+        {/* 🔴 실시간 활동 피드 */}
+        {recentActivity.length > 0 && (
+          <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl p-6 shadow-xl">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              ⚡ 실시간 활동 피드
+            </h2>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {recentActivity.map((activity) => {
+                const timeAgo = Math.floor((new Date() - activity.createdAt) / 1000 / 60)
+                const timeDisplay = timeAgo < 1 ? '방금 전' : `${timeAgo}분 전`
+
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 p-3 bg-purple-700 bg-opacity-50 rounded-lg"
+                  >
+                    <div className="text-2xl flex-shrink-0">
+                      {activity.status === 'pending' ? '🛒' : '💰'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold">{activity.customerName}님</span>
+                        <span className="text-xs text-purple-200">
+                          {activity.status === 'pending' ? '장바구니 담음' : '입금 대기 중'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-200 truncate">
+                        {activity.productNames}
+                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-purple-300">{timeDisplay}</span>
+                        <span className="text-sm font-bold text-yellow-300">
+                          ₩{activity.totalAmount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 🔥 실시간 인기 상품 TOP 5 */}
         <div className="bg-gray-800 rounded-xl p-6 shadow-xl">
