@@ -9,13 +9,14 @@ export async function GET(request) {
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // ✅ 날짜 필터 파라미터 추가 ⭐ NEW
-    const dateRange = searchParams.get('dateRange') || 'today' // today, week, month, all, custom
+    const dateRange = searchParams.get('dateRange') || 'today' // today, yesterday, week, month, all, custom
     const startDate = searchParams.get('startDate') // custom용
     const endDate = searchParams.get('endDate') // custom용
 
     // ✅ 날짜 범위별 LIMIT 설정 (날짜로 제한하므로 LIMIT 크게 또는 없앰)
     const LIMIT_BY_RANGE = {
       today: 10000,      // 오늘: 하루 1만건까지 (충분)
+      yesterday: 10000,  // 어제: 하루 1만건까지
       week: 20000,       // 1주일: 2만건까지
       month: 50000,      // 1개월: 5만건까지
       custom: 100000,    // 직접 선택: 10만건까지
@@ -133,6 +134,18 @@ export async function GET(request) {
           case 'today':
             // 오늘 00:00:00부터
             startDateTime = new Date(now.setHours(0, 0, 0, 0)).toISOString()
+            break
+          case 'yesterday':
+            // 어제 00:00:00부터 23:59:59까지
+            const yesterday = new Date(now)
+            yesterday.setDate(yesterday.getDate() - 1)
+            yesterday.setHours(0, 0, 0, 0)
+            startDateTime = yesterday.toISOString()
+
+            // 어제 23:59:59까지
+            const yesterdayEnd = new Date(yesterday)
+            yesterdayEnd.setHours(23, 59, 59, 999)
+            query = query.lte('created_at', yesterdayEnd.toISOString())
             break
           case 'week':
             // 7일 전부터

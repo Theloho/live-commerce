@@ -129,7 +129,9 @@ export default function AdminOrdersPage() {
     delivered: 0
   })
   const [isSearchMode, setIsSearchMode] = useState(false)
-  const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터 (today, week, month, all)
+  const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터 (today, yesterday, week, month, all, custom)
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -249,6 +251,10 @@ export default function AdminOrdersPage() {
 
       // Service Role API 호출 (날짜 필터 + 검색)
       let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&offset=${currentOffset}`
+      if (dateRange === 'custom') {
+        if (customStartDate) url += `&startDate=${customStartDate}`
+        if (customEndDate) url += `&endDate=${customEndDate}`
+      }
       if (search) {
         url += `&search=${encodeURIComponent(search)}`
       }
@@ -453,6 +459,7 @@ export default function AdminOrdersPage() {
           <span className="text-sm font-medium text-gray-700">📅 조회 기간:</span>
           {[
             { id: 'today', label: '오늘', desc: '가장 빠름' },
+            { id: 'yesterday', label: '어제', desc: '어제 주문' },
             { id: 'week', label: '1주일', desc: '최근 7일' },
             { id: 'month', label: '1개월', desc: '최근 30일' },
             { id: 'all', label: '전체', desc: '최근 1만건' }
@@ -470,13 +477,68 @@ export default function AdminOrdersPage() {
               {range.label}
             </button>
           ))}
+          <button
+            onClick={() => setDateRange('custom')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              dateRange === 'custom'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            title="기간 직접 선택"
+          >
+            📆 기간 선택
+          </button>
           <span className="text-xs text-gray-500 ml-2">
             {dateRange === 'today' && '💡 오늘 주문만 표시 (가장 빠름)'}
+            {dateRange === 'yesterday' && '📅 어제 주문 표시'}
             {dateRange === 'week' && '📊 최근 7일 주문 표시'}
             {dateRange === 'month' && '📈 최근 30일 주문 표시'}
             {dateRange === 'all' && '⚠️ 전체 주문 (최근 1만건)'}
+            {dateRange === 'custom' && '📆 선택한 기간의 주문 표시'}
           </span>
         </div>
+
+        {/* 📆 Custom Date Range Picker (기간 선택 시에만 표시) */}
+        {dateRange === 'custom' && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">시작일:</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">종료일:</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <button
+                onClick={() => loadOrders(true)}
+                disabled={!customStartDate}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  customStartDate
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                조회
+              </button>
+              {customStartDate && customEndDate && (
+                <span className="text-xs text-gray-500">
+                  {new Date(customStartDate).toLocaleDateString('ko-KR')} ~ {new Date(customEndDate).toLocaleDateString('ko-KR')}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Payment Method Tabs */}
