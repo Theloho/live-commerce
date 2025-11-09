@@ -201,6 +201,12 @@ export default function AdminOrdersPage() {
 
   // 날짜 필터 변경 시에만 데이터 재로드 ⭐ (탭 이동 시에는 클라이언트 필터링만)
   useEffect(() => {
+    // ⭐ 'custom' 모드: 날짜 입력 UI만 표시, 데이터 로드 X
+    if (dateRange === 'custom') {
+      return
+    }
+
+    // ✅ 다른 모드 (today, yesterday, week, month, all): 즉시 데이터 로드
     setOrders([])
     setOffset(0)
     setHasMore(true)
