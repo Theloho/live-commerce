@@ -7,7 +7,9 @@ import {
   CubeIcon,
   BuildingStorefrontIcon,
   ChartBarIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import { aggregateProductsForLogistics, generateLogisticsCSV, getSupplierSummary } from '@/lib/logisticsAggregation'
@@ -26,6 +28,7 @@ export default function LogisticsPage() {
     totalSuppliers: 0
   })
   const [supplierSummaries, setSupplierSummaries] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
 
   // 권한 체크
   useEffect(() => {
@@ -97,6 +100,36 @@ export default function LogisticsPage() {
     toast.success('CSV 다운로드 완료')
   }
 
+  // 검색 필터링
+  const filteredProducts = aggregatedData.products.filter(product => {
+    if (!searchTerm.trim()) return true
+
+    const search = searchTerm.toLowerCase()
+
+    // 제품명으로 검색
+    if (product.productName?.toLowerCase().includes(search)) return true
+
+    // 업체 코드로 검색
+    if (product.supplierProductCode?.toLowerCase().includes(search)) return true
+
+    // 업체명으로 검색
+    if (product.variants.some(v =>
+      v.suppliers.some(s => s.supplierName?.toLowerCase().includes(search))
+    )) return true
+
+    // 옵션명으로 검색
+    if (product.variants.some(v =>
+      v.optionDisplay?.toLowerCase().includes(search)
+    )) return true
+
+    // SKU로 검색
+    if (product.variants.some(v =>
+      v.sku?.toLowerCase().includes(search)
+    )) return true
+
+    return false
+  })
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -126,6 +159,33 @@ export default function LogisticsPage() {
           <ArrowDownTrayIcon className="w-5 h-5" />
           CSV 다운로드
         </button>
+      </div>
+
+      {/* 검색 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="relative">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="제품명, 업체명, 업체코드, 옵션, SKU로 검색..."
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-sm text-gray-600 mt-2">
+            검색 결과: {filteredProducts.length}개 제품
+          </p>
+        )}
       </div>
 
       {/* 통계 */}
@@ -198,10 +258,20 @@ export default function LogisticsPage() {
             입금확인 완료된 주문이 없거나 이미 모두 발주되었습니다
           </p>
         </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <MagnifyingGlassIcon className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            검색 결과가 없습니다
+          </h3>
+          <p className="text-gray-600">
+            &apos;{searchTerm}&apos; 에 대한 검색 결과가 없습니다
+          </p>
+        </div>
       ) : (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">📋 제품별 상세</h2>
-          {aggregatedData.products.map((product, index) => (
+          {filteredProducts.map((product, index) => (
             <motion.div
               key={product.productId}
               initial={{ opacity: 0, y: 10 }}
