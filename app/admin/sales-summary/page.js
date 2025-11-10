@@ -28,6 +28,12 @@ export default function SalesSummaryPage() {
 
   // 체크박스 또는 날짜 필터 변경 시 데이터 다시 로드
   useEffect(() => {
+    // ⭐ 'custom' 모드: 날짜 입력 UI만 표시, 데이터 로드 X
+    if (dateRange === 'custom' && !customStartDate) {
+      return
+    }
+
+    // ✅ 다른 모드 또는 custom 모드에서 날짜 입력 완료 시: 데이터 로드
     if (adminUser?.email) {
       loadSalesData()
     }
