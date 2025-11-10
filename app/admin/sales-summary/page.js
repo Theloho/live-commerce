@@ -29,16 +29,16 @@ export default function SalesSummaryPage() {
   // 체크박스 또는 날짜 필터 변경 시 데이터 다시 로드
   useEffect(() => {
     // ⭐ 'custom' 모드: 날짜 입력 UI만 표시, 데이터 로드 X
-    if (dateRange === 'custom' && !customStartDate) {
+    if (dateRange === 'custom') {
       return
     }
 
-    // ✅ 다른 모드 또는 custom 모드에서 날짜 입력 완료 시: 데이터 로드
+    // ✅ 다른 모드 (today): 즉시 데이터 로드
     if (adminUser?.email) {
       loadSalesData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeCart, dateRange, customStartDate, customEndDate])
+  }, [includeCart, dateRange]) // ⭐ customStartDate, customEndDate 제거
 
   const loadSalesData = async () => {
     try {
@@ -393,6 +393,17 @@ export default function SalesSummaryPage() {
                   className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
                 />
               </div>
+              <button
+                onClick={() => loadSalesData()}
+                disabled={!customStartDate}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  customStartDate
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                조회
+              </button>
               {customStartDate && customEndDate && (
                 <span className="text-xs text-gray-500">
                   {new Date(customStartDate).toLocaleDateString('ko-KR')} ~ {new Date(customEndDate).toLocaleDateString('ko-KR')}
