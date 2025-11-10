@@ -116,7 +116,6 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([])
   const [filteredOrders, setFilteredOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -132,6 +131,7 @@ export default function AdminOrdersPage() {
   const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터 (today, yesterday, week, month, all, custom)
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
+  const [sortOption, setSortOption] = useState('date_desc') // ⭐ 정렬 옵션 (날짜/금액/고객)
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -149,11 +149,6 @@ export default function AdminOrdersPage() {
       filtered = filtered.filter(order => order.status === 'paid')
     } else if (paymentFilter === 'delivered') {
       filtered = filtered.filter(order => order.status === 'delivered')
-    }
-
-    // 상태 필터 (기존)
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(order => order.status === statusFilter)
     }
 
     // ⚡ 검색어 필터 (서버: 주문번호/ID/카카오ID, 프론트: 고객명/입금자명/상품명/전화번호)
@@ -184,6 +179,26 @@ export default function AdminOrdersPage() {
       })
     }
 
+    // ⭐ 정렬 로직
+    filtered.sort((a, b) => {
+      switch (sortOption) {
+        case 'date_desc': // 날짜순 (최신순)
+          return new Date(b.created_at) - new Date(a.created_at)
+        case 'date_asc': // 날짜순 (오래된순)
+          return new Date(a.created_at) - new Date(b.created_at)
+        case 'amount_desc': // 금액순 (높은순)
+          return (b.totalPrice || 0) - (a.totalPrice || 0)
+        case 'amount_asc': // 금액순 (낮은순)
+          return (a.totalPrice || 0) - (b.totalPrice || 0)
+        case 'customer_asc': // 고객명순 (가나다)
+          return (a.userName || '').localeCompare(b.userName || '', 'ko-KR')
+        case 'customer_desc': // 고객명순 (역순)
+          return (b.userName || '').localeCompare(a.userName || '', 'ko-KR')
+        default:
+          return 0
+      }
+    })
+
     setFilteredOrders(filtered)
   }
 
@@ -197,7 +212,7 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     filterOrders()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders, searchTerm, statusFilter, paymentFilter])
+  }, [orders, searchTerm, paymentFilter, sortOption])
 
   // 날짜 필터 변경 시에만 데이터 재로드 ⭐ (탭 이동 시에는 클라이언트 필터링만)
   useEffect(() => {
@@ -648,20 +663,20 @@ export default function AdminOrdersPage() {
             )}
           </div>
 
-          {/* Status Filter */}
+          {/* Sort Options */}
           <div className="flex items-center gap-2">
             <FunnelIcon className="w-5 h-5 text-gray-400" />
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             >
-              <option value="all">모든 상태</option>
-              <option value="pending">장바구니</option>
-              <option value="verifying">주문내역</option>
-              <option value="paid">구매확정</option>
-              <option value="delivered">출고정보</option>
-              <option value="cancelled">취소됨</option>
+              <option value="date_desc">📅 날짜순 (최신순)</option>
+              <option value="date_asc">📅 날짜순 (오래된순)</option>
+              <option value="amount_desc">💰 금액순 (높은순)</option>
+              <option value="amount_asc">💰 금액순 (낮은순)</option>
+              <option value="customer_asc">👤 고객명순 (가나다)</option>
+              <option value="customer_desc">👤 고객명순 (역순)</option>
             </select>
           </div>
         </div>
