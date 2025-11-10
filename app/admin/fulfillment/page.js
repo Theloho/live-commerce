@@ -560,7 +560,38 @@ export default function FulfillmentPage() {
     )
   }
 
+  // 검색 필터링
   const allGroups = [...groupedData.merged, ...groupedData.singles]
+  const filteredGroups = allGroups.filter(group => {
+    if (!searchTerm.trim()) return true
+
+    const search = searchTerm.toLowerCase()
+
+    // 고객명 검색
+    if (group.shippingInfo.name?.toLowerCase().includes(search)) return true
+    if (group.shippingInfo.nickname?.toLowerCase().includes(search)) return true
+
+    // 입금자명 검색
+    if (group.shippingInfo.depositorName?.toLowerCase().includes(search)) return true
+
+    // 주소 검색
+    if (group.shippingInfo.address?.toLowerCase().includes(search)) return true
+    if (group.shippingInfo.detailAddress?.toLowerCase().includes(search)) return true
+    if (group.shippingInfo.postalCode?.includes(search)) return true
+
+    // 주문번호 검색
+    const hasMatchingOrder = group.orders.some(order => {
+      const orderNumber = order.customer_order_number || order.id
+      return orderNumber?.toLowerCase().includes(search)
+    })
+    if (hasMatchingOrder) return true
+
+    // 휴대폰번호 검색
+    if (group.shippingInfo.phone?.includes(search)) return true
+
+    return false
+  })
+
   const totalOrders = groupedData.totalOrders
   const totalGroups = groupedData.total
 
@@ -679,8 +710,14 @@ export default function FulfillmentPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-2">입금확인 완료 주문이 없습니다</h3>
             <p className="text-gray-600">입금 확인이 완료된 주문이 여기에 표시됩니다</p>
           </div>
+        ) : filteredGroups.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <MagnifyingGlassIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">검색 결과가 없습니다</h3>
+            <p className="text-gray-600">&apos;{searchTerm}&apos; 에 대한 검색 결과가 없습니다</p>
+          </div>
         ) : (
-          allGroups.map((group, index) => {
+          filteredGroups.map((group, index) => {
             const isGroupSelected = selectedGroupIds.has(group.groupId)
             const groupOrderIds = group.orders.map(o => o.id)
             const selectedCount = groupOrderIds.filter(id => selectedOrderIds.has(id)).length
