@@ -68,7 +68,7 @@ export default function HomeClient({ initialProducts }) {
     return () => clearInterval(interval)
   }, [])
 
-  // 직접 세션 확인 (모바일 최적화)
+  // 직접 세션 확인 (모바일 최적화) + DB 프로필 체크
   const checkUserSession = async () => {
     try {
       // 📱 모바일: sessionStorage 접근 가능 여부 확인
@@ -83,18 +83,68 @@ export default function HomeClient({ initialProducts }) {
       if (storedUser) {
         const userData = JSON.parse(storedUser)
 
-        // ✅ 프로필 완성도 체크 (phone, address 필수)
-        const hasPhone = userData.phone && userData.phone.trim().length > 0
-        const hasAddress = userData.address && userData.address.trim().length > 0
+        // ✅ DB에서 실제 프로필 조회 (sessionStorage는 오래된 데이터일 수 있음)
+        if (userData.id) {
+          try {
+            const response = await fetch(`/api/profile/check?userId=${userData.id}`)
+            const result = await response.json()
 
-        if (!hasPhone || !hasAddress) {
-          console.log('⚠️ 프로필 미완성 감지, 추가 정보 입력 페이지로 이동')
-          router.push('/auth/complete-profile')
-          setSessionLoading(false)
-          return
+            if (result.success && result.profile) {
+              const dbProfile = result.profile
+
+              // ✅ DB 프로필 완성도 체크 (phone, address 필수)
+              const hasPhone = dbProfile.phone && dbProfile.phone.trim().length > 0
+              const hasAddress = dbProfile.address && dbProfile.address.trim().length > 0
+
+              if (!hasPhone || !hasAddress) {
+                console.log('⚠️ DB 프로필 미완성 감지, 추가 정보 입력 페이지로 이동')
+                router.push('/auth/complete-profile')
+                setSessionLoading(false)
+                return
+              }
+
+              // ✅ DB 프로필로 sessionStorage 업데이트 (최신 데이터 동기화)
+              const updatedUser = {
+                ...userData,
+                ...dbProfile
+              }
+              sessionStorage.setItem('user', JSON.stringify(updatedUser))
+              setUserSession(updatedUser)
+            } else {
+              // DB 조회 실패 시 sessionStorage 데이터로 폴백 (하위 호환성)
+              console.warn('⚠️ DB 프로필 조회 실패, sessionStorage 사용')
+
+              const hasPhone = userData.phone && userData.phone.trim().length > 0
+              const hasAddress = userData.address && userData.address.trim().length > 0
+
+              if (!hasPhone || !hasAddress) {
+                console.log('⚠️ sessionStorage 프로필 미완성 감지, 추가 정보 입력 페이지로 이동')
+                router.push('/auth/complete-profile')
+                setSessionLoading(false)
+                return
+              }
+
+              setUserSession(userData)
+            }
+          } catch (error) {
+            // API 호출 실패 시 sessionStorage 데이터로 폴백
+            console.error('⚠️ 프로필 체크 API 오류:', error)
+
+            const hasPhone = userData.phone && userData.phone.trim().length > 0
+            const hasAddress = userData.address && userData.address.trim().length > 0
+
+            if (!hasPhone || !hasAddress) {
+              console.log('⚠️ sessionStorage 프로필 미완성 감지, 추가 정보 입력 페이지로 이동')
+              router.push('/auth/complete-profile')
+              setSessionLoading(false)
+              return
+            }
+
+            setUserSession(userData)
+          }
+        } else {
+          setUserSession(userData)
         }
-
-        setUserSession(userData)
       } else {
         setUserSession(null)
       }
