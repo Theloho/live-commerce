@@ -20,29 +20,62 @@ export default function CompleteProfilePage() {
   })
 
   useEffect(() => {
-    // 카카오 사용자 확인
-    const sessionUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+    const loadExistingProfile = async () => {
+      // 카카오 사용자 확인
+      const sessionUser = JSON.parse(sessionStorage.getItem('user') || '{}')
 
-    if (sessionUser.provider === 'kakao' && sessionUser.id) {
-      // 카카오 로그인 사용자 정보 자동 입력
-      setFormData(prev => ({
-        ...prev,
-        name: sessionUser.name || '',
-        nickname: sessionUser.nickname || sessionUser.name || ''
-      }))
-    } else if (!authLoading && !user && !sessionUser.id) {
-      // ✅ 카카오 사용자도 sessionUser.id가 있으면 리다이렉트 안 함
-      toast.error('로그인이 필요합니다')
-      router.push('/login')
-      return
-    } else if (user) {
-      // Supabase 사용자 정보 자동 입력
-      setFormData(prev => ({
-        ...prev,
-        name: user.user_metadata?.name || '',
-        nickname: user.user_metadata?.nickname || user.user_metadata?.name || ''
-      }))
+      if (sessionUser.provider === 'kakao' && sessionUser.id) {
+        // ✅ DB에서 기존 프로필 조회 (기존 주소가 있으면 폼에 미리 채우기)
+        try {
+          const response = await fetch(`/api/profile/check?userId=${sessionUser.id}`)
+          const result = await response.json()
+
+          if (result.success && result.profile) {
+            const dbProfile = result.profile
+
+            // 카카오 로그인 사용자 정보 자동 입력 + 기존 데이터 로드
+            setFormData(prev => ({
+              ...prev,
+              name: dbProfile.name || sessionUser.name || '',
+              nickname: dbProfile.nickname || sessionUser.nickname || sessionUser.name || '',
+              phone: dbProfile.phone || '',
+              address: dbProfile.address || '',
+              detailAddress: dbProfile.detail_address || '',
+              postalCode: dbProfile.postal_code || ''
+            }))
+          } else {
+            // DB 조회 실패 시 sessionUser만 사용
+            setFormData(prev => ({
+              ...prev,
+              name: sessionUser.name || '',
+              nickname: sessionUser.nickname || sessionUser.name || ''
+            }))
+          }
+        } catch (error) {
+          console.error('⚠️ 프로필 조회 실패:', error)
+          // 에러 시 sessionUser만 사용
+          setFormData(prev => ({
+            ...prev,
+            name: sessionUser.name || '',
+            nickname: sessionUser.nickname || sessionUser.name || ''
+          }))
+        }
+      } else if (!authLoading && !user && !sessionUser.id) {
+        // ✅ 카카오 사용자도 sessionUser.id가 있으면 리다이렉트 안 함
+        toast.error('로그인이 필요합니다')
+        router.push('/login')
+        return
+      } else if (user) {
+        // Supabase 사용자 정보 자동 입력
+        setFormData(prev => ({
+          ...prev,
+          name: user.user_metadata?.name || '',
+          nickname: user.user_metadata?.nickname || user.user_metadata?.name || ''
+        }))
+      }
     }
+
+    loadExistingProfile()
   }, [user, authLoading, router])
 
   // ✅ 뒤로가기 방지: 프로필 완성 전에는 뒤로가기 차단
@@ -146,15 +179,38 @@ export default function CompleteProfilePage() {
       if (sessionUser.provider === 'kakao' && sessionUser.id) {
         // 🚀 새로운 통합 프로필 업데이트 사용
 
-        const updateData = {
-          name: formData.name,
-          phone: formData.phone,
-          nickname: formData.nickname || formData.name,
-          address: formData.address,
-          detail_address: formData.detailAddress || '',
-          postal_code: formData.postalCode || '', // ✅ 우편번호 추가
-          // ✅ addresses 배열도 함께 생성 (마이페이지, 체크아웃에서 사용)
-          addresses: [
+        // ✅ 기존 addresses 배열 조회 (업데이트 vs 신규 추가 판단)
+        let existingAddresses = []
+        try {
+          const profileResponse = await fetch(`/api/profile/check?userId=${sessionUser.id}`)
+          const profileResult = await profileResponse.json()
+          if (profileResult.success && profileResult.profile) {
+            existingAddresses = profileResult.profile.addresses || []
+          }
+        } catch (error) {
+          console.warn('⚠️ 기존 주소 조회 실패, 새로 생성합니다')
+        }
+
+        // ✅ addresses 배열 생성/업데이트 로직
+        let updatedAddresses
+        if (existingAddresses.length > 0) {
+          // 기존 주소가 있으면 기본 배송지 업데이트
+          updatedAddresses = existingAddresses.map(addr => {
+            if (addr.is_default) {
+              // 기본 배송지 업데이트
+              return {
+                ...addr,
+                address: formData.address,
+                detail_address: formData.detailAddress || '',
+                postal_code: formData.postalCode || '',
+                updated_at: new Date().toISOString()
+              }
+            }
+            return addr
+          })
+        } else {
+          // 기존 주소가 없으면 새로 생성
+          updatedAddresses = [
             {
               id: Date.now(),
               label: '기본 배송지',
@@ -165,6 +221,16 @@ export default function CompleteProfilePage() {
               created_at: new Date().toISOString()
             }
           ]
+        }
+
+        const updateData = {
+          name: formData.name,
+          phone: formData.phone,
+          nickname: formData.nickname || formData.name,
+          address: formData.address,
+          detail_address: formData.detailAddress || '',
+          postal_code: formData.postalCode || '',
+          addresses: updatedAddresses
         }
 
         // ⚡ 모바일 최적화: API Route로 서버사이드 처리
@@ -234,15 +300,38 @@ export default function CompleteProfilePage() {
       } else {
         // 🚀 일반 Supabase 사용자도 API Route 사용
 
-        const updateData = {
-          name: formData.name,
-          phone: formData.phone,
-          nickname: formData.nickname || formData.name,
-          address: formData.address,
-          detail_address: formData.detailAddress || '',
-          postal_code: formData.postalCode || '', // ✅ 우편번호 추가
-          // ✅ addresses 배열도 함께 생성 (마이페이지, 체크아웃에서 사용)
-          addresses: [
+        // ✅ 기존 addresses 배열 조회 (업데이트 vs 신규 추가 판단)
+        let existingAddresses = []
+        try {
+          const profileResponse = await fetch(`/api/profile/check?userId=${user.id}`)
+          const profileResult = await profileResponse.json()
+          if (profileResult.success && profileResult.profile) {
+            existingAddresses = profileResult.profile.addresses || []
+          }
+        } catch (error) {
+          console.warn('⚠️ 기존 주소 조회 실패, 새로 생성합니다')
+        }
+
+        // ✅ addresses 배열 생성/업데이트 로직
+        let updatedAddresses
+        if (existingAddresses.length > 0) {
+          // 기존 주소가 있으면 기본 배송지 업데이트
+          updatedAddresses = existingAddresses.map(addr => {
+            if (addr.is_default) {
+              // 기본 배송지 업데이트
+              return {
+                ...addr,
+                address: formData.address,
+                detail_address: formData.detailAddress || '',
+                postal_code: formData.postalCode || '',
+                updated_at: new Date().toISOString()
+              }
+            }
+            return addr
+          })
+        } else {
+          // 기존 주소가 없으면 새로 생성
+          updatedAddresses = [
             {
               id: Date.now(),
               label: '기본 배송지',
@@ -253,6 +342,16 @@ export default function CompleteProfilePage() {
               created_at: new Date().toISOString()
             }
           ]
+        }
+
+        const updateData = {
+          name: formData.name,
+          phone: formData.phone,
+          nickname: formData.nickname || formData.name,
+          address: formData.address,
+          detail_address: formData.detailAddress || '',
+          postal_code: formData.postalCode || '',
+          addresses: updatedAddresses
         }
 
         const response = await fetch('/api/profile/complete', {
