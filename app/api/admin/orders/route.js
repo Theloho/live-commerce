@@ -118,6 +118,57 @@ export async function GET(request) {
         query = query.eq('customer_order_number', orderId)
         console.log('🔍 단일 주문 조회 (주문번호):', orderId)
       }
+
+      // ⚡ 성능 최적화: payment_group_id가 있으면 그룹 전체 자동 조회
+      // 이유: 관리자 상세 페이지에서 2번 API 호출 방지 (50% 빠름)
+      const { data: tempData } = await query
+      if (tempData && tempData.length > 0 && tempData[0].payment_group_id) {
+        const groupId = tempData[0].payment_group_id
+        console.log('🔍 일괄결제 그룹 자동 조회:', groupId)
+
+        // 그룹 전체 조회로 쿼리 변경
+        query = supabaseAdmin
+          .from('orders')
+          .select(`
+            *,
+            order_items (
+              *,
+              products (
+                id,
+                title,
+                product_number,
+                thumbnail_url,
+                price,
+                sku,
+                inventory,
+                supplier_id,
+                supplier_product_code,
+                suppliers (
+                  id,
+                  name,
+                  code,
+                  contact_person,
+                  phone
+                )
+              ),
+              product_variants (
+                id,
+                sku,
+                variant_option_values (
+                  product_option_values (
+                    value,
+                    product_options (
+                      name
+                    )
+                  )
+                )
+              )
+            ),
+            order_shipping (*),
+            order_payments${useInnerJoin ? '!inner' : ''} (*)
+          `, { count: 'exact' })
+          .eq('payment_group_id', groupId)
+      }
     } else if (paymentGroupId) {
       // ✅ 일괄결제 그룹 조회 (paymentGroupId로 조회)
       query = query.eq('payment_group_id', paymentGroupId)

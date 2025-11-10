@@ -58,7 +58,7 @@ export default function AdminOrderDetailPage() {
         adminEmail: adminUser?.email
       })
 
-      // 1️⃣ 먼저 단일 주문 조회하여 payment_group_id 확인
+      // ⚡ 성능 최적화: API 단일 호출로 그룹 전체 조회 (기존 2번 → 1번)
       const response = await fetch(
         `/api/admin/orders?adminEmail=${adminUser.email}&orderId=${params.id}`
       )
@@ -76,25 +76,8 @@ export default function AdminOrderDetailPage() {
       })
 
       if (data.success && data.orders && data.orders.length > 0) {
-        const foundOrder = data.orders[0]
-
-        // 2️⃣ payment_group_id가 있으면 그룹 전체 조회
-        let groupOrders = [foundOrder]
-        if (foundOrder.payment_group_id) {
-          console.log('🔍 [관리자 주문 상세] 일괄결제 그룹 발견:', foundOrder.payment_group_id)
-
-          const groupResponse = await fetch(
-            `/api/admin/orders?adminEmail=${adminUser.email}&paymentGroupId=${foundOrder.payment_group_id}`
-          )
-
-          if (groupResponse.ok) {
-            const groupData = await groupResponse.json()
-            if (groupData.success && groupData.orders) {
-              groupOrders = groupData.orders
-              console.log('✅ [관리자 주문 상세] 그룹 주문 조회 완료:', groupOrders.length + '건')
-            }
-          }
-        }
+        // API가 자동으로 그룹 전체를 반환함 (payment_group_id 있을 경우)
+        const groupOrders = data.orders
 
         // 3️⃣ 대표 주문 (가장 먼저 생성된 주문)
         const representativeOrder = groupOrders[0]
