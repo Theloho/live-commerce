@@ -152,7 +152,19 @@ export default function CompleteProfilePage() {
           nickname: formData.nickname || formData.name,
           address: formData.address,
           detail_address: formData.detailAddress || '',
-          postal_code: formData.postalCode || '' // ✅ 우편번호 추가
+          postal_code: formData.postalCode || '', // ✅ 우편번호 추가
+          // ✅ addresses 배열도 함께 생성 (마이페이지, 체크아웃에서 사용)
+          addresses: [
+            {
+              id: Date.now(),
+              label: '기본 배송지',
+              address: formData.address,
+              detail_address: formData.detailAddress || '',
+              postal_code: formData.postalCode || '',
+              is_default: true,
+              created_at: new Date().toISOString()
+            }
+          ]
         }
 
         // ⚡ 모바일 최적화: API Route로 서버사이드 처리
@@ -228,7 +240,19 @@ export default function CompleteProfilePage() {
           nickname: formData.nickname || formData.name,
           address: formData.address,
           detail_address: formData.detailAddress || '',
-          postal_code: formData.postalCode || '' // ✅ 우편번호 추가
+          postal_code: formData.postalCode || '', // ✅ 우편번호 추가
+          // ✅ addresses 배열도 함께 생성 (마이페이지, 체크아웃에서 사용)
+          addresses: [
+            {
+              id: Date.now(),
+              label: '기본 배송지',
+              address: formData.address,
+              detail_address: formData.detailAddress || '',
+              postal_code: formData.postalCode || '',
+              is_default: true,
+              created_at: new Date().toISOString()
+            }
+          ]
         }
 
         const response = await fetch('/api/profile/complete', {
