@@ -897,10 +897,23 @@ export default function AdminOrderDetailPage() {
 
               {/* 완료/취소 상태 표시 */}
               {order.status === 'delivered' && (
-                <div className="flex-1 text-center py-4 bg-green-50 rounded-lg border-2 border-green-200">
-                  <TruckIcon className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                  <p className="font-medium text-green-600">배송 완료된 주문입니다</p>
-                </div>
+                <>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('이 주문을 결제완료 상태로 되돌리시겠습니까?\n(출고정보 탭에서 재발송 처리할 수 있습니다)')) {
+                        updateOrderStatus('paid')
+                      }
+                    }}
+                    className="px-4 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                  >
+                    <ArrowLeftIcon className="w-5 h-5" />
+                    결제완료로 되돌리기
+                  </button>
+                  <div className="flex-1 text-center py-4 bg-green-50 rounded-lg border-2 border-green-200">
+                    <TruckIcon className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                    <p className="font-medium text-green-600">배송 완료된 주문입니다</p>
+                  </div>
+                </>
               )}
 
               {order.status === 'cancelled' && (
