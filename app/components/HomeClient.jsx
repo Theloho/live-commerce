@@ -82,6 +82,18 @@ export default function HomeClient({ initialProducts }) {
 
       if (storedUser) {
         const userData = JSON.parse(storedUser)
+
+        // ✅ 프로필 완성도 체크 (phone, address 필수)
+        const hasPhone = userData.phone && userData.phone.trim().length > 0
+        const hasAddress = userData.address && userData.address.trim().length > 0
+
+        if (!hasPhone || !hasAddress) {
+          console.log('⚠️ 프로필 미완성 감지, 추가 정보 입력 페이지로 이동')
+          router.push('/auth/complete-profile')
+          setSessionLoading(false)
+          return
+        }
+
         setUserSession(userData)
       } else {
         setUserSession(null)
@@ -97,6 +109,17 @@ export default function HomeClient({ initialProducts }) {
   useEffect(() => {
     const handleKakaoLogin = (event) => {
       const userProfile = event.detail
+
+      // ✅ 프로필 완성도 체크 (phone, address 필수)
+      const hasPhone = userProfile.phone && userProfile.phone.trim().length > 0
+      const hasAddress = userProfile.address && userProfile.address.trim().length > 0
+
+      if (!hasPhone || !hasAddress) {
+        console.log('⚠️ 카카오 로그인 후 프로필 미완성 감지, 추가 정보 입력 페이지로 이동')
+        router.push('/auth/complete-profile')
+        return
+      }
+
       setUserSession(userProfile)
     }
 

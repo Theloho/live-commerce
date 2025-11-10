@@ -45,6 +45,25 @@ export default function CompleteProfilePage() {
     }
   }, [user, authLoading, router])
 
+  // ✅ 뒤로가기 방지: 프로필 완성 전에는 뒤로가기 차단
+  useEffect(() => {
+    const preventBack = () => {
+      window.history.pushState(null, '', window.location.href)
+      toast('프로필 입력을 완료해주세요', {
+        icon: '⚠️',
+        duration: 2000,
+      })
+    }
+
+    // 페이지 로드 시 히스토리 추가 (뒤로가기 시 같은 페이지 유지)
+    window.history.pushState(null, '', window.location.href)
+    window.addEventListener('popstate', preventBack)
+
+    return () => {
+      window.removeEventListener('popstate', preventBack)
+    }
+  }, [])
+
   // 다음 주소 검색 API
   const handleAddressSearch = () => {
     if (typeof window !== 'undefined' && window.daum && window.daum.Postcode) {
