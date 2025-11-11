@@ -592,6 +592,14 @@ export default function FulfillmentPage() {
       })
     })
 
+    // 고객명 기준으로 정렬 (같은 고객끼리 묶기)
+    allItems.sort((a, b) => {
+      if (a.customerName !== b.customerName) {
+        return a.customerName.localeCompare(b.customerName)
+      }
+      return a.orderNumber.localeCompare(b.orderNumber)
+    })
+
     // 엑셀 스타일 윈도우 생성
     const excelWindow = window.open('', '_blank')
 
@@ -700,8 +708,61 @@ export default function FulfillmentPage() {
           @media print {
             .no-print { display: none; }
             th { background: #f8f9fa !important; }
+            /* 프린트 시 7개 컬럼만 표시 */
+            .hide-on-print { display: none; }
           }
         </style>
+        <script>
+          function downloadCSV() {
+            const data = ${JSON.stringify(allItems)};
+
+            // CSV 헤더
+            const headers = ['#', '배송타입', '고객명', '닉네임', '전화번호', '입금자명', '우편번호', '주소', '상세주소', '배송메모', '주문번호', '송장번호', '제품명', '옵션', 'SKU', '수량', '금액'];
+
+            // CSV 행 생성
+            const rows = data.map((item, index) => [
+              index + 1,
+              item.groupType,
+              item.customerName,
+              item.nickname || '-',
+              item.phone,
+              item.depositorName,
+              item.postalCode,
+              item.address,
+              item.detailAddress || '-',
+              item.memo || '-',
+              item.orderNumber,
+              item.trackingNumber || '-',
+              item.productDisplayName,
+              item.optionDisplay,
+              item.sku || '-',
+              item.quantity,
+              item.totalPrice
+            ]);
+
+            // CSV 문자열 생성
+            const csvContent = [
+              headers.join(','),
+              ...rows.map(row => row.map(cell =>
+                typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\\n'))
+                  ? '"' + cell.replace(/"/g, '""') + '"'
+                  : cell
+              ).join(','))
+            ].join('\\n');
+
+            // UTF-8 BOM 추가 (한글 깨짐 방지)
+            const bom = '\\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', '배송데이터_' + new Date().toISOString().split('T')[0] + '.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        </script>
       </head>
       <body>
         <div class="container">
@@ -713,53 +774,60 @@ export default function FulfillmentPage() {
           <table>
             <thead>
               <tr>
-                <th style="width: 40px;">#</th>
-                <th>배송타입</th>
+                <th style="width: 40px;" class="hide-on-print">#</th>
+                <th class="hide-on-print">배송타입</th>
                 <th>고객명</th>
                 <th>닉네임</th>
-                <th>전화번호</th>
-                <th>입금자명</th>
-                <th>우편번호</th>
-                <th>주소</th>
-                <th>상세주소</th>
-                <th>배송메모</th>
+                <th class="hide-on-print">전화번호</th>
+                <th class="hide-on-print">입금자명</th>
+                <th class="hide-on-print">우편번호</th>
+                <th class="hide-on-print">주소</th>
+                <th class="hide-on-print">상세주소</th>
+                <th class="hide-on-print">배송메모</th>
                 <th>주문번호</th>
-                <th>송장번호</th>
+                <th class="hide-on-print">송장번호</th>
                 <th>제품명</th>
                 <th>옵션</th>
-                <th>SKU</th>
+                <th class="hide-on-print">SKU</th>
                 <th style="width: 60px;" class="text-center">수량</th>
                 <th style="width: 100px;" class="text-right">금액</th>
               </tr>
             </thead>
             <tbody>
-              ${allItems.map((item, index) => `
-                <tr>
-                  <td class="text-center">${index + 1}</td>
-                  <td>${item.groupType}</td>
-                  <td class="font-bold">${item.customerName}</td>
-                  <td>${item.nickname || '-'}</td>
-                  <td>${item.phone}</td>
-                  <td class="font-bold">${item.depositorName}</td>
-                  <td>${item.postalCode}</td>
-                  <td>${item.address}</td>
-                  <td>${item.detailAddress || '-'}</td>
-                  <td>${item.memo || '-'}</td>
-                  <td class="text-sm">${item.orderNumber}</td>
-                  <td class="text-sm">${item.trackingNumber || '-'}</td>
-                  <td class="font-bold">${item.productDisplayName}</td>
-                  <td>${item.optionDisplay}</td>
-                  <td class="text-sm">${item.sku || '-'}</td>
-                  <td class="text-center font-bold">${item.quantity}</td>
-                  <td class="text-right font-bold">₩${item.totalPrice.toLocaleString()}</td>
-                </tr>
-              `).join('')}
+              ${allItems.map((item, index) => {
+                // 고객명이 바뀌는 라인에 두꺼운 구분선 추가
+                const isNewCustomer = index === 0 || allItems[index - 1].customerName !== item.customerName
+                const borderStyle = isNewCustomer ? 'border-top: 3px solid #333;' : ''
+
+                return `
+                  <tr style="${borderStyle}">
+                    <td class="text-center hide-on-print">${index + 1}</td>
+                    <td class="hide-on-print">${item.groupType}</td>
+                    <td class="font-bold">${item.customerName}</td>
+                    <td>${item.nickname || '-'}</td>
+                    <td class="hide-on-print">${item.phone}</td>
+                    <td class="font-bold hide-on-print">${item.depositorName}</td>
+                    <td class="hide-on-print">${item.postalCode}</td>
+                    <td class="hide-on-print">${item.address}</td>
+                    <td class="hide-on-print">${item.detailAddress || '-'}</td>
+                    <td class="hide-on-print">${item.memo || '-'}</td>
+                    <td class="text-sm">${item.orderNumber}</td>
+                    <td class="text-sm hide-on-print">${item.trackingNumber || '-'}</td>
+                    <td class="font-bold">${item.productDisplayName}</td>
+                    <td>${item.optionDisplay}</td>
+                    <td class="text-sm hide-on-print">${item.sku || '-'}</td>
+                    <td class="text-center font-bold">${item.quantity}</td>
+                    <td class="text-right font-bold">₩${item.totalPrice.toLocaleString()}</td>
+                  </tr>
+                `
+              }).join('')}
             </tbody>
           </table>
         </div>
 
         <div class="no-print">
-          <button onclick="window.print()" class="btn">🖨️ 인쇄하기</button>
+          <button onclick="downloadCSV()" class="btn" style="background: #4CAF50;">📥 CSV 다운로드</button>
+          <button onclick="window.print()" class="btn" style="background: #2196F3;">🖨️ 인쇄하기</button>
           <button onclick="window.close()" class="btn btn-secondary">닫기</button>
         </div>
       </body>
