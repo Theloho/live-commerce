@@ -15,7 +15,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
-import { groupOrdersByShipping, generateGroupCSV, generateOrderCSV } from '@/lib/fulfillmentGrouping'
+import { groupOrdersByShipping, generateGroupExcel, generateGroupCSV, generateOrderCSV } from '@/lib/fulfillmentGrouping'
+import * as XLSX from 'xlsx'
 import TrackingNumberInput from '@/app/components/admin/TrackingNumberInput'
 import TrackingNumberBulkUpload from '@/app/components/admin/TrackingNumberBulkUpload'
 
@@ -171,7 +172,7 @@ export default function FulfillmentPage() {
     setSelectedGroupIds(newSelectedGroupIds)
   }
 
-  // CSV 다운로드
+  // CSV/엑셀 다운로드
   const handleDownloadCSV = (mode = 'group') => {
     if (selectedOrderIds.size === 0) {
       toast.error('다운로드할 주문을 선택해주세요')
@@ -179,21 +180,45 @@ export default function FulfillmentPage() {
     }
 
     const allGroups = [...groupedData.merged, ...groupedData.singles]
-    const csvContent = mode === 'group'
-      ? generateGroupCSV(allGroups, selectedOrderIds)
-      : generateOrderCSV(allGroups, selectedOrderIds)
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `배송취합_${new Date().toISOString().split('T')[0]}_${mode}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    if (mode === 'group') {
+      // 그룹 다운로드: 엑셀 파일
+      const { headers, rows } = generateGroupExcel(allGroups, selectedOrderIds)
 
-    toast.success(`${selectedOrderIds.size}개 주문을 다운로드했습니다`)
+      // 워크시트 생성
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
+
+      // 컬럼 너비 자동 조정
+      const columnWidths = headers.map((header, i) => {
+        const maxLength = Math.max(
+          header.length,
+          ...rows.map(row => String(row[i] || '').length)
+        )
+        return { wch: Math.min(maxLength + 2, 50) }
+      })
+      worksheet['!cols'] = columnWidths
+
+      // 워크북 생성
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, '배송취합')
+
+      // 파일 다운로드
+      XLSX.writeFile(workbook, `배송취합_${new Date().toISOString().split('T')[0]}_그룹.xlsx`)
+      toast.success(`${selectedOrderIds.size}개 주문을 엑셀로 다운로드했습니다`)
+    } else {
+      // 개별 다운로드: CSV 파일
+      const csvContent = generateOrderCSV(allGroups, selectedOrderIds)
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `배송취합_${new Date().toISOString().split('T')[0]}_개별.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success(`${selectedOrderIds.size}개 주문을 CSV로 다운로드했습니다`)
+    }
   }
 
   // 송장번호 입력 모달 열기
