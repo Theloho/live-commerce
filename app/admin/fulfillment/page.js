@@ -717,7 +717,7 @@ export default function FulfillmentPage() {
             const data = ${JSON.stringify(allItems)};
 
             // CSV 헤더
-            const headers = ['#', '배송타입', '고객명', '닉네임', '전화번호', '입금자명', '우편번호', '주소', '상세주소', '배송메모', '주문번호', '송장번호', '제품명', '옵션', 'SKU', '수량', '금액'];
+            const headers = ['#', '배송타입', '고객명', '닉네임', '전화번호', '입금자명', '우편번호', '주소', '상세주소', '배송메모', '주문번호', '송장번호', '제품번호', '옵션', 'SKU', '수량', '금액'];
 
             // CSV 행 생성
             const rows = data.map((item, index) => [
@@ -733,7 +733,7 @@ export default function FulfillmentPage() {
               item.memo || '-',
               item.orderNumber,
               item.trackingNumber || '-',
-              item.productDisplayName,
+              item.productNumber || '-',
               item.optionDisplay,
               item.sku || '-',
               item.quantity,
@@ -786,7 +786,7 @@ export default function FulfillmentPage() {
                 <th class="hide-on-print">배송메모</th>
                 <th>주문번호</th>
                 <th class="hide-on-print">송장번호</th>
-                <th>제품명</th>
+                <th>제품번호</th>
                 <th>옵션</th>
                 <th class="hide-on-print">SKU</th>
                 <th style="width: 60px;" class="text-center">수량</th>
@@ -813,7 +813,7 @@ export default function FulfillmentPage() {
                     <td class="hide-on-print">${item.memo || '-'}</td>
                     <td class="text-sm">${item.orderNumber}</td>
                     <td class="text-sm hide-on-print">${item.trackingNumber || '-'}</td>
-                    <td class="font-bold">${item.productDisplayName}</td>
+                    <td class="font-bold">${item.productNumber || '-'}</td>
                     <td>${item.optionDisplay}</td>
                     <td class="text-sm hide-on-print">${item.sku || '-'}</td>
                     <td class="text-center font-bold">${item.quantity}</td>
