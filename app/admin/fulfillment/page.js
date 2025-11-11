@@ -10,7 +10,8 @@ import {
   MagnifyingGlassIcon,
   DocumentArrowDownIcon,
   ArrowPathIcon,
-  PrinterIcon
+  PrinterIcon,
+  TableCellsIcon
 } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
@@ -549,6 +550,228 @@ export default function FulfillmentPage() {
     toast.success(`${selectedGroups.length}개 그룹을 프린트합니다`)
   }
 
+  // 엑셀 스타일 보기 (테이블 형태)
+  const handleExcelView = () => {
+    if (selectedOrderIds.size === 0) {
+      toast.error('조회할 주문을 선택해주세요')
+      return
+    }
+
+    const allGroups = [...groupedData.merged, ...groupedData.singles]
+    const selectedGroups = allGroups.filter(group =>
+      group.orders.some(order => selectedOrderIds.has(order.id))
+    )
+
+    if (selectedGroups.length === 0) {
+      toast.error('선택된 그룹이 없습니다')
+      return
+    }
+
+    // 모든 선택된 아이템 수집
+    const allItems = []
+    selectedGroups.forEach(group => {
+      const selectedOrders = group.orders.filter(o => selectedOrderIds.has(o.id))
+      selectedOrders.forEach(order => {
+        const items = group.allItems.filter(item => item.orderId === order.id)
+        items.forEach(item => {
+          allItems.push({
+            ...item,
+            customerName: group.shippingInfo.name,
+            nickname: group.shippingInfo.nickname,
+            phone: group.shippingInfo.phone,
+            depositorName: group.shippingInfo.depositorName,
+            postalCode: group.shippingInfo.postalCode,
+            address: group.shippingInfo.address,
+            detailAddress: group.shippingInfo.detailAddress,
+            memo: group.shippingInfo.memo || '',
+            orderNumber: order.customer_order_number || order.id.slice(-8),
+            trackingNumber: group.trackingNumber || '',
+            groupType: group.type === 'merged' ? '합배송' : '단일배송'
+          })
+        })
+      })
+    })
+
+    // 엑셀 스타일 윈도우 생성
+    const excelWindow = window.open('', '_blank')
+
+    const excelContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>배송 데이터 - 엑셀 스타일</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+          }
+          .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+          }
+          .header {
+            padding: 20px;
+            background: #4CAF50;
+            color: white;
+            text-align: center;
+          }
+          .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+          }
+          .header p {
+            font-size: 14px;
+            opacity: 0.9;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+          }
+          th {
+            background: #f8f9fa;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #dee2e6;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+          td {
+            padding: 10px 8px;
+            border: 1px solid #dee2e6;
+            vertical-align: top;
+          }
+          tr:nth-child(even) {
+            background: #f8f9fa;
+          }
+          tr:hover {
+            background: #e3f2fd;
+          }
+          .text-right {
+            text-align: right;
+          }
+          .text-center {
+            text-align: center;
+          }
+          .font-bold {
+            font-weight: bold;
+          }
+          .text-sm {
+            font-size: 11px;
+            color: #666;
+          }
+          .no-print {
+            text-align: center;
+            padding: 20px;
+            background: white;
+          }
+          .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 8px;
+          }
+          .btn:hover {
+            background: #45a049;
+          }
+          .btn-secondary {
+            background: #666;
+          }
+          .btn-secondary:hover {
+            background: #555;
+          }
+          @media print {
+            .no-print { display: none; }
+            th { background: #f8f9fa !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📋 배송 데이터 - 엑셀 스타일</h1>
+            <p>총 ${allItems.length}개 항목 | ${selectedGroups.length}개 그룹</p>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th>배송타입</th>
+                <th>고객명</th>
+                <th>닉네임</th>
+                <th>전화번호</th>
+                <th>입금자명</th>
+                <th>우편번호</th>
+                <th>주소</th>
+                <th>상세주소</th>
+                <th>배송메모</th>
+                <th>주문번호</th>
+                <th>송장번호</th>
+                <th>제품명</th>
+                <th>옵션</th>
+                <th>SKU</th>
+                <th style="width: 60px;" class="text-center">수량</th>
+                <th style="width: 100px;" class="text-right">금액</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allItems.map((item, index) => `
+                <tr>
+                  <td class="text-center">${index + 1}</td>
+                  <td>${item.groupType}</td>
+                  <td class="font-bold">${item.customerName}</td>
+                  <td>${item.nickname || '-'}</td>
+                  <td>${item.phone}</td>
+                  <td class="font-bold">${item.depositorName}</td>
+                  <td>${item.postalCode}</td>
+                  <td>${item.address}</td>
+                  <td>${item.detailAddress || '-'}</td>
+                  <td>${item.memo || '-'}</td>
+                  <td class="text-sm">${item.orderNumber}</td>
+                  <td class="text-sm">${item.trackingNumber || '-'}</td>
+                  <td class="font-bold">${item.productDisplayName}</td>
+                  <td>${item.optionDisplay}</td>
+                  <td class="text-sm">${item.sku || '-'}</td>
+                  <td class="text-center font-bold">${item.quantity}</td>
+                  <td class="text-right font-bold">₩${item.totalPrice.toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="no-print">
+          <button onclick="window.print()" class="btn">🖨️ 인쇄하기</button>
+          <button onclick="window.close()" class="btn btn-secondary">닫기</button>
+        </div>
+      </body>
+      </html>
+    `
+
+    excelWindow.document.write(excelContent)
+    excelWindow.document.close()
+
+    toast.success(`${allItems.length}개 항목을 엑셀 스타일로 표시합니다`)
+  }
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -697,6 +920,14 @@ export default function FulfillmentPage() {
             >
               <PrinterIcon className="w-4 h-4" />
               프린트
+            </button>
+            <button
+              onClick={handleExcelView}
+              disabled={selectedOrderIds.size === 0}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex items-center gap-2"
+            >
+              <TableCellsIcon className="w-4 h-4" />
+              엑셀 스타일
             </button>
           </div>
         </div>
