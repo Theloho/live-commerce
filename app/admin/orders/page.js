@@ -267,6 +267,32 @@ export default function AdminOrdersPage() {
       if (isInitial) {
         setLoading(true)
         setOffset(0)
+
+        // ⭐ 캐시 확인 (검색 없을 때만, 초기 로딩일 때만)
+        if (!search && typeof window !== 'undefined') {
+          const cacheKey = `admin_orders_cache_${dateRange}_${customStartDate}_${customEndDate}`
+          const cached = sessionStorage.getItem(cacheKey)
+
+          if (cached) {
+            try {
+              const { orders: cachedOrders, statusCounts: cachedCounts, timestamp } = JSON.parse(cached)
+              const now = Date.now()
+              const CACHE_DURATION = 5 * 60 * 1000 // 5분
+
+              // 캐시가 5분 이내면 사용
+              if (now - timestamp < CACHE_DURATION) {
+                console.log('✅ 캐시된 데이터 사용 (서버 요청 생략)')
+                setOrders(cachedOrders)
+                setStatusCounts(cachedCounts)
+                setHasMore(false) // 캐시는 전체 데이터
+                setLoading(false)
+                return
+              }
+            } catch (e) {
+              console.warn('캐시 파싱 실패:', e)
+            }
+          }
+        }
       } else {
         setLoadingMore(true)
       }
@@ -355,6 +381,22 @@ export default function AdminOrdersPage() {
 
       if (isInitial) {
         setOrders(groupedOrders)
+
+        // ⭐ 캐시 저장 (검색 없을 때만, 초기 로딩일 때만)
+        if (!search && typeof window !== 'undefined') {
+          const cacheKey = `admin_orders_cache_${dateRange}_${customStartDate}_${customEndDate}`
+          const cacheData = {
+            orders: groupedOrders,
+            statusCounts: counts || statusCounts,
+            timestamp: Date.now()
+          }
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify(cacheData))
+            console.log('✅ 데이터 캐시 저장 완료')
+          } catch (e) {
+            console.warn('캐시 저장 실패:', e)
+          }
+        }
       } else {
         setOrders(prev => [...prev, ...groupedOrders])
       }
