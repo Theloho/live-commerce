@@ -11,7 +11,8 @@ import {
   XMarkIcon,
   CreditCardIcon,
   BanknotesIcon,
-  AtSymbolIcon
+  AtSymbolIcon,
+  TruckIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { formatShippingInfo } from '@/lib/shippingUtils'
@@ -431,6 +432,27 @@ export default function AdminOrdersPage() {
     }
   }
 
+  // ⭐ 일괄 발송처리
+  const handleBulkShip = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 발송처리 하시겠습니까?`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      await Promise.all(selectedOrders.map(id => updateOrderStatus(id, 'delivered')))
+      toast.success(`${selectedOrders.length}개 주문이 발송처리 되었습니다`)
+      setSelectedOrders([])
+      loadOrders(true)
+    } catch (error) {
+      console.error('일괄 발송처리 실패:', error)
+      toast.error('일괄 발송처리에 실패했습니다')
+    }
+  }
+
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       // API Route 호출 (Clean Architecture)
@@ -541,23 +563,41 @@ export default function AdminOrdersPage() {
           </p>
         </div>
 
-        {/* ⭐ 일괄 처리 버튼 (선택된 주문이 있을 때만 표시) */}
+        {/* ⭐ 일괄 처리 버튼 (선택된 주문이 있을 때만, 탭에 맞는 버튼 표시) */}
         {selectedOrders.length > 0 && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleBulkCancel}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-            >
-              <XMarkIcon className="w-4 h-4" />
-              일괄 취소 ({selectedOrders.length})
-            </button>
-            <button
-              onClick={handleBulkConfirmPayment}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-            >
-              <CheckIcon className="w-4 h-4" />
-              일괄 결제확인 ({selectedOrders.length})
-            </button>
+            {/* 장바구니/주문내역/구매확정: 일괄 취소 가능 */}
+            {(paymentFilter === 'all' || paymentFilter === 'verifying' || paymentFilter === 'paid') && (
+              <button
+                onClick={handleBulkCancel}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                <XMarkIcon className="w-4 h-4" />
+                일괄 취소 ({selectedOrders.length})
+              </button>
+            )}
+
+            {/* 주문내역: 일괄 결제확인 가능 */}
+            {paymentFilter === 'verifying' && (
+              <button
+                onClick={handleBulkConfirmPayment}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+              >
+                <CheckIcon className="w-4 h-4" />
+                일괄 결제확인 ({selectedOrders.length})
+              </button>
+            )}
+
+            {/* 구매확정: 일괄 발송처리 가능 */}
+            {paymentFilter === 'paid' && (
+              <button
+                onClick={handleBulkShip}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                <TruckIcon className="w-4 h-4" />
+                일괄 발송처리 ({selectedOrders.length})
+              </button>
+            )}
           </div>
         )}
 
