@@ -18,11 +18,13 @@ import {
   ArrowDownIcon,
   Squares2X2Icon,
   ListBulletIcon,
-  PrinterIcon
+  PrinterIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline'
 import { PlayIcon, StopIcon } from '@heroicons/react/24/solid'
 import { getAllProducts, getCategories, addToLive, removeFromLive } from '@/lib/supabaseApi'
 import toast from 'react-hot-toast'
+import * as XLSX from 'xlsx'
 
 export default function ProductCatalogPage() {
   const router = useRouter()
@@ -184,6 +186,115 @@ export default function ProductCatalogPage() {
     window.print()
   }
 
+  // ⭐ 엑셀 다운로드 (재고 파악용)
+  const handleExcelDownload = async () => {
+    try {
+      // 선택된 상품 필터링
+      const selectedProductsData = products.filter(p => selectedProducts.includes(p.id))
+
+      if (selectedProductsData.length === 0) {
+        toast.error('선택된 상품이 없습니다')
+        return
+      }
+
+      // suppliers 정보를 가져오기 위해 supabaseAdmin 사용
+      const { supabase } = await import('@/lib/supabase')
+
+      // 엑셀 데이터 생성
+      const excelData = []
+
+      for (const product of selectedProductsData) {
+        // 업체 정보 조회
+        let supplierName = ''
+        if (product.supplier_id) {
+          const { data: supplier } = await supabase
+            .from('suppliers')
+            .select('name')
+            .eq('id', product.supplier_id)
+            .single()
+          supplierName = supplier?.name || ''
+        }
+
+        // 옵션이 있는 경우: 각 variant마다 한 줄씩
+        if (product.variants && product.variants.length > 0) {
+          for (const variant of product.variants) {
+            // 옵션 정보 포맷팅 (예: "색상:빨강, 사이즈:L")
+            const optionText = variant.variant_option_values
+              ?.map(vov => {
+                const optionName = vov.product_option_values?.product_options?.name || ''
+                const optionValue = vov.product_option_values?.value || ''
+                return `${optionName}:${optionValue}`
+              })
+              .join(', ') || '옵션없음'
+
+            excelData.push({
+              '제품번호': product.product_number || '',
+              '업체명': supplierName,
+              '업체 제품코드': product.supplier_product_code || '',
+              '가격': product.price || 0,
+              '옵션정보': optionText,
+              '수량': '',
+              '판매1': '',
+              '판매2': '',
+              '판매3': '',
+              '비고1': '',
+              '비고2': ''
+            })
+          }
+        } else {
+          // 옵션이 없는 경우: 한 줄만
+          excelData.push({
+            '제품번호': product.product_number || '',
+            '업체명': supplierName,
+            '업체 제품코드': product.supplier_product_code || '',
+            '가격': product.price || 0,
+            '옵션정보': '옵션없음',
+            '수량': '',
+            '판매1': '',
+            '판매2': '',
+            '판매3': '',
+            '비고1': '',
+            '비고2': ''
+          })
+        }
+      }
+
+      // 워크시트 생성
+      const worksheet = XLSX.utils.json_to_sheet(excelData)
+
+      // 컬럼 너비 설정
+      worksheet['!cols'] = [
+        { wch: 15 }, // 제품번호
+        { wch: 20 }, // 업체명
+        { wch: 20 }, // 업체 제품코드
+        { wch: 10 }, // 가격
+        { wch: 30 }, // 옵션정보
+        { wch: 10 }, // 수량
+        { wch: 10 }, // 판매1
+        { wch: 10 }, // 판매2
+        { wch: 10 }, // 판매3
+        { wch: 15 }, // 비고1
+        { wch: 15 }  // 비고2
+      ]
+
+      // 워크북 생성
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, '재고파악')
+
+      // 파일명 생성 (현재 날짜)
+      const today = new Date().toISOString().split('T')[0]
+      const filename = `재고파악_${today}.xlsx`
+
+      // 다운로드
+      XLSX.writeFile(workbook, filename)
+
+      toast.success(`${excelData.length}개 항목이 엑셀로 다운로드되었습니다`)
+    } catch (error) {
+      console.error('엑셀 다운로드 오류:', error)
+      toast.error('엑셀 다운로드에 실패했습니다')
+    }
+  }
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -211,15 +322,24 @@ export default function ProductCatalogPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* ⭐ 프린트 버튼 (선택된 상품이 있을 때만 표시) */}
+          {/* ⭐ 엑셀 다운로드 버튼 (선택된 상품이 있을 때만 표시) */}
           {selectedProducts.length > 0 && (
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <PrinterIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">프린트 ({selectedProducts.length})</span>
-            </button>
+            <>
+              <button
+                onClick={handleExcelDownload}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <DocumentArrowDownIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">엑셀 다운로드 ({selectedProducts.length})</span>
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <PrinterIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">프린트 ({selectedProducts.length})</span>
+              </button>
+            </>
           )}
           <button
             onClick={() => router.push('/admin/products')}
