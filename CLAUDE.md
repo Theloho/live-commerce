@@ -1,7 +1,60 @@
 # ⚠️ Claude - 작업 전 필수 체크리스트
 
 **파일 상태**: ✅ 최적화 완료 (1704줄 → ~800줄, 50%↓)
-**마지막 업데이트**: 2025-10-31
+**마지막 업데이트**: 2025-11-12
+
+---
+
+## 🏗️ 인프라 환경 (반드시 인지할 것!) ⭐⭐⭐
+
+### 📊 현재 사용 중인 플랜
+
+**✅ Vercel: Pro Plan** ($20/월)
+- 상용 서비스용
+- 빌드 시간 제한 없음
+- 함수 실행 시간: 60초
+
+**✅ Supabase: Pro Plan** ($25/월)
+- 상용 서비스용
+- 99.9% SLA 보장
+- 자동 Pause 없음
+- 매일 자동 백업
+
+### 🚨 중요: Pro 플랜도 다운타임 발생 가능!
+
+**실제 발생 사례:**
+```
+날짜: 2025-11-12 10:28 (KST)
+증상: Supabase 모든 서비스 Unhealthy
+- Database: Unhealthy
+- PostgREST: Unhealthy
+- Auth: Unhealthy
+- Realtime: Unhealthy
+- Storage: Unhealthy
+
+원인: Supabase 프로젝트 복원 작업 (Recently restored)
+복구: 약 5-10분 소요
+```
+
+**교훈:**
+- ❌ Pro 플랜 = 100% 가동률 아님!
+- ⚠️ Supabase 자체 장애 발생 가능
+- ⚠️ 복원/유지보수 작업 중 다운타임 있음
+- ✅ 사용자에게 상황 안내 필요
+- ✅ 모니터링 도구 필수 (UptimeRobot 등)
+
+### 🎯 대응 지침
+
+**다운타임 발생 시:**
+1. Supabase Dashboard 확인 (Project Status)
+2. https://status.supabase.com 확인
+3. 5-10분 대기 (자동 복구)
+4. 복구 안 되면 Supabase Support 문의
+
+**성능 최적화 시 주의:**
+- ISR/SSR 활성화 시 빌드 타임 Supabase 연결 필요
+- 빌드 서버 → Supabase 연결 타임아웃 가능성
+- 안전한 방법: API Route만 캐싱, 페이지는 Dynamic 유지
 
 ---
 
