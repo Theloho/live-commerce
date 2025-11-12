@@ -7,6 +7,15 @@ const nextConfig = {
     } : false
   },
 
+  // ⚡ 성능 최적화: 번들 크기 감소 (30-50% 개선 예상)
+  experimental: {
+    // Tree Shaking 최적화: 사용하지 않는 아이콘/컴포넌트 자동 제거
+    optimizePackageImports: ['@heroicons/react', 'framer-motion'],
+  },
+
+  // ⚡ 프로덕션 Source Map 비활성화: 번들 크기 감소 + 보안 강화
+  productionBrowserSourceMaps: false,
+
   images: {
     remotePatterns: [
       {

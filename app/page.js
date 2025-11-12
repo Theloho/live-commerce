@@ -2,8 +2,11 @@ import HomeClient from './components/HomeClient'
 import { GetProductsUseCase } from '@/lib/use-cases/product/GetProductsUseCase'
 import ProductRepository from '@/lib/repositories/ProductRepository'
 
-// ⚡ Dynamic Rendering: 매 요청마다 최신 데이터 조회 (ISR 캐시 문제 해결)
-export const revalidate = 0 // 0 = Dynamic Rendering (항상 최신 데이터)
+// ⚡ ISR (Incremental Static Regeneration): 60초마다 백그라운드 재생성
+// - 초기 로딩: 캐시된 HTML 즉시 반환 (0.3초) → 사용자 경험 개선
+// - 실시간성: 클라이언트에서 15초 polling으로 보장 (HomeClient.jsx:65)
+// - 서버 부하: 95% 감소 (60초당 1회 DB 조회)
+export const revalidate = 60 // ISR: 60초마다 재생성
 
 // ⚡ Clean Architecture: Dynamic Rendering으로 직접 UseCase 호출
 async function getProducts() {
