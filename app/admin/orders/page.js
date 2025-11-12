@@ -433,16 +433,20 @@ export default function AdminOrdersPage() {
 
   // ⭐ 전체 선택/해제
   const handleSelectAll = () => {
-    if (selectedOrders.length === filteredOrders.length) {
-      setSelectedOrders([])
+    // 그룹 주문인 경우 원본 주문들의 ID 모두 수집
+    const allOrderIds = filteredOrders.flatMap(order =>
+      order.isGroup
+        ? order.originalOrders.map(o => o.id)
+        : [order.id]
+    )
+
+    // ⭐ 모든 주문이 선택되었는지 확인
+    const allSelected = allOrderIds.every(id => selectedOrders.includes(id))
+
+    if (allSelected) {
+      setSelectedOrders([])  // 모두 선택되어 있으면 해제
     } else {
-      // 그룹 주문인 경우 원본 주문들의 ID 모두 수집
-      const allOrderIds = filteredOrders.flatMap(order =>
-        order.isGroup
-          ? order.originalOrders.map(o => o.id)
-          : [order.id]
-      )
-      setSelectedOrders(allOrderIds)
+      setSelectedOrders(allOrderIds)  // 하나라도 선택 안 되어 있으면 전체 선택
     }
   }
 
