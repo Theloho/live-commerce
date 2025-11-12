@@ -16,14 +16,14 @@ export async function GET(request) {
     const startDate = searchParams.get('startDate') // custom용
     const endDate = searchParams.get('endDate') // custom용
 
-    // ✅ 날짜 범위별 LIMIT 설정 (날짜로 제한하므로 LIMIT 크게 또는 없앰)
+    // ⚡ 날짜 범위별 LIMIT 설정 - 실제 주문량 기반 (하루 200개 기준)
     const LIMIT_BY_RANGE = {
-      today: 10000,      // 오늘: 하루 1만건까지 (충분)
-      yesterday: 10000,  // 어제: 하루 1만건까지
-      week: 20000,       // 1주일: 2만건까지
-      month: 50000,      // 1개월: 5만건까지
-      custom: 100000,    // 직접 선택: 10만건까지
-      all: 10000         // 전체: 최근 1만건만 (날짜 필터 권장)
+      today: 300,        // 오늘: 300건 (하루 200개 + 여유 50%)
+      yesterday: 300,    // 어제: 300건
+      week: 2000,        // 1주일: 2,000건 (1,400개 + 여유)
+      month: 8000,       // 1개월: 8,000건 (6,000개 + 여유)
+      custom: 10000,     // 직접 선택: 10,000건
+      all: 2000          // 전체: 최근 2,000건 (약 10일, 날짜 필터 권장)
     }
     const limit = LIMIT_BY_RANGE[dateRange] || 10000
 
@@ -68,6 +68,7 @@ export async function GET(request) {
     // ⚠️ paymentMethodFilter가 있을 때만 !inner 사용 (없으면 order_payments 없는 주문도 조회)
     const useInnerJoin = !!paymentMethodFilter
 
+    // ⚡ 성능 최적화: 리스트 뷰에 필요한 최소 필드만 select
     let query = supabaseAdmin
       .from('orders')
       .select(`
@@ -79,18 +80,7 @@ export async function GET(request) {
             title,
             product_number,
             thumbnail_url,
-            price,
-            sku,
-            inventory,
-            supplier_id,
-            supplier_product_code,
-            suppliers (
-              id,
-              name,
-              code,
-              contact_person,
-              phone
-            )
+            price
           ),
           product_variants (
             id,
