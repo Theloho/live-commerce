@@ -218,14 +218,11 @@ export default function ProductCatalogPage() {
         // 옵션이 있는 경우: 각 variant마다 한 줄씩
         if (product.variants && product.variants.length > 0) {
           for (const variant of product.variants) {
-            // 옵션 정보 포맷팅 (예: "색상:빨강, 사이즈:L")
+            // 옵션 정보 포맷팅 (예: "빨강 / L")
             const optionText = variant.variant_option_values
-              ?.map(vov => {
-                const optionName = vov.product_option_values?.product_options?.name || ''
-                const optionValue = vov.product_option_values?.value || ''
-                return `${optionName}:${optionValue}`
-              })
-              .join(', ') || '옵션없음'
+              ?.map(vov => vov.product_option_values?.value || '')
+              .filter(v => v)
+              .join(' / ') || '옵션없음'
 
             excelData.push({
               '제품번호': product.product_number || '',
