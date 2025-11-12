@@ -126,9 +126,6 @@ export async function GET(request) {
       query = query.eq('payment_group_id', paymentGroupId)
       console.log('🔍 일괄결제 그룹 조회:', paymentGroupId)
     } else {
-      // 전체 조회 시에만 cancelled 제외
-      query = query.neq('status', 'cancelled')
-
       // ✅ 날짜 필터 적용 ⭐ NEW
       if (dateRange && dateRange !== 'all') {
         const now = new Date()
@@ -232,13 +229,12 @@ export async function GET(request) {
 
     // 단일 주문이나 일괄결제 그룹 조회가 아닌 경우에만 카운트
     if (!orderId && !paymentGroupId) {
-      const statusList = ['pending', 'verifying', 'paid', 'delivered']
+      const statusList = ['pending', 'verifying', 'paid', 'delivered', 'cancelled']
       const countPromises = statusList.map(async (status) => {
         let countQuery = supabaseAdmin
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('status', status)
-          .neq('status', 'cancelled')
 
         // ⭐ 날짜 필터 적용 (메인 쿼리와 동일한 로직)
         if (dateRange && dateRange !== 'all') {
