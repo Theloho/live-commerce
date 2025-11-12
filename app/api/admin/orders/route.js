@@ -68,6 +68,7 @@ export async function GET(request) {
     // ⚠️ paymentMethodFilter가 있을 때만 !inner 사용 (없으면 order_payments 없는 주문도 조회)
     const useInnerJoin = !!paymentMethodFilter
 
+    // ⚡ 성능 최적화: suppliers JOIN 제거 (주문 리스트에서 사용 안 함)
     let query = supabaseAdmin
       .from('orders')
       .select(`
@@ -83,14 +84,7 @@ export async function GET(request) {
             sku,
             inventory,
             supplier_id,
-            supplier_product_code,
-            suppliers (
-              id,
-              name,
-              code,
-              contact_person,
-              phone
-            )
+            supplier_product_code
           ),
           product_variants (
             id,

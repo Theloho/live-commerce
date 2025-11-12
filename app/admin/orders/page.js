@@ -266,8 +266,9 @@ export default function AdminOrdersPage() {
     try {
       if (isInitial) {
         // ⭐ 캐시 확인 먼저 (로딩 화면 깜빡임 방지)
+        // ⭐ v2: API 구조 변경 시 자동으로 새 캐시 사용 (무한 로딩 방지)
         if (!search && typeof window !== 'undefined') {
-          const cacheKey = `admin_orders_cache_${dateRange}_${customStartDate}_${customEndDate}`
+          const cacheKey = `admin_orders_cache_v2_${dateRange}_${customStartDate}_${customEndDate}`
           const cached = sessionStorage.getItem(cacheKey)
 
           if (cached) {
@@ -387,7 +388,7 @@ export default function AdminOrdersPage() {
 
         // ⭐ 캐시 저장 (검색 없을 때만, 초기 로딩일 때만)
         if (!search && typeof window !== 'undefined') {
-          const cacheKey = `admin_orders_cache_${dateRange}_${customStartDate}_${customEndDate}`
+          const cacheKey = `admin_orders_cache_v2_${dateRange}_${customStartDate}_${customEndDate}`
           const cacheData = {
             orders: groupedOrders,
             statusCounts: counts || statusCounts,
