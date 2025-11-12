@@ -274,6 +274,34 @@ export default function ProductCatalogPage() {
         { wch: 15 }  // 비고2
       ]
 
+      // ⭐ 제품번호가 바뀔 때마다 두꺼운 상단 테두리 추가
+      let prevProductNumber = ''
+      const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+
+      excelData.forEach((row, index) => {
+        const rowNumber = index + 2 // 엑셀은 1부터 시작, 헤더가 1행이므로 +2
+        const currentProductNumber = row['제품번호']
+
+        // 제품번호가 바뀌는 시점에 두꺼운 상단 테두리
+        if (prevProductNumber && currentProductNumber !== prevProductNumber) {
+          columns.forEach(col => {
+            const cellAddress = `${col}${rowNumber}`
+            if (!worksheet[cellAddress]) {
+              worksheet[cellAddress] = { t: 's', v: '' }
+            }
+            if (!worksheet[cellAddress].s) {
+              worksheet[cellAddress].s = {}
+            }
+            worksheet[cellAddress].s.border = {
+              ...worksheet[cellAddress].s.border,
+              top: { style: 'thick', color: { rgb: '000000' } }
+            }
+          })
+        }
+
+        prevProductNumber = currentProductNumber
+      })
+
       // 워크북 생성
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, '재고파악')
