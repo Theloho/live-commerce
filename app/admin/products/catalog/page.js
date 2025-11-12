@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
@@ -17,7 +17,8 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   Squares2X2Icon,
-  ListBulletIcon
+  ListBulletIcon,
+  PrinterIcon
 } from '@heroicons/react/24/outline'
 import { PlayIcon, StopIcon } from '@heroicons/react/24/solid'
 import { getAllProducts, getCategories, addToLive, removeFromLive } from '@/lib/supabaseApi'
@@ -26,6 +27,7 @@ import toast from 'react-hot-toast'
 export default function ProductCatalogPage() {
   const router = useRouter()
   const { isAdminAuthenticated, loading: authLoading } = useAdminAuth()
+  const printRef = useRef(null)
 
   // 상태 관리
   const [products, setProducts] = useState([])
@@ -35,6 +37,10 @@ export default function ProductCatalogPage() {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [viewMode, setViewMode] = useState('grid') // grid | list
   const [showFilters, setShowFilters] = useState(false)
+
+  // ⭐ 체크박스 및 프린트 기능 추가
+  const [selectedProducts, setSelectedProducts] = useState([])
+  const [showPrintPreview, setShowPrintPreview] = useState(false)
 
   // 인증 확인
   useEffect(() => {
@@ -154,6 +160,30 @@ export default function ProductCatalogPage() {
     }
   }
 
+  // ⭐ 체크박스 토글
+  const handleToggleSelect = (productId, e) => {
+    e.stopPropagation()
+    setSelectedProducts(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    )
+  }
+
+  // ⭐ 전체 선택/해제
+  const handleSelectAll = () => {
+    if (selectedProducts.length === products.length) {
+      setSelectedProducts([])
+    } else {
+      setSelectedProducts(products.map(p => p.id))
+    }
+  }
+
+  // ⭐ 프린트 실행
+  const handlePrint = () => {
+    window.print()
+  }
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -173,9 +203,24 @@ export default function ProductCatalogPage() {
           <h1 className="text-2xl font-bold text-gray-900">🛍️ 전체 상품 관리</h1>
           <p className="text-sm text-gray-600 mt-1">
             총 {products.length}개 상품 | 라이브 중 {products.filter(p => p.is_live_active).length}개
+            {selectedProducts.length > 0 && (
+              <span className="ml-2 text-blue-600 font-medium">
+                | 선택됨 {selectedProducts.length}개
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* ⭐ 프린트 버튼 (선택된 상품이 있을 때만 표시) */}
+          {selectedProducts.length > 0 && (
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <PrinterIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">프린트 ({selectedProducts.length})</span>
+            </button>
+          )}
           <button
             onClick={() => router.push('/admin/products')}
             className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -196,6 +241,19 @@ export default function ProductCatalogPage() {
       {/* 필터 및 검색 */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* 전체 선택 체크박스 */}
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedProducts.length === products.length && products.length > 0}
+                onChange={handleSelectAll}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">전체 선택</span>
+            </label>
+          </div>
+
           {/* 검색 */}
           <div className="flex-1 max-w-lg">
             <div className="relative">
@@ -273,7 +331,9 @@ export default function ProductCatalogPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => router.push(`/admin/products/catalog/${product.id}`)}
-                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-all cursor-pointer overflow-hidden group"
+                className={`bg-white rounded-lg shadow-sm border hover:shadow-md transition-all cursor-pointer overflow-hidden group ${
+                  selectedProducts.includes(product.id) ? 'ring-2 ring-blue-500' : ''
+                }`}
               >
                 {/* 상품 이미지 */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
@@ -291,9 +351,20 @@ export default function ProductCatalogPage() {
                     </div>
                   )}
 
+                  {/* ⭐ 체크박스 (왼쪽 상단) */}
+                  <div className="absolute top-1 left-1 z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.includes(product.id)}
+                      onChange={(e) => handleToggleSelect(product.id, e)}
+                      className="w-5 h-5 text-blue-600 border-2 border-white rounded shadow-lg focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+
                   {/* 라이브 배지 */}
                   {product.is_live_active && (
-                    <div className="absolute top-1 left-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded flex items-center">
+                    <div className="absolute top-1 right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded flex items-center">
                       <div className="w-1.5 h-1.5 bg-white rounded-full mr-1 animate-pulse"></div>
                       LIVE
                     </div>
@@ -313,6 +384,13 @@ export default function ProductCatalogPage() {
 
                 {/* 상품 정보 */}
                 <div className="p-2">
+                  {/* ⭐ 업체 상품 코드 추가 */}
+                  {product.supplier_product_code && (
+                    <div className="text-xs text-blue-600 font-medium mb-1 truncate">
+                      업체코드: {product.supplier_product_code}
+                    </div>
+                  )}
+
                   {/* 제품번호 + 상품명 */}
                   <h3 className="text-xs font-medium text-gray-900 mb-1 line-clamp-2 min-h-[2rem]">
                     <span className="text-gray-900 font-bold">{product.product_number}</span>
@@ -488,6 +566,75 @@ export default function ProductCatalogPage() {
             </table>
           </div>
         )}
+
+      {/* ⭐ 프린트 레이아웃 (숨겨진 레이아웃, 프린트 시에만 표시) */}
+      <div className="hidden print:block">
+        <style jsx global>{`
+          @media print {
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
+            body * {
+              visibility: hidden;
+            }
+            .print-area, .print-area * {
+              visibility: visible;
+            }
+            .print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+          }
+        `}</style>
+
+        <div className="print-area">
+          <div className="grid grid-cols-4 gap-4">
+            {products
+              .filter(p => selectedProducts.includes(p.id))
+              .map((product, index) => (
+                <div key={product.id} className="border border-gray-300 p-2 break-inside-avoid">
+                  {/* 상품 이미지 (가로 길이 길게) */}
+                  <div className="relative w-full aspect-[16/9] bg-gray-100 mb-2">
+                    {product.thumbnail_url ? (
+                      <img
+                        src={product.thumbnail_url}
+                        alt={product.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                        NO IMAGE
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 상품 정보 (사진 아래) */}
+                  <div className="text-center space-y-1">
+                    {/* 업체 상품 코드 */}
+                    {product.supplier_product_code && (
+                      <div className="text-sm font-medium text-gray-800">
+                        {product.supplier_product_code}
+                      </div>
+                    )}
+
+                    {/* 제품번호 */}
+                    <div className="text-sm font-bold text-gray-900">
+                      {product.product_number}
+                    </div>
+
+                    {/* 가격 */}
+                    <div className="text-base font-bold text-red-600">
+                      ₩{(product.price || 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
