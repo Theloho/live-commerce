@@ -223,6 +223,11 @@ export default function AdminOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, searchTerm, paymentFilter, sortOption])
 
+  // ⭐ 탭 이동 시 선택 상태 초기화
+  useEffect(() => {
+    setSelectedOrders([])
+  }, [paymentFilter])
+
   // 날짜 필터 변경 시에만 데이터 재로드 ⭐ (탭 이동 시에는 클라이언트 필터링만)
   useEffect(() => {
     // ⭐ 'custom' 모드: 날짜 입력 UI만 표시, 데이터 로드 X
