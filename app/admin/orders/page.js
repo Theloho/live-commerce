@@ -560,7 +560,8 @@ export default function AdminOrdersPage() {
             </button>
           </div>
         )}
-      </div>
+
+        {/* 새로고침 버튼 */}
         <button
           onClick={() => {
             setOrders([])
