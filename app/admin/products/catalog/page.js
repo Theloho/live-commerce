@@ -596,8 +596,8 @@ export default function ProductCatalogPage() {
               .filter(p => selectedProducts.includes(p.id))
               .map((product, index) => (
                 <div key={product.id} className="border border-gray-300 p-2 break-inside-avoid">
-                  {/* 상품 이미지 (가로 길이 길게) */}
-                  <div className="relative w-full aspect-[16/9] bg-gray-100 mb-2">
+                  {/* 상품 이미지 (세로 길이 길게) */}
+                  <div className="relative w-full aspect-[3/4] bg-gray-100 mb-2">
                     {product.thumbnail_url ? (
                       <img
                         src={product.thumbnail_url}
@@ -613,16 +613,12 @@ export default function ProductCatalogPage() {
 
                   {/* 상품 정보 (사진 아래) */}
                   <div className="text-center space-y-1">
-                    {/* 업체 상품 코드 */}
-                    {product.supplier_product_code && (
-                      <div className="text-sm font-medium text-gray-800">
-                        {product.supplier_product_code}
-                      </div>
-                    )}
-
-                    {/* 제품번호 */}
-                    <div className="text-sm font-bold text-gray-900">
-                      {product.product_number}
+                    {/* 업체 상품 코드 / 제품번호 (한 줄) */}
+                    <div className="text-xs font-medium text-gray-800">
+                      {product.supplier_product_code && (
+                        <span>{product.supplier_product_code} / </span>
+                      )}
+                      <span className="font-bold">{product.product_number}</span>
                     </div>
 
                     {/* 가격 */}
