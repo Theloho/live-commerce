@@ -265,10 +265,7 @@ export default function AdminOrdersPage() {
   const loadOrders = async (isInitial = false, search = '') => {
     try {
       if (isInitial) {
-        setLoading(true)
-        setOffset(0)
-
-        // ⭐ 캐시 확인 (검색 없을 때만, 초기 로딩일 때만)
+        // ⭐ 캐시 확인 먼저 (로딩 화면 깜빡임 방지)
         if (!search && typeof window !== 'undefined') {
           const cacheKey = `admin_orders_cache_${dateRange}_${customStartDate}_${customEndDate}`
           const cached = sessionStorage.getItem(cacheKey)
@@ -279,20 +276,26 @@ export default function AdminOrdersPage() {
               const now = Date.now()
               const CACHE_DURATION = 5 * 60 * 1000 // 5분
 
-              // 캐시가 5분 이내면 사용
+              // 캐시가 5분 이내면 사용 (로딩 상태 변경 없이 즉시 표시)
               if (now - timestamp < CACHE_DURATION) {
-                console.log('✅ 캐시된 데이터 사용 (서버 요청 생략)')
+                console.log('✅ 캐시된 데이터 사용 (서버 요청 생략, 로딩 화면 없음)')
                 setOrders(cachedOrders)
                 setStatusCounts(cachedCounts)
                 setHasMore(false) // 캐시는 전체 데이터
-                setLoading(false)
+                setOffset(0)
                 return
+              } else {
+                console.log('⏰ 캐시 만료 (5분 초과), 서버에서 새 데이터 로드')
               }
             } catch (e) {
               console.warn('캐시 파싱 실패:', e)
             }
           }
         }
+
+        // 캐시가 없거나 만료된 경우에만 로딩 시작
+        setLoading(true)
+        setOffset(0)
       } else {
         setLoadingMore(true)
       }
