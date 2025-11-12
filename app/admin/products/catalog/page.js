@@ -613,16 +613,20 @@ export default function ProductCatalogPage() {
 
                   {/* 상품 정보 (사진 아래) */}
                   <div className="text-center space-y-1">
-                    {/* 업체 상품 코드 / 제품번호 (한 줄) */}
-                    <div className="text-xs font-medium text-gray-800">
-                      {product.supplier_product_code && (
-                        <span>{product.supplier_product_code} / </span>
-                      )}
-                      <span className="font-bold">{product.product_number}</span>
+                    {/* 제품번호 (첫 줄) */}
+                    <div className="text-sm font-bold text-gray-900">
+                      {product.product_number}
                     </div>
 
-                    {/* 가격 */}
-                    <div className="text-base font-bold text-red-600">
+                    {/* 업체 상품 코드 (두 번째 줄) */}
+                    {product.supplier_product_code && (
+                      <div className="text-sm font-medium text-blue-600">
+                        {product.supplier_product_code}
+                      </div>
+                    )}
+
+                    {/* 가격 (세 번째 줄) */}
+                    <div className="text-lg font-bold text-red-600">
                       ₩{(product.price || 0).toLocaleString()}
                     </div>
                   </div>
