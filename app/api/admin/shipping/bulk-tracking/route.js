@@ -51,100 +51,124 @@ export async function POST(request) {
 
         // 필수 필드 검사
         if (!customerOrderNumber || !trackingNumber) {
-          return {
+          return [{
             customerOrderNumber: customerOrderNumber || 'UNKNOWN',
             status: 'error',
             error: '주문번호 또는 송장번호가 누락되었습니다'
-          }
+          }]
         }
 
-        // ⭐ 주문번호 정규화 (앞뒤 공백 제거, 대문자 변환)
-        const normalizedOrderNumber = String(customerOrderNumber).trim().toUpperCase()
+        // ⭐ 여러 개 주문번호 처리 (쉼표로 구분)
+        const orderNumbers = String(customerOrderNumber)
+          .split(',')
+          .map(n => n.trim())
+          .filter(n => n)  // 빈 문자열 제거
 
-        // 3-1. customer_order_number로 주문 조회 (대소문자 무시)
-        const { data: order, error: findError } = await supabaseAdmin
-          .from('orders')
-          .select('id, customer_order_number')
-          .ilike('customer_order_number', normalizedOrderNumber)
-          .single()
+        console.log(`📋 처리할 주문번호 ${orderNumbers.length}개:`, orderNumbers)
 
-        if (findError || !order) {
-          console.warn(`❌ 주문 조회 실패: ${normalizedOrderNumber}`, {
-            error: findError?.message,
-            hint: findError?.hint,
-            details: findError?.details
-          })
-          return {
-            customerOrderNumber,
-            status: 'not_found',
-            error: `주문을 찾을 수 없습니다 (${normalizedOrderNumber})`
-          }
-        }
-
-        console.log(`✅ 주문 매칭 성공: ${normalizedOrderNumber} → ${order.id}`)
-
-        // ⭐ 송장번호 정규화 (앞뒤 공백 제거, 하이픈 제거)
+        // ⭐ 송장번호 정규화 (앞뒤 공백 제거, 하이픈 제거) - 미리 계산
         const normalizedTrackingNumber = String(trackingNumber).trim().replace(/[\s-]/g, '')
-
         const now = new Date().toISOString()
 
-        // 3-2. order_shipping + orders 동시 업데이트 (병렬)
-        const [shippingResult, orderResult] = await Promise.all([
-          supabaseAdmin
-            .from('order_shipping')
-            .update({
-              tracking_number: normalizedTrackingNumber,
-              tracking_company: trackingCompany,
-              shipped_at: now
-            })
-            .eq('order_id', order.id),
-          supabaseAdmin
-            .from('orders')
-            .update({
-              status: 'delivered',
-              delivered_at: now,
-              updated_at: now
-            })
-            .eq('id', order.id)
-        ])
+        // 각 주문번호마다 처리
+        const results = []
+        for (const orderNum of orderNumbers) {
+          try {
+            // 주문번호 정규화 (앞뒤 공백 제거, 대문자 변환)
+            const normalizedOrderNumber = orderNum.trim().toUpperCase()
 
-        console.log(`📦 송장번호 업데이트: ${normalizedTrackingNumber} (${trackingCompany})`)
+            // 3-1. customer_order_number로 주문 조회 (대소문자 무시)
+            const { data: order, error: findError } = await supabaseAdmin
+              .from('orders')
+              .select('id, customer_order_number')
+              .ilike('customer_order_number', normalizedOrderNumber)
+              .single()
 
-        if (shippingResult.error) {
-          console.error(`❌ 배송 정보 업데이트 실패: ${order.id}`, shippingResult.error)
-          return {
-            customerOrderNumber,
-            orderId: order.id,
-            status: 'error',
-            error: `배송 정보 업데이트 실패: ${shippingResult.error.message}`
+            if (findError || !order) {
+              console.warn(`❌ 주문 조회 실패: ${normalizedOrderNumber}`, {
+                error: findError?.message,
+                hint: findError?.hint,
+                details: findError?.details
+              })
+              results.push({
+                customerOrderNumber: orderNum,
+                status: 'not_found',
+                error: `주문을 찾을 수 없습니다 (${normalizedOrderNumber})`
+              })
+              continue
+            }
+
+            console.log(`✅ 주문 매칭 성공: ${normalizedOrderNumber} → ${order.id}`)
+
+            // 3-2. order_shipping + orders 동시 업데이트 (병렬)
+            const [shippingResult, orderResult] = await Promise.all([
+              supabaseAdmin
+                .from('order_shipping')
+                .update({
+                  tracking_number: normalizedTrackingNumber,
+                  tracking_company: trackingCompany,
+                  shipped_at: now
+                })
+                .eq('order_id', order.id),
+              supabaseAdmin
+                .from('orders')
+                .update({
+                  status: 'delivered',
+                  delivered_at: now,
+                  updated_at: now
+                })
+                .eq('id', order.id)
+            ])
+
+            console.log(`📦 송장번호 업데이트: ${normalizedTrackingNumber} (${trackingCompany})`)
+
+            if (shippingResult.error) {
+              console.error(`❌ 배송 정보 업데이트 실패: ${order.id}`, shippingResult.error)
+              results.push({
+                customerOrderNumber: orderNum,
+                orderId: order.id,
+                status: 'error',
+                error: `배송 정보 업데이트 실패: ${shippingResult.error.message}`
+              })
+              continue
+            }
+
+            if (orderResult.error) {
+              console.error(`❌ 주문 상태 변경 실패: ${order.id}`, orderResult.error)
+              results.push({
+                customerOrderNumber: orderNum,
+                orderId: order.id,
+                status: 'error',
+                error: `주문 상태 변경 실패: ${orderResult.error.message}`
+              })
+              continue
+            }
+
+            // 3-3. 성공
+            console.log(`🎉 완료: ${normalizedOrderNumber} → delivered`)
+            results.push({
+              customerOrderNumber: orderNum,
+              orderId: order.id,
+              trackingNumber: normalizedTrackingNumber,
+              trackingCompany,
+              status: 'success'
+            })
+          } catch (error) {
+            results.push({
+              customerOrderNumber: orderNum,
+              status: 'error',
+              error: error.message
+            })
           }
         }
 
-        if (orderResult.error) {
-          console.error(`❌ 주문 상태 변경 실패: ${order.id}`, orderResult.error)
-          return {
-            customerOrderNumber,
-            orderId: order.id,
-            status: 'error',
-            error: `주문 상태 변경 실패: ${orderResult.error.message}`
-          }
-        }
-
-        // 3-3. 성공
-        console.log(`🎉 완료: ${normalizedOrderNumber} → delivered`)
-        return {
-          customerOrderNumber,
-          orderId: order.id,
-          trackingNumber: normalizedTrackingNumber,
-          trackingCompany,
-          status: 'success'
-        }
+        return results
       } catch (error) {
-        return {
+        return [{
           customerOrderNumber: item.customerOrderNumber || 'UNKNOWN',
           status: 'error',
           error: error.message
-        }
+        }]
       }
     }
 
@@ -155,8 +179,10 @@ export async function POST(request) {
     for (let i = 0; i < trackingData.length; i += BATCH_SIZE) {
       const batch = trackingData.slice(i, i + BATCH_SIZE)
       const batchResults = await Promise.all(batch.map(processItem))
-      results.push(...batchResults)
-      console.log(`✅ 배치 ${Math.floor(i / BATCH_SIZE) + 1} 완료: ${batchResults.length}개`)
+      // ⭐ processItem이 배열을 반환하므로 flat 처리
+      const flatResults = batchResults.flat()
+      results.push(...flatResults)
+      console.log(`✅ 배치 ${Math.floor(i / BATCH_SIZE) + 1} 완료: ${flatResults.length}개`)
     }
 
     // 5. 결과 집계
@@ -164,7 +190,8 @@ export async function POST(request) {
     const failedCount = results.filter(r => r.status !== 'success').length
 
     console.log('✅ [송장번호 대량 업데이트 API] 완료:', {
-      total: trackingData.length,
+      uploadedRows: trackingData.length,
+      processedOrders: results.length,
       matched: matchedCount,
       failed: failedCount
     })
@@ -173,7 +200,8 @@ export async function POST(request) {
       success: true,
       matched: matchedCount,
       failed: failedCount,
-      total: trackingData.length,
+      uploadedRows: trackingData.length,
+      processedOrders: results.length,
       results,
       message: `${matchedCount}개 주문의 송장번호가 저장되고 발송 완료로 변경되었습니다`
     })
