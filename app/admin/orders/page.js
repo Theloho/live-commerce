@@ -126,7 +126,8 @@ export default function AdminOrdersPage() {
     pending: 0,
     verifying: 0,
     paid: 0,
-    delivered: 0
+    delivered: 0,
+    cancelled: 0
   })
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터 (today, yesterday, week, month, all, custom)
@@ -153,6 +154,9 @@ export default function AdminOrdersPage() {
       filtered = filtered.filter(order => order.status === 'paid')
     } else if (paymentFilter === 'delivered') {
       filtered = filtered.filter(order => order.status === 'delivered')
+    } else if (paymentFilter === 'cancelled') {
+      // '취소내역' 탭 - cancelled 상태만 표시
+      filtered = filtered.filter(order => order.status === 'cancelled')
     }
 
     // ⚡ 검색어 필터 (서버: 주문번호/ID/카카오ID, 프론트: 고객명/입금자명/상품명/전화번호)
@@ -549,7 +553,7 @@ export default function AdminOrdersPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">📦 주문 관리</h1>
           <p className="text-sm text-gray-600 mt-1">
-            총 {statusCounts.pending + statusCounts.verifying + statusCounts.paid + statusCounts.delivered}건 | 장바구니 {statusCounts.pending}건 | 주문내역 {statusCounts.verifying}건 | 구매확정 {statusCounts.paid}건 | 출고정보 {statusCounts.delivered}건
+            총 {statusCounts.pending + statusCounts.verifying + statusCounts.paid + statusCounts.delivered + statusCounts.cancelled}건 | 장바구니 {statusCounts.pending}건 | 주문내역 {statusCounts.verifying}건 | 구매확정 {statusCounts.paid}건 | 출고정보 {statusCounts.delivered}건 | 취소내역 {statusCounts.cancelled}건
             {dateRange !== 'all' && (
               <span className="ml-2 text-xs text-blue-600">
                 💡 {dateRange === 'today' ? '오늘' : dateRange === 'yesterday' ? '어제' : dateRange === 'week' ? '1주일' : dateRange === 'month' ? '1개월' : '선택한 기간'}의 카운트
@@ -718,7 +722,8 @@ export default function AdminOrdersPage() {
               count: statusCounts.verifying
             },
             { id: 'paid', label: '구매확정', count: statusCounts.paid },
-            { id: 'delivered', label: '출고정보', count: statusCounts.delivered }
+            { id: 'delivered', label: '출고정보', count: statusCounts.delivered },
+            { id: 'cancelled', label: '취소내역', count: statusCounts.cancelled }
           ].map((tab) => (
             <button
               key={tab.id}
