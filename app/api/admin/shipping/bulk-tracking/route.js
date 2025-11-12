@@ -58,20 +58,33 @@ export async function POST(request) {
           }
         }
 
-        // 3-1. customer_order_number로 주문 조회
+        // ⭐ 주문번호 정규화 (앞뒤 공백 제거, 대문자 변환)
+        const normalizedOrderNumber = String(customerOrderNumber).trim().toUpperCase()
+
+        // 3-1. customer_order_number로 주문 조회 (대소문자 무시)
         const { data: order, error: findError } = await supabaseAdmin
           .from('orders')
           .select('id, customer_order_number')
-          .eq('customer_order_number', customerOrderNumber)
+          .ilike('customer_order_number', normalizedOrderNumber)
           .single()
 
         if (findError || !order) {
+          console.warn(`❌ 주문 조회 실패: ${normalizedOrderNumber}`, {
+            error: findError?.message,
+            hint: findError?.hint,
+            details: findError?.details
+          })
           return {
             customerOrderNumber,
             status: 'not_found',
-            error: '주문을 찾을 수 없습니다'
+            error: `주문을 찾을 수 없습니다 (${normalizedOrderNumber})`
           }
         }
+
+        console.log(`✅ 주문 매칭 성공: ${normalizedOrderNumber} → ${order.id}`)
+
+        // ⭐ 송장번호 정규화 (앞뒤 공백 제거, 하이픈 제거)
+        const normalizedTrackingNumber = String(trackingNumber).trim().replace(/[\s-]/g, '')
 
         const now = new Date().toISOString()
 
@@ -80,7 +93,7 @@ export async function POST(request) {
           supabaseAdmin
             .from('order_shipping')
             .update({
-              tracking_number: trackingNumber,
+              tracking_number: normalizedTrackingNumber,
               tracking_company: trackingCompany,
               shipped_at: now
             })
@@ -95,7 +108,10 @@ export async function POST(request) {
             .eq('id', order.id)
         ])
 
+        console.log(`📦 송장번호 업데이트: ${normalizedTrackingNumber} (${trackingCompany})`)
+
         if (shippingResult.error) {
+          console.error(`❌ 배송 정보 업데이트 실패: ${order.id}`, shippingResult.error)
           return {
             customerOrderNumber,
             orderId: order.id,
@@ -105,6 +121,7 @@ export async function POST(request) {
         }
 
         if (orderResult.error) {
+          console.error(`❌ 주문 상태 변경 실패: ${order.id}`, orderResult.error)
           return {
             customerOrderNumber,
             orderId: order.id,
@@ -114,10 +131,11 @@ export async function POST(request) {
         }
 
         // 3-3. 성공
+        console.log(`🎉 완료: ${normalizedOrderNumber} → delivered`)
         return {
           customerOrderNumber,
           orderId: order.id,
-          trackingNumber,
+          trackingNumber: normalizedTrackingNumber,
           trackingCompany,
           status: 'success'
         }
