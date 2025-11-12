@@ -43,13 +43,13 @@ export default function SellerLiveDashboard() {
     }
   }, [isAdminAuthenticated, adminUser])
 
-  // 15초마다 자동 새로고침 (LIVE 모드일 때만)
+  // 60초마다 자동 새로고침 (LIVE 모드일 때만) - DB 부하 감소 ⚡
   useEffect(() => {
     if (!isAdminAuthenticated || !liveMode) return
 
     const interval = setInterval(() => {
       loadDashboardData(true) // 백그라운드 새로고침
-    }, 15000) // 15초
+    }, 60000) // 60초 (기존 15초에서 변경)
 
     return () => clearInterval(interval)
   }, [isAdminAuthenticated, adminUser, liveMode])

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// ⚡ API 응답 캐싱 (30초) - 복잡한 통계 쿼리 최적화
+export const revalidate = 30
+
 // Service Role Key를 사용하여 RLS 우회
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL?.trim(),

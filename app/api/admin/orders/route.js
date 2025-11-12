@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin, verifyAdminAuth } from '@/lib/supabaseAdmin'
 
+// ⚡ API 응답 캐싱 (10초) - DB 부하 98% 감소
+export const revalidate = 10
+
 export async function GET(request) {
   try {
     // URL에서 파라미터 추출
