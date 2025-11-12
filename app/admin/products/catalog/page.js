@@ -202,8 +202,27 @@ export default function ProductCatalogPage() {
 
       // 엑셀 데이터 생성
       const excelData = []
+      let isFirstProduct = true
 
       for (const product of selectedProductsData) {
+        // ⭐ 제품이 바뀔 때마다 구분선 역할의 빈 행 추가 (첫 번째 제외)
+        if (!isFirstProduct) {
+          excelData.push({
+            '제품번호': '─────────',
+            '업체명': '─────────',
+            '업체 제품코드': '─────────',
+            '가격': '',
+            '옵션정보': '─────────',
+            '수량': '',
+            '판매1': '',
+            '판매2': '',
+            '판매3': '',
+            '비고1': '',
+            '비고2': ''
+          })
+        }
+        isFirstProduct = false
+
         // 업체 정보 조회
         let supplierName = ''
         if (product.supplier_id) {
@@ -273,34 +292,6 @@ export default function ProductCatalogPage() {
         { wch: 15 }, // 비고1
         { wch: 15 }  // 비고2
       ]
-
-      // ⭐ 제품번호가 바뀔 때마다 두꺼운 상단 테두리 추가
-      let prevProductNumber = ''
-      const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
-
-      excelData.forEach((row, index) => {
-        const rowNumber = index + 2 // 엑셀은 1부터 시작, 헤더가 1행이므로 +2
-        const currentProductNumber = row['제품번호']
-
-        // 제품번호가 바뀌는 시점에 두꺼운 상단 테두리
-        if (prevProductNumber && currentProductNumber !== prevProductNumber) {
-          columns.forEach(col => {
-            const cellAddress = `${col}${rowNumber}`
-            if (!worksheet[cellAddress]) {
-              worksheet[cellAddress] = { t: 's', v: '' }
-            }
-            if (!worksheet[cellAddress].s) {
-              worksheet[cellAddress].s = {}
-            }
-            worksheet[cellAddress].s.border = {
-              ...worksheet[cellAddress].s.border,
-              top: { style: 'thick', color: { rgb: '000000' } }
-            }
-          })
-        }
-
-        prevProductNumber = currentProductNumber
-      })
 
       // 워크북 생성
       const workbook = XLSX.utils.book_new()
