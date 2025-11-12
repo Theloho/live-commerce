@@ -645,8 +645,8 @@ export default function AdminOrdersPage() {
               </button>
             )}
 
-            {/* 주문내역: 일괄 결제확인 가능 */}
-            {paymentFilter === 'verifying' && (
+            {/* 장바구니/주문내역: 일괄 결제확인 가능 */}
+            {(paymentFilter === 'all' || paymentFilter === 'verifying') && (
               <button
                 onClick={handleBulkConfirmPayment}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
