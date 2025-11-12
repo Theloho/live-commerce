@@ -12,7 +12,8 @@ import {
   CreditCardIcon,
   BanknotesIcon,
   AtSymbolIcon,
-  TruckIcon
+  TruckIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { formatShippingInfo } from '@/lib/shippingUtils'
@@ -457,6 +458,69 @@ export default function AdminOrdersPage() {
     }
   }
 
+  // ⭐ 일괄 복구 - 장바구니로
+  const handleBulkRestoreToPending = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 장바구니로 복구하시겠습니까?`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      await Promise.all(selectedOrders.map(id => updateOrderStatus(id, 'pending')))
+      toast.success(`${selectedOrders.length}개 주문이 장바구니로 복구되었습니다`)
+      setSelectedOrders([])
+      loadOrders(true)
+    } catch (error) {
+      console.error('장바구니 복구 실패:', error)
+      toast.error('장바구니 복구에 실패했습니다')
+    }
+  }
+
+  // ⭐ 일괄 복구 - 주문내역으로
+  const handleBulkRestoreToVerifying = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 주문내역으로 복구하시겠습니까?`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      await Promise.all(selectedOrders.map(id => updateOrderStatus(id, 'verifying')))
+      toast.success(`${selectedOrders.length}개 주문이 주문내역으로 복구되었습니다`)
+      setSelectedOrders([])
+      loadOrders(true)
+    } catch (error) {
+      console.error('주문내역 복구 실패:', error)
+      toast.error('주문내역 복구에 실패했습니다')
+    }
+  }
+
+  // ⭐ 일괄 복구 - 구매확정으로
+  const handleBulkRestoreToPaid = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 구매확정으로 복구하시겠습니까?`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      await Promise.all(selectedOrders.map(id => updateOrderStatus(id, 'paid')))
+      toast.success(`${selectedOrders.length}개 주문이 구매확정으로 복구되었습니다`)
+      setSelectedOrders([])
+      loadOrders(true)
+    } catch (error) {
+      console.error('구매확정 복구 실패:', error)
+      toast.error('구매확정 복구에 실패했습니다')
+    }
+  }
+
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       // API Route 호출 (Clean Architecture)
@@ -601,6 +665,33 @@ export default function AdminOrdersPage() {
                 <TruckIcon className="w-4 h-4" />
                 일괄 발송처리 ({selectedOrders.length})
               </button>
+            )}
+
+            {/* 취소내역: 복구 버튼 3개 (장바구니/주문내역/구매확정) */}
+            {paymentFilter === 'cancelled' && (
+              <>
+                <button
+                  onClick={handleBulkRestoreToPending}
+                  className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium"
+                >
+                  <ArrowPathIcon className="w-4 h-4" />
+                  장바구니로 복구 ({selectedOrders.length})
+                </button>
+                <button
+                  onClick={handleBulkRestoreToVerifying}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                >
+                  <ArrowPathIcon className="w-4 h-4" />
+                  주문내역으로 복구 ({selectedOrders.length})
+                </button>
+                <button
+                  onClick={handleBulkRestoreToPaid}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  <ArrowPathIcon className="w-4 h-4" />
+                  구매확정으로 복구 ({selectedOrders.length})
+                </button>
+              </>
             )}
           </div>
         )}
