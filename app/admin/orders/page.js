@@ -133,6 +133,9 @@ export default function AdminOrdersPage() {
   const [customEndDate, setCustomEndDate] = useState('')
   const [sortOption, setSortOption] = useState('date_desc') // ⭐ 정렬 옵션 (날짜/금액/고객)
 
+  // ⭐ 체크박스 선택 상태 (주문 ID 배열)
+  const [selectedOrders, setSelectedOrders] = useState([])
+
   const filterOrders = () => {
     let filtered = [...orders]
 
@@ -362,6 +365,72 @@ export default function AdminOrdersPage() {
     }
   }
 
+  // ⭐ 체크박스 토글
+  const handleToggleSelect = (orderId) => {
+    setSelectedOrders(prev =>
+      prev.includes(orderId)
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    )
+  }
+
+  // ⭐ 전체 선택/해제
+  const handleSelectAll = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([])
+    } else {
+      // 그룹 주문인 경우 원본 주문들의 ID 모두 수집
+      const allOrderIds = filteredOrders.flatMap(order =>
+        order.isGroup
+          ? order.originalOrders.map(o => o.id)
+          : [order.id]
+      )
+      setSelectedOrders(allOrderIds)
+    }
+  }
+
+  // ⭐ 일괄 취소
+  const handleBulkCancel = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 취소하시겠습니까?`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      await Promise.all(selectedOrders.map(id => updateOrderStatus(id, 'cancelled')))
+      toast.success(`${selectedOrders.length}개 주문이 취소되었습니다`)
+      setSelectedOrders([])
+      loadOrders(true)
+    } catch (error) {
+      console.error('일괄 취소 실패:', error)
+      toast.error('일괄 취소에 실패했습니다')
+    }
+  }
+
+  // ⭐ 일괄 결제확인
+  const handleBulkConfirmPayment = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문의 결제를 확인하시겠습니까?`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      await Promise.all(selectedOrders.map(id => updateOrderStatus(id, 'paid')))
+      toast.success(`${selectedOrders.length}개 주문의 결제가 확인되었습니다`)
+      setSelectedOrders([])
+      loadOrders(true)
+    } catch (error) {
+      console.error('일괄 결제확인 실패:', error)
+      toast.error('일괄 결제확인에 실패했습니다')
+    }
+  }
+
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       // API Route 호출 (Clean Architecture)
@@ -464,8 +533,34 @@ export default function AdminOrdersPage() {
                 💡 {dateRange === 'today' ? '오늘' : dateRange === 'yesterday' ? '어제' : dateRange === 'week' ? '1주일' : dateRange === 'month' ? '1개월' : '선택한 기간'}의 카운트
               </span>
             )}
+            {selectedOrders.length > 0 && (
+              <span className="ml-2 text-sm font-medium text-blue-600">
+                | 선택됨 {selectedOrders.length}개
+              </span>
+            )}
           </p>
         </div>
+
+        {/* ⭐ 일괄 처리 버튼 (선택된 주문이 있을 때만 표시) */}
+        {selectedOrders.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkCancel}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+            >
+              <XMarkIcon className="w-4 h-4" />
+              일괄 취소 ({selectedOrders.length})
+            </button>
+            <button
+              onClick={handleBulkConfirmPayment}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+            >
+              <CheckIcon className="w-4 h-4" />
+              일괄 결제확인 ({selectedOrders.length})
+            </button>
+          </div>
+        )}
+      </div>
         <button
           onClick={() => {
             setOrders([])
@@ -689,6 +784,15 @@ export default function AdminOrdersPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                {/* ⭐ 전체 선택 체크박스 */}
+                <th className="px-3 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedOrders.length > 0 && selectedOrders.length === filteredOrders.flatMap(o => o.isGroup ? o.originalOrders.map(oo => oo.id) : [o.id]).length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   주문정보
                 </th>
@@ -704,24 +808,54 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredOrders.map((order, index) => (
-                <motion.tr
-                  key={order.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="hover:bg-gray-50"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                        {order.customer_order_number || order.id.slice(-8)}
-                        {order.isGroup && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-                            그룹결제
-                          </span>
-                        )}
-                      </div>
+              {filteredOrders.map((order, index) => {
+                // 그룹 주문의 경우 원본 주문들의 ID, 개별 주문의 경우 order.id
+                const orderIds = order.isGroup ? order.originalOrders.map(o => o.id) : [order.id]
+                // 모든 ID가 선택되어 있는지 확인
+                const isSelected = orderIds.every(id => selectedOrders.includes(id))
+
+                return (
+                  <motion.tr
+                    key={order.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
+                  >
+                    {/* ⭐ 체크박스 */}
+                    <td className="px-3 py-4">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          if (order.isGroup) {
+                            // 그룹 주문: 모든 원본 주문 ID 토글
+                            const allSelected = orderIds.every(id => selectedOrders.includes(id))
+                            if (allSelected) {
+                              setSelectedOrders(prev => prev.filter(id => !orderIds.includes(id)))
+                            } else {
+                              setSelectedOrders(prev => [...new Set([...prev, ...orderIds])])
+                            }
+                          } else {
+                            // 개별 주문: 단일 ID 토글
+                            handleToggleSelect(order.id)
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
+
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                          {order.customer_order_number || order.id.slice(-8)}
+                          {order.isGroup && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                              그룹결제
+                            </span>
+                          )}
+                        </div>
                       <div className="text-sm text-gray-500">
                         {order.updated_at && order.updated_at !== order.created_at ? (
                           <span className="text-blue-600 font-medium">
@@ -921,7 +1055,8 @@ export default function AdminOrdersPage() {
                     </div>
                   </td>
                 </motion.tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -934,27 +1069,56 @@ export default function AdminOrdersPage() {
             const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
             const uniqueProducts = groupedItems.length
 
+            // 그룹 주문의 경우 원본 주문들의 ID, 개별 주문의 경우 order.id
+            const orderIds = order.isGroup ? order.originalOrders.map(o => o.id) : [order.id]
+            // 모든 ID가 선택되어 있는지 확인
+            const isSelected = orderIds.every(id => selectedOrders.includes(id))
+
             return (
               <motion.div
                 key={order.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: index * 0.05 }}
-                className="p-4 hover:bg-gray-50"
+                className={`p-4 hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
               >
-                {/* 상단: 주문번호 + 상태 */}
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                      {order.customer_order_number || order.id.slice(-8)}
-                      {order.isGroup && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-                          그룹결제
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(order.created_at).toLocaleDateString('ko-KR')}
+                {/* 상단: 체크박스 + 주문번호 + 상태 */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3">
+                    {/* ⭐ 체크박스 */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {
+                        if (order.isGroup) {
+                          // 그룹 주문: 모든 원본 주문 ID 토글
+                          const allSelected = orderIds.every(id => selectedOrders.includes(id))
+                          if (allSelected) {
+                            setSelectedOrders(prev => prev.filter(id => !orderIds.includes(id)))
+                          } else {
+                            setSelectedOrders(prev => [...new Set([...prev, ...orderIds])])
+                          }
+                        } else {
+                          // 개별 주문: 단일 ID 토글
+                          handleToggleSelect(order.id)
+                        }
+                      }}
+                      className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer mt-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                        {order.customer_order_number || order.id.slice(-8)}
+                        {order.isGroup && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                            그룹결제
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(order.created_at).toLocaleDateString('ko-KR')}
+                      </div>
                     </div>
                   </div>
                   {getStatusBadge(order.status)}
