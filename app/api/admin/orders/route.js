@@ -195,8 +195,10 @@ export async function GET(request) {
       // 정렬
       query = query.order('created_at', { ascending: false })
 
-      // ⚠️ LIMIT 적용: 날짜 범위별로 다른 LIMIT (더 이상 고정 200건 아님!)
-      query = query.limit(limit)
+      // ⚡ 페이지네이션: range(offset, offset + limit - 1)
+      // 예: offset=0, limit=100 → range(0, 99) → 100개
+      // 예: offset=100, limit=100 → range(100, 199) → 100개
+      query = query.range(offset, offset + limit - 1)
     }
 
     const { data, error, count } = await query

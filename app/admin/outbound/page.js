@@ -319,7 +319,8 @@ export default function AdminOutboundPage() {
       }
 
       setHasMore(moreData)
-      setOffset(currentOffset + groupedOrders.length)
+      // ⚡ offset은 그룹핑 전 원본 개수로 증가 (그룹핑 후 개수 사용 시 offset 불일치!)
+      setOffset(currentOffset + allOrders.length)
       setLoading(false)
       setLoadingMore(false)
     } catch (error) {
