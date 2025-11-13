@@ -281,7 +281,6 @@ export default function AdminCanceledPage() {
       console.error('주문 로딩 오류:', error)
       toast.error('주문 목록을 불러오는데 실패했습니다')
       setLoading(false)
-      setLoadingMore(false)
     }
   }
 
