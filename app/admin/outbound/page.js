@@ -243,8 +243,8 @@ export default function AdminOutboundPage() {
 
       const currentOffset = isInitial ? 0 : offset
 
-      // Service Role API 호출 (날짜 필터 + 검색)
-      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&offset=${currentOffset}`
+      // Service Role API 호출 (날짜 필터 + 검색 + 출고완료 상태만)
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&offset=${currentOffset}&status=delivered`
       if (dateRange === 'custom') {
         if (customStartDate) url += `&startDate=${customStartDate}`
         if (customEndDate) url += `&endDate=${customEndDate}`
@@ -306,14 +306,11 @@ export default function AdminOutboundPage() {
         }
       })
 
-      // ⭐ delivered 상태만 필터링
-      const deliveredOrders = allOrders.filter(order => order.status === 'delivered')
-
-      console.log('API에서 가져온 출고완료 주문:', deliveredOrders.length, '개')
+      console.log('✅ API에서 가져온 출고완료 주문:', allOrders.length, '개')
 
       // ⭐ 그룹핑 적용
-      const groupedOrders = groupOrdersByPaymentGroupId(deliveredOrders)
-      console.log('✅ 그룹핑 완료:', { original: deliveredOrders.length, grouped: groupedOrders.length })
+      const groupedOrders = groupOrdersByPaymentGroupId(allOrders)
+      console.log('✅ 그룹핑 완료:', { original: allOrders.length, grouped: groupedOrders.length })
 
       if (isInitial) {
         setOrders(groupedOrders)
