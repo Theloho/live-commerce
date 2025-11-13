@@ -9,7 +9,8 @@ import {
   EyeIcon,
   AtSymbolIcon,
   BanknotesIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
@@ -183,6 +184,38 @@ export default function AdminOutboundPage() {
     }
   }
 
+  // ⭐ 구매확정으로 복구
+  const handleBulkRestoreToPaid = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 구매확정으로 되돌리시겠습니까?`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      const response = await fetch('/api/orders/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderIds: selectedOrders,
+          status: 'paid'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('주문 상태 변경 실패')
+      }
+
+      toast.success(`${selectedOrders.length}개 주문이 구매확정으로 변경되었습니다`)
+      setSelectedOrders([])
+      loadOrders()
+    } catch (error) {
+      console.error('구매확정 복구 실패:', error)
+      toast.error('구매확정으로 복구에 실패했습니다')
+    }
+  }
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -368,13 +401,25 @@ export default function AdminOutboundPage() {
           </p>
         </div>
 
-        {/* 새로고침 버튼 */}
-        <button
-          onClick={() => loadOrders()}
-          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-        >
-          새로고침
-        </button>
+        {/* 일괄 작업 버튼 */}
+        <div className="flex items-center gap-2">
+          {selectedOrders.length > 0 && (
+            <button
+              onClick={handleBulkRestoreToPaid}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <ArrowPathIcon className="w-4 h-4" />
+              구매확정으로 복구 ({selectedOrders.length})
+            </button>
+          )}
+          {/* 새로고침 버튼 */}
+          <button
+            onClick={() => loadOrders()}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+          >
+            새로고침
+          </button>
+        </div>
       </div>
 
       {/* 📅 Date Range Filter */}
