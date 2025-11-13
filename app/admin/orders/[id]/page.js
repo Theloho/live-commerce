@@ -107,7 +107,7 @@ export default function AdminOrderDetailPage() {
             title: item.title || item.products?.title || '상품명 없음',
             price: item.price || item.unit_price || item.products?.price || 0,
             quantity: item.quantity || 1,
-            orderNumber: order.customer_order_number || order.id, // ⭐ 개별 주문번호 추가
+            orderNumber: order.customer_order_number || order.id.slice(-8), // ⭐ 개별 주문번호 추가 (UUID는 마지막 8자리만)
             orderId: order.id // ⭐ 주문 ID 추가
           }))
         )
@@ -345,7 +345,7 @@ export default function AdminOrderDetailPage() {
           </div>
           <div className="mt-1 space-y-1">
             <p className="text-gray-600">
-              주문번호: {order.customer_order_number || order.id}
+              주문번호: {order.customer_order_number || order.id.slice(-8)}
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
               <p className="text-gray-500">
