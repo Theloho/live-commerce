@@ -16,23 +16,37 @@ export async function GET(request) {
     const startDate = searchParams.get('startDate') // custom용
     const endDate = searchParams.get('endDate') // custom용
 
-    // ✅ 날짜 범위별 LIMIT 설정 (2배 증가)
-    const LIMIT_BY_RANGE = {
-      today: 20000,      // 오늘: 하루 2만건까지
-      yesterday: 20000,  // 어제: 하루 2만건까지
-      week: 40000,       // 1주일: 4만건까지
-      month: 100000,     // 1개월: 10만건까지
-      custom: 200000,    // 직접 선택: 20만건까지
-      all: 20000         // 전체: 최근 2만건만 (날짜 필터 권장)
-    }
-    const limit = LIMIT_BY_RANGE[dateRange] || 20000
-
-    // ✅ 필터 파라미터 추가
+    // ✅ 필터 파라미터 먼저 추출
     const statusFilter = searchParams.get('status') // 예: "pending,verifying"
     const paymentMethodFilter = searchParams.get('paymentMethod') // 예: "bank_transfer"
     const orderId = searchParams.get('orderId') // ✅ 단일 주문 조회용
     const paymentGroupId = searchParams.get('paymentGroupId') // ✅ 일괄결제 그룹 조회용
     const searchTerm = searchParams.get('search') // ✅ 검색어
+
+    // ✅ 날짜 범위별 LIMIT 설정 (화면 1000건 기준 최적화)
+    // 취소내역은 기존 리밋 유지, 나머지는 최적화
+    const LIMIT_BY_RANGE_OPTIMIZED = {
+      today: 1500,       // 화면에 약 1200-1300건 표시
+      yesterday: 1500,
+      week: 3000,        // 화면에 약 2500건 표시
+      month: 7000,       // 화면에 약 6000건 표시
+      custom: 15000,     // 화면에 약 12000건 표시
+      all: 1500          // 화면에 약 1200-1300건 표시
+    }
+
+    const LIMIT_BY_RANGE_LEGACY = {
+      today: 20000,      // 취소내역용 (기존 유지)
+      yesterday: 20000,
+      week: 40000,
+      month: 100000,
+      custom: 200000,
+      all: 20000
+    }
+
+    // ⭐ 취소내역(cancelled)은 기존 리밋, 나머지는 최적화 리밋
+    const useLegacyLimit = statusFilter === 'cancelled'
+    const LIMIT_BY_RANGE = useLegacyLimit ? LIMIT_BY_RANGE_LEGACY : LIMIT_BY_RANGE_OPTIMIZED
+    const limit = LIMIT_BY_RANGE[dateRange] || (useLegacyLimit ? 20000 : 1500)
 
     console.log('🔍 [관리자 주문 API] 전체 주문 조회 시작:', {
       adminEmail,
