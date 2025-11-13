@@ -12,7 +12,6 @@ import {
   CreditCardIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 
 /**
@@ -117,6 +116,7 @@ export default function AdminOutboundPage() {
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
   const [sortOption, setSortOption] = useState('date_desc') // ⭐ 정렬 옵션
+  const [selectedOrders, setSelectedOrders] = useState([]) // ⭐ 체크박스 선택 상태
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -170,6 +170,20 @@ export default function AdminOutboundPage() {
     setFilteredOrders(filtered)
   }
 
+  // ⭐ 전체 선택/해제
+  const handleSelectAll = () => {
+    const allOrderIds = filteredOrders.flatMap(order =>
+      order.isGroup ? order.originalOrders.map(o => o.id) : [order.id]
+    )
+    const allSelected = allOrderIds.every(id => selectedOrders.includes(id))
+    if (allSelected) {
+      setSelectedOrders([])
+    } else {
+      setSelectedOrders(allOrderIds)
+    }
+  }
+
+
   useEffect(() => {
     if (adminUser?.email) {
       loadOrders() // 초기 로딩
@@ -206,9 +220,7 @@ export default function AdminOutboundPage() {
         return
       }
 
-      // ⚡ Service Role API 호출 (날짜 필터 + 출고완료 상태만)
-      // offset 제거 → 설정한 기간의 모든 데이터를 한번에 로드
-      // 검색은 클라이언트에서만 처리 (즉각 반응)
+      // ⚡ Service Role API 호출 (날짜 필터 + 장바구니 상태만)
       let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&status=delivered`
       if (dateRange === 'custom') {
         if (customStartDate) url += `&startDate=${customStartDate}`
@@ -277,12 +289,12 @@ export default function AdminOutboundPage() {
       console.log('✅ 그룹핑 완료:', { original: allOrders.length, grouped: groupedOrders.length })
 
       setOrders(groupedOrders)
+      setSelectedOrders([]) // 체크박스 초기화
       setLoading(false)
     } catch (error) {
       console.error('주문 로딩 오류:', error)
       toast.error('주문 목록을 불러오는데 실패했습니다')
       setLoading(false)
-      setLoadingMore(false)
     }
   }
 
@@ -348,13 +360,18 @@ export default function AdminOutboundPage() {
                 💡 {dateRange === 'today' ? '오늘' : dateRange === 'yesterday' ? '어제' : dateRange === 'week' ? '1주일' : dateRange === 'month' ? '1개월' : '선택한 기간'}
               </span>
             )}
+            {selectedOrders.length > 0 && (
+              <span className="ml-2 text-sm font-medium text-blue-600">
+                | 선택됨 {selectedOrders.length}개
+              </span>
+            )}
           </p>
         </div>
 
         {/* 새로고침 버튼 */}
         <button
           onClick={() => loadOrders()}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
         >
           새로고침
         </button>
@@ -369,7 +386,7 @@ export default function AdminOutboundPage() {
             { id: 'yesterday', label: '어제', desc: '어제 주문' },
             { id: 'week', label: '1주일', desc: '최근 7일' },
             { id: 'month', label: '1개월', desc: '최근 30일' },
-            { id: 'all', label: '전체', desc: '최근 1만건' }
+            { id: 'all', label: '전체', desc: '최근 2만건' }
           ].map((range) => (
             <button
               key={range.id}
@@ -478,6 +495,14 @@ export default function AdminOutboundPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-4 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedOrders.length > 0 && selectedOrders.length === filteredOrders.flatMap(o => o.isGroup ? o.originalOrders.map(oo => oo.id) : [o.id]).length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   주문정보
                 </th>
@@ -493,7 +518,11 @@ export default function AdminOutboundPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredOrders.map((order, index) => (
+              {filteredOrders.map((order, index) => {
+                const orderIds = order.isGroup ? order.originalOrders.map(o => o.id) : [order.id]
+                const isSelected = orderIds.every(id => selectedOrders.includes(id))
+
+                return (
                 <motion.tr
                   key={order.id}
                   initial={{ opacity: 0 }}
@@ -501,6 +530,21 @@ export default function AdminOutboundPage() {
                   transition={{ delay: index * 0.05 }}
                   className="hover:bg-gray-50"
                 >
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {
+                        const allSelected = orderIds.every(id => selectedOrders.includes(id))
+                        if (allSelected) {
+                          setSelectedOrders(prev => prev.filter(id => !orderIds.includes(id)))
+                        } else {
+                          setSelectedOrders(prev => [...new Set([...prev, ...orderIds])])
+                        }
+                      }}
+                      className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
@@ -536,19 +580,6 @@ export default function AdminOutboundPage() {
                           }
                         })()}
                       </div>
-                      {/* 송장번호 표시 */}
-                      {order.shipping?.tracking_number && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          <a
-                            href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            {getCarrierName(order.shipping?.tracking_company)} {order.shipping.tracking_number}
-                          </a>
-                        </div>
-                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -614,7 +645,7 @@ export default function AdminOutboundPage() {
                     </button>
                   </td>
                 </motion.tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
@@ -625,6 +656,8 @@ export default function AdminOutboundPage() {
             const groupedItems = groupOrderItems(order.items)
             const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
             const uniqueProducts = groupedItems.length
+            const orderIds = order.isGroup ? order.originalOrders.map(o => o.id) : [order.id]
+            const isSelected = orderIds.every(id => selectedOrders.includes(id))
 
             return (
               <motion.div
@@ -634,8 +667,23 @@ export default function AdminOutboundPage() {
                 transition={{ delay: index * 0.05 }}
                 className="p-4 hover:bg-gray-50"
               >
-                {/* 상단: 주문번호 + 상태 */}
+                {/* 상단: 체크박스 + 주문번호 + 상태 */}
                 <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3">
+                    {/* 체크박스 */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {
+                        const allSelected = orderIds.every(id => selectedOrders.includes(id))
+                        if (allSelected) {
+                          setSelectedOrders(prev => prev.filter(id => !orderIds.includes(id)))
+                        } else {
+                          setSelectedOrders(prev => [...new Set([...prev, ...orderIds])])
+                        }
+                      }}
+                      className="mt-1 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    />
                   <div>
                     <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                       {order.customer_order_number || order.id.slice(-8)}
@@ -648,6 +696,7 @@ export default function AdminOutboundPage() {
                     <div className="text-xs text-gray-500">
                       {new Date(order.created_at).toLocaleDateString('ko-KR')}
                     </div>
+                  </div>
                   </div>
                   {getStatusBadge(order.status)}
                 </div>
@@ -686,28 +735,6 @@ export default function AdminOutboundPage() {
                     }
                   </div>
                 </div>
-
-                {/* 송장번호 표시 */}
-                {order.shipping?.tracking_number && (
-                  <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-0.5">배송조회</div>
-                        <div className="font-medium text-gray-900">
-                          {getCarrierName(order.shipping?.tracking_company)}
-                        </div>
-                      </div>
-                      <a
-                        href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline font-mono"
-                      >
-                        {order.shipping.tracking_number}
-                      </a>
-                    </div>
-                  </div>
-                )}
 
                 {/* 하단: 상세보기 버튼 */}
                 <div className="pt-3 border-t border-gray-100">
