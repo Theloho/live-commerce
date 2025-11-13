@@ -117,7 +117,6 @@ export default function AdminOutboundPage() {
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
   const [sortOption, setSortOption] = useState('date_desc') // ⭐ 정렬 옵션
-  const [searchTimeout, setSearchTimeout] = useState(null)
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -173,7 +172,7 @@ export default function AdminOutboundPage() {
 
   useEffect(() => {
     if (adminUser?.email) {
-      loadOrders('') // 초기 로딩
+      loadOrders() // 초기 로딩
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminUser])
@@ -192,12 +191,12 @@ export default function AdminOutboundPage() {
 
     // ✅ 다른 모드: 즉시 데이터 로드
     if (adminUser?.email) {
-      loadOrders('')
+      loadOrders()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange])
 
-  const loadOrders = async (search = '') => {
+  const loadOrders = async () => {
     try {
       setLoading(true)
 
@@ -207,18 +206,16 @@ export default function AdminOutboundPage() {
         return
       }
 
-      // ⚡ Service Role API 호출 (날짜 필터 + 검색 + 출고완료 상태만)
+      // ⚡ Service Role API 호출 (날짜 필터 + 출고완료 상태만)
       // offset 제거 → 설정한 기간의 모든 데이터를 한번에 로드
+      // 검색은 클라이언트에서만 처리 (즉각 반응)
       let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&status=delivered`
       if (dateRange === 'custom') {
         if (customStartDate) url += `&startDate=${customStartDate}`
         if (customEndDate) url += `&endDate=${customEndDate}`
       }
-      if (search) {
-        url += `&search=${encodeURIComponent(search)}`
-      }
 
-      console.log('📦 출고완료 주문 전체 로드:', { dateRange, search })
+      console.log('📦 출고완료 주문 전체 로드:', { dateRange })
 
       const response = await fetch(url)
 
@@ -356,7 +353,7 @@ export default function AdminOutboundPage() {
 
         {/* 새로고침 버튼 */}
         <button
-          onClick={() => loadOrders('')}
+          onClick={() => loadOrders()}
           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           새로고침
@@ -423,7 +420,7 @@ export default function AdminOutboundPage() {
                 />
               </div>
               <button
-                onClick={() => loadOrders('')}
+                onClick={() => loadOrders()}
                 disabled={!customStartDate}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   customStartDate
@@ -449,21 +446,7 @@ export default function AdminOutboundPage() {
                 type="text"
                 placeholder="주문번호, 고객명, 닉네임, 입금자명, 상품명으로 실시간 검색..."
                 value={searchTerm}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setSearchTerm(value)
-
-                  // ⚡ 실시간 검색 (300ms debounce)
-                  if (searchTimeout) clearTimeout(searchTimeout)
-
-                  const timeout = setTimeout(() => {
-                    const trimmedValue = value.trim()
-                    // 검색어 있든 없든 전체 데이터 로드 (필터는 클라이언트에서)
-                    loadOrders(trimmedValue)
-                  }, 300)
-
-                  setSearchTimeout(timeout)
-                }}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
