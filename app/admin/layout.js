@@ -24,7 +24,8 @@ import {
   ClipboardDocumentCheckIcon,
   ArchiveBoxIcon,
   ChartBarIcon,
-  CubeTransparentIcon
+  CubeTransparentIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline'
 import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
@@ -69,6 +70,7 @@ function AdminLayoutContent({ children }) {
         { href: '/admin/fulfillment', label: '배송팀 취합', icon: ClipboardDocumentCheckIcon },
         { href: '/admin/logistics', label: '물류팀 집계', icon: ArchiveBoxIcon },
         { href: '/admin/outbound', label: '출고 정보', icon: CubeTransparentIcon },
+        { href: '/admin/canceled', label: '취소 내역', icon: XCircleIcon },
         { href: '/admin/shipping', label: '발송관리', icon: TruckIcon },
       ]
     },
@@ -138,7 +140,8 @@ function AdminLayoutContent({ children }) {
                     (item.href === '/admin/fulfillment' && pathname.startsWith('/admin/fulfillment')) ||
                     (item.href === '/admin/logistics' && pathname.startsWith('/admin/logistics')) ||
                     (item.href === '/admin/sales-summary' && pathname.startsWith('/admin/sales-summary')) ||
-                    (item.href === '/admin/outbound' && pathname.startsWith('/admin/outbound'))
+                    (item.href === '/admin/outbound' && pathname.startsWith('/admin/outbound')) ||
+                    (item.href === '/admin/canceled' && pathname.startsWith('/admin/canceled'))
                   return (
                     <li key={item.href}>
                       <Link
