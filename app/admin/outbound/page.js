@@ -113,10 +113,6 @@ export default function AdminOutboundPage() {
   const [filteredOrders, setFilteredOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  const [offset, setOffset] = useState(0)
-  const [isSearchMode, setIsSearchMode] = useState(false)
   const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
@@ -177,7 +173,7 @@ export default function AdminOutboundPage() {
 
   useEffect(() => {
     if (adminUser?.email) {
-      loadOrders(true) // 초기 로딩
+      loadOrders('') // 초기 로딩
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminUser])
@@ -195,45 +191,15 @@ export default function AdminOutboundPage() {
     }
 
     // ✅ 다른 모드: 즉시 데이터 로드
-    setOrders([])
-    setOffset(0)
-    setHasMore(true)
     if (adminUser?.email) {
-      loadOrders(true)
+      loadOrders('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange])
 
-  // 스크롤 이벤트 핸들러
-  useEffect(() => {
-    if (isSearchMode) return // 검색 중에는 자동 스크롤 비활성화
-
-    const handleScroll = () => {
-      if (loading || loadingMore || !hasMore) return
-
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-      const scrollHeight = document.documentElement.scrollHeight
-      const clientHeight = document.documentElement.clientHeight
-
-      // 페이지 하단에 도달 (200px 여유)
-      if (scrollHeight - scrollTop - clientHeight < 200) {
-        loadOrders(false, searchTerm)
-      }
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, loadingMore, hasMore, offset, isSearchMode])
-
-  const loadOrders = async (isInitial = false, search = '') => {
+  const loadOrders = async (search = '') => {
     try {
-      if (isInitial) {
-        setLoading(true)
-        setOffset(0)
-      } else {
-        setLoadingMore(true)
-      }
+      setLoading(true)
 
       if (!adminUser?.email) {
         console.error('관리자 이메일이 없습니다')
@@ -241,10 +207,9 @@ export default function AdminOutboundPage() {
         return
       }
 
-      const currentOffset = isInitial ? 0 : offset
-
-      // Service Role API 호출 (날짜 필터 + 검색 + 출고완료 상태만)
-      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&offset=${currentOffset}&status=delivered`
+      // ⚡ Service Role API 호출 (날짜 필터 + 검색 + 출고완료 상태만)
+      // offset 제거 → 설정한 기간의 모든 데이터를 한번에 로드
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&status=delivered`
       if (dateRange === 'custom') {
         if (customStartDate) url += `&startDate=${customStartDate}`
         if (customEndDate) url += `&endDate=${customEndDate}`
@@ -253,6 +218,8 @@ export default function AdminOutboundPage() {
         url += `&search=${encodeURIComponent(search)}`
       }
 
+      console.log('📦 출고완료 주문 전체 로드:', { dateRange, search })
+
       const response = await fetch(url)
 
       if (!response.ok) {
@@ -260,7 +227,7 @@ export default function AdminOutboundPage() {
         throw new Error(error.error || '주문 조회 실패')
       }
 
-      const { orders: rawOrders, hasMore: moreData } = await response.json()
+      const { orders: rawOrders } = await response.json()
 
       // 기존 포맷으로 변환
       const allOrders = rawOrders.map(order => {
@@ -312,17 +279,8 @@ export default function AdminOutboundPage() {
       const groupedOrders = groupOrdersByPaymentGroupId(allOrders)
       console.log('✅ 그룹핑 완료:', { original: allOrders.length, grouped: groupedOrders.length })
 
-      if (isInitial) {
-        setOrders(groupedOrders)
-      } else {
-        setOrders(prev => [...prev, ...groupedOrders])
-      }
-
-      setHasMore(moreData)
-      // ⚡ offset은 그룹핑 전 원본 개수로 증가 (그룹핑 후 개수 사용 시 offset 불일치!)
-      setOffset(currentOffset + allOrders.length)
+      setOrders(groupedOrders)
       setLoading(false)
-      setLoadingMore(false)
     } catch (error) {
       console.error('주문 로딩 오류:', error)
       toast.error('주문 목록을 불러오는데 실패했습니다')
@@ -398,12 +356,7 @@ export default function AdminOutboundPage() {
 
         {/* 새로고침 버튼 */}
         <button
-          onClick={() => {
-            setOrders([])
-            setOffset(0)
-            setHasMore(true)
-            loadOrders(true)
-          }}
+          onClick={() => loadOrders('')}
           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           새로고침
@@ -470,7 +423,7 @@ export default function AdminOutboundPage() {
                 />
               </div>
               <button
-                onClick={() => loadOrders(true)}
+                onClick={() => loadOrders('')}
                 disabled={!customStartDate}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   customStartDate
@@ -505,20 +458,8 @@ export default function AdminOutboundPage() {
 
                   const timeout = setTimeout(() => {
                     const trimmedValue = value.trim()
-
-                    if (trimmedValue) {
-                      setIsSearchMode(true)
-                      setOrders([])
-                      setOffset(0)
-                      setHasMore(true)
-                      loadOrders(true, trimmedValue)
-                    } else {
-                      setIsSearchMode(false)
-                      setOrders([])
-                      setOffset(0)
-                      setHasMore(true)
-                      loadOrders(true, '')
-                    }
+                    // 검색어 있든 없든 전체 데이터 로드 (필터는 클라이언트에서)
+                    loadOrders(trimmedValue)
                   }, 300)
 
                   setSearchTimeout(timeout)
@@ -526,14 +467,6 @@ export default function AdminOutboundPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
-            {/* 검색 결과 표시 */}
-            {isSearchMode && searchTerm && (
-              <div className="absolute left-0 top-full mt-2 text-sm">
-                <span className="text-gray-600">
-                  검색 결과: <span className="font-semibold text-red-600">{filteredOrders.length}건</span>
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Sort Options */}
@@ -818,32 +751,6 @@ export default function AdminOutboundPage() {
         )}
       </div>
 
-      {/* 로딩 인디케이터 */}
-      {loadingMore && (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
-          <span className="ml-3 text-gray-600">추가 주문 불러오는 중...</span>
-        </div>
-      )}
-
-      {/* 더보기 버튼 */}
-      {!loading && !loadingMore && hasMore && filteredOrders.length > 0 && (
-        <div className="flex justify-center py-6">
-          <button
-            onClick={() => loadOrders(false, searchTerm)}
-            className="px-6 py-3 bg-white border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
-          >
-            더 보기 ({orders.length}건 로드됨)
-          </button>
-        </div>
-      )}
-
-      {/* 모든 데이터 로드 완료 */}
-      {!loading && !hasMore && filteredOrders.length > 0 && (
-        <div className="text-center py-6">
-          <p className="text-gray-500 text-sm">모든 주문을 불러왔습니다.</p>
-        </div>
-      )}
     </div>
   )
 }
