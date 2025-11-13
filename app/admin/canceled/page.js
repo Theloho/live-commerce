@@ -10,7 +10,8 @@ import {
   AtSymbolIcon,
   BanknotesIcon,
   CreditCardIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
@@ -283,6 +284,45 @@ export default function AdminCanceledPage() {
     }
   }
 
+  // ⭐ 완전 삭제 (취소된 주문만)
+  const handleBulkDelete = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `⚠️ 경고: 선택한 ${selectedOrders.length}개 주문을 완전히 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다!`
+    if (!window.confirm(confirmMessage)) return
+
+    // 이중 확인
+    const doubleConfirm = window.confirm(`정말로 ${selectedOrders.length}개 주문을 삭제하시겠습니까?\n데이터베이스에서 영구적으로 제거됩니다.`)
+    if (!doubleConfirm) return
+
+    try {
+      const response = await fetch('/api/admin/orders/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminEmail: adminUser.email,
+          orderIds: selectedOrders
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || '주문 삭제 실패')
+      }
+
+      toast.success(`${result.deletedCount}개 주문이 완전히 삭제되었습니다`)
+      setSelectedOrders([])
+      loadOrders()
+    } catch (error) {
+      console.error('주문 삭제 실패:', error)
+      toast.error(error.message || '주문 삭제에 실패했습니다')
+    }
+  }
+
   useEffect(() => {
     if (adminUser?.email) {
       loadOrders() // 초기 로딩
@@ -493,6 +533,13 @@ export default function AdminCanceledPage() {
               >
                 <ArrowPathIcon className="w-4 h-4" />
                 구매확정으로 복구 ({selectedOrders.length})
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium border-2 border-red-800"
+              >
+                <TrashIcon className="w-4 h-4" />
+                완전 삭제 ({selectedOrders.length})
               </button>
             </>
           )}
