@@ -10,7 +10,8 @@ import {
   AtSymbolIcon,
   BanknotesIcon,
   CreditCardIcon,
-  XMarkIcon
+  XMarkIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
@@ -217,6 +218,39 @@ export default function AdminCartPage() {
     }
   }
 
+  // ⭐ 일괄 결제 확인
+  const handleBulkConfirmPayment = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문의 결제를 확인하시겠습니까?`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      const response = await fetch('/api/orders/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderIds: selectedOrders,
+          status: 'verifying'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('주문 상태 변경 실패')
+      }
+
+      toast.success(`${selectedOrders.length}개 주문의 결제가 확인되었습니다`)
+      setSelectedOrders([])
+      loadOrders()
+    } catch (error) {
+      console.error('일괄 결제 확인 실패:', error)
+      toast.error('일괄 결제 확인에 실패했습니다')
+    }
+  }
+
   useEffect(() => {
     if (adminUser?.email) {
       loadOrders() // 초기 로딩
@@ -404,13 +438,22 @@ export default function AdminCartPage() {
         {/* 일괄 작업 버튼 */}
         <div className="flex items-center gap-2">
           {selectedOrders.length > 0 && (
-            <button
-              onClick={handleBulkCancel}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-            >
-              <XMarkIcon className="w-4 h-4" />
-              일괄 취소 ({selectedOrders.length})
-            </button>
+            <>
+              <button
+                onClick={handleBulkConfirmPayment}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+              >
+                <CheckIcon className="w-4 h-4" />
+                일괄 결제 확인 ({selectedOrders.length})
+              </button>
+              <button
+                onClick={handleBulkCancel}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                <XMarkIcon className="w-4 h-4" />
+                일괄 취소 ({selectedOrders.length})
+              </button>
+            </>
           )}
           {/* 새로고침 버튼 */}
           <button
