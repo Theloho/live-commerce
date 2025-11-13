@@ -16,16 +16,16 @@ export async function GET(request) {
     const startDate = searchParams.get('startDate') // custom용
     const endDate = searchParams.get('endDate') // custom용
 
-    // ✅ 날짜 범위별 LIMIT 설정 (날짜로 제한하므로 LIMIT 크게 또는 없앰)
+    // ✅ 날짜 범위별 LIMIT 설정 (2배 증가)
     const LIMIT_BY_RANGE = {
-      today: 10000,      // 오늘: 하루 1만건까지 (충분)
-      yesterday: 10000,  // 어제: 하루 1만건까지
-      week: 20000,       // 1주일: 2만건까지
-      month: 50000,      // 1개월: 5만건까지
-      custom: 100000,    // 직접 선택: 10만건까지
-      all: 10000         // 전체: 최근 1만건만 (날짜 필터 권장)
+      today: 20000,      // 오늘: 하루 2만건까지
+      yesterday: 20000,  // 어제: 하루 2만건까지
+      week: 40000,       // 1주일: 4만건까지
+      month: 100000,     // 1개월: 10만건까지
+      custom: 200000,    // 직접 선택: 20만건까지
+      all: 20000         // 전체: 최근 2만건만 (날짜 필터 권장)
     }
-    const limit = LIMIT_BY_RANGE[dateRange] || 10000
+    const limit = LIMIT_BY_RANGE[dateRange] || 20000
 
     // ✅ 필터 파라미터 추가
     const statusFilter = searchParams.get('status') // 예: "pending,verifying"
