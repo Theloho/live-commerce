@@ -131,7 +131,7 @@ export default function AdminOrdersPage() {
     cancelled: 0
   })
   const [isSearchMode, setIsSearchMode] = useState(false)
-  const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터 (today, yesterday, week, month, all, custom)
+  const [dateRange, setDateRange] = useState('all') // ⭐ 날짜 필터 (today, yesterday, week, month, all, custom)
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
   const [sortOption, setSortOption] = useState('date_desc') // ⭐ 정렬 옵션 (날짜/금액/고객)

@@ -113,7 +113,7 @@ export default function AdminOutboundPage() {
   const [filteredOrders, setFilteredOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
-  const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터
+  const [dateRange, setDateRange] = useState('all') // ⭐ 날짜 필터
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
   const [sortOption, setSortOption] = useState('date_desc') // ⭐ 정렬 옵션
