@@ -25,7 +25,10 @@ import {
   ArchiveBoxIcon,
   ChartBarIcon,
   CubeTransparentIcon,
-  XCircleIcon
+  XCircleIcon,
+  ShoppingCartIcon,
+  DocumentDuplicateIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline'
 import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
@@ -65,6 +68,9 @@ function AdminLayoutContent({ children }) {
       items: [
         { href: '/admin', label: '대시보드', icon: HomeIcon },
         { href: '/admin/orders', label: '주문관리', icon: ClipboardDocumentListIcon },
+        { href: '/admin/cart', label: '장바구니', icon: ShoppingCartIcon },
+        { href: '/admin/order-history', label: '주문내역', icon: DocumentDuplicateIcon },
+        { href: '/admin/purchase-confirmed', label: '구매확정', icon: CheckCircleIcon },
         { href: '/admin/sales-summary', label: '품목별 판매', icon: ChartBarIcon },
         { href: '/admin/deposits', label: '입금확인', icon: BanknotesIcon },
         { href: '/admin/fulfillment', label: '배송팀 취합', icon: ClipboardDocumentCheckIcon },
@@ -141,7 +147,10 @@ function AdminLayoutContent({ children }) {
                     (item.href === '/admin/logistics' && pathname.startsWith('/admin/logistics')) ||
                     (item.href === '/admin/sales-summary' && pathname.startsWith('/admin/sales-summary')) ||
                     (item.href === '/admin/outbound' && pathname.startsWith('/admin/outbound')) ||
-                    (item.href === '/admin/canceled' && pathname.startsWith('/admin/canceled'))
+                    (item.href === '/admin/canceled' && pathname.startsWith('/admin/canceled')) ||
+                    (item.href === '/admin/cart' && pathname.startsWith('/admin/cart')) ||
+                    (item.href === '/admin/order-history' && pathname.startsWith('/admin/order-history')) ||
+                    (item.href === '/admin/purchase-confirmed' && pathname.startsWith('/admin/purchase-confirmed'))
                   return (
                     <li key={item.href}>
                       <Link
