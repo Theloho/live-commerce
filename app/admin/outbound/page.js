@@ -4,22 +4,107 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
-  TruckIcon,
-  EyeIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentArrowDownIcon
+  EyeIcon,
+  AtSymbolIcon,
+  BanknotesIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline'
-import { ShippingDataManager } from '@/lib/userProfileManager'
 import toast from 'react-hot-toast'
+import { getTrackingUrl, getCarrierName } from '@/lib/trackingNumberUtils'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
-import TrackingNumberInput from '@/app/components/admin/TrackingNumberInput'
-import TrackingNumberBulkUpload from '@/app/components/admin/TrackingNumberBulkUpload'
-import { getTrackingUrl } from '@/lib/trackingNumberUtils'
+
+/**
+ * ⭐ 상품 그룹핑 함수: 제품번호 + 옵션 조합으로 그룹화
+ * - 사용자 화면(OrderCard.jsx)과 동일한 로직
+ * @param {Array} items - 주문 아이템 배열
+ * @returns {Array} - 그룹핑된 아이템 배열
+ */
+const groupOrderItems = (items) => {
+  const groups = {}
+
+  items.forEach((item, originalIndex) => {
+    // 키 생성: product_number + 옵션 조합
+    const optionsKey = JSON.stringify(item.selectedOptions || {})
+    const groupKey = `${item.product_number || item.product_id || item.title}_${optionsKey}`
+
+    if (!groups[groupKey]) {
+      groups[groupKey] = {
+        ...item,
+        quantity: 0,
+        totalPrice: 0,
+        originalIndices: [],
+        originalItems: []
+      }
+    }
+
+    groups[groupKey].quantity += item.quantity || 1
+    groups[groupKey].totalPrice += ((item.price || 0) * (item.quantity || 1))
+    groups[groupKey].originalIndices.push(originalIndex)
+    groups[groupKey].originalItems.push(item)
+  })
+
+  return Object.values(groups)
+}
+
+/**
+ * ⭐ 그룹핑 함수: payment_group_id로 주문 그룹핑
+ * @param {Array} orders - 원본 주문 배열
+ * @returns {Array} - 그룹핑된 주문 배열 (isGroup, originalOrders 포함)
+ */
+const groupOrdersByPaymentGroupId = (orders) => {
+  const groups = {}
+  const result = []
+
+  // 1. payment_group_id로 그룹 분류
+  orders.forEach(order => {
+    if (order.payment_group_id) {
+      if (!groups[order.payment_group_id]) {
+        groups[order.payment_group_id] = []
+      }
+      groups[order.payment_group_id].push(order)
+    } else {
+      // 일괄결제 아닌 개별 주문
+      result.push(order)
+    }
+  })
+
+  // 2. 그룹을 대표 주문으로 변환
+  Object.entries(groups).forEach(([groupId, groupOrders]) => {
+    // 대표 주문: 가장 먼저 생성된 주문
+    const representativeOrder = groupOrders[0]
+
+    // ⭐ 그룹 내 모든 주문의 아이템을 하나로 합치기
+    const allItems = groupOrders.flatMap(order => order.items || [])
+
+    // ⭐ DB에 저장된 total_amount 합계 (재계산 불필요!)
+    const totalAmountSum = groupOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0)
+
+    // ⭐ 대표 주문의 쿠폰 할인 (일괄결제는 쿠폰 1개만 적용)
+    const groupTotalDiscount = representativeOrder.discount_amount || 0
+
+    // ⭐ 대표 주문의 배송비 추가 (사용자 화면과 동일한 로직)
+    const groupShippingFee = representativeOrder.shipping?.shipping_fee || 0
+
+    // ⭐ 총 입금금액 = total_amount 합계 - 쿠폰할인 + 배송비 (GetOrdersUseCase.js:306과 동일)
+    const groupTotalAmount = totalAmountSum - groupTotalDiscount + groupShippingFee
+
+    // 그룹 카드 생성
+    const groupCard = {
+      ...representativeOrder,
+      items: allItems, // ⭐ 모든 주문의 아이템 통합
+      isGroup: true, // ⭐ 그룹 모드 활성화
+      originalOrders: groupOrders, // ⭐ 그룹 내 원본 주문들
+      groupOrderCount: groupOrders.length,
+      totalPrice: groupTotalAmount // ⭐ DB 저장된 금액 합계 + 배송비 (사용자 화면과 동일)
+    }
+
+    result.push(groupCard)
+  })
+
+  return result
+}
 
 export default function AdminOutboundPage() {
   const router = useRouter()
@@ -27,273 +112,272 @@ export default function AdminOutboundPage() {
   const [orders, setOrders] = useState([])
   const [filteredOrders, setFilteredOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState('pending') // pending, completed
   const [loading, setLoading] = useState(true)
-  const [selectedOrders, setSelectedOrders] = useState([])
-  const [showTrackingInput, setShowTrackingInput] = useState(false)
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [showBulkUpload, setShowBulkUpload] = useState(false)
-
-  useEffect(() => {
-    if (adminUser?.email) {
-      loadPaidOrders()
-    }
-  }, [adminUser])
-
-  useEffect(() => {
-    filterOrders()
-  }, [orders, searchTerm, activeTab])
-
-  const loadPaidOrders = async () => {
-    try {
-      setLoading(true)
-
-      if (!adminUser?.email) return
-
-      // Service Role API로 전체 주문 조회
-      const response = await fetch(`/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`)
-      const { orders: allOrders } = await response.json()
-
-      // 결제완료, 배송중, 배송완료 주문만 필터링
-      const paidOrders = allOrders.filter(order =>
-        order.status === 'paid' || order.status === 'shipping' || order.status === 'delivered'
-      )
-
-      const ordersWithUserInfo = paidOrders.map(order => {
-        // shipping_* 컬럼을 우선으로 배송 정보 추출
-        const orderShipping = order.order_shipping || order.shipping
-        const shippingInfo = {
-          name: order.shipping_name || orderShipping?.name || '',
-          phone: order.shipping_phone || orderShipping?.phone || '',
-          address: order.shipping_address || orderShipping?.address || '',
-          detail_address: order.shipping_detail_address || orderShipping?.detail_address || ''
-        }
-
-        return {
-          ...order,
-          payment: order.order_payments || order.payment,
-          shipping: orderShipping,
-          user: {
-            name: shippingInfo?.name || '배송 정보 없음',
-            phone: shippingInfo?.phone || '연락처 없음',
-            address: shippingInfo?.address || '',
-            detail_address: shippingInfo?.detail_address || ''
-          },
-          hasValidShipping: !!(shippingInfo.name && shippingInfo.phone && shippingInfo.address)
-        }
-      })
-
-      // 최신 주문부터 정렬
-      ordersWithUserInfo.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-
-      setOrders(ordersWithUserInfo)
-      console.log('결제 완료 주문:', ordersWithUserInfo)
-
-      // G250926-0827 주문 디버깅
-      const targetOrder = ordersWithUserInfo.find(order =>
-        order.customer_order_number === 'G250926-0827'
-      )
-      if (targetOrder) {
-        console.log('🔍 G250926-0827 주문 상세 분석:', {
-          id: targetOrder.id,
-          customer_order_number: targetOrder.customer_order_number,
-          user: targetOrder.user,
-          order_shipping: targetOrder.order_shipping,
-          order_items: targetOrder.order_items,
-          order_payments: targetOrder.order_payments,
-          total_amount: targetOrder.total_amount
-        })
-      }
-    } catch (error) {
-      console.error('주문 로딩 오류:', error)
-      toast.error('주문 정보를 불러올 수 없습니다')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const [isSearchMode, setIsSearchMode] = useState(false)
+  const [dateRange, setDateRange] = useState('today') // ⭐ 날짜 필터
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
+  const [sortOption, setSortOption] = useState('date_desc') // ⭐ 정렬 옵션
+  const [searchTimeout, setSearchTimeout] = useState(null)
 
   const filterOrders = () => {
     let filtered = [...orders]
 
-    // 검색어 필터
+    // ⚡ 검색어 필터
     if (searchTerm) {
-      filtered = filtered.filter(order =>
-        order.customer_order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.user?.phone?.includes(searchTerm)
-      )
+      const searchLower = searchTerm.toLowerCase()
+
+      filtered = filtered.filter(order => {
+        // 서버 검색 결과를 그대로 포함 (주문번호, ID, 카카오ID)
+        const serverSearchMatched =
+          order.customer_order_number?.toLowerCase().includes(searchLower) ||
+          order.id?.toLowerCase().includes(searchLower) ||
+          order.order_type?.toLowerCase().includes(searchLower)
+
+        if (serverSearchMatched) return true
+
+        // 프론트 추가 검색 (고객명, 입금자명, 상품명, 전화번호)
+        const clientSearchMatched =
+          order.shipping?.name?.toLowerCase().includes(searchLower) ||
+          order.userName?.toLowerCase().includes(searchLower) ||
+          order.userNickname?.toLowerCase().includes(searchLower) ||
+          order.payment?.depositor_name?.toLowerCase().includes(searchLower) ||
+          order.items?.some(item => item.title?.toLowerCase().includes(searchLower)) ||
+          order.shipping?.phone?.replace(/-/g, '').includes(searchLower.replace(/-/g, ''))
+
+        return clientSearchMatched
+      })
     }
 
-    // 탭 필터
-    if (activeTab === 'pending') {
-      filtered = filtered.filter(order => order.status === 'paid')
-    } else if (activeTab === 'completed') {
-      filtered = filtered.filter(order => order.status === 'shipping' || order.status === 'delivered')
-    }
+    // ⭐ 정렬 로직
+    filtered.sort((a, b) => {
+      switch (sortOption) {
+        case 'date_desc': // 날짜순 (최신순)
+          return new Date(b.created_at) - new Date(a.created_at)
+        case 'date_asc': // 날짜순 (오래된순)
+          return new Date(a.created_at) - new Date(b.created_at)
+        case 'amount_desc': // 금액순 (높은순)
+          return (b.totalPrice || 0) - (a.totalPrice || 0)
+        case 'amount_asc': // 금액순 (낮은순)
+          return (a.totalPrice || 0) - (b.totalPrice || 0)
+        case 'customer_asc': // 고객명순 (가나다)
+          return (a.userName || '').localeCompare(b.userName || '', 'ko-KR')
+        case 'customer_desc': // 고객명순 (역순)
+          return (b.userName || '').localeCompare(a.userName || '', 'ko-KR')
+        default:
+          return 0
+      }
+    })
 
     setFilteredOrders(filtered)
   }
 
-  const updateShippingStatus = async (orderId, newStatus) => {
-    try {
-      // Supabase API 사용
-      const { updateOrderStatus } = await import('@/lib/supabaseApi')
-      await updateOrderStatus(orderId, newStatus)
-
-      // 목록 새로고침
-      await loadPaidOrders()
-
-      const statusText = newStatus === 'shipping' ? '발송 시작' :
-                        newStatus === 'delivered' ? '발송 완료' : '상태 변경'
-      toast.success(`${statusText} 처리되었습니다`)
-    } catch (error) {
-      console.error('발송 상태 업데이트 오류:', error)
-      toast.error('상태 변경에 실패했습니다')
+  useEffect(() => {
+    if (adminUser?.email) {
+      loadOrders(true) // 초기 로딩
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminUser])
 
-  const getStatusInfo = (status) => {
-    switch (status) {
-      case 'paid':
-        return {
-          label: '출고 대기',
-          color: 'bg-blue-100 text-blue-800',
-          icon: ClockIcon
-        }
-      case 'shipping':
-        return {
-          label: '출고 중',
-          color: 'bg-yellow-100 text-yellow-800',
-          icon: TruckIcon
-        }
-      case 'delivered':
-        return {
-          label: '출고 완료',
-          color: 'bg-green-100 text-green-800',
-          icon: CheckCircleIcon
-        }
-      default:
-        return {
-          label: '알 수 없음',
-          color: 'bg-gray-100 text-gray-800',
-          icon: ExclamationTriangleIcon
-        }
-    }
-  }
+  useEffect(() => {
+    filterOrders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, searchTerm, sortOption])
 
-  const handleSelectOrder = (orderId) => {
-    setSelectedOrders(prev =>
-      prev.includes(orderId)
-        ? prev.filter(id => id !== orderId)
-        : [...prev, orderId]
-    )
-  }
-
-  const handleSelectAll = () => {
-    if (selectedOrders.length === filteredOrders.length) {
-      setSelectedOrders([])
-    } else {
-      setSelectedOrders(filteredOrders.map(order => order.id))
-    }
-  }
-
-  const downloadInvoices = () => {
-    if (selectedOrders.length === 0) {
-      toast.error('다운로드할 주문을 선택해주세요')
+  // 날짜 필터 변경 시 데이터 재로드
+  useEffect(() => {
+    // ⭐ 'custom' 모드: 날짜 입력 UI만 표시, 데이터 로드 X
+    if (dateRange === 'custom') {
       return
     }
 
-    // 송장 파일 다운로드 로직 (실제로는 서버에서 처리)
-    const selectedOrderData = filteredOrders.filter(order => selectedOrders.includes(order.id))
+    // ✅ 다른 모드: 즉시 데이터 로드
+    setOrders([])
+    setOffset(0)
+    setHasMore(true)
+    if (adminUser?.email) {
+      loadOrders(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange])
 
-    // CSV 형태로 송장 데이터 생성
-    const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
-    const csvData = selectedOrderData.map(order => {
-      // 디버깅을 위한 로그
-      if (order.customer_order_number === 'G250926-0827') {
-        console.log('🔥 CSV 생성 시 G250926-0827 데이터:', order)
+  // 스크롤 이벤트 핸들러
+  useEffect(() => {
+    if (isSearchMode) return // 검색 중에는 자동 스크롤 비활성화
+
+    const handleScroll = () => {
+      if (loading || loadingMore || !hasMore) return
+
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const scrollHeight = document.documentElement.scrollHeight
+      const clientHeight = document.documentElement.clientHeight
+
+      // 페이지 하단에 도달 (200px 여유)
+      if (scrollHeight - scrollTop - clientHeight < 200) {
+        loadOrders(false, searchTerm)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, loadingMore, hasMore, offset, isSearchMode])
+
+  const loadOrders = async (isInitial = false, search = '') => {
+    try {
+      if (isInitial) {
+        setLoading(true)
+        setOffset(0)
+      } else {
+        setLoadingMore(true)
       }
 
-      // 상품 정보 - 다양한 구조 대응
-      let items = '정보없음'
-      if (order.order_items && order.order_items.length > 0) {
-        items = order.order_items.map(item => {
-          const title = item.products?.title || item.product?.title || item.title || '상품'
-          const quantity = item.quantity || 1
-          return `${title}(${quantity}개)`
-        }).join(';')
+      if (!adminUser?.email) {
+        console.error('관리자 이메일이 없습니다')
+        setLoading(false)
+        return
       }
 
-      // 배송 정보 - shipping_* 컬럼 우선 사용
-      const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
-      const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
-      const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
-      const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
-      const fullAddressWithPostal = postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
+      const currentOffset = isInitial ? 0 : offset
 
-      // 고객명 - shipping_* 컬럼 우선 사용
-      const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
+      // Service Role API 호출 (날짜 필터 + 검색)
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&offset=${currentOffset}`
+      if (dateRange === 'custom') {
+        if (customStartDate) url += `&startDate=${customStartDate}`
+        if (customEndDate) url += `&endDate=${customEndDate}`
+      }
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`
+      }
 
-      // 연락처 - shipping_* 컬럼 우선 사용
-      const phone = order.shipping_phone || order.user?.phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || order.userPhone || '정보없음'
+      const response = await fetch(url)
 
-      // 수량 계산
-      const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '주문 조회 실패')
+      }
 
-      // 금액 - 다양한 소스에서 확인
-      const amount = order.order_payments?.[0]?.amount || order.payment?.amount || order.total_amount || order.amount || 0
+      const { orders: rawOrders, hasMore: moreData } = await response.json()
 
-      return [
-        order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
-        customerName,
-        phone,
-        `"${fullAddressWithPostal}"`,
-        `"${items}"`,
-        totalQuantity,
-        amount,
-        getStatusInfo(order.status).label
-      ].join(',')
-    }).join('\n')
+      // 기존 포맷으로 변환
+      const allOrders = rawOrders.map(order => {
+        const profileInfo = order.userProfile || {}
+        const shipping = order.order_shipping?.[0] || {}
+        const payment = order.order_payments?.[0] || {}
 
-    const csvContent = csvHeader + csvData
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `출고정보_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+        return {
+          id: order.id,
+          userId: order.user_id || null,
+          userName: profileInfo.name || shipping.name || '알 수 없음',
+          userNickname: profileInfo.nickname || profileInfo.name || '알 수 없음',
+          userEmail: profileInfo.email || null,
+          userPhone: profileInfo.phone || shipping.phone || null,
+          status: order.status,
+          totalPrice: order.total_amount || 0,
+          customer_order_number: order.customer_order_number,
+          created_at: order.created_at,
+          deposited_at: order.deposited_at,
+          shipped_at: order.shipped_at,
+          delivered_at: order.delivered_at,
+          order_type: order.order_type,
+          payment_group_id: order.payment_group_id || null,
+          discount_amount: order.discount_amount || 0,
+          is_free_shipping: order.is_free_shipping || false,
+          items: order.order_items || [],
+          shipping: {
+            name: shipping.name,
+            phone: shipping.phone,
+            address: shipping.address,
+            detail_address: shipping.detail_address,
+            postal_code: shipping.postal_code,
+            shipping_request: shipping.shipping_request,
+            tracking_number: shipping.tracking_number,
+            tracking_company: shipping.tracking_company,
+            shipping_fee: shipping.shipping_fee || 0
+          },
+          payment: {
+            method: payment.method,
+            depositor_name: payment.depositor_name,
+            amount: payment.amount
+          }
+        }
+      })
 
-    toast.success(`${selectedOrders.length}개 주문의 출고 정보를 다운로드했습니다`)
-    setSelectedOrders([])
+      // ⭐ delivered 상태만 필터링
+      const deliveredOrders = allOrders.filter(order => order.status === 'delivered')
+
+      console.log('API에서 가져온 출고완료 주문:', deliveredOrders.length, '개')
+
+      // ⭐ 그룹핑 적용
+      const groupedOrders = groupOrdersByPaymentGroupId(deliveredOrders)
+      console.log('✅ 그룹핑 완료:', { original: deliveredOrders.length, grouped: groupedOrders.length })
+
+      if (isInitial) {
+        setOrders(groupedOrders)
+      } else {
+        setOrders(prev => [...prev, ...groupedOrders])
+      }
+
+      setHasMore(moreData)
+      setOffset(currentOffset + groupedOrders.length)
+      setLoading(false)
+      setLoadingMore(false)
+    } catch (error) {
+      console.error('주문 로딩 오류:', error)
+      toast.error('주문 목록을 불러오는데 실패했습니다')
+      setLoading(false)
+      setLoadingMore(false)
+    }
   }
 
-  // 송장번호 입력 모달 열기
-  const openTrackingInput = (order) => {
-    setSelectedOrder(order)
-    setShowTrackingInput(true)
+  const getStatusBadge = (status) => {
+    return (
+      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+        출고완료
+      </span>
+    )
   }
 
-  // 송장번호 저장 성공 처리
-  const handleTrackingSuccess = async ({ orderId, trackingNumber }) => {
-    await loadPaidOrders() // 목록 새로고침
-    setShowTrackingInput(false)
-    setSelectedOrder(null)
+  const getPaymentMethodDisplay = (method) => {
+    const methodMap = {
+      cart: {
+        text: '장바구니',
+        icon: BanknotesIcon,
+        color: 'text-indigo-700'
+      },
+      bank_transfer: {
+        text: '계좌이체',
+        icon: BanknotesIcon,
+        color: 'text-cyan-700'
+      },
+      card: {
+        text: '카드결제',
+        icon: CreditCardIcon,
+        color: 'text-emerald-700'
+      }
+    }
+    return methodMap[method] || {
+      text: method || '결제방법 미정',
+      icon: BanknotesIcon,
+      color: 'text-slate-600'
+    }
   }
 
-  // 대량 업로드 성공 처리
-  const handleBulkUploadSuccess = async ({ matched, failed }) => {
-    await loadPaidOrders() // 목록 새로고침
-    setShowBulkUpload(false)
-  }
-
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
+
+  if (!adminUser) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-gray-600">관리자 권한이 필요합니다</p>
       </div>
     )
   }
@@ -305,79 +389,175 @@ export default function AdminOutboundPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">📦 출고 정보</h1>
           <p className="text-sm text-gray-600 mt-1">
-            총 {orders.length}건 | 출고대기 {orders.filter(o => o.status === 'paid').length}건 | 출고완료 {orders.filter(o => o.status === 'shipping' || o.status === 'delivered').length}건
+            총 {filteredOrders.length}건의 출고완료 주문
+            {dateRange !== 'all' && (
+              <span className="ml-2 text-xs text-blue-600">
+                💡 {dateRange === 'today' ? '오늘' : dateRange === 'yesterday' ? '어제' : dateRange === 'week' ? '1주일' : dateRange === 'month' ? '1개월' : '선택한 기간'}
+              </span>
+            )}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowBulkUpload(true)}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-          >
-            <DocumentArrowDownIcon className="w-4 h-4" />
-            Excel 대량 업로드
-          </button>
-          <button
-            onClick={loadPaidOrders}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            새로고침
-          </button>
-        </div>
+
+        {/* 새로고침 버튼 */}
+        <button
+          onClick={() => {
+            setOrders([])
+            setOffset(0)
+            setHasMore(true)
+            loadOrders(true)
+          }}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          새로고침
+        </button>
       </div>
 
+      {/* 📅 Date Range Filter */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">📅 조회 기간:</span>
+          {[
+            { id: 'today', label: '오늘', desc: '가장 빠름' },
+            { id: 'yesterday', label: '어제', desc: '어제 주문' },
+            { id: 'week', label: '1주일', desc: '최근 7일' },
+            { id: 'month', label: '1개월', desc: '최근 30일' },
+            { id: 'all', label: '전체', desc: '최근 1만건' }
+          ].map((range) => (
+            <button
+              key={range.id}
+              onClick={() => setDateRange(range.id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                dateRange === range.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title={range.desc}
+            >
+              {range.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setDateRange('custom')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              dateRange === 'custom'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            title="기간 직접 선택"
+          >
+            📆 기간 선택
+          </button>
+        </div>
 
-      {/* Tabs */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <div className="flex flex-col gap-4">
-          {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200">
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === 'pending'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              출고대기 ({orders.filter(o => o.status === 'paid').length})
-            </button>
-            <button
-              onClick={() => setActiveTab('completed')}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === 'completed'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              출고완료 ({orders.filter(o => o.status === 'shipping' || o.status === 'delivered').length})
-            </button>
+        {/* 📆 Custom Date Range Picker */}
+        {dateRange === 'custom' && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">시작일:</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">종료일:</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <button
+                onClick={() => loadOrders(true)}
+                disabled={!customStartDate}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  customStartDate
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                조회
+              </button>
+            </div>
           </div>
+        )}
+      </div>
 
-          {/* Search and Download */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="주문번호, 고객명, 전화번호로 검색..."
+                placeholder="주문번호, 고객명, 닉네임, 입금자명, 상품명으로 실시간 검색..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setSearchTerm(value)
+
+                  // ⚡ 실시간 검색 (300ms debounce)
+                  if (searchTimeout) clearTimeout(searchTimeout)
+
+                  const timeout = setTimeout(() => {
+                    const trimmedValue = value.trim()
+
+                    if (trimmedValue) {
+                      setIsSearchMode(true)
+                      setOrders([])
+                      setOffset(0)
+                      setHasMore(true)
+                      loadOrders(true, trimmedValue)
+                    } else {
+                      setIsSearchMode(false)
+                      setOrders([])
+                      setOffset(0)
+                      setHasMore(true)
+                      loadOrders(true, '')
+                    }
+                  }, 300)
+
+                  setSearchTimeout(timeout)
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
-            <button
-              onClick={downloadInvoices}
-              disabled={selectedOrders.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            {/* 검색 결과 표시 */}
+            {isSearchMode && searchTerm && (
+              <div className="absolute left-0 top-full mt-2 text-sm">
+                <span className="text-gray-600">
+                  검색 결과: <span className="font-semibold text-red-600">{filteredOrders.length}건</span>
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Sort Options */}
+          <div className="flex items-center gap-2">
+            <FunnelIcon className="w-5 h-5 text-gray-400" />
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             >
-              <DocumentArrowDownIcon className="w-4 h-4" />
-              출고정보 다운로드 ({selectedOrders.length})
-            </button>
+              <option value="date_desc">📅 날짜순 (최신순)</option>
+              <option value="date_asc">📅 날짜순 (오래된순)</option>
+              <option value="amount_desc">💰 금액순 (높은순)</option>
+              <option value="amount_asc">💰 금액순 (낮은순)</option>
+              <option value="customer_asc">👤 고객명순 (가나다)</option>
+              <option value="customer_desc">👤 고객명순 (역순)</option>
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Orders - 모바일 최적화 카드 뷰 */}
+      {/* Orders - 데스크톱 테이블 + 모바일 카드 */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {/* 데스크톱 테이블 뷰 */}
         <div className="hidden lg:block overflow-x-auto">
@@ -385,244 +565,152 @@ export default function AdminOutboundPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <input
-                    type="checkbox"
-                    checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
-                    onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   주문정보
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   고객정보
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  주소
+                  결제정보
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  상태
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  송장
+                  액션
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredOrders.map((order, index) => {
-                const statusInfo = getStatusInfo(order.status)
-                const StatusIcon = statusInfo.icon
-
-                return (
-                  <motion.tr
-                    key={order.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={selectedOrders.includes(order.id)}
-                        onChange={() => handleSelectOrder(order.id)}
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                      />
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-gray-900">
-                          <button
-                            onClick={() => router.push(`/admin/orders/${order.id}`)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                            title="주문 상세보기"
-                          >
-                            <EyeIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          ₩{(order.payment?.amount || 0).toLocaleString()}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {(() => {
-                            const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
-                            const uniqueProducts = order.order_items?.length || 0
-                            return uniqueProducts === 1 ? `${totalQuantity}개` : `${uniqueProducts}종 ${totalQuantity}개`
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(order.created_at).toLocaleDateString('ko-KR')}
-                        </div>
+              {filteredOrders.map((order, index) => (
+                <motion.tr
+                  key={order.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="hover:bg-gray-50"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                        {order.customer_order_number || order.id.slice(-8)}
+                        {order.isGroup && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                            그룹결제
+                          </span>
+                        )}
                       </div>
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-gray-900">
-                          {order.user?.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {order.user?.phone}
-                        </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(order.created_at).toLocaleString('ko-KR', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false
+                        })}
                       </div>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs">
+                      <div className="text-sm text-gray-500">
                         {(() => {
-                          const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
-                          const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
-                          const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
-                          const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
-                          return postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
+                          const groupedItems = groupOrderItems(order.items)
+                          const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
+                          const uniqueProducts = groupedItems.length
+
+                          if (order.isGroup) {
+                            return `${order.groupOrderCount}개 주문 일괄결제 (총 ${uniqueProducts}종 ${totalQuantity}개)`
+                          } else if (uniqueProducts === 1) {
+                            return `${totalQuantity}개`
+                          } else {
+                            return `${uniqueProducts}종 ${totalQuantity}개`
+                          }
                         })()}
                       </div>
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
-                        <StatusIcon className="w-3 h-3" />
-                        {statusInfo.label}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex flex-col gap-2">
-                        {/* 송장번호 표시/입력 */}
-                        {order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number ? (
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={getTrackingUrl(
-                                order.shipping?.tracking_company || order.order_shipping?.[0]?.tracking_company,
-                                order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number
-                              )}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline text-xs font-mono"
-                            >
-                              {order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number}
-                            </a>
-                            <button
-                              onClick={() => openTrackingInput(order)}
-                              className="text-gray-600 hover:text-gray-800 text-xs"
-                            >
-                              수정
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => openTrackingInput(order)}
-                            className="text-red-600 hover:text-red-700 px-2 py-1 bg-red-50 rounded text-xs"
+                      {/* 송장번호 표시 */}
+                      {order.shipping?.tracking_number && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          <a
+                            href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
                           >
-                            송장번호 입력
-                          </button>
-                        )}
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                            // 개별 송장 다운로드
-                            const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
-
-                            // 상품 정보 - 다양한 구조 대응
-                            let items = '정보없음'
-                            if (order.order_items && order.order_items.length > 0) {
-                              items = order.order_items.map(item => {
-                                const title = item.products?.title || item.product?.title || item.title || '상품'
-                                const quantity = item.quantity || 1
-                                return `${title}(${quantity}개)`
-                              }).join(';')
-                            }
-
-                            // 배송 정보 - shipping_* 컬럼 우선 사용
-                            const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
-                            const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
-                            const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
-                            const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
-                            const fullAddressWithPostal = postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
-
-                            // 고객명과 연락처 - shipping_* 컬럼 우선 사용
-                            const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
-                            const phone = order.shipping_phone || order.user?.phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || order.userPhone || '정보없음'
-
-                            // 수량과 금액
-                            const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
-                            const amount = order.order_payments?.[0]?.amount || order.payment?.amount || order.total_amount || order.amount || 0
-
-                            const csvData = [
-                              order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
-                              customerName,
-                              phone,
-                              `"${fullAddressWithPostal}"`,
-                              `"${items}"`,
-                              totalQuantity,
-                              amount,
-                              getStatusInfo(order.status).label
-                            ].join(',')
-
-                            const csvContent = csvHeader + csvData
-                            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
-                            const link = document.createElement('a')
-                            const url = URL.createObjectURL(blob)
-                            link.setAttribute('href', url)
-                            link.setAttribute('download', `출고정보_${order.customerOrderNumber || order.id.slice(-8)}.csv`)
-                            link.style.visibility = 'hidden'
-                            document.body.appendChild(link)
-                            link.click()
-                            document.body.removeChild(link)
-
-                            toast.success('출고 정보를 다운로드했습니다')
-                            }}
-                            className="text-purple-600 hover:text-purple-700 px-2 py-1 bg-purple-50 rounded text-xs"
-                            title="출고정보 다운로드"
-                          >
-                            출고정보
-                          </button>
-
-                          {order.status === 'shipping' && (
-                            <button
-                              onClick={() => updateShippingStatus(order.id, 'delivered')}
-                              className="text-green-600 hover:text-green-700 px-2 py-1 bg-green-50 rounded text-xs"
-                              title="출고 완료"
-                            >
-                              출고완료
-                            </button>
+                            {getCarrierName(order.shipping?.tracking_company)} {order.shipping.tracking_number}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {order.userName || order.shipping?.name || '정보없음'}
+                      </div>
+                      <div className="text-sm text-gray-500 flex items-center gap-1">
+                        <AtSymbolIcon className="w-3 h-3" />
+                        {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || '익명')}
+                      </div>
+                      {order.payment?.depositor_name && (
+                        <div className="text-xs font-semibold text-blue-600">
+                          💳 {order.payment.depositor_name}
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-500">
+                        {order.shipping?.phone || ''}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        <div>
+                          <div>₩{order.totalPrice.toLocaleString()}</div>
+                          {order.discount_amount > 0 && (
+                            <div className="text-xs text-blue-600 mt-0.5">
+                              (쿠폰 -₩{order.discount_amount.toLocaleString()})
+                            </div>
                           )}
                         </div>
                       </div>
-                    </td>
-                  </motion.tr>
-                )
-              })}
+                      <div className="flex items-center gap-1 mt-1">
+                        {(() => {
+                          const paymentInfo = getPaymentMethodDisplay(order.payment?.method)
+                          const Icon = paymentInfo.icon
+                          return (
+                            <>
+                              <Icon className={`w-3 h-3 ${paymentInfo.color}`} />
+                              <span className={`text-xs font-medium ${paymentInfo.color}`}>
+                                {paymentInfo.text}
+                              </span>
+                            </>
+                          )
+                        })()}
+                      </div>
+                      <div className="mt-1">
+                        {getStatusBadge(order.status)}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => {
+                        const targetId = order.isGroup ? order.originalOrders[0]?.id : order.id
+                        router.push(`/admin/orders/${targetId}`)
+                      }}
+                      className="text-indigo-600 hover:text-indigo-900"
+                      title={order.isGroup ? "그룹 주문 상세보기" : "상세보기"}
+                    >
+                      <EyeIcon className="w-4 h-4" />
+                    </button>
+                  </td>
+                </motion.tr>
+              ))}
             </tbody>
           </table>
         </div>
 
         {/* 모바일 카드 뷰 */}
-        <div className="lg:hidden">
-          {/* 모바일 전체 선택 헤더 */}
-          <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <input
-                type="checkbox"
-                checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
-                onChange={handleSelectAll}
-                className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-              />
-              전체 선택 ({selectedOrders.length}/{filteredOrders.length})
-            </label>
-          </div>
-
-          {/* 카드 리스트 */}
-          <div className="divide-y divide-gray-200">
-            {filteredOrders.map((order, index) => {
-            const statusInfo = getStatusInfo(order.status)
-            const StatusIcon = statusInfo.icon
-            const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
-            const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
-            const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
+        <div className="lg:hidden divide-y divide-gray-200">
+          {filteredOrders.map((order, index) => {
+            const groupedItems = groupOrderItems(order.items)
+            const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
+            const uniqueProducts = groupedItems.length
 
             return (
               <motion.div
@@ -632,201 +720,131 @@ export default function AdminOutboundPage() {
                 transition={{ delay: index * 0.05 }}
                 className="p-4 hover:bg-gray-50"
               >
-                {/* 상단: 체크박스 + 주문번호 + 상태 */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedOrders.includes(order.id)}
-                      onChange={() => handleSelectOrder(order.id)}
-                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                    />
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {order.customer_order_number || order.id?.slice(-8)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(order.created_at).toLocaleDateString('ko-KR')}
-                      </div>
+                {/* 상단: 주문번호 + 상태 */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                      {order.customer_order_number || order.id.slice(-8)}
+                      {order.isGroup && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                          그룹결제
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(order.created_at).toLocaleDateString('ko-KR')}
                     </div>
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}>
-                    <StatusIcon className="w-3 h-3" />
-                    {statusInfo.label}
-                  </span>
+                  {getStatusBadge(order.status)}
                 </div>
 
-                {/* 중단: 고객 정보 */}
+                {/* 중단: 고객정보 + 금액 */}
                 <div className="mb-3 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-900">
-                      {order.user?.name}
+                      {order.userName || order.shipping?.name || '정보없음'}
                     </span>
-                    <span className="text-sm text-gray-600">
-                      ₩{(order.payment?.amount || 0).toLocaleString()}
-                    </span>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-gray-900">
+                        ₩{order.totalPrice.toLocaleString()}
+                      </div>
+                      {order.discount_amount > 0 && (
+                        <div className="text-xs text-blue-600">
+                          (쿠폰 -₩{order.discount_amount.toLocaleString()})
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="text-sm text-gray-600">
-                    {order.user?.phone}
+                    {order.userNickname && order.userNickname !== '정보없음' ? order.userNickname : (order.shipping?.name || '익명')}
                   </div>
+                  {order.payment?.depositor_name && (
+                    <div className="text-xs font-semibold text-blue-600">
+                      💳 {order.payment.depositor_name}
+                    </div>
+                  )}
                   <div className="text-xs text-gray-500">
-                    {(() => {
-                      const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
-                      const uniqueProducts = order.order_items?.length || 0
-                      return uniqueProducts === 1 ? `${totalQuantity}개` : `${uniqueProducts}종 ${totalQuantity}개`
-                    })()}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {(() => {
-                      const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
-                      const address = order.shipping_address || order.order_shipping?.[0]?.address || order.shipping?.address || '정보없음'
-                      const detailAddress = order.shipping_detail_address || order.order_shipping?.[0]?.detail_address || order.shipping?.detail_address || ''
-                      const fullAddress = detailAddress ? `${address} ${detailAddress}` : address
-                      return postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
-                    })()}
+                    {order.isGroup
+                      ? `${order.groupOrderCount}개 주문 일괄결제 (총 ${uniqueProducts}종 ${totalQuantity}개)`
+                      : uniqueProducts === 1
+                        ? `${totalQuantity}개`
+                        : `${uniqueProducts}종 ${totalQuantity}개`
+                    }
                   </div>
                 </div>
 
                 {/* 송장번호 표시 */}
-                {(order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number) && (
-                  <div className="mb-2 text-sm">
-                    <span className="text-gray-500">🚚 송장: </span>
-                    <a
-                      href={getTrackingUrl(
-                        order.shipping?.tracking_company || order.order_shipping?.[0]?.tracking_company,
-                        order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline font-mono"
-                    >
-                      {order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number}
-                    </a>
+                {order.shipping?.tracking_number && (
+                  <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <div className="text-gray-600 mb-0.5">배송조회</div>
+                        <div className="font-medium text-gray-900">
+                          {getCarrierName(order.shipping?.tracking_company)}
+                        </div>
+                      </div>
+                      <a
+                        href={getTrackingUrl(order.shipping?.tracking_company, order.shipping?.tracking_number)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline font-mono"
+                      >
+                        {order.shipping.tracking_number}
+                      </a>
+                    </div>
                   </div>
                 )}
 
-                {/* 하단: 버튼들 */}
-                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                  {/* 송장번호 입력 버튼 (송장번호 없을 때만) */}
-                  {!(order.shipping?.tracking_number || order.order_shipping?.[0]?.tracking_number) && (
-                    <button
-                      onClick={() => openTrackingInput(order)}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
-                    >
-                      <TruckIcon className="w-4 h-4" />
-                      송장입력
-                    </button>
-                  )}
-
+                {/* 하단: 상세보기 버튼 */}
+                <div className="pt-3 border-t border-gray-100">
                   <button
                     onClick={() => {
-                      // 그룹 주문인 경우 첫 번째 원본 주문으로 이동
-                      const targetId = order.isGroup ? order.originalOrders?.[0]?.id : order.id
+                      const targetId = order.isGroup ? order.originalOrders[0]?.id : order.id
                       router.push(`/admin/orders/${targetId}`)
                     }}
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
+                    className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium"
                   >
                     <EyeIcon className="w-4 h-4" />
                     상세보기
                   </button>
-
-                  <button
-                    onClick={() => {
-                      // 개별 송장 다운로드
-                      const csvHeader = '주문번호,고객명,연락처,주소,상품명,수량,금액,상태\n'
-
-                      let items = '정보없음'
-                      if (order.order_items && order.order_items.length > 0) {
-                        items = order.order_items.map(item => {
-                          const title = item.products?.title || item.product?.title || item.title || '상품'
-                          const quantity = item.quantity || 1
-                          return `${title}(${quantity}개)`
-                        }).join(';')
-                      }
-
-                      const postalCode = order.shipping_postal_code || order.order_shipping?.[0]?.postal_code || order.shipping?.postal_code || ''
-                      const fullAddressWithPostal = postalCode ? `[${postalCode}] ${fullAddress}` : fullAddress
-                      const customerName = order.shipping_name || order.user?.name || order.order_shipping?.[0]?.name || order.shipping?.name || order.userName || '정보없음'
-                      const phone = order.shipping_phone || order.user?.phone || order.order_shipping?.[0]?.phone || order.shipping?.phone || order.userPhone || '정보없음'
-                      const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
-                      const amount = order.order_payments?.[0]?.amount || order.payment?.amount || order.total_amount || order.amount || 0
-
-                      const csvData = [
-                        order.customer_order_number || order.id?.slice(-8) || 'NO-ID',
-                        customerName,
-                        phone,
-                        `"${fullAddressWithPostal}"`,
-                        `"${items}"`,
-                        totalQuantity,
-                        amount,
-                        getStatusInfo(order.status).label
-                      ].join(',')
-
-                      const csvContent = csvHeader + csvData
-                      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
-                      const link = document.createElement('a')
-                      const url = URL.createObjectURL(blob)
-                      link.setAttribute('href', url)
-                      link.setAttribute('download', `출고정보_${order.customer_order_number || order.id.slice(-8)}.csv`)
-                      link.style.visibility = 'hidden'
-                      document.body.appendChild(link)
-                      link.click()
-                      document.body.removeChild(link)
-
-                      toast.success('출고 정보를 다운로드했습니다')
-                    }}
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium"
-                  >
-                    <DocumentArrowDownIcon className="w-4 h-4" />
-                    출고정보
-                  </button>
-
-                  {order.status === 'shipping' && (
-                    <button
-                      onClick={() => updateShippingStatus(order.id, 'delivered')}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
-                    >
-                      <CheckCircleIcon className="w-4 h-4" />
-                      출고완료
-                    </button>
-                  )}
                 </div>
               </motion.div>
             )
           })}
-          </div>
         </div>
 
-        {filteredOrders.length === 0 && (
+        {filteredOrders.length === 0 && !loading && (
           <div className="text-center py-12">
-            <TruckIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">조건에 맞는 주문이 없습니다.</p>
+            <p className="text-gray-500">조건에 맞는 출고완료 주문이 없습니다.</p>
           </div>
         )}
       </div>
 
-      {/* 송장번호 입력 모달 */}
-      {showTrackingInput && selectedOrder && (
-        <TrackingNumberInput
-          orderId={selectedOrder.id}
-          adminEmail={adminUser.email}
-          currentTracking={selectedOrder.shipping?.tracking_number || selectedOrder.order_shipping?.[0]?.tracking_number}
-          currentCompany={selectedOrder.shipping?.tracking_company || selectedOrder.order_shipping?.[0]?.tracking_company}
-          onSuccess={handleTrackingSuccess}
-          onClose={() => {
-            setShowTrackingInput(false)
-            setSelectedOrder(null)
-          }}
-        />
+      {/* 로딩 인디케이터 */}
+      {loadingMore && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+          <span className="ml-3 text-gray-600">추가 주문 불러오는 중...</span>
+        </div>
       )}
 
-      {/* Excel 대량 업로드 모달 */}
-      {showBulkUpload && (
-        <TrackingNumberBulkUpload
-          adminEmail={adminUser.email}
-          onSuccess={handleBulkUploadSuccess}
-          onClose={() => setShowBulkUpload(false)}
-        />
+      {/* 더보기 버튼 */}
+      {!loading && !loadingMore && hasMore && filteredOrders.length > 0 && (
+        <div className="flex justify-center py-6">
+          <button
+            onClick={() => loadOrders(false, searchTerm)}
+            className="px-6 py-3 bg-white border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium"
+          >
+            더 보기 ({orders.length}건 로드됨)
+          </button>
+        </div>
+      )}
+
+      {/* 모든 데이터 로드 완료 */}
+      {!loading && !hasMore && filteredOrders.length > 0 && (
+        <div className="text-center py-6">
+          <p className="text-gray-500 text-sm">모든 주문을 불러왔습니다.</p>
+        </div>
       )}
     </div>
   )
