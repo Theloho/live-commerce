@@ -142,23 +142,8 @@ export default function AdminOrdersPage() {
   const filterOrders = () => {
     let filtered = [...orders]
 
-    // 결제 방법 필터
-    if (paymentFilter === 'all') {
-      // '장바구니' 탭 - pending 상태만 표시
-      filtered = filtered.filter(order =>
-        order.status === 'pending'
-      )
-    } else if (paymentFilter === 'verifying') {
-      // '주문내역' 탭 - verifying 상태 모두 표시 (결제 방법 구분 없음)
-      filtered = filtered.filter(order => order.status === 'verifying')
-    } else if (paymentFilter === 'paid') {
-      filtered = filtered.filter(order => order.status === 'paid')
-    } else if (paymentFilter === 'delivered') {
-      filtered = filtered.filter(order => order.status === 'delivered')
-    } else if (paymentFilter === 'cancelled') {
-      // '취소내역' 탭 - cancelled 상태만 표시
-      filtered = filtered.filter(order => order.status === 'cancelled')
-    }
+    // ⭐ 서버에서 이미 status로 필터링되어 왔으므로 클라이언트 필터링 불필요
+    // paymentFilter에 따른 status 필터링은 API 호출 시 처리됨
 
     // ⚡ 검색어 필터 (서버: 주문번호/ID/카카오ID, 프론트: 고객명/입금자명/상품명/전화번호)
     if (searchTerm) {
@@ -228,7 +213,7 @@ export default function AdminOrdersPage() {
     setSelectedOrders([])
   }, [paymentFilter])
 
-  // 날짜 필터 변경 시에만 데이터 재로드 ⭐ (탭 이동 시에는 클라이언트 필터링만)
+  // ⭐ 날짜 필터 또는 탭 변경 시 데이터 재로드 (서버 필터링)
   useEffect(() => {
     // ⭐ 'custom' 모드: 날짜 입력 UI만 표시, 데이터 로드 X
     if (dateRange === 'custom') {
@@ -243,7 +228,7 @@ export default function AdminOrdersPage() {
       loadOrders(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange]) // ⚠️ paymentFilter 제거 - 탭 이동 시 재로드 방지
+  }, [dateRange, paymentFilter]) // ⭐ paymentFilter 추가 - 탭 변경 시 서버에서 필터링된 데이터 로드
 
   // 스크롤 이벤트 핸들러 (검색 모드에서는 비활성화)
   useEffect(() => {
@@ -314,8 +299,18 @@ export default function AdminOrdersPage() {
 
       const currentOffset = isInitial ? 0 : offset
 
-      // Service Role API 호출 (날짜 필터 + 검색)
-      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&offset=${currentOffset}`
+      // ⭐ 현재 탭에 따른 status 필터 매핑
+      const statusMap = {
+        'all': 'pending',          // 장바구니 탭
+        'verifying': 'verifying',  // 주문내역 탭
+        'paid': 'paid',            // 구매확정 탭
+        'delivered': 'delivered',  // 출고정보 탭
+        'cancelled': 'cancelled'   // 취소내역 탭
+      }
+      const statusFilter = statusMap[paymentFilter] || 'pending'
+
+      // Service Role API 호출 (날짜 필터 + 상태 필터 + 검색)
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&offset=${currentOffset}&status=${statusFilter}`
       if (dateRange === 'custom') {
         if (customStartDate) url += `&startDate=${customStartDate}`
         if (customEndDate) url += `&endDate=${customEndDate}`
