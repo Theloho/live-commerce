@@ -696,7 +696,25 @@ export default function AdminPurchaseConfirmedPage() {
         </div>
 
         {/* 모바일 카드 뷰 */}
-        <div className="lg:hidden divide-y divide-gray-200">
+        <div className="lg:hidden">
+          {/* 모바일 전체 선택 헤더 */}
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={selectedOrders.length > 0 && selectedOrders.length === filteredOrders.flatMap(o => o.isGroup ? o.originalOrders.map(oo => oo.id) : [o.id]).length}
+              onChange={handleSelectAll}
+              className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+            />
+            <span className="text-sm font-medium text-gray-700">전체 선택</span>
+            {selectedOrders.length > 0 && (
+              <span className="text-sm text-blue-600">
+                ({selectedOrders.length}개 선택됨)
+              </span>
+            )}
+          </div>
+
+          {/* 카드 목록 */}
+          <div className="divide-y divide-gray-200">
           {filteredOrders.map((order, index) => {
             const groupedItems = groupOrderItems(order.items)
             const totalQuantity = groupedItems.reduce((sum, item) => sum + item.quantity, 0)
@@ -797,6 +815,7 @@ export default function AdminPurchaseConfirmedPage() {
               </motion.div>
             )
           })}
+          </div>
         </div>
 
         {filteredOrders.length === 0 && !loading && (
