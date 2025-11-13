@@ -119,6 +119,59 @@ export default function AdminCartPage() {
   const [customEndDate, setCustomEndDate] = useState('')
   const [sortOption, setSortOption] = useState('date_desc') // ⭐ 정렬 옵션
   const [selectedOrders, setSelectedOrders] = useState([]) // ⭐ 체크박스 선택 상태
+  const [isRestoringState, setIsRestoringState] = useState(false) // ⭐ 상태 복원 중 플래그
+
+  // ⭐ 페이지 상태 저장
+  const savePageState = () => {
+    const state = {
+      orders,
+      filteredOrders,
+      searchTerm,
+      dateRange,
+      customStartDate,
+      customEndDate,
+      sortOption,
+      scrollY: window.scrollY,
+      timestamp: Date.now()
+    }
+    sessionStorage.setItem('admin_cart_state', JSON.stringify(state))
+  }
+
+  // ⭐ 페이지 상태 복원
+  const restorePageState = () => {
+    try {
+      const savedState = sessionStorage.getItem('admin_cart_state')
+      if (!savedState) return false
+
+      const state = JSON.parse(savedState)
+
+      // 5분 이내의 상태만 복원 (너무 오래된 상태는 무시)
+      if (Date.now() - state.timestamp > 5 * 60 * 1000) {
+        sessionStorage.removeItem('admin_cart_state')
+        return false
+      }
+
+      setOrders(state.orders || [])
+      setFilteredOrders(state.filteredOrders || [])
+      setSearchTerm(state.searchTerm || '')
+      setDateRange(state.dateRange || 'all')
+      setCustomStartDate(state.customStartDate || '')
+      setCustomEndDate(state.customEndDate || '')
+      setSortOption(state.sortOption || 'date_desc')
+      setLoading(false)
+
+      // 스크롤 위치 복원
+      setTimeout(() => {
+        window.scrollTo(0, state.scrollY || 0)
+      }, 100)
+
+      sessionStorage.removeItem('admin_cart_state')
+      return true
+    } catch (error) {
+      console.error('상태 복원 실패:', error)
+      return false
+    }
+  }
 
   const filterOrders = () => {
     let filtered = [...orders]
@@ -251,9 +304,13 @@ export default function AdminCartPage() {
     }
   }
 
+  // ⭐ 초기 로딩: 상태 복원 시도 후 실패하면 데이터 로드
   useEffect(() => {
     if (adminUser?.email) {
-      loadOrders() // 초기 로딩
+      const restored = restorePageState()
+      if (!restored) {
+        loadOrders() // 복원 실패 시만 로딩
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminUser])
@@ -723,6 +780,7 @@ export default function AdminCartPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
                       onClick={() => {
+                        savePageState() // ⭐ 상태 저장
                         const targetId = order.isGroup ? order.originalOrders[0]?.id : order.id
                         router.push(`/admin/orders/${targetId}`)
                       }}
@@ -846,6 +904,7 @@ export default function AdminCartPage() {
                 <div className="pt-3 border-t border-gray-100">
                   <button
                     onClick={() => {
+                      savePageState() // ⭐ 상태 저장
                       const targetId = order.isGroup ? order.originalOrders[0]?.id : order.id
                       router.push(`/admin/orders/${targetId}`)
                     }}
