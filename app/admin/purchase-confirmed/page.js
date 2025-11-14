@@ -10,7 +10,8 @@ import {
   AtSymbolIcon,
   BanknotesIcon,
   CreditCardIcon,
-  TruckIcon
+  TruckIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
@@ -181,6 +182,39 @@ export default function AdminPurchaseConfirmedPage() {
       setSelectedOrders([])
     } else {
       setSelectedOrders(allOrderIds)
+    }
+  }
+
+  // ⭐ 일괄 취소
+  const handleBulkCancel = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('선택된 주문이 없습니다')
+      return
+    }
+
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 취소하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`
+    if (!window.confirm(confirmMessage)) return
+
+    try {
+      const response = await fetch('/api/orders/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderIds: selectedOrders,
+          status: 'cancelled'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('주문 상태 변경 실패')
+      }
+
+      toast.success(`${selectedOrders.length}개 주문이 취소되었습니다`)
+      setSelectedOrders([])
+      loadOrders()
+    } catch (error) {
+      console.error('일괄 취소 실패:', error)
+      toast.error('일괄 취소에 실패했습니다')
     }
   }
 
@@ -404,13 +438,22 @@ export default function AdminPurchaseConfirmedPage() {
         {/* 일괄 작업 버튼 */}
         <div className="flex items-center gap-2">
           {selectedOrders.length > 0 && (
-            <button
-              onClick={handleBulkShip}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              <TruckIcon className="w-4 h-4" />
-              일괄 발송처리 ({selectedOrders.length})
-            </button>
+            <>
+              <button
+                onClick={handleBulkCancel}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                <XMarkIcon className="w-4 h-4" />
+                일괄 취소 ({selectedOrders.length})
+              </button>
+              <button
+                onClick={handleBulkShip}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                <TruckIcon className="w-4 h-4" />
+                일괄 배송처리 ({selectedOrders.length})
+              </button>
+            </>
           )}
           {/* 새로고침 버튼 */}
           <button
