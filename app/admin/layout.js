@@ -68,7 +68,7 @@ function AdminLayoutContent({ children }) {
       title: '운영 관리',
       items: [
         { href: '/admin', label: '대시보드', icon: HomeIcon },
-        { href: '/admin/search', label: '🔍 통합 검색', icon: MagnifyingGlassIcon },
+        { href: '/admin/search', label: '통합 검색', icon: MagnifyingGlassIcon },
         { href: '/admin/orders', label: '주문관리', icon: ClipboardDocumentListIcon },
         { href: '/admin/cart', label: '[1] 장바구니', icon: ShoppingCartIcon },
         { href: '/admin/order-history', label: '[2] 주문내역', icon: DocumentDuplicateIcon },
