@@ -10,8 +10,8 @@ import {
   AtSymbolIcon,
   BanknotesIcon,
   CreditCardIcon,
-  TruckIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowLeftIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
@@ -218,14 +218,14 @@ export default function AdminPurchaseConfirmedPage() {
     }
   }
 
-  // ⭐ 일괄 발송처리
-  const handleBulkShip = async () => {
+  // ⭐ 주문내역으로 이동 (paid → verifying)
+  const handleBulkMoveToVerifying = async () => {
     if (selectedOrders.length === 0) {
       toast.error('선택된 주문이 없습니다')
       return
     }
 
-    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 발송처리하시겠습니까?`
+    const confirmMessage = `선택한 ${selectedOrders.length}개 주문을 "주문내역(입금대기)" 상태로 변경하시겠습니까?\n\n⚠️ 구매확정 → 주문내역으로 상태가 변경됩니다.`
     if (!window.confirm(confirmMessage)) return
 
     try {
@@ -234,7 +234,7 @@ export default function AdminPurchaseConfirmedPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderIds: selectedOrders,
-          status: 'delivered'
+          status: 'verifying'
         })
       })
 
@@ -242,12 +242,12 @@ export default function AdminPurchaseConfirmedPage() {
         throw new Error('주문 상태 변경 실패')
       }
 
-      toast.success(`${selectedOrders.length}개 주문이 발송처리되었습니다`)
+      toast.success(`${selectedOrders.length}개 주문이 주문내역으로 이동되었습니다`)
       setSelectedOrders([])
       loadOrders()
     } catch (error) {
-      console.error('일괄 발송처리 실패:', error)
-      toast.error('일괄 발송처리에 실패했습니다')
+      console.error('주문내역 이동 실패:', error)
+      toast.error('주문내역 이동에 실패했습니다')
     }
   }
 
@@ -447,11 +447,11 @@ export default function AdminPurchaseConfirmedPage() {
                 일괄 취소 ({selectedOrders.length})
               </button>
               <button
-                onClick={handleBulkShip}
+                onClick={handleBulkMoveToVerifying}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
               >
-                <TruckIcon className="w-4 h-4" />
-                일괄 배송처리 ({selectedOrders.length})
+                <ArrowLeftIcon className="w-4 h-4" />
+                주문내역으로 이동 ({selectedOrders.length})
               </button>
             </>
           )}
