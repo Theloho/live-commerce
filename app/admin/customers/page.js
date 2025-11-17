@@ -37,6 +37,19 @@ export default function AdminCustomersPage() {
     filterCustomers()
   }, [customers, searchTerm, sortBy])
 
+  // 🔥 검색어 변경 시 DB 검색 (debounce 500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm) {
+        loadCustomers() // 검색어 있으면 DB 검색
+      } else if (customers.length === 0) {
+        loadCustomers() // 최초 로드
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   const loadCustomers = async () => {
     try {
       console.log('📋 고객 데이터 로딩 시작')
@@ -45,7 +58,15 @@ export default function AdminCustomersPage() {
       if (!adminUser?.email) return
 
       // Service Role API로 고객 데이터 조회
-      const response = await fetch(`/api/admin/customers?adminEmail=${encodeURIComponent(adminUser.email)}`)
+      let url = `/api/admin/customers?adminEmail=${encodeURIComponent(adminUser.email)}`
+
+      // 🔥 검색어가 있으면 API에 전달 (DB 직접 검색)
+      if (searchTerm) {
+        url += `&searchTerm=${encodeURIComponent(searchTerm)}`
+        console.log('🔍 [고객 관리] DB 직접 검색:', searchTerm)
+      }
+
+      const response = await fetch(url)
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -53,7 +74,7 @@ export default function AdminCustomersPage() {
       }
 
       const { customers: customersData } = await response.json()
-      console.log('✅ DB 고객 데이터:', customersData)
+      console.log('✅ DB 고객 데이터:', customersData?.length || 0, '명')
 
       setCustomers(customersData)
       setLoading(false)
@@ -67,14 +88,8 @@ export default function AdminCustomersPage() {
   const filterCustomers = () => {
     let filtered = [...customers]
 
-    // 검색어 필터
-    if (searchTerm) {
-      filtered = filtered.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.nickname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.phone.includes(searchTerm)
-      )
-    }
+    // 🔥 검색은 이미 API에서 처리됨 (DB 직접 검색)
+    // 프론트에서는 정렬만 수행
 
     // 정렬
     filtered.sort((a, b) => {

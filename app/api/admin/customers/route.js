@@ -5,8 +5,9 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const adminEmail = searchParams.get('adminEmail')
+    const searchTerm = searchParams.get('searchTerm')
 
-    console.log('🔍 [고객 관리 API] 요청:', { adminEmail })
+    console.log('🔍 [고객 관리 API] 요청:', { adminEmail, searchTerm })
 
     // 1. 관리자 인증 확인
     if (!adminEmail) {
@@ -27,11 +28,28 @@ export async function GET(request) {
 
     console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
-    // 2. Service Role로 전체 고객 조회 (profiles 테이블)
-    const { data: profiles, error: profilesError } = await supabaseAdmin
+    // 2. Service Role로 고객 조회 (profiles 테이블)
+    let query = supabaseAdmin
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })
+
+    // 🔥 검색어가 있으면 DB 직접 검색 (limit 우회!)
+    if (searchTerm) {
+      query = query.or(
+        `name.ilike.%${searchTerm}%,` +
+        `nickname.ilike.%${searchTerm}%,` +
+        `phone.ilike.%${searchTerm}%,` +
+        `email.ilike.%${searchTerm}%`
+      )
+      console.log('🔍 [고객 관리 API] DB 직접 검색:', searchTerm)
+    } else {
+      // 검색어 없으면 최신 1,000명만 (성능 최적화)
+      query = query.limit(1000)
+      console.log('🔍 [고객 관리 API] 전체 조회 (최신 1,000명)')
+    }
+
+    const { data: profiles, error: profilesError } = await query
 
     if (profilesError) {
       console.error('❌ 고객 조회 오류:', profilesError)
