@@ -191,15 +191,28 @@ export default function AdminSearchPage() {
 
       console.log('✅ [통합검색] 전체 주문 로드:', formattedOrders.length, '개')
 
+      // 🔍 디버깅: 처음 5개 주문의 주문번호와 닉네임 출력
+      console.log('🔍 [디버깅] 처음 5개 주문:', formattedOrders.slice(0, 5).map(o => ({
+        customer_order_number: o.customer_order_number,
+        userNickname: o.userNickname,
+        userName: o.userName,
+        created_at: o.created_at
+      })))
+
       // ⭐ 검색어 필터링
       const searchLower = searchTerm.toLowerCase()
+      console.log('🔍 [검색어]:', searchTerm, '→', searchLower)
+
       const filteredOrders = formattedOrders.filter(order => {
         const serverSearchMatched =
           order.customer_order_number?.toLowerCase().includes(searchLower) ||
           order.id?.toLowerCase().includes(searchLower) ||
           order.order_type?.toLowerCase().includes(searchLower)
 
-        if (serverSearchMatched) return true
+        if (serverSearchMatched) {
+          console.log('✅ [서버 매칭]:', order.customer_order_number, '|', order.id)
+          return true
+        }
 
         const clientSearchMatched =
           order.shipping?.name?.toLowerCase().includes(searchLower) ||
@@ -208,6 +221,10 @@ export default function AdminSearchPage() {
           order.payment?.depositor_name?.toLowerCase().includes(searchLower) ||
           order.items?.some(item => item.title?.toLowerCase().includes(searchLower)) ||
           order.shipping?.phone?.replace(/-/g, '').includes(searchLower.replace(/-/g, ''))
+
+        if (clientSearchMatched) {
+          console.log('✅ [클라이언트 매칭]:', order.customer_order_number, '|', order.userNickname)
+        }
 
         return clientSearchMatched
       })
