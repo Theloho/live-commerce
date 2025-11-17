@@ -131,14 +131,27 @@ export default function AdminPurchaseConfirmedPage() {
       console.log('🔍 [검색어 소문자]:', searchLower)
 
       filtered = filtered.filter(order => {
-        // ⭐ 그룹 주문의 경우: originalOrders 내 주문번호도 검색
+        // ⭐ 그룹 주문의 경우: originalOrders 내부 전체 검색
         if (order.isGroup && order.originalOrders) {
-          const groupOrderNumberMatch = order.originalOrders.some(o =>
+          const groupMatch = order.originalOrders.some(o =>
+            // 주문번호, ID
             o.customer_order_number?.toLowerCase().includes(searchLower) ||
-            o.id?.toLowerCase().includes(searchLower)
+            o.id?.toLowerCase().includes(searchLower) ||
+            o.order_type?.toLowerCase().includes(searchLower) ||
+            // 사용자 정보
+            o.userName?.toLowerCase().includes(searchLower) ||
+            o.userNickname?.toLowerCase().includes(searchLower) ||
+            o.shipping?.name?.toLowerCase().includes(searchLower) ||
+            // 결제 정보
+            o.payment?.depositor_name?.toLowerCase().includes(searchLower) ||
+            // 전화번호
+            o.shipping?.phone?.replace(/-/g, '').includes(searchLower.replace(/-/g, '')) ||
+            o.userPhone?.replace(/-/g, '').includes(searchLower.replace(/-/g, '')) ||
+            // 상품명
+            o.items?.some(item => item.title?.toLowerCase().includes(searchLower))
           )
-          if (groupOrderNumberMatch) {
-            console.log('✅ [그룹 내 주문번호 매칭]:', order.customer_order_number, '(그룹)')
+          if (groupMatch) {
+            console.log('✅ [그룹 내 매칭]:', order.customer_order_number, '(그룹)')
             return true
           }
         }
