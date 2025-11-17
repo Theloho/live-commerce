@@ -29,7 +29,8 @@ import {
   ShoppingCartIcon,
   DocumentDuplicateIcon,
   CheckCircleIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
 import { AdminAuthProvider, useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
@@ -75,6 +76,7 @@ function AdminLayoutContent({ children }) {
         { href: '/admin/purchase-confirmed', label: '[3] 구매확정', icon: CheckCircleIcon },
         { href: '/admin/outbound', label: '[4] 출고 정보', icon: CubeTransparentIcon },
         { href: '/admin/canceled', label: '[5] 취소 내역', icon: XCircleIcon },
+        { href: '/admin/external-orders', label: '외부업체 주문', icon: ArrowDownTrayIcon },
         { href: '/admin/sales-summary', label: '품목별 판매', icon: ChartBarIcon },
         { href: '/admin/deposits', label: '입금확인', icon: BanknotesIcon },
         { href: '/admin/fulfillment', label: '배송팀 취합', icon: ClipboardDocumentCheckIcon },
