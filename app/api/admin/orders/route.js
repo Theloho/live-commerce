@@ -148,6 +148,31 @@ export async function GET(request) {
       }
 
       console.log('🎯 [하이브리드 검색] DB 직접 검색 (정확 일치):', searchTerm, '(주문번호/UUID)')
+    } else if (searchTerm && !isOrderNumberPattern && !isUUIDPattern) {
+      // 🔥 NEW: 닉네임/이름/입금자명 DB 직접 검색 (limit 우회!)
+      // ⚠️ PostgREST의 중첩 관계 검색은 JOIN된 테이블 필드를 직접 검색할 수 없음
+      // → 대신 order_type에 닉네임이 포함되어 있으므로 order_type 검색으로 처리
+      // → order_shipping.name은 배송지 이름이므로 입금자명과 다를 수 있음
+
+      // 검색 전략:
+      // 1. order_type에서 검색 (direct:KAKAO:{nickname} 형식)
+      // 2. order_payments.depositor_name에서 검색 (중첩 관계)
+      // 3. order_shipping.name에서 검색 (배송지 이름)
+
+      query = query.or(
+        `customer_order_number.ilike.%${searchTerm}%,` +
+        `order_type.ilike.%${searchTerm}%,` +
+        `order_payments.depositor_name.ilike.%${searchTerm}%,` +
+        `order_shipping.name.ilike.%${searchTerm}%`
+      )
+
+      // 상태 필터도 적용
+      if (statusFilter) {
+        const statuses = statusFilter.split(',').map(s => s.trim())
+        query = query.in('status', statuses)
+      }
+
+      console.log('🔍 [하이브리드 검색] DB 직접 검색 (닉네임/이름/입금자명/배송지):', searchTerm)
     } else if (paymentGroupId) {
       // ✅ 일괄결제 그룹 조회
       query = query.eq('payment_group_id', paymentGroupId)
