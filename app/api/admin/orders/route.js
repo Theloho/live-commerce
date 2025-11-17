@@ -26,12 +26,12 @@ export async function GET(request) {
     // ✅ 날짜 범위별 LIMIT 설정 (화면 1000건 기준 최적화)
     // 취소내역은 기존 리밋 유지, 나머지는 최적화
     const LIMIT_BY_RANGE_OPTIMIZED = {
-      today: 3000,       // 2배 증가 - 화면에 약 2400-2600건 표시
-      yesterday: 3000,   // 2배 증가
-      week: 6000,        // 2배 증가 - 화면에 약 5000건 표시
-      month: 14000,      // 2배 증가 - 화면에 약 12000건 표시
-      custom: 30000,     // 2배 증가 - 화면에 약 24000건 표시
-      all: 300000        // 전체 기간 대량 조회용
+      today: 50000,      // 대량 조회 지원
+      yesterday: 50000,  // 대량 조회 지원
+      week: 100000,      // 대량 조회 지원
+      month: 200000,     // 대량 조회 지원
+      custom: 500000,    // 대량 조회 지원
+      all: 1000000       // 전체 기간 최대 100만건
     }
 
     const LIMIT_BY_RANGE_LEGACY = {
