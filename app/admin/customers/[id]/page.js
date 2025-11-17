@@ -49,17 +49,17 @@ export default function AdminCustomerDetailPage() {
         return
       }
 
-      // ⭐ Service Role API로 고객 정보 조회 (RLS 우회)
+      // ⭐ Service Role API로 개별 고객 조회 (RLS 우회, limit 없음!)
       const response = await fetch(
-        `/api/admin/customers?adminEmail=${encodeURIComponent(adminUser.email)}`
+        `/api/admin/customers/${params.id}?adminEmail=${encodeURIComponent(adminUser.email)}`
       )
 
       if (!response.ok) {
-        throw new Error('고객 데이터 조회 실패')
+        const errorData = await response.json()
+        throw new Error(errorData.error || '고객 데이터 조회 실패')
       }
 
-      const { customers } = await response.json()
-      const profile = customers.find(c => c.id === params.id)
+      const { customer: profile } = await response.json()
 
       if (!profile) {
         console.error('고객을 찾을 수 없습니다:', params.id)

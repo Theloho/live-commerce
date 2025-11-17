@@ -44,9 +44,9 @@ export async function GET(request) {
       )
       console.log('🔍 [고객 관리 API] DB 직접 검색:', searchTerm)
     } else {
-      // 검색어 없으면 최신 2,000명만 (성능 최적화)
-      query = query.limit(2000)
-      console.log('🔍 [고객 관리 API] 전체 조회 (최신 2,000명)')
+      // 검색어 없으면 최신 3,000명만 (성능 최적화)
+      query = query.limit(3000)
+      console.log('🔍 [고객 관리 API] 전체 조회 (최신 3,000명)')
     }
 
     const { data: profiles, error: profilesError } = await query
