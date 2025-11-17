@@ -31,7 +31,7 @@ export async function GET(request) {
       week: 6000,        // 2배 증가 - 화면에 약 5000건 표시
       month: 14000,      // 2배 증가 - 화면에 약 12000건 표시
       custom: 30000,     // 2배 증가 - 화면에 약 24000건 표시
-      all: 3000          // 2배 증가 - 화면에 약 2400-2600건 표시
+      all: 300000        // 전체 기간 대량 조회용
     }
 
     const LIMIT_BY_RANGE_LEGACY = {
