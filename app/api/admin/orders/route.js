@@ -137,7 +137,8 @@ export async function GET(request) {
       if (isUUIDPattern) {
         query = query.eq('id', searchTerm)
       } else {
-        query = query.ilike('customer_order_number', `%${searchTerm}%`)
+        // 정확히 일치하는 주문번호만 검색 (부분 일치 X)
+        query = query.eq('customer_order_number', searchTerm)
       }
 
       // 상태 필터도 적용
@@ -146,7 +147,7 @@ export async function GET(request) {
         query = query.in('status', statuses)
       }
 
-      console.log('🎯 [하이브리드 검색] DB 직접 검색:', searchTerm, '(주문번호/UUID)')
+      console.log('🎯 [하이브리드 검색] DB 직접 검색 (정확 일치):', searchTerm, '(주문번호/UUID)')
     } else if (paymentGroupId) {
       // ✅ 일괄결제 그룹 조회
       query = query.eq('payment_group_id', paymentGroupId)
