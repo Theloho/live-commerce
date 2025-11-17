@@ -131,6 +131,18 @@ export default function AdminPurchaseConfirmedPage() {
       console.log('🔍 [검색어 소문자]:', searchLower)
 
       filtered = filtered.filter(order => {
+        // ⭐ 그룹 주문의 경우: originalOrders 내 주문번호도 검색
+        if (order.isGroup && order.originalOrders) {
+          const groupOrderNumberMatch = order.originalOrders.some(o =>
+            o.customer_order_number?.toLowerCase().includes(searchLower) ||
+            o.id?.toLowerCase().includes(searchLower)
+          )
+          if (groupOrderNumberMatch) {
+            console.log('✅ [그룹 내 주문번호 매칭]:', order.customer_order_number, '(그룹)')
+            return true
+          }
+        }
+
         // 서버 검색 결과를 그대로 포함 (주문번호, ID, 카카오ID)
         const serverSearchMatched =
           order.customer_order_number?.toLowerCase().includes(searchLower) ||
@@ -372,24 +384,55 @@ export default function AdminPurchaseConfirmedPage() {
 
       console.log('✅ API에서 가져온 구매확정 주문:', allOrders.length, '개')
 
-      // 🔍 디버깅: 특정 주문번호 확인
-      const debugOrder = allOrders.find(o => o.customer_order_number === 'S251113-2217')
-      if (debugOrder) {
-        console.log('🎯 [S251113-2217 발견!]:', {
-          id: debugOrder.id,
-          status: debugOrder.status,
-          created_at: debugOrder.created_at,
-          userName: debugOrder.userName,
-          totalPrice: debugOrder.totalPrice
+      // 🔍 디버깅: 특정 주문번호 확인 (그룹핑 전)
+      const debugOrderBefore = allOrders.find(o => o.customer_order_number === 'S251113-2217')
+      if (debugOrderBefore) {
+        console.log('🎯 [그룹핑 전] S251113-2217 발견!:', {
+          id: debugOrderBefore.id,
+          status: debugOrderBefore.status,
+          payment_group_id: debugOrderBefore.payment_group_id,
+          created_at: debugOrderBefore.created_at,
+          userName: debugOrderBefore.userName,
+          totalPrice: debugOrderBefore.totalPrice
         })
       } else {
-        console.warn('⚠️ [S251113-2217 없음!] 전체:', allOrders.length, '개 중')
+        console.warn('⚠️ [그룹핑 전] S251113-2217 없음! 전체:', allOrders.length, '개 중')
         console.log('🔍 처음 5개 주문번호:', allOrders.slice(0, 5).map(o => o.customer_order_number))
       }
 
       // ⭐ 그룹핑 적용
       const groupedOrders = groupOrdersByPaymentGroupId(allOrders)
       console.log('✅ 그룹핑 완료:', { original: allOrders.length, grouped: groupedOrders.length })
+
+      // 🔍 디버깅: 특정 주문번호 확인 (그룹핑 후)
+      const debugOrderAfter = groupedOrders.find(o => {
+        // 그룹 주문이면 originalOrders에서 찾기
+        if (o.isGroup && o.originalOrders) {
+          return o.originalOrders.some(order => order.customer_order_number === 'S251113-2217')
+        }
+        // 개별 주문이면 바로 비교
+        return o.customer_order_number === 'S251113-2217'
+      })
+
+      if (debugOrderAfter) {
+        if (debugOrderAfter.isGroup) {
+          const originalOrder = debugOrderAfter.originalOrders.find(o => o.customer_order_number === 'S251113-2217')
+          console.log('🎯 [그룹핑 후] S251113-2217 그룹에 포함됨!:', {
+            대표주문번호: debugOrderAfter.customer_order_number,
+            그룹ID: debugOrderAfter.payment_group_id,
+            그룹개수: debugOrderAfter.groupOrderCount,
+            원본주문위치: debugOrderAfter.originalOrders.indexOf(originalOrder),
+            검색가능여부: debugOrderAfter.customer_order_number === 'S251113-2217' ? 'YES' : 'NO - 대표주문번호로 검색해야함'
+          })
+        } else {
+          console.log('🎯 [그룹핑 후] S251113-2217 개별 주문으로 존재:', {
+            id: debugOrderAfter.id,
+            customer_order_number: debugOrderAfter.customer_order_number
+          })
+        }
+      } else {
+        console.error('❌ [그룹핑 후] S251113-2217 완전히 사라짐!')
+      }
 
       setOrders(groupedOrders)
       setSelectedOrders([]) // 체크박스 초기화
