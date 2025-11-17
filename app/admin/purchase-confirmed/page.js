@@ -123,9 +123,12 @@ export default function AdminPurchaseConfirmedPage() {
   const filterOrders = () => {
     let filtered = [...orders]
 
+    console.log('🔍 [구매확정 검색] 시작:', { orders: orders.length, searchTerm })
+
     // ⚡ 검색어 필터
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
+      console.log('🔍 [검색어 소문자]:', searchLower)
 
       filtered = filtered.filter(order => {
         // 서버 검색 결과를 그대로 포함 (주문번호, ID, 카카오ID)
@@ -134,7 +137,10 @@ export default function AdminPurchaseConfirmedPage() {
           order.id?.toLowerCase().includes(searchLower) ||
           order.order_type?.toLowerCase().includes(searchLower)
 
-        if (serverSearchMatched) return true
+        if (serverSearchMatched) {
+          console.log('✅ [서버 매칭]:', order.customer_order_number)
+          return true
+        }
 
         // 프론트 추가 검색 (고객명, 입금자명, 상품명, 전화번호)
         const clientSearchMatched =
@@ -145,8 +151,14 @@ export default function AdminPurchaseConfirmedPage() {
           order.items?.some(item => item.title?.toLowerCase().includes(searchLower)) ||
           order.shipping?.phone?.replace(/-/g, '').includes(searchLower.replace(/-/g, ''))
 
+        if (clientSearchMatched) {
+          console.log('✅ [클라이언트 매칭]:', order.customer_order_number)
+        }
+
         return clientSearchMatched
       })
+
+      console.log('✅ [검색 결과]:', filtered.length, '개')
     }
 
     // ⭐ 정렬 로직
@@ -287,16 +299,25 @@ export default function AdminPurchaseConfirmedPage() {
         return
       }
 
-      // ⚡ Service Role API 호출 (날짜 필터 + 장바구니 상태만)
+      // ⚡ Service Role API 호출 (날짜 필터 + 구매확정 상태만)
       let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&status=paid`
       if (dateRange === 'custom') {
         if (customStartDate) url += `&startDate=${customStartDate}`
         if (customEndDate) url += `&endDate=${customEndDate}`
       }
 
+      // 🚀 캐시 무효화: 매번 실시간 조회
+      url += `&_t=${Date.now()}`
+
       console.log('✅ 구매확정 주문 전체 로드:', { dateRange })
 
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      })
 
       if (!response.ok) {
         const error = await response.json()
@@ -350,6 +371,21 @@ export default function AdminPurchaseConfirmedPage() {
       })
 
       console.log('✅ API에서 가져온 구매확정 주문:', allOrders.length, '개')
+
+      // 🔍 디버깅: 특정 주문번호 확인
+      const debugOrder = allOrders.find(o => o.customer_order_number === 'S251113-2217')
+      if (debugOrder) {
+        console.log('🎯 [S251113-2217 발견!]:', {
+          id: debugOrder.id,
+          status: debugOrder.status,
+          created_at: debugOrder.created_at,
+          userName: debugOrder.userName,
+          totalPrice: debugOrder.totalPrice
+        })
+      } else {
+        console.warn('⚠️ [S251113-2217 없음!] 전체:', allOrders.length, '개 중')
+        console.log('🔍 처음 5개 주문번호:', allOrders.slice(0, 5).map(o => o.customer_order_number))
+      }
 
       // ⭐ 그룹핑 적용
       const groupedOrders = groupOrdersByPaymentGroupId(allOrders)
