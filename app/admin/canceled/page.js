@@ -50,7 +50,7 @@ const groupOrderItems = (items) => {
 }
 
 /**
- * ⭐ 그룹핑 함수: payment_group_id로 주문 그룹핑
+ * ⭐ 그룹핑 함수: payment_group_id + user_id로 주문 그룹핑
  * @param {Array} orders - 원본 주문 배열
  * @returns {Array} - 그룹핑된 주문 배열 (isGroup, originalOrders 포함)
  */
@@ -58,13 +58,18 @@ const groupOrdersByPaymentGroupId = (orders) => {
   const groups = {}
   const result = []
 
-  // 1. payment_group_id로 그룹 분류
+  // 1. payment_group_id + user_id로 그룹 분류
+  // 🔥 버그 수정 (2025-11-17): 다른 고객이 같은 GROUP-ID를 가지는 경우 방지
   orders.forEach(order => {
     if (order.payment_group_id) {
-      if (!groups[order.payment_group_id]) {
-        groups[order.payment_group_id] = []
+      // ⭐ user_id 또는 order_type을 그룹 키에 포함
+      const userKey = order.userId || order.order_type || 'unknown'
+      const groupKey = `${order.payment_group_id}_${userKey}`
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = []
       }
-      groups[order.payment_group_id].push(order)
+      groups[groupKey].push(order)
     } else {
       // 일괄결제 아닌 개별 주문
       result.push(order)
