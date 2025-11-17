@@ -481,10 +481,9 @@ export default function AdminSearchPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: index * 0.05 }}
-                        className="p-4 hover:bg-gray-50 cursor-pointer"
-                        onClick={() => router.push(`/admin/orders/${order.id}`)}
+                        className="p-4 hover:bg-gray-50"
                       >
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between gap-4">
                           {/* 왼쪽: 주문 정보 */}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
@@ -533,30 +532,43 @@ export default function AdminSearchPage() {
                             </div>
                           </div>
 
-                          {/* 오른쪽: 금액 정보 */}
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-gray-900">
-                              ₩{order.totalPrice.toLocaleString()}
-                            </div>
-                            {order.discount_amount > 0 && (
-                              <div className="text-xs text-blue-600">
-                                (쿠폰 -₩{order.discount_amount.toLocaleString()})
+                          {/* 오른쪽: 금액 정보 + 상세보기 버튼 */}
+                          <div className="text-right flex flex-col items-end gap-2">
+                            <div>
+                              <div className="text-lg font-bold text-gray-900">
+                                ₩{order.totalPrice.toLocaleString()}
                               </div>
-                            )}
-                            <div className="flex items-center justify-end gap-1 mt-1">
-                              {(() => {
-                                const paymentInfo = getPaymentMethodDisplay(order.payment?.method)
-                                const Icon = paymentInfo.icon
-                                return (
-                                  <>
-                                    <Icon className={`w-3 h-3 ${paymentInfo.color}`} />
-                                    <span className={`text-xs font-medium ${paymentInfo.color}`}>
-                                      {paymentInfo.text}
-                                    </span>
-                                  </>
-                                )
-                              })()}
+                              {order.discount_amount > 0 && (
+                                <div className="text-xs text-blue-600">
+                                  (쿠폰 -₩{order.discount_amount.toLocaleString()})
+                                </div>
+                              )}
+                              <div className="flex items-center justify-end gap-1 mt-1">
+                                {(() => {
+                                  const paymentInfo = getPaymentMethodDisplay(order.payment?.method)
+                                  const Icon = paymentInfo.icon
+                                  return (
+                                    <>
+                                      <Icon className={`w-3 h-3 ${paymentInfo.color}`} />
+                                      <span className={`text-xs font-medium ${paymentInfo.color}`}>
+                                        {paymentInfo.text}
+                                      </span>
+                                    </>
+                                  )
+                                })()}
+                              </div>
                             </div>
+
+                            {/* 상세보기 버튼 */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/admin/orders/${order.id}`)
+                              }}
+                              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                            >
+                              상세보기
+                            </button>
                           </div>
                         </div>
                       </motion.div>
