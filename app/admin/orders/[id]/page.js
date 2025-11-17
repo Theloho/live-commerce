@@ -90,8 +90,13 @@ export default function AdminOrderDetailPage() {
           if (groupResponse.ok) {
             const groupData = await groupResponse.json()
             if (groupData.success && groupData.orders) {
-              groupOrders = groupData.orders
-              console.log('✅ [관리자 주문 상세] 그룹 주문 조회 완료:', groupOrders.length + '건')
+              // 🔥 버그 수정: 같은 고객의 주문만 필터링 (다른 고객 제외)
+              const currentUserKey = foundOrder.user_id || foundOrder.order_type || 'unknown'
+              groupOrders = groupData.orders.filter(o => {
+                const orderUserKey = o.user_id || o.order_type || 'unknown'
+                return orderUserKey === currentUserKey
+              })
+              console.log('✅ [관리자 주문 상세] 그룹 주문 조회 완료:', groupOrders.length + '건 (같은 고객만)')
             }
           }
         }
@@ -178,8 +183,15 @@ export default function AdminOrderDetailPage() {
           throw new Error('그룹 주문 조회 실패')
         }
 
-        const { orders: groupOrders } = await response.json()
-        console.log(`✅ [관리자 상세] 그룹 주문 ${groupOrders.length}건 조회 완료`)
+        const { orders: allGroupOrders } = await response.json()
+
+        // 🔥 버그 수정: 같은 고객의 주문만 필터링 (다른 고객 제외)
+        const currentUserKey = order.user_id || order.order_type || 'unknown'
+        const groupOrders = allGroupOrders.filter(o => {
+          const orderUserKey = o.user_id || o.order_type || 'unknown'
+          return orderUserKey === currentUserKey
+        })
+        console.log(`✅ [관리자 상세] 그룹 주문 ${groupOrders.length}건 조회 완료 (같은 고객만)`)
 
         // 2. 그룹 내 모든 주문 상태 변경
         await Promise.all(
