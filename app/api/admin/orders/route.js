@@ -23,24 +23,24 @@ export async function GET(request) {
     const paymentGroupId = searchParams.get('paymentGroupId') // ✅ 일괄결제 그룹 조회용
     const searchTerm = searchParams.get('search') // ✅ 검색어
 
-    // ✅ 날짜 범위별 LIMIT 설정 (화면 1000건 기준 최적화)
-    // 취소내역은 기존 리밋 유지, 나머지는 최적화
+    // ✅ 날짜 범위별 LIMIT 설정 (대량 데이터 조회 지원)
+    // 모든 탭에서 오래된 데이터까지 검색 가능하도록 대폭 증가
     const LIMIT_BY_RANGE_OPTIMIZED = {
-      today: 50000,      // 대량 조회 지원
-      yesterday: 50000,  // 대량 조회 지원
-      week: 100000,      // 대량 조회 지원
-      month: 200000,     // 대량 조회 지원
-      custom: 500000,    // 대량 조회 지원
-      all: 1000000       // 전체 기간 최대 100만건
+      today: 200000,     // 20만건 - 하루 대량 주문 대응
+      yesterday: 200000, // 20만건
+      week: 500000,      // 50만건 - 1주일치
+      month: 1000000,    // 100만건 - 1개월치
+      custom: 2000000,   // 200만건 - 사용자 지정
+      all: 2000000       // 200만건 - 전체 기간
     }
 
     const LIMIT_BY_RANGE_LEGACY = {
-      today: 30000,      // 취소내역용 (50% 증가)
-      yesterday: 30000,  // 50% 증가
-      week: 60000,       // 50% 증가
-      month: 150000,     // 50% 증가
-      custom: 300000,    // 50% 증가
-      all: 30000         // 50% 증가
+      today: 200000,     // 취소내역 - 20만건
+      yesterday: 200000, // 20만건
+      week: 500000,      // 50만건
+      month: 1000000,    // 100만건
+      custom: 2000000,   // 200만건
+      all: 2000000       // 200만건 - ⭐ 기존 30000에서 대폭 증가
     }
 
     // ⭐ 취소내역(cancelled)은 기존 리밋, 나머지는 최적화 리밋
