@@ -368,9 +368,18 @@ export default function AdminCanceledPage() {
         if (customEndDate) url += `&endDate=${customEndDate}`
       }
 
+      // 🚀 캐시 무효화: 매번 실시간 조회
+      url += `&_t=${Date.now()}`
+
       console.log('❌ 취소된 주문 전체 로드:', { dateRange })
 
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      })
 
       if (!response.ok) {
         const error = await response.json()

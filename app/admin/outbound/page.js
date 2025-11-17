@@ -253,16 +253,25 @@ export default function AdminOutboundPage() {
         return
       }
 
-      // ⚡ Service Role API 호출 (날짜 필터 + 장바구니 상태만)
+      // ⚡ Service Role API 호출 (날짜 필터 + 출고완료 상태만)
       let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&status=delivered`
       if (dateRange === 'custom') {
         if (customStartDate) url += `&startDate=${customStartDate}`
         if (customEndDate) url += `&endDate=${customEndDate}`
       }
 
+      // 🚀 캐시 무효화: 매번 실시간 조회
+      url += `&_t=${Date.now()}`
+
       console.log('📦 출고완료 주문 전체 로드:', { dateRange })
 
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      })
 
       if (!response.ok) {
         const error = await response.json()
