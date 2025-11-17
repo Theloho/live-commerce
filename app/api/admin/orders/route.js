@@ -23,24 +23,24 @@ export async function GET(request) {
     const paymentGroupId = searchParams.get('paymentGroupId') // ✅ 일괄결제 그룹 조회용
     const searchTerm = searchParams.get('search') // ✅ 검색어
 
-    // ✅ 날짜 범위별 LIMIT 설정 (대량 데이터 조회 지원)
-    // 모든 탭에서 오래된 데이터까지 검색 가능하도록 대폭 증가
+    // ✅ 날짜 범위별 LIMIT 설정 (타임아웃 방지 + 충분한 데이터)
+    // Vercel Function 60초 제한 고려
     const LIMIT_BY_RANGE_OPTIMIZED = {
-      today: 200000,     // 20만건 - 하루 대량 주문 대응
-      yesterday: 200000, // 20만건
-      week: 500000,      // 50만건 - 1주일치
-      month: 1000000,    // 100만건 - 1개월치
-      custom: 2000000,   // 200만건 - 사용자 지정
-      all: 2000000       // 200만건 - 전체 기간
+      today: 50000,      // 5만건 - 하루치 충분
+      yesterday: 50000,  // 5만건
+      week: 100000,      // 10만건 - 1주일치
+      month: 200000,     // 20만건 - 1개월치
+      custom: 300000,    // 30만건 - 사용자 지정
+      all: 100000        // 10만건 - 전체 (최신 10만건만)
     }
 
     const LIMIT_BY_RANGE_LEGACY = {
-      today: 200000,     // 취소내역 - 20만건
-      yesterday: 200000, // 20만건
-      week: 500000,      // 50만건
-      month: 1000000,    // 100만건
-      custom: 2000000,   // 200만건
-      all: 2000000       // 200만건 - ⭐ 기존 30000에서 대폭 증가
+      today: 50000,      // 취소내역 - 5만건
+      yesterday: 50000,  // 5만건
+      week: 100000,      // 10만건
+      month: 200000,     // 20만건
+      custom: 300000,    // 30만건
+      all: 100000        // 10만건 - 전체 (최신 10만건만)
     }
 
     // ⭐ 취소내역(cancelled)은 기존 리밋, 나머지는 최적화 리밋

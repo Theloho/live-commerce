@@ -123,6 +123,14 @@ export default function AdminSearchPage() {
       return
     }
 
+    // ⚠️ "전체" 기간 선택 시 경고
+    if (dateRange === 'all') {
+      toast('⚠️ "전체" 기간은 최신 10만건만 조회됩니다.\n오래된 주문은 "1개월" 또는 "기간 선택"을 이용하세요.', {
+        duration: 4000,
+        icon: '⚠️'
+      })
+    }
+
     try {
       setLoading(true)
 
