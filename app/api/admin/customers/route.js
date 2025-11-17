@@ -28,7 +28,18 @@ export async function GET(request) {
 
     console.log('✅ 관리자 권한 확인 완료:', adminEmail)
 
-    // 2. Service Role로 고객 조회 (profiles 테이블)
+    // 2. 전체 고객 수 조회 (count only)
+    const { count: totalCount, error: countError } = await supabaseAdmin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+
+    if (countError) {
+      console.error('❌ 고객 카운트 오류:', countError)
+    }
+
+    console.log(`📊 [고객 관리 API] 전체 고객 수: ${totalCount || 0}명`)
+
+    // 3. Service Role로 고객 조회 (profiles 테이블)
     let query = supabaseAdmin
       .from('profiles')
       .select('*')
@@ -98,7 +109,8 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      customers: customersWithStats
+      customers: customersWithStats,
+      totalCount: totalCount || 0 // 🔥 전체 고객 수 추가
     })
 
   } catch (error) {

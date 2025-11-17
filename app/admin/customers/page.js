@@ -26,6 +26,7 @@ export default function AdminCustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('recent')
   const [loading, setLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0) // 🔥 전체 고객 수
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -73,10 +74,11 @@ export default function AdminCustomersPage() {
         throw new Error(errorData.error || '고객 데이터 조회 실패')
       }
 
-      const { customers: customersData } = await response.json()
-      console.log('✅ DB 고객 데이터:', customersData?.length || 0, '명')
+      const { customers: customersData, totalCount: total } = await response.json()
+      console.log('✅ DB 고객 데이터:', customersData?.length || 0, '명 / 전체:', total || 0, '명')
 
       setCustomers(customersData)
+      setTotalCount(total || 0) // 🔥 전체 고객 수 저장
       setLoading(false)
     } catch (error) {
       console.error('고객 데이터 로딩 오류:', error)
@@ -173,7 +175,12 @@ export default function AdminCustomersPage() {
               <UserIcon className="w-4 h-4 text-blue-500" />
               <span className="text-xs text-gray-600">전체 고객</span>
             </div>
-            <p className="text-lg font-bold text-gray-900">{customers.length}</p>
+            <p className="text-lg font-bold text-gray-900">{totalCount.toLocaleString()}</p>
+            {searchTerm && customers.length < totalCount && (
+              <p className="text-xs text-gray-500 mt-1">
+                (검색결과: {customers.length}명)
+              </p>
+            )}
           </div>
 
           <div className="p-3 text-center">
