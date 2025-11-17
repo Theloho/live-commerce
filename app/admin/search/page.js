@@ -134,9 +134,18 @@ export default function AdminSearchPage() {
         if (customEndDate) url += `&endDate=${customEndDate}`
       }
 
+      // 🚀 캐시 무효화: 매번 실시간 조회
+      url += `&_t=${Date.now()}`
+
       console.log('🔍 [통합검색] 검색 시작:', { searchTerm, dateRange })
 
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        cache: 'no-store', // 캐시 완전 비활성화
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      })
 
       if (!response.ok) {
         const error = await response.json()
