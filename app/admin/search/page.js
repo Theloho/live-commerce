@@ -134,30 +134,18 @@ export default function AdminSearchPage() {
     try {
       setLoading(true)
 
-      // ⭐ 하이브리드 검색: 주문번호 패턴 감지
-      const isOrderNumber = /^S\d{6}-\d{4}$/i.test(searchTerm)
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm)
+      // ⭐ 모든 상태 검색 (status 파라미터 없이)
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}`
 
-      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}`
-
-      if (isOrderNumber || isUUID) {
-        // DB 직접 검색 (리밋 무관)
-        url += `&search=${encodeURIComponent(searchTerm)}`
-        console.log('🎯 [통합검색] DB 직접 검색:', searchTerm)
-      } else {
-        // 전체 로드 후 프론트 필터 (닉네임/상품명)
-        url += `&dateRange=${dateRange}`
-        if (dateRange === 'custom') {
-          if (customStartDate) url += `&startDate=${customStartDate}`
-          if (customEndDate) url += `&endDate=${customEndDate}`
-        }
-        console.log('📦 [통합검색] 전체 로드:', searchTerm)
+      if (dateRange === 'custom') {
+        if (customStartDate) url += `&startDate=${customStartDate}`
+        if (customEndDate) url += `&endDate=${customEndDate}`
       }
 
       // 🚀 캐시 무효화: 매번 실시간 조회
       url += `&_t=${Date.now()}`
 
-      console.log('🔍 [통합검색] 검색 시작:', { searchTerm, dateRange, isOrderNumber, isUUID })
+      console.log('🔍 [통합검색] 검색 시작:', { searchTerm, dateRange })
 
       const response = await fetch(url, {
         cache: 'no-store', // 캐시 완전 비활성화

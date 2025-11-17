@@ -117,14 +117,11 @@ export async function GET(request) {
         order_payments${useInnerJoin ? '!inner' : ''} (*)
       `, { count: 'exact' })
 
-    // ⭐ 검색 모드 판별
-    const isOrderNumberPattern = searchTerm && /^S\d{6}-\d{4}$/i.test(searchTerm)
-    const isUUIDPattern = searchTerm && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm)
-    const isDirectSearch = orderId || isOrderNumberPattern || isUUIDPattern || paymentGroupId
-
     // ✅ 단일 주문 조회 (orderId가 있으면 다른 필터 무시)
     if (orderId) {
+      // UUID 형식이면 id로 조회, 아니면 customer_order_number로 조회
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)
+
       if (isUUID) {
         query = query.eq('id', orderId)
         console.log('🔍 단일 주문 조회 (UUID):', orderId)
@@ -132,29 +129,11 @@ export async function GET(request) {
         query = query.eq('customer_order_number', orderId)
         console.log('🔍 단일 주문 조회 (주문번호):', orderId)
       }
-    } else if (isOrderNumberPattern || isUUIDPattern) {
-      // ⭐ 하이브리드 검색: 주문번호 패턴이면 DB 직접 검색
-      if (isUUIDPattern) {
-        query = query.eq('id', searchTerm)
-      } else {
-        query = query.ilike('customer_order_number', `%${searchTerm}%`)
-      }
-
-      // 상태 필터도 적용
-      if (statusFilter) {
-        const statuses = statusFilter.split(',').map(s => s.trim())
-        query = query.in('status', statuses)
-      }
-
-      console.log('🎯 [하이브리드 검색] DB 직접 검색:', searchTerm, '(주문번호/UUID)')
     } else if (paymentGroupId) {
-      // ✅ 일괄결제 그룹 조회
+      // ✅ 일괄결제 그룹 조회 (paymentGroupId로 조회)
       query = query.eq('payment_group_id', paymentGroupId)
       console.log('🔍 일괄결제 그룹 조회:', paymentGroupId)
-    }
-
-    // ✅ 날짜/상태 필터 (직접 검색이 아닌 경우만)
-    if (!isDirectSearch) {
+    } else {
       // ✅ 날짜 필터 적용 ⭐ NEW
       if (dateRange && dateRange !== 'all') {
         const now = new Date()
