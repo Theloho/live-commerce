@@ -32,6 +32,7 @@ export default function AdminCustomerDetailPage() {
   const [loading, setLoading] = useState(true)
   const [isEditingKakao, setIsEditingKakao] = useState(false)
   const [kakaoLink, setKakaoLink] = useState('')
+  const [showImageModal, setShowImageModal] = useState(false)
 
   useEffect(() => {
     if (!authLoading && adminUser?.email) {
@@ -263,7 +264,10 @@ export default function AdminCustomerDetailPage() {
             >
               {/* 프로필 헤더 */}
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                <div
+                  className={`w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden ${customer.avatarUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                  onClick={() => customer.avatarUrl && setShowImageModal(true)}
+                >
                   {customer.avatarUrl ? (
                     <img
                       src={customer.avatarUrl}
@@ -565,6 +569,43 @@ export default function AdminCustomerDetailPage() {
             </motion.div>
           </div>
         </div>
+
+        {/* 이미지 확대 모달 */}
+        {showImageModal && customer.avatarUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+            onClick={() => setShowImageModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="relative max-w-4xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 닫기 버튼 */}
+              <button
+                onClick={() => setShowImageModal(false)}
+                className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+              >
+                <XMarkIcon className="w-8 h-8" />
+              </button>
+
+              {/* 이미지 */}
+              <img
+                src={customer.avatarUrl}
+                alt={customer.name}
+                className="w-full h-auto rounded-lg shadow-2xl"
+              />
+
+              {/* 고객 정보 */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6 rounded-b-lg">
+                <p className="text-white text-lg font-semibold">{customer.name}</p>
+                <p className="text-gray-300 text-sm">@{customer.nickname}</p>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     </div>
   )
