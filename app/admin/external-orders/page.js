@@ -74,6 +74,7 @@ export default function ExternalOrdersPage() {
         payment: order.order_payments?.[0] || {},
         items: order.order_items?.map(item => ({
           product_number: item.products?.product_number || '',
+          supplier_product_code: item.products?.supplier_product_code || '',
           title: item.title || item.products?.title || '상품명 없음',
           quantity: item.quantity || 1,
           price: item.price || item.unit_price || 0,
@@ -139,7 +140,7 @@ export default function ExternalOrdersPage() {
 
     // CSV 생성
     let csv = '\uFEFF' // UTF-8 BOM
-    csv += '주문번호,주문일자,고객명,전화번호,우편번호,주소,상세주소,제품번호,제품명,옵션,수량,단가,금액,배송메모\n'
+    csv += '주문번호,주문일자,고객명,전화번호,우편번호,주소,상세주소,제품번호,업체제품코드,제품명,옵션,수량,단가,금액,배송메모\n'
 
     selectedData.forEach(order => {
       order.items.forEach(item => {
@@ -152,6 +153,7 @@ export default function ExternalOrdersPage() {
           order.shipping?.address || '',
           order.shipping?.detail_address || '',
           item.product_number,
+          item.supplier_product_code,
           item.title,
           item.options,
           item.quantity,
@@ -433,6 +435,11 @@ export default function ExternalOrdersPage() {
                         {order.items.map((item, idx) => (
                           <div key={idx} className="flex items-center gap-2 text-xs bg-gray-50 p-2 rounded">
                             <span className="font-medium text-blue-600">{item.product_number}</span>
+                            {item.supplier_product_code && (
+                              <span className="font-mono text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded">
+                                {item.supplier_product_code}
+                              </span>
+                            )}
                             <span>{item.title}</span>
                             {item.options && <span className="text-gray-500">({item.options})</span>}
                             <span className="text-gray-500">x {item.quantity}</span>
