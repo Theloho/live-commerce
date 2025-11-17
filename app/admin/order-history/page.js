@@ -304,17 +304,29 @@ export default function AdminOrderHistoryPage() {
         return
       }
 
+      // ⭐ 하이브리드 검색: 주문번호/UUID는 DB 직접 검색, 나머지는 전체 로드 후 프론트 필터링
+      const isOrderNumber = searchTerm && /^S\d{6}-\d{4}$/i.test(searchTerm)
+      const isUUID = searchTerm && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm)
+
       // ⚡ Service Role API 호출 (날짜 필터 + 주문내역 상태만)
-      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&status=verifying`
-      if (dateRange === 'custom') {
-        if (customStartDate) url += `&startDate=${customStartDate}`
-        if (customEndDate) url += `&endDate=${customEndDate}`
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&status=verifying`
+
+      if (isOrderNumber || isUUID) {
+        // 🎯 DB 직접 검색 (주문번호/UUID)
+        url += `&search=${encodeURIComponent(searchTerm)}`
+        console.log('🎯 [주문내역] DB 직접 검색:', searchTerm)
+      } else {
+        // 📦 전체 로드 (닉네임/상품명 등은 프론트에서 필터링)
+        url += `&dateRange=${dateRange}`
+        if (dateRange === 'custom') {
+          if (customStartDate) url += `&startDate=${customStartDate}`
+          if (customEndDate) url += `&endDate=${customEndDate}`
+        }
+        console.log('📦 [주문내역] 전체 로드')
       }
 
       // 🚀 캐시 무효화: 매번 실시간 조회
       url += `&_t=${Date.now()}`
-
-      console.log('📋 주문내역 전체 로드:', { dateRange })
 
       const response = await fetch(url, {
         cache: 'no-store',

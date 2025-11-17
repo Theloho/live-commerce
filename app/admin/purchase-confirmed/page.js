@@ -324,17 +324,30 @@ export default function AdminPurchaseConfirmedPage() {
         return
       }
 
-      // ⚡ Service Role API 호출 (날짜 필터 + 구매확정 상태만)
-      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&dateRange=${dateRange}&status=paid`
-      if (dateRange === 'custom') {
-        if (customStartDate) url += `&startDate=${customStartDate}`
-        if (customEndDate) url += `&endDate=${customEndDate}`
+      // ⭐ 하이브리드 검색: 주문번호 패턴 감지
+      const isOrderNumber = searchTerm && /^S\d{6}-\d{4}$/i.test(searchTerm)
+      const isUUID = searchTerm && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchTerm)
+
+      let url = `/api/admin/orders?adminEmail=${encodeURIComponent(adminUser.email)}&status=paid`
+
+      if (isOrderNumber || isUUID) {
+        // DB 직접 검색 (리밋 무관)
+        url += `&search=${encodeURIComponent(searchTerm)}`
+        console.log('🎯 [구매확정] DB 직접 검색:', searchTerm)
+      } else {
+        // 전체 로드 후 프론트 필터 (닉네임/상품명)
+        url += `&dateRange=${dateRange}`
+        if (dateRange === 'custom') {
+          if (customStartDate) url += `&startDate=${customStartDate}`
+          if (customEndDate) url += `&endDate=${customEndDate}`
+        }
+        console.log('📦 [구매확정] 전체 로드')
       }
 
       // 🚀 캐시 무효화: 매번 실시간 조회
       url += `&_t=${Date.now()}`
 
-      console.log('✅ 구매확정 주문 전체 로드:', { dateRange })
+      console.log('✅ 구매확정 주문 전체 로드:', { dateRange, searchTerm, isOrderNumber, isUUID })
 
       const response = await fetch(url, {
         cache: 'no-store',
