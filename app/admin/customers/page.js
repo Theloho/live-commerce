@@ -155,7 +155,14 @@ export default function AdminCustomersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">고객 관리</h1>
-          <p className="text-gray-600">총 {customers.length}명의 고객</p>
+          <p className="text-gray-600">
+            총 {totalCount.toLocaleString()}명의 고객
+            {customers.length < totalCount && (
+              <span className="text-sm text-gray-500 ml-2">
+                (표시: {customers.length}명)
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button
