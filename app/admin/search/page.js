@@ -230,8 +230,23 @@ export default function AdminSearchPage() {
         customer_order_number: o.customer_order_number,
         userNickname: o.userNickname,
         userName: o.userName,
+        depositor_name: o.payment?.depositor_name,
+        shipping_name: o.shipping?.name,
         created_at: o.created_at
       })))
+
+      // 🔍 S251105-9120 주문 찾기
+      const targetOrder = formattedOrders.find(o => o.customer_order_number === 'S251105-9120')
+      if (targetOrder) {
+        console.log('🎯 [S251105-9120 발견]:', {
+          userNickname: targetOrder.userNickname,
+          userName: targetOrder.userName,
+          depositor_name: targetOrder.payment?.depositor_name,
+          shipping_name: targetOrder.shipping?.name
+        })
+      } else {
+        console.log('❌ [S251105-9120 없음] - API에서 안 옴!')
+      }
 
       // ⭐ 검색어 필터링
       const searchLower = searchTerm.toLowerCase()
