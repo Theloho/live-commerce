@@ -140,22 +140,33 @@ export default function ExternalOrdersPage() {
 
     // CSV 생성
     let csv = '\uFEFF' // UTF-8 BOM
-    csv += '주문번호,주문일자,고객명,전화번호,우편번호,주소,상세주소,제품번호,업체제품코드,제품명,옵션,수량,단가,금액,배송메모\n'
+    csv += '주문번호,주문일자,고객명,전화번호,우편번호,주소,제품번호,업체제품코드,제품명,사이즈,컬러,수량,단가,금액,배송메모\n'
 
     selectedData.forEach(order => {
       order.items.forEach(item => {
+        // 옵션 파싱 (예: "XL, 블랙" → 사이즈: XL, 컬러: 블랙)
+        const options = item.options ? item.options.split(',').map(o => o.trim()) : []
+        const size = options[0] || '' // 첫 번째 옵션을 사이즈로
+        const color = options[1] || '' // 두 번째 옵션을 컬러로
+
+        // 주소 통합 (주소 + 상세주소)
+        const fullAddress = [
+          order.shipping?.address || '',
+          order.shipping?.detail_address || ''
+        ].filter(Boolean).join(' ')
+
         const row = [
           order.customer_order_number,
           new Date(order.created_at).toLocaleDateString('ko-KR'),
           order.userName,
           order.userPhone,
           order.shipping?.postal_code || '',
-          order.shipping?.address || '',
-          order.shipping?.detail_address || '',
+          fullAddress,
           item.product_number,
           item.supplier_product_code,
           item.title,
-          item.options,
+          size,
+          color,
           item.quantity,
           item.price,
           item.price * item.quantity,
