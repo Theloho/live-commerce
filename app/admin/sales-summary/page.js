@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { CalendarIcon, ArrowLeftIcon, ChartBarIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon, ArrowLeftIcon, ChartBarIcon, ArrowDownTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useAdminAuth } from '@/hooks/useAdminAuthNew'
 import toast from 'react-hot-toast'
 
@@ -18,6 +18,7 @@ export default function SalesSummaryPage() {
   const [dateRange, setDateRange] = useState('today') // 날짜 필터 (today, custom)
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
+  const [searchQuery, setSearchQuery] = useState('') // 제품번호 검색
 
   useEffect(() => {
     if (adminUser?.email) {
@@ -248,7 +249,15 @@ export default function SalesSummaryPage() {
   const getSortedItems = (date, items) => {
     const sortType = sortBy[date] || 'quantity' // 기본값: 수량순
 
-    const sorted = [...items]
+    let sorted = [...items]
+
+    // 제품번호 검색 필터링
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase()
+      sorted = sorted.filter(item =>
+        item.product_number?.toLowerCase().includes(query)
+      )
+    }
 
     switch (sortType) {
       case 'product_number':
@@ -341,6 +350,33 @@ export default function SalesSummaryPage() {
         </div>
       </div>
 
+      {/* 🔍 제품번호 검색 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center gap-2">
+          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="제품번호로 검색 (예: ABC123)"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              초기화
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="mt-2 text-xs text-gray-500">
+            💡 &quot;{searchQuery}&quot; 검색 결과를 표시합니다
+          </p>
+        )}
+      </div>
+
       {/* 📅 날짜 필터 */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-center gap-2 flex-wrap">
@@ -429,6 +465,10 @@ export default function SalesSummaryPage() {
             const currentSort = sortBy[date] || 'quantity'
             const sortedItems = getSortedItems(date, items)
 
+            // 필터링된 아이템으로 통계 재계산
+            const filteredQuantity = sortedItems.reduce((sum, item) => sum + item.quantity, 0)
+            const filteredAmount = sortedItems.reduce((sum, item) => sum + item.totalAmount, 0)
+
             return (
               <div key={date} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 {/* 날짜 헤더 */}
@@ -449,10 +489,16 @@ export default function SalesSummaryPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-sm text-gray-600">
-                        {items.length}개 품목 · {totalQuantity}개 주문
+                        {sortedItems.length}개 품목 · {filteredQuantity}개 주문
+                        {searchQuery && sortedItems.length !== items.length && (
+                          <span className="text-blue-600 ml-1">(전체 {items.length}개 중)</span>
+                        )}
                       </div>
                       <div className="text-lg font-bold text-red-600">
-                        ₩{totalAmount.toLocaleString()}
+                        ₩{filteredAmount.toLocaleString()}
+                        {searchQuery && filteredAmount !== totalAmount && (
+                          <span className="text-sm text-gray-500 ml-1">(전체 ₩{totalAmount.toLocaleString()})</span>
+                        )}
                       </div>
                     </div>
                   </div>
